@@ -44,3 +44,7 @@ next-env.d.ts
 
 # superpowers scratch workspace
 .superpowers/
+
+# python
+__pycache__/
+*.pyc
