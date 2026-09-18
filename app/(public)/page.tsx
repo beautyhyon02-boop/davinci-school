@@ -11,8 +11,8 @@ export default function HomePage() {
           <h1 className="text-4xl font-extrabold tracking-tight md:text-5xl">{site.tagline}</h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg text-ink-700">{site.intro}</p>
           <div className="mt-8 flex justify-center gap-3">
-            <Button href="/programs/essay">서논술형 수업 보기</Button>
-            <Button href="/franchise" variant="accent">가맹문의</Button>
+            <Button href="/programs/essay">{site.hero.ctaPrimary}</Button>
+            <Button href="/franchise" variant="accent">{site.hero.ctaFranchise}</Button>
           </div>
           <dl className="mx-auto mt-14 grid max-w-3xl grid-cols-3 gap-4">
             {site.stats.map(s => (
@@ -25,13 +25,13 @@ export default function HomePage() {
         </div>
       </section>
 
-      <Section eyebrow="PROGRAMS" title="다빈치스쿨의 네 가지 수업">
+      <Section eyebrow={site.sections.programs.eyebrow} title={site.sections.programs.title}>
         <div className="grid gap-5 md:grid-cols-2">
           {site.programs.map(p => <ProgramCard key={p.slug} p={p} />)}
         </div>
       </Section>
 
-      <Section eyebrow="WHY DAVINCI" title="왜 다빈치인가">
+      <Section eyebrow={site.sections.why.eyebrow} title={site.sections.why.title}>
         <div className="grid gap-5 md:grid-cols-3">
           {site.why.map(w => (
             <div key={w.title} className="rounded-2xl border border-ink-100 p-6">
@@ -44,9 +44,9 @@ export default function HomePage() {
 
       <Section>
         <div className="rounded-3xl bg-lavender-50 p-10 text-center">
-          <h2 className="text-2xl font-extrabold">우리 지역에 다빈치스쿨을 열고 싶다면</h2>
-          <p className="mt-2 text-ink-700">본사가 교재·문항·교사용 지침서를 준비합니다.</p>
-          <Button href="/franchise" variant="accent" className="mt-6">가맹 안내 보기</Button>
+          <h2 className="text-2xl font-extrabold">{site.franchiseCta.title}</h2>
+          <p className="mt-2 text-ink-700">{site.franchiseCta.body}</p>
+          <Button href="/franchise" variant="accent" className="mt-6">{site.franchiseCta.button}</Button>
         </div>
       </Section>
     </>

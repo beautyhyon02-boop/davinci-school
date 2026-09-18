@@ -28,4 +28,17 @@ export const site = {
     { href: '/programs/consulting', label: '대입 컨설팅' },
     { href: '/programs/lab', label: '다빈치랩' },
   ],
+  header: { login: '로그인', franchise: '가맹문의' },
+  hero: { ctaPrimary: '서논술형 수업 보기', ctaFranchise: '가맹문의' },
+  sections: {
+    programs: { eyebrow: 'PROGRAMS', title: '다빈치스쿨의 네 가지 수업' },
+    why: { eyebrow: 'WHY DAVINCI', title: '왜 다빈치인가' },
+  },
+  franchiseCta: {
+    title: '우리 지역에 다빈치스쿨을 열고 싶다면',
+    body: '본사가 교재·문항·교사용 지침서를 준비합니다.',
+    button: '가맹 안내 보기',
+  },
+  statusLabel: { open: '운영 중', soon: '준비 중' },
+  footer: { contactLabel: '문의' },
 }

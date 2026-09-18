@@ -11,8 +11,8 @@ export function Header() {
           {site.nav.map(n => <Link key={n.href} href={n.href} className="hover:text-mint-600">{n.label}</Link>)}
         </nav>
         <div className="flex items-center gap-2">
-          <Button href="/login" variant="ghost">로그인</Button>
-          <Button href="/franchise" variant="accent">가맹문의</Button>
+          <Button href="/login" variant="ghost">{site.header.login}</Button>
+          <Button href="/franchise" variant="accent">{site.header.franchise}</Button>
         </div>
       </div>
     </header>
