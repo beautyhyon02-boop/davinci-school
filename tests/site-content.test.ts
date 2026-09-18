@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { site, programDetails, pages } from '@/content/site'
+import { site, programDetails, pages, auth } from '@/content/site'
 
 describe('site content', () => {
   it('has exactly four programs with unique slugs', () => {
@@ -50,5 +50,15 @@ describe('site content', () => {
     expect(pages.franchise.fields.region.placeholder).toBeTruthy()
     expect(pages.franchise.fields.message.label).toBeTruthy()
     expect(pages.franchise.submit).toBeTruthy()
+  })
+  it('exposes login page copy so the login form never hard-codes Korean strings', () => {
+    expect(auth.login.title).toBeTruthy()
+    expect(auth.login.subtitle).toBeTruthy()
+    expect(auth.login.idLabel).toBeTruthy()
+    expect(auth.login.passwordLabel).toBeTruthy()
+    expect(auth.login.submit).toBeTruthy()
+    expect(auth.login.submitting).toBeTruthy()
+    expect(auth.login.errors.missing).toBeTruthy()
+    expect(auth.login.errors.invalid).toBeTruthy()
   })
 })

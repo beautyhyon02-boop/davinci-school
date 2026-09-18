@@ -58,6 +58,21 @@ export const programDetails: Record<ProgramSlug, { headline: string; paragraphs:
   lab: { headline: '자기주도 학습관 다빈치랩', paragraphs: ['준비 중입니다.'], bullets: [] },
 }
 
+export const auth = {
+  login: {
+    title: '로그인',
+    subtitle: '원장님·학생·관리자 모두 여기서 로그인합니다.',
+    idLabel: '아이디 또는 이메일',
+    passwordLabel: '비밀번호',
+    submit: '로그인',
+    submitting: '확인 중…',
+    errors: {
+      missing: '아이디와 비밀번호를 입력하세요.',
+      invalid: '아이디 또는 비밀번호가 맞지 않습니다.',
+    },
+  },
+}
+
 export const pages = {
   comingSoon: {
     eyebrow: 'COMING SOON',
