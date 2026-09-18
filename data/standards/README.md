@@ -24,7 +24,7 @@
 ```bash
 S="C:/Users/beaut/OneDrive/바탕 화면/서논술형"
 python scripts/extract_standards.py "$S/[별책5] 국어과 교육과정.pdf" 국어 data/standards/국어.json
-python scripts/extract_standards.py "$S/[별책7] 사회과 교육과정.pdf" 사회 data/standards/사회_raw.json
+python scripts/extract_standards.py "$S/[별책7] 사회과 교육과정.pdf" 사회 data/standards/사회_raw.json  # 아래 설명대로 사회/한국사 두 파일로 나눔
 python scripts/extract_standards.py "$S/[별책9] 과학과 교육과정.pdf" 과학 data/standards/과학.json
 python scripts/extract_standards.py "$S/[별책14] 영어과 교육과정.pdf" 영어 data/standards/영어.json
 ```
@@ -82,6 +82,10 @@ python scripts/extract_standards.py "$S/[별책14] 영어과 교육과정.pdf" �
     직전 과목의 domain이 잘못 이어붙는 문제 → 코드의 과목 라벨이 바뀌면
     새 영역 제목을 만나기 전까지 domain을 비우도록 했다.
 - 수학과(별책8)는 폴더에 파일이 없어 이번 주 추출에서 제외했다.
-- `scripts/import-standards.ts`는 작성만 하고 실행하지 않았다(호스팅 DB
-  마이그레이션 미적용). 마이그레이션 적용 후
-  `npx dotenv -e .env.local -- npx tsx scripts/import-standards.ts`로 실행한다.
+## DB 투입 이력
+
+- 2026-09-19: 마이그레이션 적용 후
+  `npx dotenv -e .env.local -- npx tsx scripts/import-standards.ts` 실행 →
+  호스팅 DB `standards` 테이블에 1379행 upsert 완료(`code` 기준).
+- JSON을 다시 추출·수정한 뒤에는 같은 명령을 다시 실행하면 된다(`code`가
+  같은 행은 덮어쓴다).

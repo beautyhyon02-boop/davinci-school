@@ -96,7 +96,6 @@ describe('site content', () => {
     expect(app.adminAcademies.teacherAccount.issuedNotice).toBeTruthy()
     expect(app.adminAcademies.teacherAccount.labels.id).toBeTruthy()
     expect(app.adminAcademies.teacherAccount.labels.password).toBeTruthy()
-    expect(app.adminAcademies.notFound).toBeTruthy()
     expect(app.adminAcademies.detailMeta.studentCapacity(100)).toContain('100')
     expect(app.adminAcademies.detailMeta.monthlyGradingLimit(300)).toContain('300')
     expect(app.adminAcademies.errors.codeInvalid).toBeTruthy()

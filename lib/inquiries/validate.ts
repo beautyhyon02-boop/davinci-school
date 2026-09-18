@@ -12,6 +12,12 @@ const schema = z.object({
 })
 export type Inquiry = z.infer<typeof schema>
 
+/** 폼의 숨은 허니팟 필드(`website`)가 채워졌으면 봇으로 본다. 사람은 이 필드를 볼 수 없다. */
+export const HONEYPOT_FIELD = 'website'
+export function isHoneypotTripped(formData: FormData): boolean {
+  return String(formData.get(HONEYPOT_FIELD) ?? '').trim().length > 0
+}
+
 export function parseInquiry(formData: FormData): { ok: true; data: Inquiry } | { ok: false; error: string } {
   const r = schema.safeParse({
     name: formData.get('name') ?? '', phone: formData.get('phone') ?? '',

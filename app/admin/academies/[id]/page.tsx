@@ -1,3 +1,4 @@
+import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { TeacherAccountForm } from './TeacherAccountForm'
 import { app } from '@/content/site'
@@ -8,9 +9,8 @@ export default async function AcademyPage({ params }: { params: Promise<{ id: st
   const { id } = await params
   const supabase = await createClient()
   const { data: a } = await supabase.from('academies').select('*').eq('id', id).single()
+  if (!a) notFound()
   const { data: teachers } = await supabase.from('profiles').select('id, name, login_id').eq('academy_id', id).eq('role', 'teacher')
-
-  if (!a) return <p>{copy.notFound}</p>
 
   return (
     <>

@@ -13,5 +13,5 @@ export type AcademyInput = z.infer<typeof schema>
 
 export function parseAcademy(formData: FormData): { ok: true; data: AcademyInput } | { ok: false; error: string } {
   const r = schema.safeParse(Object.fromEntries(['code', 'name', 'region', 'director_phone'].map(k => [k, formData.get(k) ?? ''])))
-  return r.success ? { ok: true, data: r.data } : { ok: false, error: r.error.issues[0]?.message ?? '입력을 확인하세요.' }
+  return r.success ? { ok: true, data: r.data } : { ok: false, error: r.error.issues[0]?.message ?? errors.invalidInput }
 }

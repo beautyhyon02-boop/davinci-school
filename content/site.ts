@@ -5,6 +5,7 @@ export const site = {
   tagline: '스스로 묻고, 탐구하고, 글로 증명하는 아이들',
   intro:
     '다빈치스쿨은 5년간 40권의 탐구보고서 교재로 검증된 수업을 전국 가맹원에 공급하는 교육 본사입니다. 이제 서논술형 수업과 AI 피드백으로 아이의 생각을 글로 완성합니다.',
+  metaDescription: '탐구보고서와 서논술형 수업, 전국 가맹원 네트워크 다빈치스쿨',
   stats: [
     { label: '전국 가맹원', value: '40+' },
     { label: '탐구보고서 교재', value: '40권' },
@@ -121,7 +122,6 @@ export const app = {
       issuedNotice: '아래 정보를 원장님께 전달하세요. 이 화면을 벗어나면 비밀번호를 다시 볼 수 없습니다.',
       labels: { id: '아이디:', password: '초기 비밀번호:' },
     },
-    notFound: '없는 가맹원입니다.',
     detailMeta: {
       studentCapacity: (n: number) => `학생 정원 ${n}`,
       monthlyGradingLimit: (n: number) => `월 채점 상한 ${n}건`,
@@ -131,7 +131,17 @@ export const app = {
       nameRequired: '원 이름을 입력하세요.',
       codeTaken: '이미 있는 원 코드입니다.',
       teacherMissing: '이메일과 이름을 입력하세요.',
+      invalidInput: '입력을 확인하세요.',
     },
+  },
+}
+
+export const email = {
+  inquiry: {
+    // Resend에서 davinci-lab.kr 도메인 인증 후 lib/email/config.ts 의 주소를 교체할 때 이 표시 이름을 쓴다.
+    fromName: '다빈치스쿨',
+    subject: (region: string, name: string) => `[가맹문의] ${region} ${name}`,
+    labels: { name: '이름', phone: '연락처', region: '지역' },
   },
 }
 

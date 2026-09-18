@@ -1,9 +1,10 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import { site } from '@/content/site'
 
 export const metadata: Metadata = {
-  title: '다빈치스쿨',
-  description: '탐구보고서와 서논술형 수업, 전국 가맹원 네트워크 다빈치스쿨',
+  title: site.name,
+  description: site.metaDescription,
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

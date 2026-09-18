@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseInquiry } from '@/lib/inquiries/validate'
+import { HONEYPOT_FIELD, isHoneypotTripped, parseInquiry } from '@/lib/inquiries/validate'
 
 function fd(o: Record<string, string>) { const f = new FormData(); for (const [k, v] of Object.entries(o)) f.set(k, v); return f }
 
@@ -16,5 +16,16 @@ describe('parseInquiry', () => {
   it('rejects bad phone', () => {
     const r = parseInquiry(fd({ name: '김', phone: '12', region: '서울' }))
     expect(r.ok).toBe(false)
+  })
+})
+
+describe('isHoneypotTripped', () => {
+  it('is false when the honeypot field is absent or empty', () => {
+    expect(isHoneypotTripped(fd({ name: '김원장' }))).toBe(false)
+    expect(isHoneypotTripped(fd({ [HONEYPOT_FIELD]: '' }))).toBe(false)
+    expect(isHoneypotTripped(fd({ [HONEYPOT_FIELD]: '   ' }))).toBe(false)
+  })
+  it('is true when a bot fills the honeypot field', () => {
+    expect(isHoneypotTripped(fd({ name: '김원장', [HONEYPOT_FIELD]: 'http://spam.example' }))).toBe(true)
   })
 })

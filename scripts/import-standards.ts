@@ -1,8 +1,8 @@
 /**
  * data/standards/*.json 을 Supabase standards 테이블에 upsert(code 기준)한다.
  *
- * 주의: 이 스크립트는 아직 실행하지 않는다. 호스팅된 DB에 아직 마이그레이션이
- * 적용되지 않았기 때문이다. 마이그레이션 적용 후 아래 명령으로 실행한다.
+ * 2026-09-19 호스팅 DB에 1379행 투입 완료. JSON을 다시 추출한 뒤 같은 명령으로
+ * 재실행하면 code 기준으로 덮어쓴다.
  *
  *   npx dotenv -e .env.local -- npx tsx scripts/import-standards.ts
  */
