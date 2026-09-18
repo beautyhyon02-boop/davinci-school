@@ -104,6 +104,35 @@ export const app = {
     statusLabel: { new: '신규', contacted: '연락함', done: '완료' } as const,
     empty: '아직 접수된 문의가 없습니다.',
   },
+  adminAcademies: {
+    listTitle: '가맹원 관리',
+    columns: { code: '코드', name: '이름', region: '지역', teacherCount: '원장 수', studentCount: '학생 수' },
+    newButton: '새 가맹원',
+    form: {
+      labels: { code: '원 코드', name: '원 이름', region: '지역', directorPhone: '원장 연락처' },
+      submit: '등록',
+    },
+    teacherAccount: {
+      heading: '원장 계정',
+      formHeading: '원장 계정 발급',
+      placeholders: { name: '원장님 이름', email: '원장님 이메일 (로그인 아이디)' },
+      submit: '계정 발급',
+      submitting: '발급 중…',
+      issuedNotice: '아래 정보를 원장님께 전달하세요. 이 화면을 벗어나면 비밀번호를 다시 볼 수 없습니다.',
+      labels: { id: '아이디:', password: '초기 비밀번호:' },
+    },
+    notFound: '없는 가맹원입니다.',
+    detailMeta: {
+      studentCapacity: (n: number) => `학생 정원 ${n}`,
+      monthlyGradingLimit: (n: number) => `월 채점 상한 ${n}건`,
+    },
+    errors: {
+      codeInvalid: '원 코드는 영문 소문자·숫자 3~12자입니다.',
+      nameRequired: '원 이름을 입력하세요.',
+      codeTaken: '이미 있는 원 코드입니다.',
+      teacherMissing: '이메일과 이름을 입력하세요.',
+    },
+  },
 }
 
 export const pages = {
