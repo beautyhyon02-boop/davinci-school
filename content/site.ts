@@ -73,6 +73,33 @@ export const auth = {
   },
 }
 
+export const app = {
+  roleLabel: { admin: '본사 관리자', teacher: '원장님', student: '학생' },
+  logout: '로그아웃',
+  nav: {
+    admin: [
+      { href: '/admin', label: '대시보드' },
+      { href: '/admin/academies', label: '가맹원 관리' },
+      { href: '/admin/items', label: '문항 제작소' },
+      { href: '/admin/inquiries', label: '가맹문의' },
+    ],
+    teacher: [
+      { href: '/teacher', label: '홈' },
+      { href: '/teacher/students', label: '학생 관리' },
+      { href: '/teacher/items', label: '문항 찾기' },
+      { href: '/teacher/results', label: '결과 보기' },
+    ],
+    student: [
+      { href: '/student', label: '내 과제' },
+    ],
+  },
+  dashboard: {
+    admin: { title: '본사 대시보드', body: '가맹원·학생·채점 현황이 여기에 표시됩니다.' },
+    teacher: { title: '원장님 홈', body: '학생 현황과 최근 결과가 여기에 표시됩니다.' },
+    student: { title: '내 과제', body: '아직 배정된 과제가 없어요.' },
+  },
+}
+
 export const pages = {
   comingSoon: {
     eyebrow: 'COMING SOON',

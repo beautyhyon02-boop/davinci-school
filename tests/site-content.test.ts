@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { site, programDetails, pages, auth } from '@/content/site'
+import { site, programDetails, pages, auth, app } from '@/content/site'
 
 describe('site content', () => {
   it('has exactly four programs with unique slugs', () => {
@@ -60,5 +60,23 @@ describe('site content', () => {
     expect(auth.login.submitting).toBeTruthy()
     expect(auth.login.errors.missing).toBeTruthy()
     expect(auth.login.errors.invalid).toBeTruthy()
+  })
+  it('exposes app shell copy (role labels, nav, logout, dashboard headings) for admin/teacher/student', () => {
+    expect(app.roleLabel.admin).toBeTruthy()
+    expect(app.roleLabel.teacher).toBeTruthy()
+    expect(app.roleLabel.student).toBeTruthy()
+    expect(app.logout).toBeTruthy()
+
+    expect(app.nav.admin.map(n => n.href)).toEqual(['/admin', '/admin/academies', '/admin/items', '/admin/inquiries'])
+    expect(app.nav.teacher.map(n => n.href)).toEqual(['/teacher', '/teacher/students', '/teacher/items', '/teacher/results'])
+    expect(app.nav.student.map(n => n.href)).toEqual(['/student'])
+
+    for (const role of ['admin', 'teacher', 'student'] as const) {
+      for (const item of app.nav[role]) {
+        expect(item.label).toBeTruthy()
+      }
+      expect(app.dashboard[role].title).toBeTruthy()
+      expect(app.dashboard[role].body).toBeTruthy()
+    }
   })
 })
