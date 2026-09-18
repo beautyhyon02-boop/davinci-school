@@ -28,14 +28,14 @@ export async function updateSession(request: NextRequest) {
       const url = request.nextUrl.clone(); url.pathname = '/login'; url.searchParams.set('next', pathname)
       return NextResponse.redirect(url)
     }
-    const role = user.user_metadata?.role as Role | undefined
+    const role = user.app_metadata?.role as Role | undefined
     if (role !== need) {
       const url = request.nextUrl.clone(); url.pathname = role ? homePathFor(role) : '/login'; url.search = ''
       return NextResponse.redirect(url)
     }
   }
   if (pathname === '/login' && user) {
-    const role = user.user_metadata?.role as Role | undefined
+    const role = user.app_metadata?.role as Role | undefined
     if (role) { const url = request.nextUrl.clone(); url.pathname = homePathFor(role); url.search = ''; return NextResponse.redirect(url) }
   }
   return response

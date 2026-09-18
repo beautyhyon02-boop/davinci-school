@@ -14,6 +14,6 @@ export async function login(_prev: { error?: string } | undefined, formData: For
   const { data, error } = await supabase.auth.signInWithPassword({ email: toLoginEmail(loginId), password })
   if (error || !data.user) return { error: auth.login.errors.invalid }
 
-  const role = data.user.user_metadata?.role as Role | undefined
+  const role = data.user.app_metadata?.role as Role | undefined
   redirect(role ? homePathFor(role) : '/')
 }

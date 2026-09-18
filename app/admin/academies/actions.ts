@@ -40,7 +40,9 @@ export async function createTeacherAccount(
     email,
     password,
     email_confirm: true,
-    user_metadata: { role: 'teacher', academy_id: academyId, name, login_id: email },
+    // role/academy_id/login_id 는 service role 만 쓸 수 있는 app_metadata 에 둔다(사용자가 수정 불가).
+    app_metadata: { role: 'teacher', academy_id: academyId, login_id: email },
+    user_metadata: { name },
   })
   if (error) return { error: error.message }
   revalidatePath(`/admin/academies/${academyId}`)
