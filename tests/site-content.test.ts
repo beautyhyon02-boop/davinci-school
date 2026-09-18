@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { site } from '@/content/site'
+import { site, programDetails, pages } from '@/content/site'
 
 describe('site content', () => {
   it('has exactly four programs with unique slugs', () => {
@@ -24,5 +24,31 @@ describe('site content', () => {
     expect(site.statusLabel.open).toBeTruthy()
     expect(site.statusLabel.soon).toBeTruthy()
     expect(site.footer.contactLabel).toBeTruthy()
+  })
+  it('has programDetails for all four program slugs with non-empty headlines', () => {
+    const slugs = site.programs.map(p => p.slug)
+    for (const slug of slugs) {
+      expect(programDetails[slug]).toBeTruthy()
+      expect(programDetails[slug].headline).toBeTruthy()
+      expect(Array.isArray(programDetails[slug].paragraphs)).toBe(true)
+      expect(Array.isArray(programDetails[slug].bullets)).toBe(true)
+    }
+  })
+  it('exposes page copy (ComingSoon, program CTA, franchise form) so pages never hard-code Korean strings', () => {
+    expect(pages.comingSoon.eyebrow).toBeTruthy()
+    expect(pages.comingSoon.title('테스트')).toContain('테스트')
+    expect(pages.comingSoon.body).toBeTruthy()
+    expect(pages.comingSoon.back).toBeTruthy()
+    expect(pages.program.cta).toBeTruthy()
+    expect(pages.franchise.title).toBeTruthy()
+    expect(pages.franchise.intro).toBeTruthy()
+    expect(pages.franchise.formTitle).toBeTruthy()
+    expect(pages.franchise.fields.name.label).toBeTruthy()
+    expect(pages.franchise.fields.phone.label).toBeTruthy()
+    expect(pages.franchise.fields.phone.placeholder).toBeTruthy()
+    expect(pages.franchise.fields.region.label).toBeTruthy()
+    expect(pages.franchise.fields.region.placeholder).toBeTruthy()
+    expect(pages.franchise.fields.message.label).toBeTruthy()
+    expect(pages.franchise.submit).toBeTruthy()
   })
 })

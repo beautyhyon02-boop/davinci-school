@@ -42,3 +42,42 @@ export const site = {
   statusLabel: { open: '운영 중', soon: '준비 중' },
   footer: { contactLabel: '문의' },
 }
+
+export const programDetails: Record<ProgramSlug, { headline: string; paragraphs: string[]; bullets: string[] }> = {
+  inquiry: {
+    headline: '질문에서 보고서까지, 스스로 완성하는 탐구',
+    paragraphs: ['5년간 40권의 교재로 다듬어진 탐구보고서 수업입니다. 학생은 질문을 세우고, 자료를 모으고, 보고서로 정리하는 과정을 학년별로 반복합니다.'],
+    bullets: ['초·중·고 학년별 교재 40권', '주제 선정 → 자료 조사 → 보고서 작성의 3단계', '원장님용 수업 지도안 제공'],
+  },
+  essay: {
+    headline: '성취기준에서 출발하는 서논술형 수업과 AI 피드백',
+    paragraphs: ['2022 개정 교육과정 성취기준 원문에서 문항을 설계합니다. 학생이 답안을 제출하면 루브릭에 따라 AI가 채점하고, 잘한 점과 보완할 점을 나누어 피드백합니다.', '한 가지 대주제를 국어·영어·수학·과학·사회가 함께 다루는 융합(STEAM) 방식으로 문항을 구성합니다.'],
+    bullets: ['초·중·고 × 국·영·수·과·사·한국사', '루브릭 기반 AI 채점, 30초 안에 피드백', '교사용 지침서·차시 설계·예시답안 제공'],
+  },
+  consulting: { headline: '탐구 이력을 대입 전략으로', paragraphs: ['준비 중입니다.'], bullets: [] },
+  lab: { headline: '자기주도 학습관 다빈치랩', paragraphs: ['준비 중입니다.'], bullets: [] },
+}
+
+export const pages = {
+  comingSoon: {
+    eyebrow: 'COMING SOON',
+    title: (name: string) => `${name}은(는) 준비 중입니다`,
+    body: '곧 자세한 안내를 드리겠습니다.',
+    back: '메인으로',
+  },
+  program: {
+    cta: '이 수업으로 가맹 문의',
+  },
+  franchise: {
+    title: '다빈치스쿨 가맹 안내',
+    intro: '본사가 교재·문항·교사용 지침서·AI 채점 시스템을 제공합니다. 원장님은 학생과 수업에 집중하세요.',
+    formTitle: '문의 남기기',
+    fields: {
+      name: { label: '이름' },
+      phone: { label: '연락처', placeholder: '010-0000-0000' },
+      region: { label: '지역', placeholder: '예: 경기 성남' },
+      message: { label: '문의 내용' },
+    },
+    submit: '문의 보내기',
+  },
+}
