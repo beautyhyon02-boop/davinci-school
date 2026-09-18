@@ -98,6 +98,12 @@ export const app = {
     teacher: { title: '원장님 홈', body: '학생 현황과 최근 결과가 여기에 표시됩니다.' },
     student: { title: '내 과제', body: '아직 배정된 과제가 없어요.' },
   },
+  adminInquiries: {
+    title: '가맹문의 접수함',
+    columns: { date: '접수', name: '이름', phone: '연락처', region: '지역', message: '내용', status: '상태' },
+    statusLabel: { new: '신규', contacted: '연락함', done: '완료' } as const,
+    empty: '아직 접수된 문의가 없습니다.',
+  },
 }
 
 export const pages = {
@@ -121,5 +127,17 @@ export const pages = {
       message: { label: '문의 내용' },
     },
     submit: '문의 보내기',
+    submitting: '보내는 중…',
+    success: {
+      title: '문의가 접수되었습니다',
+      body: '본사에서 1~2일 안에 연락드리겠습니다.',
+    },
+    errors: {
+      name: '이름을 입력하세요.',
+      phone: '연락처를 확인하세요.',
+      region: '지역을 입력하세요.',
+      generic: '입력을 확인하세요.',
+      submitFailed: '접수 중 오류가 났습니다. 잠시 후 다시 시도해 주세요.',
+    },
   },
 }

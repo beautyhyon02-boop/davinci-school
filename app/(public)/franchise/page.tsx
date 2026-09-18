@@ -1,5 +1,5 @@
 import { Section } from '@/components/site/Section'
-import { Button } from '@/components/ui/Button'
+import { InquiryForm } from '@/components/site/InquiryForm'
 import { pages } from '@/content/site'
 
 export default function FranchisePage() {
@@ -13,25 +13,7 @@ export default function FranchisePage() {
         </div>
       </div>
       <Section title={f.formTitle}>
-        <form className="grid max-w-xl gap-4">
-          <label className="grid gap-1 text-sm font-semibold">
-            {f.fields.name.label}
-            <input name="name" required className="rounded-xl border border-ink-300 px-4 py-3 font-normal" />
-          </label>
-          <label className="grid gap-1 text-sm font-semibold">
-            {f.fields.phone.label}
-            <input name="phone" required className="rounded-xl border border-ink-300 px-4 py-3 font-normal" placeholder={f.fields.phone.placeholder} />
-          </label>
-          <label className="grid gap-1 text-sm font-semibold">
-            {f.fields.region.label}
-            <input name="region" required className="rounded-xl border border-ink-300 px-4 py-3 font-normal" placeholder={f.fields.region.placeholder} />
-          </label>
-          <label className="grid gap-1 text-sm font-semibold">
-            {f.fields.message.label}
-            <textarea name="message" rows={5} className="rounded-xl border border-ink-300 px-4 py-3 font-normal" />
-          </label>
-          <Button type="submit" variant="accent">{f.submit}</Button>
-        </form>
+        <InquiryForm />
       </Section>
     </>
   )
