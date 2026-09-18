@@ -1,0 +1,43 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Pretendard Variable", Pretendard, -apple-system, "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
+
+  --color-mint-50:  #f0fbf8;
+  --color-mint-100: #d9f5ec;
+  --color-mint-200: #b3ebd9;
+  --color-mint-300: #7fdcc0;
+  --color-mint-400: #4cc9a4;
+  --color-mint-500: #2bb08a;
+  --color-mint-600: #1f8f70;
+  --color-mint-700: #1a725a;
+
+  --color-lemon-50:  #fffcec;
+  --color-lemon-100: #fff7c7;
+  --color-lemon-200: #ffee8f;
+  --color-lemon-300: #ffe25a;
+  --color-lemon-400: #f9d12a;
+  --color-lemon-500: #e6b800;
+  --color-lemon-600: #b38f00;
+
+  --color-lavender-50:  #f7f5fd;
+  --color-lavender-100: #ece7fa;
+  --color-lavender-200: #d9d0f4;
+  --color-lavender-300: #bfb0eb;
+  --color-lavender-400: #a08ade;
+  --color-lavender-500: #8268cf;
+  --color-lavender-600: #6a50b5;
+  --color-lavender-700: #563f94;
+
+  --color-ink-900: #1f2430;
+  --color-ink-700: #3b4252;
+  --color-ink-500: #6b7280;
+  --color-ink-300: #cfd4dd;
+  --color-ink-100: #f3f4f7;
+
+  --radius-xl: 1.25rem;
+  --radius-2xl: 1.75rem;
+}
+
+html { color: var(--color-ink-900); background: #fff; }
+body { @apply antialiased; }
