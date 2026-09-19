@@ -8,6 +8,7 @@ import { ThemeIntroPanel } from './ThemeIntroPanel'
 import { SharedMaterialsPanel } from './SharedMaterialsPanel'
 import { StandardsPicker, type StandardsBySubject } from './StandardsPicker'
 import type { Subject } from '@/lib/studio/schemas'
+import { fetchAll } from '@/lib/supabase/fetch-all'
 import { app } from '@/content/site'
 
 const copy = app.studio.sets
@@ -37,28 +38,39 @@ export default async function ThemeDetailPage({ params }: { params: Promise<{ th
 
   const themeSubjects = (theme.subjects ?? []) as Subject[]
 
-  const [{ data: sets }, { data: standardRows }] = await Promise.all([
-    supabase.from('item_sets').select('id, subject, status, stage_status').eq('theme_id', themeId).order('subject'),
-    themeSubjects.length
-      ? supabase
-          .from('standards')
-          .select('id, code, text, domain, subject, verified_at')
-          .eq('level', theme.level)
-          .in('subject', themeSubjects)
-          .order('domain')
-          .order('code')
-      : Promise.resolve({ data: [] as { id: string; code: string; text: string; domain: string; subject: string; verified_at: string | null }[] }),
-  ])
+  const { data: sets } = await supabase
+    .from('item_sets')
+    .select('id, subject, status, stage_status')
+    .eq('theme_id', themeId)
+    .order('subject')
 
   const setRows = sets ?? []
   const existingSubjects = setRows.map((s) => s.subject as string)
   const availableSubjects = themeSubjects.filter((s) => !existingSubjects.includes(s))
 
+  // 이미 세트가 만들어진 과목은 picker에 필요 없으니 조회 대상에서 뺀다. level당 과목이 여러 개면
+  // 성취기준이 PostgREST 기본 페이지 한도(1000행)를 넘을 수 있어 fetchAll로 끝까지 이어 받는다.
+  type StandardRow = { id: string; code: string; text: string; domain: string; subject: string; verified_at: string | null }
+  const standardRows = availableSubjects.length
+    ? await fetchAll<StandardRow>((from, to) =>
+        supabase
+          .from('standards')
+          .select('id, code, text, domain, subject, verified_at')
+          .eq('level', theme.level)
+          .in('subject', availableSubjects)
+          .order('subject')
+          .order('domain')
+          .order('code')
+          .range(from, to),
+      )
+    : []
+
   const standardsBySubject: StandardsBySubject = {}
-  for (const r of standardRows ?? []) {
+  for (const r of standardRows) {
+    const domain = r.domain.trim() ? r.domain : app.studio.picker.uncategorized
     const bySubject = (standardsBySubject[r.subject] ??= {})
-    const byDomain = (bySubject[r.domain] ??= [])
-    byDomain.push({ id: r.id, code: r.code, text: r.text, domain: r.domain, verified: !!r.verified_at })
+    const byDomain = (bySubject[domain] ??= [])
+    byDomain.push({ id: r.id, code: r.code, text: r.text, domain, verified: !!r.verified_at })
   }
 
   const initialMaterialsJson = JSON.stringify(theme.materials ?? { materials: [] }, null, 2)

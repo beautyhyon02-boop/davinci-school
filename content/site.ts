@@ -228,6 +228,7 @@ export const app = {
       subjectLabel: '과목',
       subjectPlaceholder: '과목을 선택하세요',
       noSubjectsAvailable: '모든 과목에 이미 세트가 있습니다.',
+      uncategorized: '미분류',
       searchPlaceholder: '코드 또는 원문 검색',
       selectedCount: (n: number) => `${n}개 선택 (2~6개)`,
       verified: '검증됨',

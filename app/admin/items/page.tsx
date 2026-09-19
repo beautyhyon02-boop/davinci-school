@@ -58,7 +58,7 @@ export default async function AdminItemsPage() {
               return (
                 <tr key={t.id} className="border-t border-ink-100 align-top">
                   <td className="p-3 font-semibold">{t.title}</td>
-                  <td className="p-3">{t.level} {t.grade}학년</td>
+                  <td className="p-3">{app.studio.theme.meta(t.level, t.grade)}</td>
                   <td className="p-3">
                     <div className="flex flex-wrap gap-1">
                       {(t.subjects ?? []).map((s) => <Badge key={s} tone="lavender">{s}</Badge>)}

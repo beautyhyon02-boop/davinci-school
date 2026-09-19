@@ -163,6 +163,7 @@ describe('site content', () => {
     expect(app.studio.picker.selectedCount(3)).toContain('3')
     expect(app.studio.picker.unverifiedWarning(['초2사04-01'])).toContain('초2사04-01')
     expect(app.studio.picker.submit).toBeTruthy()
+    expect(app.studio.picker.uncategorized).toBeTruthy()
   })
 
   it('exposes login page copy so the login form never hard-codes Korean strings', () => {
