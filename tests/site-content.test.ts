@@ -246,6 +246,7 @@ describe('site content', () => {
     expect(app.packageView.cover.versionLabel(2)).toContain('2')
     expect(app.packageView.cover.publishedAtLabel).toBeTruthy()
     expect(app.packageView.cover.meta('중', 2, '수학')).toContain('중')
+    expect(app.packageView.intro).toBeTruthy()
     expect(app.packageView.standardsHeading).toBeTruthy()
     expect(app.packageView.reconstructionHeading).toBeTruthy()
     expect(app.packageView.learningGoalsHeading).toBeTruthy()

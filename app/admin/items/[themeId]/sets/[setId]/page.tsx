@@ -47,10 +47,21 @@ export default async function SetWizardPage({ params }: { params: Promise<{ them
   const stage2 = stageStatus.stage2
   const candidates = (stage2?.output as { key_question_candidates?: string[] } | undefined)?.key_question_candidates ?? []
 
+  // publishItemSet과 같은 규칙: 다음 버전은 item_sets.version이 아니라 item_set_versions 최댓값+1로 미리보기에서도 미리 계산한다.
+  const { data: lastVersion } = await supabase
+    .from('item_set_versions')
+    .select('version')
+    .eq('item_set_id', setId)
+    .order('version', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  const nextVersion = (lastVersion?.version ?? 0) + 1
+
   const draftSnapshot = buildSnapshot({
     theme: { title: theme.title, level: theme.level, grade: theme.grade, intro: theme.intro, materials: theme.materials },
     itemSet: { ...itemSet, stage_status: stageStatus },
     standards: standardsFull.map((s) => ({ code: s.code, text: s.text })),
+    version: nextVersion,
   })
   const { blockers } = canPublish({
     statuses: stageStatus,
@@ -88,7 +99,7 @@ export default async function SetWizardPage({ params }: { params: Promise<{ them
               <PublishPanel
                 setId={setId}
                 currentVersion={itemSet.version ?? 1}
-                nextVersion={draftSnapshot.cover.version}
+                nextVersion={nextVersion}
                 initialBlockers={blockers}
               />
               <PackageView snapshot={draftSnapshot} mode="admin" showAnswers />

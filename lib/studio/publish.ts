@@ -65,19 +65,20 @@ export function canPublish({
 /**
  * 게시용 버전 스냅샷을 만든다. 자료는 대주제 공유 자료(theme.materials)와 세트 자료(itemSet.materials)를 id로 병합하되,
  * 같은 id가 있으면 세트 쪽이 이긴다(더 구체적인 세트 전용 자료로 덮어씀) — 결과는 id 오름차순으로 정렬한다.
- * cover.version은 "다음에 게시될 버전"(현재 버전 + 1)이다: 관리자 미리보기 탭도, 실제 게시 액션도 같은 값을 보게 하기 위함.
+ * cover.version은 호출자가 넘긴다 — 다음 게시 버전 번호는 item_set_versions의 최댓값+1로 정하는데(고아 행에서도
+ * 자연히 회복되도록), 그 계산은 이 함수의 책임이 아니라 publishItemSet/미리보기 화면이 DB를 조회해서 결정한다.
  */
 export function buildSnapshot({
   theme,
   itemSet,
   standards,
+  version,
 }: {
   theme: { title: string; level: string; grade: number; intro: string | null; materials: MaterialT[] | null }
   itemSet: {
     subject: string
     level: string
     grade: number
-    version: number | null
     reconstruction: string | null
     learning_goals: string[] | null
     key_question: string | null
@@ -88,6 +89,7 @@ export function buildSnapshot({
     stage_status: Record<string, StageStatus | undefined> | null
   }
   standards: PublishStandard[]
+  version: number
 }): Snapshot {
   const merged = new Map<string, MaterialT>()
   for (const m of theme.materials ?? []) merged.set(m.id, m)
@@ -108,7 +110,7 @@ export function buildSnapshot({
       subject: itemSet.subject,
       level: theme.level,
       grade: theme.grade,
-      version: (itemSet.version ?? 0) + 1,
+      version,
       published_at: new Date().toISOString(),
     },
     standards,

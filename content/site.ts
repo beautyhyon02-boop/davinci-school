@@ -368,6 +368,7 @@ export const app = {
       publishedAtLabel: '게시일',
       meta: (level: string, grade: number, subject: string) => `${level} ${grade}학년 · ${subject}`,
     },
+    intro: '대주제 소개',
     standardsHeading: '성취기준',
     reconstructionHeading: '재구성',
     learningGoalsHeading: '학습 목표',

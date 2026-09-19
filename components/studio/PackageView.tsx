@@ -359,6 +359,13 @@ export function PackageView({
         <p className="mt-1 text-xs text-ink-500">{c.cover.publishedAtLabel}: {snapshot.cover.published_at}</p>
       </Card>
 
+      {snapshot.intro.trim() !== '' && (
+        <Card>
+          <SectionHeading>{c.intro}</SectionHeading>
+          <p className="mt-2 whitespace-pre-wrap text-sm">{snapshot.intro}</p>
+        </Card>
+      )}
+
       <Card>
         <SectionHeading>{c.standardsHeading}</SectionHeading>
         <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
@@ -383,9 +390,9 @@ export function PackageView({
         <p className="mt-2 text-sm">{snapshot.key_question}</p>
       </Card>
 
-      <MaterialsSection materials={snapshot.materials} />
       <LessonsSection lessons={snapshot.lessons} showAnswers={showAnswers} />
       <TeacherGuideSection guide={snapshot.teacher_guide} />
+      <MaterialsSection materials={snapshot.materials} />
       <AssessmentSection assessment={snapshot.assessment} />
 
       {mode === 'admin' && (

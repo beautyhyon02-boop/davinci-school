@@ -97,12 +97,11 @@ function material(id: string, title: string) {
 
 describe('buildSnapshot', () => {
   it('carries theme/itemSet fields into cover, intro, reconstruction, goals, key question', () => {
-    const snap = buildSnapshot({ theme: baseTheme, itemSet: baseItemSet, standards: [{ code: '[9수04-02]', text: '원문' }] })
+    const snap = buildSnapshot({ theme: baseTheme, itemSet: baseItemSet, standards: [{ code: '[9수04-02]', text: '원문' }], version: 1 })
     expect(snap.cover.title).toBe('자연보호 프로젝트')
     expect(snap.cover.subject).toBe('수학')
     expect(snap.cover.level).toBe('중')
     expect(snap.cover.grade).toBe(2)
-    expect(snap.cover.version).toBe(2) // itemSet.version(1) + 1
     expect(typeof snap.cover.published_at).toBe('string')
     expect(snap.intro).toBe(baseTheme.intro)
     expect(snap.reconstruction).toBe('재구성 문장')
@@ -111,10 +110,20 @@ describe('buildSnapshot', () => {
     expect(snap.standards).toEqual([{ code: '[9수04-02]', text: '원문' }])
   })
 
+  it('uses the version passed in verbatim — first publish (no prior item_set_versions row) is 1', () => {
+    const snap = buildSnapshot({ theme: baseTheme, itemSet: baseItemSet, standards: [], version: 1 })
+    expect(snap.cover.version).toBe(1)
+  })
+
+  it('uses the version passed in verbatim — with an existing max version of 3, the caller passes 4', () => {
+    const snap = buildSnapshot({ theme: baseTheme, itemSet: baseItemSet, standards: [], version: 4 })
+    expect(snap.cover.version).toBe(4)
+  })
+
   it('merges theme materials and set materials by id, set wins on conflict, sorted by id', () => {
     const theme = { ...baseTheme, materials: [material('A', '대주제 자료 A'), material('C', '대주제 자료 C')] }
     const itemSet = { ...baseItemSet, materials: [material('B', '세트 자료 B'), material('A', '세트가 덮어쓴 자료 A')] }
-    const snap = buildSnapshot({ theme, itemSet, standards: [] })
+    const snap = buildSnapshot({ theme, itemSet, standards: [], version: 1 })
     expect(snap.materials.map((m) => m.id)).toEqual(['A', 'B', 'C'])
     expect(snap.materials.find((m) => m.id === 'A')!.title).toBe('세트가 덮어쓴 자료 A')
     expect(snap.materials.find((m) => m.id === 'B')!.title).toBe('세트 자료 B')
@@ -123,12 +132,12 @@ describe('buildSnapshot', () => {
 
   it('works when theme materials are missing (null) — only set materials appear', () => {
     const itemSet = { ...baseItemSet, materials: [material('A', '세트 자료 A')] }
-    const snap = buildSnapshot({ theme: { ...baseTheme, materials: null }, itemSet, standards: [] })
+    const snap = buildSnapshot({ theme: { ...baseTheme, materials: null }, itemSet, standards: [], version: 1 })
     expect(snap.materials).toEqual([material('A', '세트 자료 A')])
   })
 
   it('works when both theme and set materials are missing', () => {
-    const snap = buildSnapshot({ theme: { ...baseTheme, materials: null }, itemSet: { ...baseItemSet, materials: null }, standards: [] })
+    const snap = buildSnapshot({ theme: { ...baseTheme, materials: null }, itemSet: { ...baseItemSet, materials: null }, standards: [], version: 1 })
     expect(snap.materials).toEqual([])
   })
 
@@ -142,7 +151,7 @@ describe('buildSnapshot', () => {
         stage5: { state: 'failed', attempt: 1, updated_at: '' } as StageStatus,
       } as Record<string, StageStatus | undefined>,
     }
-    const snap = buildSnapshot({ theme: baseTheme, itemSet, standards: [] })
+    const snap = buildSnapshot({ theme: baseTheme, itemSet, standards: [], version: 1 })
     expect(snap.generated_with.models.sort()).toEqual(['claude-a', 'claude-b'])
   })
 })

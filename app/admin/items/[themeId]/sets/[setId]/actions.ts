@@ -224,12 +224,25 @@ export async function publishItemSet(setId: string): Promise<PublishResult> {
   })
   if (!ok) return { ok: false, blockers }
 
+  // 다음 버전 번호는 item_sets.version이 아니라 item_set_versions의 최댓값+1로 정한다 —
+  // item_sets.version은 기본값 1이라 "다음 버전 = 현재 버전+1"로 하면 첫 게시가 버전 2가 되고,
+  // 또 item_set_versions insert 성공 후 item_sets update가 실패한 "고아 행"이 남아도
+  // 다음 시도에서 여기서 최댓값을 다시 읽으므로 자연히 회복된다.
+  const { data: lastVersion } = await supabase
+    .from('item_set_versions')
+    .select('version')
+    .eq('item_set_id', setId)
+    .order('version', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  const version = (lastVersion?.version ?? 0) + 1
+
   const snapshot = buildSnapshot({
     theme: { title: theme.title, level: theme.level, grade: theme.grade, intro: theme.intro, materials: theme.materials },
     itemSet: { ...itemSet, stage_status: stageStatus },
     standards: standardsFull.map((s) => ({ code: s.code, text: s.text })),
+    version,
   })
-  const version = snapshot.cover.version
 
   const { error: insertErr } = await supabase
     .from('item_set_versions')
@@ -241,6 +254,11 @@ export async function publishItemSet(setId: string): Promise<PublishResult> {
     .update({ status: 'published', version, published_at: new Date().toISOString() })
     .eq('id', setId)
   if (updateErr) return { ok: false, blockers: ['saveFailed'] }
+
+  // themes RLS(auth_read_published_themes)는 status='published'인 대주제만 원장에게 보여준다.
+  // 세트만 게시되고 대주제가 여전히 draft면 /teacher/items 목록에서 theme title 조인이 비어 보이므로,
+  // 첫 게시 시 대주제도 함께 published로 승격한다(이미 published면 조건절 덕분에 아무 일도 안 한다).
+  await supabase.from('themes').update({ status: 'published' }).eq('id', itemSet.theme_id).neq('status', 'published')
 
   revalidatePath(`/admin/items/${itemSet.theme_id}/sets/${setId}`)
   revalidatePath('/teacher/items')
