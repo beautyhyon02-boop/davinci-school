@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 export const standardSchema = z.object({
   level: z.enum(['초', '중', '고']),
-  subject: z.enum(['국어', '영어', '수학', '과학', '사회', '한국사']),
+  subject: z.enum(['국어', '영어', '수학', '과학', '사회', '한국사', '세계사']),
   grade_band: z.string(),
   domain: z.string(),
   code: z.string().regex(/^\[.+\]$/),

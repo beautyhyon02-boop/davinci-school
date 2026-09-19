@@ -12,6 +12,7 @@ describe('data/standards/*.json', () => {
       '과학.json',
       '국어.json',
       '사회.json',
+      '세계사.json',
       '수학.json',
       '영어.json',
       '한국사.json',
