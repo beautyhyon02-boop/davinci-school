@@ -150,14 +150,14 @@ function StageOutput({ stage, output }: { stage: WizardStage; output: unknown })
           <p className="text-sm font-semibold text-ink-500">{copy.stage5.boundariesHeading}</p>
           <ul className="mt-1 space-y-1 text-sm">
             {o.grade_boundaries?.map((b, i) => (
-              <li key={i}>{b.grade}등급: {b.min}~{b.max} ({b.band})</li>
+              <li key={i}>{copy.stage5.boundary(b.grade, b.min, b.max, b.band)}</li>
             ))}
           </ul>
         </div>
         <div>
           <p className="text-sm font-semibold text-ink-500">{copy.stage5.exemplarsHeading}</p>
           <ul className="mt-1 space-y-1 text-sm">
-            {o.exemplars?.map((e, i) => <li key={i}>{e.level} — {e.grade}등급</li>)}
+            {o.exemplars?.map((e, i) => <li key={i}>{copy.stage5.exemplar(e.level, e.grade)}</li>)}
           </ul>
         </div>
       </div>

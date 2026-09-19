@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { StageStatus } from '@/lib/studio/stages'
 import { MAX_ATTEMPTS } from '@/lib/studio/max-attempts'
-import { nextAction } from '@/lib/studio/next-action'
+import { nextAction, shouldStopOnFailure } from '@/lib/studio/next-action'
 import { app } from '@/content/site'
 
 export const WIZARD_STAGES = [2, 3, 4, 5, 6] as const
@@ -72,9 +72,16 @@ export function useStageRunner(setId: string) {
     try {
       for (const stage of WIZARD_STAGES) {
         if (stage < fromStage) continue
+        const max = MAX_ATTEMPTS[stage] ?? 1
+        // generate가 state:'failed'를 계속 돌려주면 nextAction(failed→'generate')만으로는 멈추지 않으므로
+        // (재시도 자체는 정당한 동작), 이 stage에서 failed를 본 횟수를 세어 한도에 도달하면 직접 편집을 유도한다.
+        let failedCount = 0
         for (;;) {
-          const max = MAX_ATTEMPTS[stage] ?? 1
           const current = statusesRef.current[stage]
+          if (current?.state === 'failed' && shouldStopOnFailure(failedCount, max)) {
+            setError(errors.tooManyFailures)
+            return
+          }
           const action = nextAction(current, max)
           if (action === 'done') break
           if (action === 'edit') return
@@ -82,6 +89,7 @@ export function useStageRunner(setId: string) {
             const status = await postAction(setId, stage, action)
             setStatuses((prev) => ({ ...prev, [stage]: status }))
             statusesRef.current = { ...statusesRef.current, [stage]: status }
+            if (status.state === 'failed') failedCount += 1
           } catch (e) {
             setError((e as Error).message)
             return

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { nextAction } from '@/lib/studio/next-action'
+import { nextAction, shouldStopOnFailure } from '@/lib/studio/next-action'
 import type { StageStatus } from '@/lib/studio/stages'
 
 const base = { attempt: 0, updated_at: '' }
@@ -36,5 +36,20 @@ describe('nextAction', () => {
   it('accepted -> done', () => {
     const s = { ...base, state: 'accepted', attempt: 1, output: {}, review: { pass: true, issues: [] } } as StageStatus
     expect(nextAction(s, 1)).toBe('done')
+  })
+})
+
+describe('shouldStopOnFailure', () => {
+  it('does not stop while failedCount is below max', () => {
+    expect(shouldStopOnFailure(0, 1)).toBe(false)
+    expect(shouldStopOnFailure(1, 3)).toBe(false)
+    expect(shouldStopOnFailure(2, 3)).toBe(false)
+  })
+  it('stops at the boundary (failedCount == max)', () => {
+    expect(shouldStopOnFailure(1, 1)).toBe(true)
+    expect(shouldStopOnFailure(3, 3)).toBe(true)
+  })
+  it('stops when failedCount exceeds max', () => {
+    expect(shouldStopOnFailure(4, 3)).toBe(true)
   })
 })

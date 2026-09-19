@@ -294,7 +294,9 @@ export const app = {
         itemsHeading: '문항',
         pointsLabel: (n: number) => `${n}점`,
         boundariesHeading: '등급표',
+        boundary: (grade: number, min: number, max: number, band: string) => `${grade}등급: ${min}~${max} (${band})`,
         exemplarsHeading: '예시답안',
+        exemplar: (level: string, grade: number) => `${level} — ${grade}등급`,
       },
       stage6: {
         termsCount: (n: number) => `용어 ${n}개`,
@@ -306,6 +308,7 @@ export const app = {
         keyQuestionInvalid: '핵심질문 후보 중에서 선택하세요. (2단계가 확정되어야 합니다)',
         saveFailed: '저장 중 오류가 났습니다. 잠시 후 다시 시도해 주세요.',
         generic: '요청 처리 중 오류가 났습니다.',
+        tooManyFailures: '생성이 반복해서 실패했습니다. [JSON 편집]으로 직접 입력해 주세요.',
       },
     },
   },
