@@ -2,7 +2,10 @@ import { STAGE_SCHEMAS, Review, type Stage, type ReviewT } from './schemas'
 import { buildPrompt, buildReviewPrompt, type Ctx } from './prompts/stages'
 import { checkReconstructionFidelity } from './fidelity'
 import { callStructured } from '@/lib/ai/claude'
+import { MAX_ATTEMPTS } from './max-attempts'
 import type { ZodType } from 'zod'
+
+export { MAX_ATTEMPTS }
 
 export type StageStatus = {
   state: 'idle' | 'generated' | 'reviewed' | 'accepted' | 'failed'
@@ -21,8 +24,6 @@ export type Repo = {
   saveStatus(itemSetId: string, stage: Stage, status: StageStatus): Promise<void>
   log(entry: LogRow): Promise<void>
 }
-const MAX_ATTEMPTS: Partial<Record<Stage, number>> = { 5: 3 }
-
 // 대주제 소개(0단계)는 세트(item_sets)가 아니라 대주제(themes)에 저장된다 — 세트 여러 개가 같은 대주제 소개를 공유하기 때문.
 export type ThemeLogRow = { themeId: string; stage: 0; role: 'generate' | 'review'; attempt: number; model: string; input: number; output: number; cacheRead: number; ok: boolean; issues?: unknown; error?: string }
 export type ThemeRepo = {
