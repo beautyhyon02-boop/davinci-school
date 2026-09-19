@@ -216,6 +216,11 @@ export const app = {
       submitting: '저장 중…',
       saved: '저장했습니다.',
     },
+    charts: {
+      count: '도수',
+      relative: '상대도수',
+      value: '값',
+    },
     sets: {
       heading: '세트 목록',
       newSetHeading: '세트 만들기',
