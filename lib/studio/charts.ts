@@ -47,7 +47,10 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100
 }
 
-/** 행별 도수를 열 합계로 나눠 상대도수를 구한다 (소수 둘째 자리 반올림). 열 합계도 함께 반환한다. */
+/**
+ * 행별 도수를 열 합계로 나눠 상대도수를 구한다 (소수 둘째 자리 반올림). 열 합계도 함께 반환한다.
+ * 값이 셀 단위로 반올림되므로, 한 행의 rel 값 합이 정확히 1이 되지 않을 수 있다.
+ */
 export function relativeFrequencies(rows: { label: string; counts: number[] }[]): RelativeFrequencyResult {
   const colCount = rows.reduce((max, r) => Math.max(max, r.counts.length), 0)
   const totals = Array.from({ length: colCount }, (_, col) =>

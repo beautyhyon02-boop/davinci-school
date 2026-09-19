@@ -9,8 +9,8 @@ const MARGIN = { top: 44, right: 20, bottom: 56, left: 50 }
 const INNER_WIDTH = WIDTH - MARGIN.left - MARGIN.right
 const INNER_HEIGHT = HEIGHT - MARGIN.top - MARGIN.bottom
 
-const AXIS_COLOR = '#1f2430'
-const GRID_COLOR = '#e2e5ea'
+const AXIS_COLOR = '#1f2430' // ink-900 (app/globals.css)
+const GRID_COLOR = '#cfd4dd' // ink-300 (app/globals.css)
 
 // app/globals.css의 mint/lemon/lavender 계열 (열이 늘어나면 순서대로 순환)
 const PALETTE = [

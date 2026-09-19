@@ -10,8 +10,8 @@ const INNER_WIDTH = WIDTH - MARGIN.left - MARGIN.right
 const INNER_HEIGHT = HEIGHT - MARGIN.top - MARGIN.bottom
 
 const BAR_FILL = '#2bb08a' // mint-500 (app/globals.css)
-const AXIS_COLOR = '#1f2430'
-const GRID_COLOR = '#e2e5ea'
+const AXIS_COLOR = '#1f2430' // ink-900 (app/globals.css)
+const GRID_COLOR = '#cfd4dd' // ink-300 (app/globals.css)
 
 export function Histogram({
   values,
