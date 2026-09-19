@@ -8,7 +8,14 @@ const files = readdirSync(dir).filter((f) => f.endsWith('.json'))
 
 describe('data/standards/*.json', () => {
   it('finds the expected per-subject files', () => {
-    expect(files.sort()).toEqual(['과학.json', '국어.json', '사회.json', '영어.json', '한국사.json'])
+    expect(files.sort()).toEqual([
+      '과학.json',
+      '국어.json',
+      '사회.json',
+      '수학.json',
+      '영어.json',
+      '한국사.json',
+    ])
   })
 
   it.each(files)('%s validates against standardsSchema and is non-empty', (file) => {
