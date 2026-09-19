@@ -1,23 +1,49 @@
 import { describe, it, expect } from 'vitest'
-import { Reconstruction, Lessons, Assessment, Review, STAGE_SCHEMAS } from '@/lib/studio/schemas'
+import { Reconstruction, Lesson, Lessons, Assessment, Review, STAGE_SCHEMAS } from '@/lib/studio/schemas'
 
 describe('studio schemas', () => {
   it('accepts a valid reconstruction and rejects wrong goal count', () => {
     const ok = Reconstruction.safeParse({
       reconstruction: '자료를 도수분포표로 나타내고 해석할 수 있다.',
-      learning_goals: ['a', 'b', 'c'],
-      key_question_candidates: ['q1', 'q2'],
+      learning_goals: [
+        '자료를 계급으로 나누어 도수분포표로 나타낼 수 있다.',
+        '도수분포표를 히스토그램으로 나타낼 수 있다.',
+        '히스토그램을 보고 자료의 분포를 해석할 수 있다.',
+      ],
+      key_question_candidates: [
+        '자료를 계급으로 나누면 무엇이 보이는가?',
+        '히스토그램은 표와 무엇이 다른가?',
+      ],
     })
     expect(ok.success).toBe(true)
     expect(Reconstruction.safeParse({ reconstruction: 'x', learning_goals: ['a'], key_question_candidates: ['q'] }).success).toBe(false)
   })
-  it('requires exactly 3 quiz items per lesson', () => {
-    const lesson = { no: 1, standards: ['[9수04-02]'], key_question: 'q', goal: 'g',
-      flow: { intro: 'i', main: 'm', wrapup: 'w' }, materials: ['A'],
-      quiz: [{ q: '?', type: 'choice', choices: ['a','b'], answer: 'a', explanation: 'e' }], assessment: null, mergeable_with: null }
-    expect(Lessons.safeParse({ lessons: [lesson] }).success).toBe(false)
-    lesson.quiz = [lesson.quiz[0], lesson.quiz[0], lesson.quiz[0]]
-    expect(Lessons.safeParse({ lessons: [lesson] }).success).toBe(true)
+  it('requires exactly 3 quiz items per lesson, and 4-6 lessons per set', () => {
+    const quizItem = {
+      q: '계급 30개 이상 40개 미만의 도수는?',
+      type: 'choice',
+      choices: ['a', 'b'],
+      answer: 'a',
+      explanation: '표에서 세어 본다.',
+    }
+    const lesson = {
+      no: 1,
+      standards: ['[9수04-02]'],
+      key_question: '자료를 계급으로 나누면 무엇이 보이는가?',
+      goal: '자료를 계급으로 나누어 도수분포표로 나타낼 수 있다.',
+      flow: { intro: 'i', main: 'm', wrapup: 'w' },
+      materials: ['A'],
+      quiz: [quizItem],
+      assessment: null,
+      mergeable_with: null,
+    }
+    expect(Lesson.safeParse(lesson).success).toBe(false)
+    lesson.quiz = [quizItem, quizItem, quizItem]
+    expect(Lesson.safeParse(lesson).success).toBe(true)
+
+    const fourLessons = [1, 2, 3, 4].map((no) => ({ ...lesson, no }))
+    expect(Lessons.safeParse({ lessons: fourLessons.slice(0, 3) }).success).toBe(false)
+    expect(Lessons.safeParse({ lessons: fourLessons }).success).toBe(true)
   })
   it('assessment: extended item needs 4 criteria with 5 bands', () => {
     const r = Assessment.safeParse({

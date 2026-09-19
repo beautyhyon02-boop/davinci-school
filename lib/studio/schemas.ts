@@ -14,30 +14,30 @@ export const StandardsRecommendation = z.object({
 
 export const Reconstruction = z.object({
   reconstruction: z.string().min(10),
-  learning_goals: z.array(z.string().min(1)).min(3).max(4),
-  key_question_candidates: z.array(z.string().min(1)).min(2).max(3),
+  learning_goals: z.array(z.string().min(5)).min(3).max(4),
+  key_question_candidates: z.array(z.string().min(5)).min(2).max(3),
 })
 
 export const QuizItem = z.object({
-  q: z.string().min(1),
+  q: z.string().min(3),
   type: z.enum(['choice', 'short']),
   choices: z.array(z.string()).min(2).max(5).nullable(),
   answer: z.string().min(1),
-  explanation: z.string().min(1),
+  explanation: z.string().min(3),
 })
 
 export const Lesson = z.object({
   no: z.number().int().min(1).max(8),
   standards: z.array(z.string()).min(1).max(2),
-  key_question: z.string().min(1),
-  goal: z.string().min(1),
+  key_question: z.string().min(5),
+  goal: z.string().min(5),
   flow: z.object({ intro: z.string(), main: z.string(), wrapup: z.string() }),
   materials: z.array(z.string()),
   quiz: z.array(QuizItem).length(3),
   assessment: z.enum(['서술형1', '서술형2', '논술형']).nullable(),
   mergeable_with: z.number().int().nullable(),
 })
-export const Lessons = z.object({ lessons: z.array(Lesson).min(1).max(6) })
+export const Lessons = z.object({ lessons: z.array(Lesson).min(4).max(6) })
 
 export const Material = z.object({
   id: z.string().regex(/^[A-Z]$/),
