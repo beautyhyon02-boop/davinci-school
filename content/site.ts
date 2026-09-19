@@ -83,6 +83,7 @@ export const app = {
       { href: '/admin/academies', label: '가맹원 관리' },
       { href: '/admin/items', label: '문항 제작소' },
       { href: '/admin/inquiries', label: '가맹문의' },
+      { href: '/admin/standards', label: '성취기준' },
     ],
     teacher: [
       { href: '/teacher', label: '홈' },
@@ -137,6 +138,24 @@ export const app = {
       teacherMissing: '이메일과 이름을 입력하세요.',
       invalidInput: '입력을 확인하세요.',
     },
+  },
+  adminStandards: {
+    title: '성취기준 검증',
+    filters: {
+      levelLabel: '학교급',
+      levelAll: '전체',
+      subjectLabel: '과목',
+      subjectAll: '전체',
+      searchLabel: '검색',
+      searchPlaceholder: '코드 또는 원문 검색',
+      submit: '검색',
+    },
+    summary: (verified: number, total: number) => `검증 ${verified} / ${total}`,
+    columns: { code: '코드', text: '원문', page: '쪽', status: '상태', action: '동작' },
+    statusLabel: { verified: '검증됨', unverified: '미검증' },
+    actions: { verify: '원문 확인', unverify: '해제' },
+    empty: '조건에 맞는 성취기준이 없습니다.',
+    pagination: { prev: '이전', next: '다음', pageOf: (page: number, total: number) => `${page} / ${total}` },
   },
 }
 
