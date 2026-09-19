@@ -14,7 +14,8 @@ function header(ctx: Ctx) {
   return [
     `대주제: ${ctx.theme.title}`,
     `학교급·학년: ${LEVEL_NAME[ctx.theme.level] ?? ctx.theme.level} ${ctx.theme.grade}학년 (모든 내용은 이 학년 수준)`,
-    `과목: ${ctx.subject}`,
+    ...(ctx.theme.subjects.length > 0 ? [`참여 과목: ${ctx.theme.subjects.join(', ')}`] : []),
+    ...(ctx.subject ? [`과목: ${ctx.subject}`] : []),
     `성취기준(원문, 절대 변형 금지):`,
     ...ctx.standards.map(s => `${s.code} ${s.text}`),
   ].join('\n')

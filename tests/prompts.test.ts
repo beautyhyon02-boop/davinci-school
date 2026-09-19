@@ -32,4 +32,11 @@ describe('prompts', () => {
     expect(r.user).toContain('[9수04-02]')
     expect(r.fixtureKey).toBe('stage2-review')
   })
+  it('stage 0 prompt lists participating subjects (no per-set subject yet)', () => {
+    const ctx0 = { theme: { title: '학교 축제 일회용품 줄이기', level: '중', grade: 1, subjects: ['수학', '과학'] }, subject: '',
+      standards: [], prior: {} }
+    const u = buildPrompt(0, ctx0).user
+    expect(u).toContain('참여 과목: 수학, 과학')
+    expect(u).not.toContain('과목: \n')
+  })
 })
