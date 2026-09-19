@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { classifyHistory, WORLD_HISTORY_9YEOK_MAX_DOMAIN } from '@/scripts/reclassify-history'
+import { classifyHistory, codesToUpdate, WORLD_HISTORY_9YEOK_MAX_DOMAIN } from '@/scripts/reclassify-history'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { standardsSchema } from '@/lib/standards/parse'
 
 // 기대값 근거: [별책7] 사회과 교육과정.pdf 물리 79쪽(인쇄쪽수 73)
 // "역사과 교육과정 설계의 개요" — 세계사 관련 영역(9역03~07)/한국사 관련
@@ -57,5 +60,24 @@ describe('classifyHistory', () => {
 
   it('알 수 없는 라벨은 에러를 던진다(추측으로 분류하지 않음)', () => {
     expect(() => classifyHistory('[9사01-01]', '')).toThrow()
+  })
+})
+
+describe('codesToUpdate', () => {
+  it('세계사.json 46건에서 code 46개를 그대로 뽑는다', () => {
+    const dir = join(__dirname, '..', 'data', 'standards')
+    const rows = standardsSchema.parse(JSON.parse(readFileSync(join(dir, '세계사.json'), 'utf8')))
+    const codes = codesToUpdate(rows)
+    expect(codes).toHaveLength(46)
+    expect(new Set(codes).size).toBe(46)
+    expect(codes).toContain('[9역01-01]')
+    expect(codes).toContain('[12역현01-01]')
+  })
+
+  it('subject가 세계사가 아닌 행이 섞여 있으면 던진다', () => {
+    const bad = [
+      { level: '중' as const, subject: '한국사' as const, grade_band: '1-3', domain: '', code: '[9역08-01]', text: '고조선과 여러 나라의 형성 과정 및 사회 모습을 탐구한다.' },
+    ]
+    expect(() => codesToUpdate(bad)).toThrow()
   })
 })
