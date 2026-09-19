@@ -20,7 +20,7 @@
 - README.md 에 실행·배포·운영 체크리스트
 
 ## 아직 안 된 것 (사람이 해야 함)
-- GitHub 비공개 저장소 만들기 → Vercel 연결 → 환경변수 5개 → 배포 (README "배포" 절)
+- ~~GitHub·Vercel 배포~~ 완료 2026-09-19: GitHub `beautyhyon02-boop/davinci-school`(main), 스테이징 https://davinci-school-peach.vercel.app (push하면 자동 배포). 남은 것: Supabase Auth URL Configuration에 이 주소 등록, davinci-lab.kr 도메인 연결
 - Supabase Authentication → "Allow new users to sign up" OFF 확인 (Email provider 는 ON 유지)
 - 홈페이지 실제 문구·사진 (스펙 3.1은 "살아 있는 절")
 - 수학과 교육과정 별책 PDF 확보 → `python scripts/extract_standards.py` 로 추출
