@@ -170,6 +170,7 @@ export const app = {
       standardLevelMismatch: '대주제와 학교급이 다른 성취기준이 있습니다.',
       standardSubjectMismatch: '대주제와 과목이 다른 성취기준이 있습니다.',
       standardUnverified: (codes: string[]) => `원문 미검증 성취기준: ${codes.join(', ')}`,
+      invalidStandards: '선택한 성취기준을 확인할 수 없습니다. 다시 선택해 주세요.',
       materialsInvalid: '공유 자료 형식을 확인하세요.',
       introInvalid: '소개 문구·과목별 아이디어를 확인하세요.',
       themeNotFound: '대주제를 찾을 수 없습니다.',

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseTheme, canCreateSet, validateStandardSelection, THEME_FIELDS } from '@/lib/studio/themes'
+import { parseTheme, canCreateSet, validateStandardSelection, validateStandardIds, THEME_FIELDS } from '@/lib/studio/themes'
 
 function fd(o: Record<string, string | string[]>) {
   const f = new FormData()
@@ -130,5 +130,27 @@ describe('validateStandardSelection', () => {
     const r = validateStandardSelection(two, theme)
     expect(r.ok).toBe(true)
     expect(r.issues).toEqual([])
+  })
+
+  it('requires theme.subject at the type level (no optional subject)', () => {
+    // @ts-expect-error subject는 필수 필드다 — 과목 불일치 검사를 건너뛰지 못하게 한다.
+    validateStandardSelection([std(), std()], { level: '초' })
+  })
+})
+
+describe('validateStandardIds', () => {
+  it('dedupes requested ids and returns them when all resolve', () => {
+    const r = validateStandardIds(['a', 'b', 'a'], ['a', 'b', 'c'])
+    expect(r.ok).toBe(true)
+    expect(r.ok && r.ids).toEqual(['a', 'b'])
+  })
+
+  it('rejects when an id did not resolve to a standards row', () => {
+    const r = validateStandardIds(['a', 'x'], ['a', 'b'])
+    expect(r.ok).toBe(false)
+  })
+
+  it('rejects an empty selection', () => {
+    expect(validateStandardIds([], []).ok).toBe(false)
   })
 })

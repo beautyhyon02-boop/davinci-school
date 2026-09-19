@@ -2,7 +2,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { getSessionProfile } from '@/lib/auth/session'
-import { canCreateSet, validateStandardSelection } from '@/lib/studio/themes'
+import { canCreateSet, validateStandardSelection, validateStandardIds } from '@/lib/studio/themes'
 import { Materials, ThemeIntro, type Subject } from '@/lib/studio/schemas'
 import { app } from '@/content/site'
 
@@ -31,12 +31,17 @@ export async function createItemSet(themeId: string, subject: Subject, standardI
   const setCheck = canCreateSet({ subjects: (theme.subjects ?? []) as string[] }, subject, existingSubjects)
   if (!setCheck.ok) return { ok: false as const, error: setCheck.reason ?? errors.subjectNotInTheme }
 
-  if (standardIds.length === 0) return { ok: false as const, error: errors.standardCountInvalid }
   const { data: standardRows, error: stdErr } = await supabase
     .from('standards')
     .select('id, code, level, subject, verified_at')
-    .in('id', standardIds)
-  if (stdErr) return { ok: false as const, error: stdErr.message }
+    .in('id', Array.from(new Set(standardIds)))
+  if (stdErr) return { ok: false as const, error: errors.saveFailed }
+
+  // standardIds가 전부 실제 standards 행으로 해소되는지(중복 제거 후) 먼저 확인 — insert 전에 걸러야
+  // 존재하지 않는 id로 item_sets/item_set_standards가 만들어지는 것을 막는다.
+  const idCheck = validateStandardIds(standardIds, (standardRows ?? []).map((s) => s.id as string))
+  if (!idCheck.ok) return { ok: false as const, error: idCheck.error }
+
   const standards = (standardRows ?? []).map((s) => ({
     code: s.code as string,
     level: s.level as string,
@@ -66,11 +71,16 @@ export async function createItemSet(themeId: string, subject: Subject, standardI
     })
     .select('id')
     .single()
-  if (insertErr || !itemSet) return { ok: false as const, error: insertErr?.message ?? errors.saveFailed }
+  if (insertErr) return { ok: false as const, error: insertErr.code === '23505' ? errors.subjectDuplicate : errors.saveFailed }
+  if (!itemSet) return { ok: false as const, error: errors.saveFailed }
 
-  const rows = standardIds.map((id) => ({ item_set_id: itemSet.id, standard_id: id }))
+  const rows = idCheck.ids.map((id) => ({ item_set_id: itemSet.id, standard_id: id }))
   const { error: linkErr } = await supabase.from('item_set_standards').insert(rows)
-  if (linkErr) return { ok: false as const, error: linkErr.message }
+  if (linkErr) {
+    // item_set_standards가 실패했으면 방금 만든 item_sets 행이 고아로 남지 않게 되돌린다.
+    await supabase.from('item_sets').delete().eq('id', itemSet.id)
+    return { ok: false as const, error: errors.saveFailed }
+  }
 
   revalidatePath(`/admin/items/${themeId}`)
   return { ok: true as const, id: itemSet.id as string }
@@ -82,14 +92,16 @@ export async function acceptThemeIntro(themeId: string, intro: string, ideas: { 
   if (!r.success) return { ok: false as const, error: errors.introInvalid }
 
   const supabase = await createClient()
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('themes')
     .update({
       intro: r.data.intro,
       intro_ideas: { state: 'accepted', output: { intro: r.data.intro, subject_ideas: r.data.subject_ideas }, updated_at: new Date().toISOString() },
     })
     .eq('id', themeId)
-  if (error) return { ok: false as const, error: error.message }
+    .select('id')
+  if (error) return { ok: false as const, error: errors.saveFailed }
+  if (!data || data.length === 0) return { ok: false as const, error: errors.themeNotFound }
 
   revalidatePath(`/admin/items/${themeId}`)
   return { ok: true as const }
@@ -107,8 +119,9 @@ export async function saveSharedMaterials(themeId: string, materialsJson: string
   if (!r.success) return { ok: false as const, error: errors.materialsInvalid }
 
   const supabase = await createClient()
-  const { error } = await supabase.from('themes').update({ materials: r.data.materials }).eq('id', themeId)
-  if (error) return { ok: false as const, error: error.message }
+  const { data, error } = await supabase.from('themes').update({ materials: r.data.materials }).eq('id', themeId).select('id')
+  if (error) return { ok: false as const, error: errors.saveFailed }
+  if (!data || data.length === 0) return { ok: false as const, error: errors.themeNotFound }
 
   revalidatePath(`/admin/items/${themeId}`)
   return { ok: true as const }
