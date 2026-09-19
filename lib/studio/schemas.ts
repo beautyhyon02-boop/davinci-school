@@ -33,9 +33,15 @@ export const Lesson = z.object({
   goal: z.string().min(5),
   flow: z.object({ intro: z.string(), main: z.string(), wrapup: z.string() }),
   materials: z.array(z.string()),
-  quiz: z.array(QuizItem).length(3),
+  quiz: z.array(QuizItem).max(3),
   assessment: z.enum(['서술형1', '서술형2', '논술형']).nullable(),
   mergeable_with: z.number().int().nullable(),
+}).superRefine((l, ctx) => {
+  if (l.assessment === '논술형') {
+    if (l.quiz.length !== 0) ctx.addIssue({ code: 'custom', message: '논술형 차시에는 퀴즈 없음' })
+  } else {
+    if (l.quiz.length !== 3) ctx.addIssue({ code: 'custom', message: '논술형 차시가 아니면 퀴즈 3문항' })
+  }
 })
 export const Lessons = z.object({ lessons: z.array(Lesson).min(4).max(6) })
 

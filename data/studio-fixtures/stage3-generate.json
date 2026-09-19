@@ -159,29 +159,7 @@
         "wrapup": "평가 35분 — 논술형"
       },
       "materials": ["자료 A", "자료 B"],
-      "quiz": [
-        {
-          "q": "5차시 논술형 평가의 분량 조건은 얼마인가?",
-          "type": "short",
-          "choices": null,
-          "answer": "300자 내외",
-          "explanation": "논술형 응답 조건 ① 300자 내외에서 정한 분량이다."
-        },
-        {
-          "q": "논술형에서 인용해야 하는 수치는 최소 몇 가지이며, 어디에서 골라야 하는가?",
-          "type": "short",
-          "choices": null,
-          "answer": "도수분포표·히스토그램·상대도수 중 두 가지 이상",
-          "explanation": "논술형 응답 조건 ②에서 요구하는 수치 인용 개수와 범위이다."
-        },
-        {
-          "q": "논술형 문장은 어떤 어미로 끝나야 하는가?",
-          "type": "short",
-          "choices": null,
-          "answer": "\"~다\"로 끝나는 문장",
-          "explanation": "논술형 응답 조건 ④에서 정한 문장 종결 방식이다."
-        }
-      ],
+      "quiz": [],
       "assessment": "논술형",
       "mergeable_with": null
     }

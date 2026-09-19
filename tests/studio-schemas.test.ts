@@ -18,7 +18,7 @@ describe('studio schemas', () => {
     expect(ok.success).toBe(true)
     expect(Reconstruction.safeParse({ reconstruction: 'x', learning_goals: ['a'], key_question_candidates: ['q'] }).success).toBe(false)
   })
-  it('requires exactly 3 quiz items per lesson, and 4-6 lessons per set', () => {
+  it('requires exactly 3 quiz items per non-논술형 lesson, 0 for a 논술형 lesson, and 4-6 lessons per set', () => {
     const quizItem = {
       q: '계급 30개 이상 40개 미만의 도수는?',
       type: 'choice',
@@ -44,6 +44,10 @@ describe('studio schemas', () => {
     const fourLessons = [1, 2, 3, 4].map((no) => ({ ...lesson, no }))
     expect(Lessons.safeParse({ lessons: fourLessons.slice(0, 3) }).success).toBe(false)
     expect(Lessons.safeParse({ lessons: fourLessons }).success).toBe(true)
+
+    const essayLesson = { ...lesson, no: 5, assessment: '논술형' as const, quiz: [] as typeof quizItem[] }
+    expect(Lesson.safeParse(essayLesson).success).toBe(true)
+    expect(Lesson.safeParse({ ...essayLesson, quiz: [quizItem, quizItem, quizItem] }).success).toBe(false)
   })
   it('assessment: extended item needs 4 criteria with 5 bands', () => {
     const r = Assessment.safeParse({
