@@ -99,6 +99,10 @@ export const app = {
     teacher: { title: '원장님 홈', body: '학생 현황과 최근 결과가 여기에 표시됩니다.' },
     student: { title: '내 과제', body: '아직 배정된 과제가 없어요.' },
   },
+  adminItems: {
+    title: '문항 제작소',
+    body: '성취기준에서 문항·루브릭·예시답안까지 만드는 제작 도구입니다. 2주차(9/25~10/1)에 열립니다.',
+  },
   adminInquiries: {
     title: '가맹문의 접수함',
     columns: { date: '접수', name: '이름', phone: '연락처', region: '지역', message: '내용', status: '상태' },
