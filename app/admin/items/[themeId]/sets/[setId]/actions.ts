@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getSessionProfile } from '@/lib/auth/session'
 import { STAGE_SCHEMAS, Materials, Lessons, type Stage } from '@/lib/studio/schemas'
 import { isMaterialsPublicUrl } from '@/lib/studio/upload-rules'
+import { canPublish, buildSnapshot } from '@/lib/studio/publish'
 import type { StageStatus } from '@/lib/studio/stages'
 import { app } from '@/content/site'
 
@@ -179,4 +180,69 @@ export async function attachImage(setId: string, target: string, url: string): P
 export async function detachImage(setId: string, target: string, url: string): Promise<ActionResult> {
   await assertAdmin()
   return applyImages(setId, target, (images) => images.filter((u) => u !== url))
+}
+
+export type PublishResult = { ok: true; version: number } | { ok: false; blockers: string[] }
+
+/**
+ * 세트를 게시한다: canPublish로 막힌 게 없는지 확인 → 버전 스냅샷(item_set_versions)을 남기고
+ * item_sets를 published/새 버전으로 갱신한다. 게시 후 수정은 새 버전이며, 이미 배정된 과제는
+ * 배정 당시 버전을 유지한다(스펙 §4.3) — 그래서 스냅샷을 통째로 남겨 둔다.
+ */
+export async function publishItemSet(setId: string): Promise<PublishResult> {
+  const session = await assertAdmin()
+  const supabase = await createClient()
+
+  const { data: itemSet, error: fetchErr } = await supabase
+    .from('item_sets')
+    .select('id, theme_id, subject, level, grade, version, reconstruction, learning_goals, key_question, lessons, materials, assessment, teacher_guide, stage_status')
+    .eq('id', setId)
+    .single()
+  if (fetchErr || !itemSet) return { ok: false, blockers: ['saveFailed'] }
+
+  const { data: theme, error: themeErr } = await supabase
+    .from('themes')
+    .select('title, level, grade, intro, materials')
+    .eq('id', itemSet.theme_id)
+    .single()
+  if (themeErr || !theme) return { ok: false, blockers: ['saveFailed'] }
+
+  const { data: standardRows } = await supabase
+    .from('item_set_standards')
+    .select('standards(code, text, verified_at)')
+    .eq('item_set_id', setId)
+  const standardsFull = (standardRows ?? [])
+    .map((r) => r.standards as unknown as { code: string; text: string; verified_at: string | null } | null)
+    .filter((s): s is { code: string; text: string; verified_at: string | null } => !!s)
+    .sort((a, b) => a.code.localeCompare(b.code))
+
+  const stageStatus = (itemSet.stage_status ?? {}) as Record<string, StageStatus>
+  const { ok, blockers } = canPublish({
+    statuses: stageStatus,
+    standards: standardsFull.map((s) => ({ code: s.code, verified: !!s.verified_at })),
+    keyQuestion: itemSet.key_question,
+  })
+  if (!ok) return { ok: false, blockers }
+
+  const snapshot = buildSnapshot({
+    theme: { title: theme.title, level: theme.level, grade: theme.grade, intro: theme.intro, materials: theme.materials },
+    itemSet: { ...itemSet, stage_status: stageStatus },
+    standards: standardsFull.map((s) => ({ code: s.code, text: s.text })),
+  })
+  const version = snapshot.cover.version
+
+  const { error: insertErr } = await supabase
+    .from('item_set_versions')
+    .insert({ item_set_id: setId, version, snapshot, published_by: session.userId })
+  if (insertErr) return { ok: false, blockers: ['saveFailed'] }
+
+  const { error: updateErr } = await supabase
+    .from('item_sets')
+    .update({ status: 'published', version, published_at: new Date().toISOString() })
+    .eq('id', setId)
+  if (updateErr) return { ok: false, blockers: ['saveFailed'] }
+
+  revalidatePath(`/admin/items/${itemSet.theme_id}/sets/${setId}`)
+  revalidatePath('/teacher/items')
+  return { ok: true, version }
 }

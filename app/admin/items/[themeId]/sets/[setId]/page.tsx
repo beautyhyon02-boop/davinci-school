@@ -3,6 +3,10 @@ import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { Badge } from '@/components/ui/Badge'
 import { StageWizard } from './StageWizard'
+import { SetPageTabs } from './SetPageTabs'
+import { PublishPanel } from './PublishPanel'
+import { PackageView } from '@/components/studio/PackageView'
+import { canPublish, buildSnapshot } from '@/lib/studio/publish'
 import type { StageStatus } from '@/lib/studio/stages'
 import { app } from '@/content/site'
 import { WIZARD_STAGES, type WizardStage } from './useStageRunner'
@@ -17,13 +21,22 @@ export default async function SetWizardPage({ params }: { params: Promise<{ them
 
   const { data: itemSet } = await supabase
     .from('item_sets')
-    .select('id, theme_id, subject, level, grade, status, version, key_question, stage_status, materials, lessons')
+    .select('id, theme_id, subject, level, grade, status, version, key_question, stage_status, materials, lessons, reconstruction, learning_goals, assessment, teacher_guide')
     .eq('id', setId)
     .single()
   if (!itemSet || itemSet.theme_id !== themeId) notFound()
 
-  const { data: theme } = await supabase.from('themes').select('title').eq('id', themeId).single()
+  const { data: theme } = await supabase.from('themes').select('title, level, grade, intro, materials').eq('id', themeId).single()
   if (!theme) notFound()
+
+  const { data: standardRows } = await supabase
+    .from('item_set_standards')
+    .select('standards(code, text, verified_at)')
+    .eq('item_set_id', setId)
+  const standardsFull = (standardRows ?? [])
+    .map((r) => r.standards as unknown as { code: string; text: string; verified_at: string | null } | null)
+    .filter((s): s is { code: string; text: string; verified_at: string | null } => !!s)
+    .sort((a, b) => a.code.localeCompare(b.code))
 
   const stageStatus = (itemSet.stage_status ?? {}) as Record<string, StageStatus>
   const initialStatuses: Partial<Record<WizardStage, StageStatus>> = {}
@@ -33,6 +46,17 @@ export default async function SetWizardPage({ params }: { params: Promise<{ them
   }
   const stage2 = stageStatus.stage2
   const candidates = (stage2?.output as { key_question_candidates?: string[] } | undefined)?.key_question_candidates ?? []
+
+  const draftSnapshot = buildSnapshot({
+    theme: { title: theme.title, level: theme.level, grade: theme.grade, intro: theme.intro, materials: theme.materials },
+    itemSet: { ...itemSet, stage_status: stageStatus },
+    standards: standardsFull.map((s) => ({ code: s.code, text: s.text })),
+  })
+  const { blockers } = canPublish({
+    statuses: stageStatus,
+    standards: standardsFull.map((s) => ({ code: s.code, verified: !!s.verified_at })),
+    keyQuestion: itemSet.key_question,
+  })
 
   return (
     <>
@@ -46,13 +70,30 @@ export default async function SetWizardPage({ params }: { params: Promise<{ them
       <p className="mt-1 text-sm text-ink-500">{app.studio.theme.meta(itemSet.level, itemSet.grade)}</p>
 
       <div className="mt-6">
-        <StageWizard
-          setId={setId}
-          initialStatuses={initialStatuses}
-          keyQuestion={itemSet.key_question}
-          candidates={candidates}
-          materials={(itemSet.materials ?? []) as { id: string; images?: string[] }[]}
-          lessons={(itemSet.lessons ?? []) as { no: number; images?: string[] }[]}
+        <SetPageTabs
+          wizard={
+            <>
+              <StageWizard
+                setId={setId}
+                initialStatuses={initialStatuses}
+                keyQuestion={itemSet.key_question}
+                candidates={candidates}
+                materials={(itemSet.materials ?? []) as { id: string; images?: string[] }[]}
+                lessons={(itemSet.lessons ?? []) as { no: number; images?: string[] }[]}
+              />
+            </>
+          }
+          preview={
+            <div className="space-y-4">
+              <PublishPanel
+                setId={setId}
+                currentVersion={itemSet.version ?? 1}
+                nextVersion={draftSnapshot.cover.version}
+                initialBlockers={blockers}
+              />
+              <PackageView snapshot={draftSnapshot} mode="admin" showAnswers />
+            </div>
+          }
         />
       </div>
     </>
