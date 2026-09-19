@@ -60,7 +60,7 @@
 
 - `subject` enum에 `세계사` 추가. 기존 역사 92건을 별책7 영역 기준으로 한국사/세계사 재분류(2주차 작업).
 - `standards`에 `verified_at`, `verified_by`, `source_page` 추가. 미검증은 배지 표시, 게시 시 검증된 것만 허용.
-- `themes`: `grade` 필수(이미 있음). `item_sets`에 단계별 jsonb: `learning_goals`, `lessons`(차시·퀴즈), `materials`, `items`(문두·조건·채점표), `grade_boundaries`, `feedback_templates`, `teacher_guide`, `stage_status`(단계별 상태·오류).
+- `themes`: `grade` 필수(이미 있음). `item_sets`에 단계 출력을 단계당 열 하나로 저장: `reconstruction`(기존)·`learning_goals`·`key_question`(2단계), `lessons`(3단계, 차시·퀴즈), `materials`(4단계), `assessment`(5단계 — 문항·채점표·등급 경계표·예시답안·피드백 틀을 한 객체로), `teacher_guide`(6단계), `stage_status`(단계별 상태·오류). 0·1단계 출력은 `stage_status` 안에만 둔다.
 - `item_set_versions(item_set_id, version, snapshot jsonb, published_at)` 신설. `assignments.item_set_version`은 이 표를 참조.
 - `generation_log`: 단계·모델·토큰·검토 결과·회차.
 
