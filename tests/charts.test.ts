@@ -9,6 +9,7 @@ const materials = (fixture as { materials: unknown[] }).materials as Array<{
   body: string | null
   table: { columns: string[]; rows: (string | number)[][] } | null
   source: '자작'
+  images: string[]
 }>
 
 const materialA = materials.find((m) => m.id === 'A')!
@@ -84,6 +85,7 @@ describe('detectChart', () => {
       body: '그냥 설명 문구입니다.',
       table: null,
       source: '자작' as const,
+      images: [] as string[],
     }
     expect(detectChart(textMaterial)).toBeNull()
   })
@@ -99,6 +101,7 @@ describe('detectChart', () => {
         rows: [[18, 23, 27, 29, 31, 33, 35, 36, 38, 39, 41, 42]],
       },
       source: '자작' as const,
+      images: [] as string[],
     }
     const spec = detectChart(rowMaterial)
     expect(spec?.kind).toBe('histogram')
@@ -115,6 +118,7 @@ describe('detectChart', () => {
       body: null,
       table: { columns: ['a', 'b', 'c'], rows: [[1, 2, 3]] },
       source: '자작' as const,
+      images: [] as string[],
     }
     expect(detectChart(oddMaterial)).toBeNull()
   })

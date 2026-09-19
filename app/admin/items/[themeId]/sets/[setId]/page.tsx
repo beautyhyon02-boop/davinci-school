@@ -17,7 +17,7 @@ export default async function SetWizardPage({ params }: { params: Promise<{ them
 
   const { data: itemSet } = await supabase
     .from('item_sets')
-    .select('id, theme_id, subject, level, grade, status, version, key_question, stage_status')
+    .select('id, theme_id, subject, level, grade, status, version, key_question, stage_status, materials, lessons')
     .eq('id', setId)
     .single()
   if (!itemSet || itemSet.theme_id !== themeId) notFound()
@@ -51,6 +51,8 @@ export default async function SetWizardPage({ params }: { params: Promise<{ them
           initialStatuses={initialStatuses}
           keyQuestion={itemSet.key_question}
           candidates={candidates}
+          materials={(itemSet.materials ?? []) as { id: string; images?: string[] }[]}
+          lessons={(itemSet.lessons ?? []) as { no: number; images?: string[] }[]}
         />
       </div>
     </>

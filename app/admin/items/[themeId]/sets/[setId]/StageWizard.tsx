@@ -9,6 +9,7 @@ import type { StageStatus } from '@/lib/studio/stages'
 import { MAX_ATTEMPTS } from '@/lib/studio/max-attempts'
 import { chooseKeyQuestion, saveStageEdit } from './actions'
 import { WIZARD_STAGES, useStageRunner, type WizardStage } from './useStageRunner'
+import { Attachments } from './Attachments'
 
 const copy = app.studio.wizard
 
@@ -327,11 +328,15 @@ export function StageWizard({
   initialStatuses,
   keyQuestion,
   candidates,
+  materials = [],
+  lessons = [],
 }: {
   setId: string
   initialStatuses: Partial<Record<WizardStage, StageStatus>>
   keyQuestion: string | null
   candidates: string[]
+  materials?: { id: string; images?: string[] }[]
+  lessons?: { no: number; images?: string[] }[]
 }) {
   const { statuses, busy, error, run, runDefaults, setStatuses } = useStageRunner(setId)
   const [active, setActive] = useState<WizardStage>(2)
@@ -389,11 +394,7 @@ export function StageWizard({
           onRun={run}
           onSaved={(stage, status) => setStatuses((prev) => ({ ...prev, [stage]: status }))}
         />
-        {active === 4 && (
-          <div className="mt-4 rounded-xl border border-dashed border-ink-200 p-4 text-sm text-ink-400">
-            {/* Task 7: 첨부파일(Attachments) 자리 */}
-          </div>
-        )}
+        {active === 4 && <Attachments setId={setId} materials={materials} lessons={lessons} />}
         {active === 2 && stage2Accepted && (
           <KeyQuestionPicker setId={setId} candidates={stage2Candidates} current={keyQuestion} />
         )}

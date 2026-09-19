@@ -199,6 +199,28 @@ describe('site content', () => {
     expect(app.studio.wizard.prevStageHint).toBeTruthy()
   })
 
+  it('exposes attachments copy (heading, target labels, upload/delete actions, errors)', () => {
+    expect(app.studio.attachments.heading).toBeTruthy()
+    expect(app.studio.attachments.description).toBeTruthy()
+    expect(app.studio.attachments.targetLabel).toBeTruthy()
+    expect(app.studio.attachments.materialLabel('A')).toContain('A')
+    expect(app.studio.attachments.lessonLabel(3)).toContain('3')
+    expect(app.studio.attachments.noTargets).toBeTruthy()
+    expect(app.studio.attachments.fileLabel).toBeTruthy()
+    expect(app.studio.attachments.upload).toBeTruthy()
+    expect(app.studio.attachments.uploading).toBeTruthy()
+    expect(app.studio.attachments.empty).toBeTruthy()
+    expect(app.studio.attachments.delete).toBeTruthy()
+    expect(app.studio.attachments.errors.invalidTarget).toBeTruthy()
+    expect(app.studio.attachments.errors.invalidUrl).toBeTruthy()
+    expect(app.studio.attachments.errors.itemNotFound).toBeTruthy()
+    expect(app.studio.attachments.errors.invalidShape).toBeTruthy()
+    expect(app.studio.attachments.errors.saveFailed).toBeTruthy()
+    expect(app.studio.attachments.errors.uploadFailed).toBeTruthy()
+    expect(app.studio.attachments.errors.fileTooLarge).toBeTruthy()
+    expect(app.studio.attachments.errors.invalidType).toBeTruthy()
+  })
+
   it('exposes login page copy so the login form never hard-codes Korean strings', () => {
     expect(auth.login.title).toBeTruthy()
     expect(auth.login.subtitle).toBeTruthy()

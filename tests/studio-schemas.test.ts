@@ -1,7 +1,32 @@
 import { describe, it, expect } from 'vitest'
-import { Reconstruction, Lesson, Lessons, Assessment, Review, STAGE_SCHEMAS } from '@/lib/studio/schemas'
+import { Reconstruction, Lesson, Lessons, Material, Assessment, Review, STAGE_SCHEMAS } from '@/lib/studio/schemas'
 
 describe('studio schemas', () => {
+  it('defaults images to [] when a material or lesson is parsed without it (keeps existing fixtures/tests valid)', () => {
+    const material = Material.parse({ id: 'A', title: 't', kind: 'text', body: 'b', table: null, source: '자작' })
+    expect(material.images).toEqual([])
+
+    const lesson = Lesson.parse({
+      no: 1,
+      standards: ['[9수04-02]'],
+      key_question: '자료를 계급으로 나누면 무엇이 보이는가?',
+      goal: '자료를 계급으로 나누어 도수분포표로 나타낼 수 있다.',
+      flow: { intro: 'i', main: 'm', wrapup: 'w' },
+      materials: ['A'],
+      quiz: [
+        { q: 'q1?', type: 'choice', choices: ['a', 'b'], answer: 'a', explanation: 'exp' },
+        { q: 'q2?', type: 'choice', choices: ['a', 'b'], answer: 'a', explanation: 'exp' },
+        { q: 'q3?', type: 'choice', choices: ['a', 'b'], answer: 'a', explanation: 'exp' },
+      ],
+      assessment: null,
+      mergeable_with: null,
+    })
+    expect(lesson.images).toEqual([])
+
+    // 명시적으로 넣으면 검증되어야 한다(잘못된 URL은 거부).
+    expect(Material.safeParse({ id: 'A', title: 't', kind: 'text', body: 'b', table: null, source: '자작', images: ['not-a-url'] }).success).toBe(false)
+    expect(Material.safeParse({ id: 'A', title: 't', kind: 'text', body: 'b', table: null, source: '자작', images: ['https://example.com/a.png'] }).success).toBe(true)
+  })
   it('accepts a valid reconstruction and rejects wrong goal count', () => {
     const ok = Reconstruction.safeParse({
       reconstruction: '자료를 도수분포표로 나타내고 해석할 수 있다.',

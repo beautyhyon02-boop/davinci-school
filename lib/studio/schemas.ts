@@ -39,6 +39,7 @@ export const Lesson = z.object({
   quiz: z.array(QuizItem).max(3),
   assessment: z.enum(['서술형1', '서술형2', '논술형']).nullable(),
   mergeable_with: z.number().int().nullable(),
+  images: z.array(z.string().url()).default([]),
 }).superRefine((l, ctx) => {
   if (l.assessment === '논술형') {
     if (l.quiz.length !== 0) ctx.addIssue({ code: 'custom', message: '논술형 차시에는 퀴즈 없음' })
@@ -55,6 +56,7 @@ export const Material = z.object({
   body: z.string().nullable(),
   table: z.object({ columns: z.array(z.string()), rows: z.array(z.array(z.union([z.string(), z.number()]))) }).nullable(),
   source: z.literal('자작'),
+  images: z.array(z.string().url()).default([]),
 })
 export const Materials = z.object({ materials: z.array(Material).min(1).max(6) })
 
