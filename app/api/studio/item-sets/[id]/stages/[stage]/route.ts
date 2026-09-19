@@ -1,13 +1,14 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { getSessionProfile } from '@/lib/auth/session'
+import { getSessionProfileOrNull } from '@/lib/auth/session'
 import { runStage } from '@/lib/studio/stages'
 import { createSupabaseRepo } from '@/lib/studio/repo'
 
 export const maxDuration = 300
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string; stage: string }> }) {
-  const s = await getSessionProfile()
+  const s = await getSessionProfileOrNull()
+  if (!s) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   if (s.role !== 'admin') return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   const { id, stage } = await params
   let action: 'generate' | 'review' | 'accept'
@@ -24,7 +25,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 }
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string; stage: string }> }) {
-  const s = await getSessionProfile()
+  const s = await getSessionProfileOrNull()
+  if (!s) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   if (s.role !== 'admin') return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   const { id, stage } = await params
   const supabase = await createClient()

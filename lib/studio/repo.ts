@@ -31,9 +31,11 @@ export function createSupabaseRepo(supabase: Supabase): Repo {
         .from('item_set_standards')
         .select('standards(code, text)')
         .eq('item_set_id', itemSetId)
+      // code 순으로 정렬: 프롬프트(사용자 턴)가 결정적이 되도록
       const standards = (standardRows ?? [])
         .map(r => r.standards as unknown as { code: string; text: string } | null)
         .filter((s): s is { code: string; text: string } => !!s)
+        .sort((a, b) => a.code.localeCompare(b.code))
 
       const stageStatus = (itemSet.stage_status ?? {}) as Record<string, StageStatus>
       const statuses: Record<number, StageStatus> = {}
