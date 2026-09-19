@@ -3,6 +3,9 @@ import { z } from 'zod'
 export const SUBJECTS = ['국어', '영어', '수학', '과학', '사회', '한국사', '세계사'] as const
 export type Subject = (typeof SUBJECTS)[number]
 
+export const LEVELS = ['초', '중', '고'] as const
+export type Level = (typeof LEVELS)[number]
+
 export const ThemeIntro = z.object({
   intro: z.string().min(20),
   subject_ideas: z.array(z.object({ subject: z.enum(SUBJECTS), idea: z.string().min(5) })).min(1),

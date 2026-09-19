@@ -2,11 +2,11 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { Badge } from '@/components/ui/Badge'
 import { app } from '@/content/site'
-import { SUBJECTS } from '@/lib/studio/schemas'
+import { SUBJECTS, LEVELS } from '@/lib/studio/schemas'
+import { buildSearchFilter } from '@/lib/standards/search'
 import { verifyStandard } from './actions'
 
 const copy = app.adminStandards
-const LEVELS = ['초', '중', '고'] as const
 const PAGE_SIZE = 100
 
 type SearchParams = { level?: string; subject?: string; q?: string; page?: string }
@@ -23,7 +23,8 @@ export default async function StandardsPage({ searchParams }: { searchParams: Pr
   const level = sp.level ?? ''
   const subject = sp.subject ?? ''
   const q = (sp.q ?? '').trim()
-  const page = Math.max(1, Number(sp.page) || 1)
+  const parsedPage = Number.parseInt(sp.page ?? '', 10)
+  const requestedPage = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1
 
   const supabase = await createClient()
 
@@ -32,24 +33,24 @@ export default async function StandardsPage({ searchParams }: { searchParams: Pr
     let q2: any = query
     if (level) q2 = q2.eq('level', level)
     if (subject) q2 = q2.eq('subject', subject)
-    if (q) {
-      const safeQ = q.replace(/[,()%]/g, '')
-      q2 = q2.or(`text.ilike.%${safeQ}%,code.ilike.%${safeQ}%`)
-    }
+    if (q) q2 = q2.or(buildSearchFilter(q))
     return q2
   }
 
-  const listQuery = applyFilters(supabase.from('standards').select('*', { count: 'exact' }))
-    .order('code')
-    .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1)
+  const countQuery = applyFilters(supabase.from('standards').select('id', { count: 'exact', head: true }))
   const verifiedQuery = applyFilters(
     supabase.from('standards').select('id', { count: 'exact', head: true }).not('verified_at', 'is', null),
   )
 
-  const [{ data: rawRows, count: total }, { count: verified }] = await Promise.all([listQuery, verifiedQuery])
+  const [{ count: total }, { count: verified }] = await Promise.all([countQuery, verifiedQuery])
+  const totalPages = Math.max(1, Math.ceil((total ?? 0) / PAGE_SIZE))
+  const page = Math.min(requestedPage, totalPages)
+
+  const { data: rawRows } = await applyFilters(supabase.from('standards').select('*'))
+    .order('code')
+    .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1)
   const rows = (rawRows ?? []) as StandardRow[]
 
-  const totalPages = Math.max(1, Math.ceil((total ?? 0) / PAGE_SIZE))
   const qsFor = (p: number) => {
     const params = new URLSearchParams()
     if (level) params.set('level', level)
