@@ -23,6 +23,63 @@ export type Repo = {
 }
 const MAX_ATTEMPTS: Partial<Record<Stage, number>> = { 5: 3 }
 
+// 대주제 소개(0단계)는 세트(item_sets)가 아니라 대주제(themes)에 저장된다 — 세트 여러 개가 같은 대주제 소개를 공유하기 때문.
+export type ThemeLogRow = { themeId: string; stage: 0; role: 'generate' | 'review'; attempt: number; model: string; input: number; output: number; cacheRead: number; ok: boolean; issues?: unknown; error?: string }
+export type ThemeRepo = {
+  loadTheme(themeId: string): Promise<{ title: string; level: string; grade: number; subjects: string[]; intro_ideas: StageStatus | null }>
+  saveThemeIntro(themeId: string, status: StageStatus, accepted?: { intro: string; subject_ideas: { subject: string; idea: string }[] }): Promise<void>
+  log(entry: ThemeLogRow): Promise<void>
+}
+
+export async function runThemeIntro({ themeId, action, repo }: { themeId: string; action: 'generate' | 'review' | 'accept'; repo: ThemeRepo }) {
+  const theme = await repo.loadTheme(themeId)
+  const prev = theme.intro_ideas ?? { state: 'idle', attempt: 0, updated_at: '' }
+  const now = () => new Date().toISOString()
+  const ctx: Ctx = { theme: { title: theme.title, level: theme.level, grade: theme.grade, subjects: theme.subjects }, subject: '', standards: [], prior: {} }
+
+  if (action === 'generate') {
+    const attempt = prev.attempt + 1
+    const p = buildPrompt(0, ctx)
+    try {
+      const r = await callStructured({ stage: 0, role: 'generate', schema: STAGE_SCHEMAS[0] as ZodType<unknown>, system: p.system, user: p.user,
+        effort: 'high', fixtureKey: p.fixtureKey,
+        log: e => repo.log({ themeId, stage: 0, role: 'generate', attempt, ...e }) })
+      const status: StageStatus = { state: 'generated', attempt, output: r.data, model: r.model, updated_at: now() }
+      await repo.saveThemeIntro(themeId, status); return { status }
+    } catch (e) {
+      const status: StageStatus = { state: 'failed', attempt, error: (e as Error).message, updated_at: now() }
+      await repo.saveThemeIntro(themeId, status); return { status }
+    }
+  }
+
+  const output = prev.output
+  if (output === undefined) throw new Error('nothing to review: generate first')
+
+  if (action === 'review') {
+    const p = buildReviewPrompt(0, ctx, output)
+    let pending: ThemeLogRow | null = null
+    const r = await callStructured({ stage: 0, role: 'review', schema: Review, system: p.system, user: p.user, fixtureKey: p.fixtureKey,
+      log: async e => {
+        const row: ThemeLogRow = { themeId, stage: 0, role: 'review', attempt: prev.attempt, ...e }
+        if (e.ok) pending = row; else await repo.log(row)
+      } })
+    const review = r.data
+    if (pending) await repo.log({ ...(pending as ThemeLogRow), issues: { pass: review.pass, issues: review.issues } })
+    const exhausted = !review.pass && prev.attempt >= (MAX_ATTEMPTS[0] ?? 1)
+    const status: StageStatus = { state: 'reviewed', attempt: prev.attempt, output, review, updated_at: now(),
+      ...(prev.model ? { model: prev.model } : {}),
+      ...(exhausted ? { error: '검토 반복 한도 도달 — 관리자가 직접 수정' } : {}) }
+    await repo.saveThemeIntro(themeId, status); return { status }
+  }
+
+  // accept
+  if (prev.state !== 'reviewed' || !prev.review?.pass) throw new Error('accept requires a passing review')
+  const status: StageStatus = { ...prev, state: 'accepted', updated_at: now() }
+  const accepted = output as { intro: string; subject_ideas: { subject: string; idea: string }[] }
+  await repo.saveThemeIntro(themeId, status, accepted)
+  return { status }
+}
+
 export async function runStage({ itemSetId, stage, action, repo }: { itemSetId: string; stage: Stage; action: 'generate' | 'review' | 'accept'; repo: Repo }) {
   const ctx = await repo.loadContext(itemSetId)
   const prev = ctx.statuses?.[stage] ?? { state: 'idle', attempt: 0, updated_at: '' }

@@ -1,6 +1,6 @@
 import type { createClient } from '@/lib/supabase/server'
 import type { Ctx } from './prompts/stages'
-import type { Repo, StageStatus } from './stages'
+import type { Repo, StageStatus, ThemeRepo } from './stages'
 
 type Supabase = Awaited<ReturnType<typeof createClient>>
 
@@ -22,10 +22,11 @@ export function createSupabaseRepo(supabase: Supabase): Repo {
 
       const { data: theme, error: themeErr } = await supabase
         .from('themes')
-        .select('title')
+        .select('title, subjects, materials, intro_ideas')
         .eq('id', itemSet.theme_id)
         .single()
       if (themeErr || !theme) throw new Error(`theme not found: ${itemSet.theme_id}`)
+      const subjects = ((theme.subjects as string[] | null) ?? []).length ? (theme.subjects as string[]) : [itemSet.subject as string]
 
       const { data: standardRows } = await supabase
         .from('item_set_standards')
@@ -45,7 +46,8 @@ export function createSupabaseRepo(supabase: Supabase): Repo {
       }
 
       const outputs: Record<number, unknown> = {}
-      if (stageStatus.stage0?.output !== undefined) outputs[0] = stageStatus.stage0.output
+      const introIdeas = theme.intro_ideas as StageStatus | null
+      if (introIdeas?.output !== undefined) outputs[0] = introIdeas.output
       if (stageStatus.stage1?.output !== undefined) outputs[1] = stageStatus.stage1.output
       if (itemSet.reconstruction != null) {
         const candidates = (stageStatus.stage2?.output as { key_question_candidates?: string[] } | undefined)?.key_question_candidates ?? []
@@ -56,11 +58,14 @@ export function createSupabaseRepo(supabase: Supabase): Repo {
       if (itemSet.assessment != null) outputs[5] = itemSet.assessment
       if (itemSet.teacher_guide != null) outputs[6] = itemSet.teacher_guide
 
+      const prior: Record<string, unknown> = {}
+      if (theme.materials != null) prior.shared_materials = theme.materials
+
       return {
-        theme: { title: theme.title, level: itemSet.level, grade: itemSet.grade, subjects: [itemSet.subject] },
+        theme: { title: theme.title, level: itemSet.level, grade: itemSet.grade, subjects },
         subject: itemSet.subject,
         standards,
-        prior: {},
+        prior,
         outputs,
         statuses,
       }
@@ -121,6 +126,52 @@ export function createSupabaseRepo(supabase: Supabase): Repo {
       const { error } = await supabase.from('generation_log').insert({
         item_set_id: entry.itemSetId,
         theme_id: tId,
+        stage: entry.stage,
+        role: entry.role,
+        attempt: entry.attempt,
+        model: entry.model,
+        input_tokens: entry.input,
+        output_tokens: entry.output,
+        cache_read_tokens: entry.cacheRead,
+        ok: entry.ok,
+        issues: entry.issues ?? null,
+        error: entry.error ?? null,
+      })
+      if (error) console.warn('[generation_log] insert failed:', error.message)
+    },
+  }
+}
+
+// 대주제 소개(0단계): themes.intro_ideas(생성/검토 상태)와 확정 시 themes.intro 에 저장한다.
+export function createSupabaseThemeRepo(supabase: Supabase): ThemeRepo {
+  return {
+    async loadTheme(themeId) {
+      const { data, error } = await supabase
+        .from('themes')
+        .select('title, level, grade, subjects, intro_ideas')
+        .eq('id', themeId)
+        .single()
+      if (error || !data) throw new Error(`theme not found: ${themeId}`)
+      return {
+        title: data.title,
+        level: data.level,
+        grade: data.grade,
+        subjects: ((data.subjects as string[] | null) ?? []),
+        intro_ideas: (data.intro_ideas as StageStatus | null) ?? null,
+      }
+    },
+
+    async saveThemeIntro(themeId, status, accepted) {
+      const update: Record<string, unknown> = { intro_ideas: status }
+      if (accepted) update.intro = accepted.intro
+      const { error } = await supabase.from('themes').update(update).eq('id', themeId)
+      if (error) throw new Error(error.message)
+    },
+
+    async log(entry) {
+      const { error } = await supabase.from('generation_log').insert({
+        item_set_id: null,
+        theme_id: entry.themeId,
         stage: entry.stage,
         role: entry.role,
         attempt: entry.attempt,
