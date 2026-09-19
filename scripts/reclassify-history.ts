@@ -14,7 +14,8 @@
  *        scripts/reclassify-history.ts --source /tmp/한국사-92-original.json
  *
  * 2) update-db 모드(기본, --source 없을 때) — data/standards/세계사.json을
- *    읽어(이미 분리되어 있는 파일) 모든 행이 subject:'세계사'인지 검증한
+ *    읽어(이미 분리되어 있는 파일 — 2026-09-20부터 [12세사] 13건 포함,
+ *    총 59행) 모든 행이 subject:'세계사'인지 검증한
  *    뒤(codesToUpdate), 그 code 목록으로 DB standards 테이블을
  *      update standards set subject='세계사' where code in (...)
  *    로 갱신한다(supabase-js `.update({subject:'세계사'}).in('code', codes)`를
@@ -64,9 +65,9 @@ import { standardsSchema, type Standard } from '../lib/standards/parse'
  * 반면 01~02("역사 학습의 기초", "문명의 발생과 고대 세계의 형성")는
  * 원문이 "한국사와 세계사의 통합 영역"이라고 부른 부분이라, 세계사로
  * 단정할 문서상 근거는 없다 — 이 스크립트는 중학교 「역사」 교과서에서
- * 통상 역사①(세계사 쪽 절반)에 배치된다는 점을 근거로 우선 세계사에
- * 임시로 배정해 둔 것이며, 담당자 확정이 필요한 판단이다(대상 5개 코드:
- * [9역01-01], [9역01-02], [9역02-01], [9역02-02], [9역02-03]).
+ * 통상 역사①(세계사 쪽 절반)에 배치된다는 점을 근거로 세계사에 배정했고,
+ * 2026-09-20 담당자(대표)가 "통합 영역 01~02는 세계사"로 확정했다(대상 5개
+ * 코드: [9역01-01], [9역01-02], [9역02-01], [9역02-02], [9역02-03]).
  */
 export const WORLD_HISTORY_9YEOK_MAX_DOMAIN = 7
 

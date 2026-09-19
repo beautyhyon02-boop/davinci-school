@@ -64,14 +64,19 @@ describe('classifyHistory', () => {
 })
 
 describe('codesToUpdate', () => {
-  it('세계사.json 46건에서 code 46개를 그대로 뽑는다', () => {
+  it('세계사.json 59건(역사 46 + [12세사] 13)에서 code 59개를 그대로 뽑는다', () => {
     const dir = join(__dirname, '..', 'data', 'standards')
     const rows = standardsSchema.parse(JSON.parse(readFileSync(join(dir, '세계사.json'), 'utf8')))
     const codes = codesToUpdate(rows)
-    expect(codes).toHaveLength(46)
-    expect(new Set(codes).size).toBe(46)
+    expect(codes).toHaveLength(59)
+    expect(new Set(codes).size).toBe(59)
     expect(codes).toContain('[9역01-01]')
     expect(codes).toContain('[12역현01-01]')
+    expect(codes.filter((c) => c.startsWith('[12세사'))).toHaveLength(13)
+    // [12세사]는 더 이상 사회.json에 없다
+    const social = standardsSchema.parse(JSON.parse(readFileSync(join(dir, '사회.json'), 'utf8')))
+    expect(social.some((r) => r.code.startsWith('[12세사'))).toBe(false)
+    expect(social).toHaveLength(307)
   })
 
   it('subject가 세계사가 아닌 행이 섞여 있으면 던진다', () => {
