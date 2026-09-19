@@ -157,6 +157,25 @@ export const app = {
     empty: '조건에 맞는 성취기준이 없습니다.',
     pagination: { prev: '이전', next: '다음', pageOf: (page: number, total: number) => `${page} / ${total}` },
   },
+  studio: {
+    errors: {
+      titleRequired: '대주제 제목을 입력하세요.',
+      levelInvalid: '학교급을 선택하세요.',
+      gradeInvalid: '학년을 확인하세요. (초 1~6, 중·고 1~3)',
+      subjectsRequired: '과목을 1개 이상 선택하세요.',
+      subjectInvalid: '알 수 없는 과목입니다.',
+      subjectNotInTheme: '대주제에 포함되지 않은 과목입니다.',
+      subjectDuplicate: '이미 세트가 만들어진 과목입니다.',
+      standardCountInvalid: '성취기준은 2~6개 선택하세요.',
+      standardLevelMismatch: '대주제와 학교급이 다른 성취기준이 있습니다.',
+      standardSubjectMismatch: '대주제와 과목이 다른 성취기준이 있습니다.',
+      standardUnverified: (codes: string[]) => `원문 미검증 성취기준: ${codes.join(', ')}`,
+      materialsInvalid: '공유 자료 형식을 확인하세요.',
+      introInvalid: '소개 문구·과목별 아이디어를 확인하세요.',
+      themeNotFound: '대주제를 찾을 수 없습니다.',
+      saveFailed: '저장 중 오류가 났습니다. 잠시 후 다시 시도해 주세요.',
+    },
+  },
 }
 
 export const email = {
