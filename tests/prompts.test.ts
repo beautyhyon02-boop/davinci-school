@@ -32,6 +32,20 @@ describe('prompts', () => {
     expect(r.user).toContain('[9수04-02]')
     expect(r.fixtureKey).toBe('stage2-review')
   })
+  it('stage 4 tells the model to continue material lettering after the shared ids', () => {
+    const shared = ['A', 'B', 'C', 'D'].map(id => ({ id, title: `자료 ${id}`, kind: 'text', body: 'x', table: null, source: '자작' }))
+    const u = buildPrompt(4, { ...ctx, prior: { shared_materials: shared } }).user
+    expect(u).toContain('A, B, C, D')
+    expect(u).toMatch(/E부터 이어서/)
+  })
+  it('stage 4 says nothing about lettering when the theme has no shared materials', () => {
+    expect(buildPrompt(4, ctx).user).not.toMatch(/이어서 붙여라/)
+    expect(buildPrompt(4, { ...ctx, prior: { shared_materials: [] } }).user).not.toMatch(/이어서 붙여라/)
+  })
+  it('only stage 4 gets the lettering instruction', () => {
+    const shared = [{ id: 'A', title: '자료 A', kind: 'text', body: 'x', table: null, source: '자작' }]
+    expect(buildPrompt(3, { ...ctx, prior: { shared_materials: shared } }).user).not.toMatch(/이어서 붙여라/)
+  })
   it('stage 0 prompt lists participating subjects (no per-set subject yet)', () => {
     const ctx0 = { theme: { title: '학교 축제 일회용품 줄이기', level: '중', grade: 1, subjects: ['수학', '과학'] }, subject: '',
       standards: [], prior: {} }

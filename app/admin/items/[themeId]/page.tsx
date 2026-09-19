@@ -8,6 +8,7 @@ import { ThemeIntroPanel } from './ThemeIntroPanel'
 import { SharedMaterialsPanel } from './SharedMaterialsPanel'
 import { StandardsPicker, type StandardsBySubject } from './StandardsPicker'
 import type { Subject } from '@/lib/studio/schemas'
+import { sharedMaterialsJson, type SharedMaterial } from '@/lib/studio/themes'
 import { fetchAll } from '@/lib/supabase/fetch-all'
 import { app } from '@/content/site'
 
@@ -73,7 +74,8 @@ export default async function ThemeDetailPage({ params }: { params: Promise<{ th
     byDomain.push({ id: r.id, code: r.code, text: r.text, domain, verified: !!r.verified_at })
   }
 
-  const initialMaterialsJson = JSON.stringify(theme.materials ?? { materials: [] }, null, 2)
+  // themes.materials 는 래퍼 없는 배열로 저장된다 — textarea 에는 스키마 모양({materials:[...]})으로 씌워 보여 준다.
+  const initialMaterialsJson = sharedMaterialsJson(theme.materials as SharedMaterial[] | null)
 
   return (
     <>

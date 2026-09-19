@@ -1,11 +1,30 @@
 import type { createClient } from '@/lib/supabase/server'
 import type { Ctx } from './prompts/stages'
 import type { Repo, StageStatus, ThemeRepo } from './stages'
+import { keyQuestionAfterStage2 } from './edit-rules'
 
 type Supabase = Awaited<ReturnType<typeof createClient>>
 
 // stage별 item_sets 컬럼 매핑: 0/1은 stage_status에만 저장, 2~6은 전용 컬럼을 둔다.
 // (2단계는 reconstruction/learning_goals 컬럼 + stage_status.stage2.output.key_question_candidates)
+
+/**
+ * 단계별 상태 맵(0~6)을 만든다. 1~6단계는 item_sets.stage_status 에 있지만 0단계(대주제 소개)는
+ * 대주제(themes.intro_ideas)에 저장되므로 여기서 합류시킨다 — 빠뜨리면 runStage 의 prior 루프가
+ * stage0 을 영영 accepted 로 보지 못해 확정된 대주제 소개가 2~6단계 프롬프트에 들어가지 않는다.
+ */
+export function buildStatuses(
+  stageStatus: Record<string, StageStatus | undefined>,
+  introIdeas: StageStatus | null | undefined,
+): Record<number, StageStatus> {
+  const statuses: Record<number, StageStatus> = {}
+  for (let s = 0; s <= 6; s++) {
+    const st = stageStatus[`stage${s}`]
+    if (st) statuses[s] = st
+  }
+  if (introIdeas) statuses[0] = introIdeas
+  return statuses
+}
 
 export function createSupabaseRepo(supabase: Supabase): Repo {
   let themeId: string | null = null
@@ -39,14 +58,10 @@ export function createSupabaseRepo(supabase: Supabase): Repo {
         .sort((a, b) => a.code.localeCompare(b.code))
 
       const stageStatus = (itemSet.stage_status ?? {}) as Record<string, StageStatus>
-      const statuses: Record<number, StageStatus> = {}
-      for (let s = 0; s <= 6; s++) {
-        const st = stageStatus[`stage${s}`]
-        if (st) statuses[s] = st
-      }
+      const introIdeas = theme.intro_ideas as StageStatus | null
+      const statuses = buildStatuses(stageStatus, introIdeas)
 
       const outputs: Record<number, unknown> = {}
-      const introIdeas = theme.intro_ideas as StageStatus | null
       if (introIdeas?.output !== undefined) outputs[0] = introIdeas.output
       if (stageStatus.stage1?.output !== undefined) outputs[1] = stageStatus.stage1.output
       if (itemSet.reconstruction != null) {
@@ -77,8 +92,14 @@ export function createSupabaseRepo(supabase: Supabase): Repo {
         case 1:
           return // 전용 컬럼 없음 — stage_status에만 저장 (saveStatus에서 처리)
         case 2: {
-          const o = output as { reconstruction: string; learning_goals: string[] }
-          const { error } = await supabase.from('item_sets').update({ reconstruction: o.reconstruction, learning_goals: o.learning_goals }).eq('id', itemSetId)
+          const o = output as { reconstruction: string; learning_goals: string[]; key_question_candidates?: string[] }
+          // 2단계를 다시 만들면 핵심질문 후보가 바뀐다 — 이미 고른 핵심질문이 새 후보에 없으면 함께 비운다.
+          const { data: current } = await supabase.from('item_sets').select('key_question').eq('id', itemSetId).single()
+          const keyQuestion = keyQuestionAfterStage2(current?.key_question as string | null | undefined, o.key_question_candidates ?? [])
+          const { error } = await supabase
+            .from('item_sets')
+            .update({ reconstruction: o.reconstruction, learning_goals: o.learning_goals, key_question: keyQuestion })
+            .eq('id', itemSetId)
           if (error) throw new Error(error.message)
           return
         }

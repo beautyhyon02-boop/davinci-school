@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseTheme, canCreateSet, validateStandardSelection, validateStandardIds, THEME_FIELDS } from '@/lib/studio/themes'
+import { parseTheme, canCreateSet, validateStandardSelection, validateStandardIds, parseSharedMaterialsInput, sharedMaterialsJson, THEME_FIELDS } from '@/lib/studio/themes'
 
 function fd(o: Record<string, string | string[]>) {
   const f = new FormData()
@@ -152,5 +152,44 @@ describe('validateStandardIds', () => {
 
   it('rejects an empty selection', () => {
     expect(validateStandardIds([], []).ok).toBe(false)
+  })
+})
+
+describe('parseSharedMaterialsInput / sharedMaterialsJson', () => {
+  const materialA = { id: 'A', title: '설문 결과', kind: 'text' as const, body: '본문', table: null, source: '자작' as const }
+
+  it('accepts the 2A wrapper shape ({ materials: [...] })', () => {
+    const r = parseSharedMaterialsInput(JSON.stringify({ materials: [materialA] }))
+    expect(r.ok).toBe(true)
+    expect(r.ok && r.materials.map((m) => m.id)).toEqual(['A'])
+    expect(r.ok && r.materials[0].images).toEqual([])
+  })
+
+  it('accepts a bare array — what themes.materials actually stores', () => {
+    const r = parseSharedMaterialsInput(JSON.stringify([materialA]))
+    expect(r.ok).toBe(true)
+    expect(r.ok && r.materials.map((m) => m.id)).toEqual(['A'])
+  })
+
+  it('round-trips: save → seed the textarea → save again succeeds with the same materials', () => {
+    const first = parseSharedMaterialsInput(JSON.stringify({ materials: [materialA] }))
+    expect(first.ok).toBe(true)
+    if (!first.ok) return
+    // 저장은 배열만 남긴다(themes.materials). 화면은 그 배열을 다시 textarea 로 내려 준다.
+    const seeded = sharedMaterialsJson(first.materials)
+    const second = parseSharedMaterialsInput(seeded)
+    expect(second.ok).toBe(true)
+    expect(second.ok && second.materials).toEqual(first.materials)
+  })
+
+  it('seeds an empty wrapper when the theme has no materials yet', () => {
+    expect(JSON.parse(sharedMaterialsJson(null))).toEqual({ materials: [] })
+    const r = parseSharedMaterialsInput(sharedMaterialsJson(null))
+    expect(r.ok).toBe(false) // 자료 0개는 스키마상 저장 대상이 아니다(min 1) — 빈 칸을 저장하려는 실수를 막는다
+  })
+
+  it('rejects invalid JSON and shapes that are not materials', () => {
+    expect(parseSharedMaterialsInput('{').ok).toBe(false)
+    expect(parseSharedMaterialsInput(JSON.stringify([{ id: 'AA', title: 'x' }])).ok).toBe(false)
   })
 })

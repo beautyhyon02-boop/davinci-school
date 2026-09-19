@@ -120,14 +120,36 @@ describe('buildSnapshot', () => {
     expect(snap.cover.version).toBe(4)
   })
 
-  it('merges theme materials and set materials by id, set wins on conflict, sorted by id', () => {
+  // 스펙 §1: 한 대주제의 모든 과목이 자료 A~D 를 공유한다 → id 가 겹치면 공유(대주제) 자료가 이기고 세트 자료는 버린다.
+  it('merges theme materials and set materials by id, theme wins on conflict, sorted by id', () => {
     const theme = { ...baseTheme, materials: [material('A', '대주제 자료 A'), material('C', '대주제 자료 C')] }
-    const itemSet = { ...baseItemSet, materials: [material('B', '세트 자료 B'), material('A', '세트가 덮어쓴 자료 A')] }
+    const itemSet = { ...baseItemSet, materials: [material('B', '세트 자료 B'), material('A', '세트가 덮어쓰려 한 자료 A')] }
     const snap = buildSnapshot({ theme, itemSet, standards: [], version: 1 })
     expect(snap.materials.map((m) => m.id)).toEqual(['A', 'B', 'C'])
-    expect(snap.materials.find((m) => m.id === 'A')!.title).toBe('세트가 덮어쓴 자료 A')
+    expect(snap.materials.find((m) => m.id === 'A')!.title).toBe('대주제 자료 A')
     expect(snap.materials.find((m) => m.id === 'B')!.title).toBe('세트 자료 B')
     expect(snap.materials.find((m) => m.id === 'C')!.title).toBe('대주제 자료 C')
+  })
+
+  // 2A 시절 행에는 images 키가 없다 — PackageView 가 m.images.length 로 읽으므로 스냅샷에서 기본값을 채운다.
+  it('normalizes materials and lessons written before `images` existed', () => {
+    const legacyMaterial = { id: 'A', title: '옛 자료 A', kind: 'text' as const, body: '본문', table: null, source: '자작' as const }
+    const legacyLesson = {
+      no: 1,
+      standards: ['[9수04-02]'],
+      key_question: '자료를 어떻게 정리할까?',
+      goal: '도수분포표로 정리할 수 있다.',
+      flow: { intro: '도입', main: '전개', wrapup: '정리' },
+      materials: ['A'],
+      quiz: [],
+      assessment: '논술형' as const,
+      mergeable_with: null,
+    }
+    const theme = { ...baseTheme, materials: [legacyMaterial] as never }
+    const itemSet = { ...baseItemSet, materials: null, lessons: [legacyLesson, legacyLesson, legacyLesson, legacyLesson] as never }
+    const snap = buildSnapshot({ theme, itemSet, standards: [], version: 1 })
+    expect(snap.materials[0].images).toEqual([])
+    expect(snap.lessons.every((l) => Array.isArray(l.images))).toBe(true)
   })
 
   it('works when theme materials are missing (null) — only set materials appear', () => {

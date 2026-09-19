@@ -1,4 +1,5 @@
-import { SUBJECTS, LEVELS, type Subject, type Level } from '@/lib/studio/schemas'
+import type { z } from 'zod'
+import { SUBJECTS, LEVELS, Materials, type Subject, type Level } from '@/lib/studio/schemas'
 import { app } from '@/content/site'
 
 const errors = app.studio.errors
@@ -80,4 +81,29 @@ export function validateStandardIds(
   const foundSet = new Set(foundIds)
   if (ids.length === 0 || ids.some((id) => !foundSet.has(id))) return { ok: false, error: errors.invalidStandards }
   return { ok: true, ids }
+}
+
+export type SharedMaterial = z.infer<typeof Materials>['materials'][number]
+
+/**
+ * 공유 자료 textarea 입력을 파싱한다. themes.materials 는 래퍼 없는 배열로 저장되지만(publish/repo 가 그렇게 읽는다)
+ * 2A 스키마(`{ materials: [...] }`)를 그대로 붙여넣는 경로도 있으므로 두 모양을 모두 받는다 —
+ * 그렇지 않으면 한 번 저장한 뒤 화면이 보여 주는 배열을 다시 저장할 수 없다.
+ */
+export function parseSharedMaterialsInput(text: string): { ok: true; materials: SharedMaterial[] } | { ok: false; error: string } {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(text)
+  } catch {
+    return { ok: false, error: errors.materialsInvalid }
+  }
+  const wrapped = Array.isArray(parsed) ? { materials: parsed } : parsed
+  const r = Materials.safeParse(wrapped)
+  if (!r.success) return { ok: false, error: errors.materialsInvalid }
+  return { ok: true, materials: r.data.materials }
+}
+
+/** 저장된 themes.materials(배열)를 textarea 초기값으로 되돌린다 — 저장 → 표시 → 재저장이 왕복하도록 래퍼를 씌운다. */
+export function sharedMaterialsJson(materials: SharedMaterial[] | null | undefined): string {
+  return JSON.stringify({ materials: materials ?? [] }, null, 2)
 }

@@ -36,11 +36,12 @@ export function Histogram({
   const xAt = (i: number) => MARGIN.left + i * barWidth
   const yAt = (count: number) => MARGIN.top + INNER_HEIGHT - (count / yMax) * INNER_HEIGHT
 
+  // 폭은 컨테이너에 맞추고 높이는 viewBox 비율대로 따라오게 한다 — 고정 600×320이면 휴대폰에서 넘친다.
   return (
     <svg
       viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-      width={WIDTH}
-      height={HEIGHT}
+      width="100%"
+      className="h-auto w-full"
       role="img"
       xmlns="http://www.w3.org/2000/svg"
     >

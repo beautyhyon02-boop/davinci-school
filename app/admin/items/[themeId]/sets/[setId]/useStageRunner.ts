@@ -50,6 +50,8 @@ export function useStageRunner(setId: string) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setId])
 
+  // 실패는 error 상태로만 알린다 — StagePanel 은 onRun 을 await/catch 없이 부르므로, 다시 throw 하면
+  // 실패할 때마다 잡히지 않는 rejection 이 난다.
   const run = useCallback(async (stage: WizardStage, action: WizardActionKind) => {
     setBusy(true)
     setError(null)
@@ -60,7 +62,7 @@ export function useStageRunner(setId: string) {
       return status
     } catch (e) {
       setError((e as Error).message)
-      throw e
+      return undefined
     } finally {
       setBusy(false)
     }

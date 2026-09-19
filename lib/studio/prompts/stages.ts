@@ -31,9 +31,32 @@ const TASKS: Record<Stage, string> = {
   6: '비전공 원장님이 그대로 진행할 수 있는 교사용 지침서를 만들어라: 세트 전체(준비물·일정·목적), 용어 정리, 차시별 진행 메모.',
 }
 
+/** prior.shared_materials(대주제 공유 자료)의 A~Z ID를 오름차순으로 뽑는다. */
+function sharedMaterialIds(prior: Record<string, unknown>): string[] {
+  const shared = prior.shared_materials
+  if (!Array.isArray(shared)) return []
+  return shared
+    .map(m => (m as { id?: unknown }).id)
+    .filter((id): id is string => typeof id === 'string' && /^[A-Z]$/.test(id))
+    .sort()
+}
+
+/**
+ * 4단계(자료)에서 세트 자료가 공유 자료와 같은 글자를 쓰면 게시 스냅샷이 세트 쪽을 버린다(publish.ts의 병합 규칙) —
+ * 그래서 프롬프트에서 미리 공유 자료 ID를 알려 주고 그다음 글자부터 이어 붙이게 한다.
+ */
+function sharedMaterialLettering(ctx: Ctx): string {
+  const ids = sharedMaterialIds(ctx.prior)
+  if (ids.length === 0) return ''
+  const last = ids[ids.length - 1]
+  const next = last < 'Z' ? String.fromCharCode(last.charCodeAt(0) + 1) : 'Z'
+  return `\n\n대주제 공유 자료 ID: ${ids.join(', ')} — 이 자료들은 다시 만들지 말고, 새로 만드는 세트 자료의 ID는 ${next}부터 이어서 붙여라(같은 ID를 다시 쓰면 그 자료는 버려진다).`
+}
+
 export function buildPrompt(stage: Stage, ctx: Ctx) {
   const prior = Object.keys(ctx.prior).length ? `\n\n지금까지 확정된 내용:\n${JSON.stringify(ctx.prior, null, 1)}` : ''
-  return { system: RULES, user: `${header(ctx)}\n\n과제: ${TASKS[stage]}${prior}`, fixtureKey: `stage${stage}-generate` }
+  const lettering = stage === 4 ? sharedMaterialLettering(ctx) : ''
+  return { system: RULES, user: `${header(ctx)}\n\n과제: ${TASKS[stage]}${lettering}${prior}`, fixtureKey: `stage${stage}-generate` }
 }
 
 const REVIEW_FOCUS: Record<Stage, string> = {

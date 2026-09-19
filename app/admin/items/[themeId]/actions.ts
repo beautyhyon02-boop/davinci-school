@@ -2,8 +2,8 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { getSessionProfile } from '@/lib/auth/session'
-import { canCreateSet, validateStandardSelection, validateStandardIds } from '@/lib/studio/themes'
-import { Materials, ThemeIntro, type Subject } from '@/lib/studio/schemas'
+import { canCreateSet, validateStandardSelection, validateStandardIds, parseSharedMaterialsInput } from '@/lib/studio/themes'
+import type { Subject } from '@/lib/studio/schemas'
 import { app } from '@/content/site'
 
 const errors = app.studio.errors
@@ -86,40 +86,14 @@ export async function createItemSet(themeId: string, subject: Subject, standardI
   return { ok: true as const, id: itemSet.id as string }
 }
 
-export async function acceptThemeIntro(themeId: string, intro: string, ideas: { subject: string; idea: string }[]) {
-  await assertAdmin()
-  const r = ThemeIntro.safeParse({ intro, subject_ideas: ideas })
-  if (!r.success) return { ok: false as const, error: errors.introInvalid }
-
-  const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('themes')
-    .update({
-      intro: r.data.intro,
-      intro_ideas: { state: 'accepted', output: { intro: r.data.intro, subject_ideas: r.data.subject_ideas }, updated_at: new Date().toISOString() },
-    })
-    .eq('id', themeId)
-    .select('id')
-  if (error) return { ok: false as const, error: errors.saveFailed }
-  if (!data || data.length === 0) return { ok: false as const, error: errors.themeNotFound }
-
-  revalidatePath(`/admin/items/${themeId}`)
-  return { ok: true as const }
-}
-
 export async function saveSharedMaterials(themeId: string, materialsJson: string) {
   await assertAdmin()
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(materialsJson)
-  } catch {
-    return { ok: false as const, error: errors.materialsInvalid }
-  }
-  const r = Materials.safeParse(parsed)
-  if (!r.success) return { ok: false as const, error: errors.materialsInvalid }
+  // 배열·래퍼 두 모양을 모두 받는다(화면이 보여 준 값을 그대로 다시 저장할 수 있도록).
+  const r = parseSharedMaterialsInput(materialsJson)
+  if (!r.ok) return { ok: false as const, error: r.error }
 
   const supabase = await createClient()
-  const { data, error } = await supabase.from('themes').update({ materials: r.data.materials }).eq('id', themeId).select('id')
+  const { data, error } = await supabase.from('themes').update({ materials: r.materials }).eq('id', themeId).select('id')
   if (error) return { ok: false as const, error: errors.saveFailed }
   if (!data || data.length === 0) return { ok: false as const, error: errors.themeNotFound }
 

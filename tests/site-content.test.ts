@@ -196,6 +196,8 @@ describe('site content', () => {
     expect(app.studio.wizard.errors.invalidJson).toBeTruthy()
     expect(app.studio.wizard.errors.invalidShape('bad')).toContain('bad')
     expect(app.studio.wizard.errors.keyQuestionInvalid).toBeTruthy()
+    expect(app.studio.wizard.errors.prevNotAccepted).toBeTruthy()
+    expect(app.studio.wizard.errors.tooFewStandards).toBeTruthy()
     expect(app.studio.wizard.prevStageHint).toBeTruthy()
   })
 

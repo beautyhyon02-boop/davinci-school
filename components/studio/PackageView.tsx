@@ -66,9 +66,9 @@ function MaterialsSection({ materials }: { materials: Material[] }) {
             {m.body && <p className="mt-1 whitespace-pre-wrap text-sm">{m.body}</p>}
             <MaterialTable material={m} />
             <MaterialChart material={m} />
-            {m.images.length > 0 && (
+            {(m.images ?? []).length > 0 && (
               <div className="mt-2 flex flex-wrap gap-2">
-                {m.images.map((src, i) => (
+                {(m.images ?? []).map((src, i) => (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img key={src} src={src} alt={copy.materials.imagesAlt(m.title, i + 1)} className="h-24 w-24 rounded-lg object-cover" />
                 ))}
@@ -153,9 +153,9 @@ function LessonsSection({ lessons, showAnswers }: { lessons: Lesson[]; showAnswe
             {l.materials.length > 0 && (
               <p className="mt-2 text-sm"><span className="font-semibold text-ink-500">{copy.lessons.materialsLabel}:</span> {l.materials.join(', ')}</p>
             )}
-            {l.images.length > 0 && (
+            {(l.images ?? []).length > 0 && (
               <div className="mt-2 flex flex-wrap gap-2">
-                {l.images.map((src, i) => (
+                {(l.images ?? []).map((src, i) => (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img key={src} src={src} alt={copy.lessons.imagesAlt(l.no, i + 1)} className="h-24 w-24 rounded-lg object-cover" />
                 ))}

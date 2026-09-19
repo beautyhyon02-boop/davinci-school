@@ -5,11 +5,20 @@ import { getSessionProfile } from '@/lib/auth/session'
 import { STAGE_SCHEMAS, Materials, Lessons, type Stage } from '@/lib/studio/schemas'
 import { isMaterialsPublicUrl } from '@/lib/studio/upload-rules'
 import { canPublish, buildSnapshot } from '@/lib/studio/publish'
-import type { StageStatus } from '@/lib/studio/stages'
+import { canEditStage, downstreamResets, keyQuestionAfterStage2 } from '@/lib/studio/edit-rules'
+import { STAGE_ERRORS, type StageErrorCode, type StageStatus } from '@/lib/studio/stages'
 import { app } from '@/content/site'
 
 const errors = app.studio.wizard.errors
 const attachmentErrors = app.studio.attachments.errors
+
+// 편집 게이트가 돌려준 STAGE_ERRORS 코드를 화면 문구로 옮긴다 — 문구는 content/site.ts 에서만 고친다.
+const EDIT_ERROR_COPY: Record<StageErrorCode, string> = {
+  [STAGE_ERRORS.PREV_NOT_ACCEPTED]: errors.prevNotAccepted,
+  [STAGE_ERRORS.TOO_FEW_STANDARDS]: errors.tooFewStandards,
+  [STAGE_ERRORS.NOTHING_TO_REVIEW]: errors.generic,
+  [STAGE_ERRORS.ACCEPT_REQUIRES_REVIEW]: errors.generic,
+}
 
 async function assertAdmin() {
   const s = await getSessionProfile()
@@ -39,7 +48,11 @@ function stageColumns(stage: Stage, output: unknown): Record<string, unknown> {
   }
 }
 
-/** 2~6단계 출력을 관리자가 JSON으로 직접 수정해 저장한다. zod로 검증 후 저장하고 상태를 generated(model:'edited')로 되돌린다. */
+/**
+ * 2~6단계 출력을 관리자가 JSON으로 직접 수정해 저장한다. zod로 검증 후 저장하고 상태를 generated(model:'edited')로 되돌린다.
+ * 생성과 같은 확정 게이트를 먼저 적용하고(canEditStage), 저장에 성공하면 이 단계를 근거로 삼은 하위 단계(n+1..6)를
+ * idle 로 되돌린다 — 그러지 않으면 낡은 근거 위의 출력이 accepted 로 남아 그대로 게시된다.
+ */
 export async function saveStageEdit(setId: string, stage: Stage, json: string): Promise<ActionResult> {
   await assertAdmin()
 
@@ -57,7 +70,7 @@ export async function saveStageEdit(setId: string, stage: Stage, json: string): 
   const supabase = await createClient()
   const { data: itemSet, error: fetchErr } = await supabase
     .from('item_sets')
-    .select('theme_id, stage_status')
+    .select('theme_id, key_question, stage_status')
     .eq('id', setId)
     .single()
   if (fetchErr || !itemSet) return { ok: false, error: errors.saveFailed }
@@ -65,15 +78,29 @@ export async function saveStageEdit(setId: string, stage: Stage, json: string): 
   const stageStatus = (itemSet.stage_status ?? {}) as Record<string, StageStatus>
   const prev = stageStatus[`stage${stage}`] ?? { state: 'idle', attempt: 0, updated_at: '' }
 
+  const { count: standardCount } = await supabase
+    .from('item_set_standards')
+    .select('standard_id', { count: 'exact', head: true })
+    .eq('item_set_id', setId)
+
+  const gate = canEditStage({ stage, statuses: stageStatus, standardCount: standardCount ?? 0 })
+  if (!gate.ok) return { ok: false, error: EDIT_ERROR_COPY[gate.code] }
+
   const columns = stageColumns(stage, r.data)
+  // 2단계를 고치면 핵심질문 후보가 바뀐다 — 이미 고른 핵심질문이 새 후보에 없으면 함께 비운다.
+  if (stage === 2) {
+    const candidates = (r.data as { key_question_candidates?: string[] }).key_question_candidates ?? []
+    columns.key_question = keyQuestionAfterStage2(itemSet.key_question as string | null, candidates)
+  }
   const { error: updateErr } = await supabase.from('item_sets').update(columns).eq('id', setId)
   if (updateErr) return { ok: false, error: errors.saveFailed }
 
+  const now = new Date().toISOString()
   const status: StageStatus = {
     state: 'generated',
     attempt: prev.attempt,
     output: r.data,
-    updated_at: new Date().toISOString(),
+    updated_at: now,
     model: 'edited',
   }
   const { error: rpcErr } = await supabase.rpc('set_stage_status', {
@@ -82,6 +109,15 @@ export async function saveStageEdit(setId: string, stage: Stage, json: string): 
     p_value: status,
   })
   if (rpcErr) return { ok: false, error: errors.saveFailed }
+
+  for (const reset of downstreamResets(stage, stageStatus, now)) {
+    const { error: resetErr } = await supabase.rpc('set_stage_status', {
+      p_item_set_id: setId,
+      p_key: `stage${reset.stage}`,
+      p_value: reset.status,
+    })
+    if (resetErr) return { ok: false, error: errors.saveFailed }
+  }
 
   revalidatePath(`/admin/items/${itemSet.theme_id}/sets/${setId}`)
   return { ok: true }
@@ -258,7 +294,13 @@ export async function publishItemSet(setId: string): Promise<PublishResult> {
   // themes RLS(auth_read_published_themes)는 status='published'인 대주제만 원장에게 보여준다.
   // 세트만 게시되고 대주제가 여전히 draft면 /teacher/items 목록에서 theme title 조인이 비어 보이므로,
   // 첫 게시 시 대주제도 함께 published로 승격한다(이미 published면 조건절 덕분에 아무 일도 안 한다).
-  await supabase.from('themes').update({ status: 'published' }).eq('id', itemSet.theme_id).neq('status', 'published')
+  // 이 승격이 실패하면 원장 목록에 안 뜨므로 성공으로 보고하지 않는다.
+  const { error: themeStatusErr } = await supabase
+    .from('themes')
+    .update({ status: 'published' })
+    .eq('id', itemSet.theme_id)
+    .neq('status', 'published')
+  if (themeStatusErr) return { ok: false, blockers: ['saveFailed'] }
 
   revalidatePath(`/admin/items/${itemSet.theme_id}/sets/${setId}`)
   revalidatePath('/teacher/items')
