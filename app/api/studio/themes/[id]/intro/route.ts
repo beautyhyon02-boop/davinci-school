@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getSessionProfileOrNull } from '@/lib/auth/session'
-import { runThemeIntro } from '@/lib/studio/stages'
+import { runThemeIntro, StageError } from '@/lib/studio/stages'
 import { createSupabaseThemeRepo } from '@/lib/studio/repo'
 
 export const maxDuration = 300
@@ -23,7 +23,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const result = await runThemeIntro({ themeId: id, action, repo: createSupabaseThemeRepo(supabase) })
     return NextResponse.json(result)
   } catch (e) {
-    return NextResponse.json({ error: (e as Error).message }, { status: 400 })
+    if (e instanceof StageError) return NextResponse.json({ error: e.code, message: e.message }, { status: 400 })
+    console.error('theme intro run failed', e)
+    return NextResponse.json({ error: 'internal' }, { status: 500 })
   }
 }
 

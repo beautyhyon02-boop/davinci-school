@@ -1,8 +1,20 @@
 import { describe, it, expect, beforeAll } from 'vitest'
-import { runStage, type Repo, type StageStatus, type LogRow } from '@/lib/studio/stages'
+import { runStage, StageError, STAGE_ERRORS, type Repo, type StageStatus, type LogRow } from '@/lib/studio/stages'
 import { readFileSync } from 'node:fs'
 
 beforeAll(() => { process.env.AI_MOCK = '1'; delete process.env.ANTHROPIC_API_KEY })
+
+/** promise가 지정한 코드의 StageError로 reject 되는지 확인한다. */
+async function expectStageError(promise: Promise<unknown>, code: string, msgPattern?: RegExp) {
+  await expect(promise).rejects.toBeInstanceOf(StageError)
+  try {
+    await promise
+    throw new Error('expected rejection, got resolution')
+  } catch (e) {
+    expect((e as StageError).code).toBe(code)
+    if (msgPattern) expect((e as StageError).message).toMatch(msgPattern)
+  }
+}
 
 type FakeRepo = Repo & { outputs: Record<number, unknown>; statuses: Record<number, StageStatus>; logs: LogRow[] }
 
@@ -52,15 +64,15 @@ describe('runStage', () => {
   it('refuses to accept before review passes', async () => {
     const repo = fakeRepo({ acceptedUpTo: 3 })
     await runStage({ itemSetId: 'x', stage: 3, action: 'generate', repo })
-    await expect(runStage({ itemSetId: 'x', stage: 3, action: 'accept', repo })).rejects.toThrow(/review/)
+    await expectStageError(runStage({ itemSetId: 'x', stage: 3, action: 'accept', repo }), STAGE_ERRORS.ACCEPT_REQUIRES_REVIEW, /review/)
   })
   it('refuses to generate stage n unless stage n-1 is accepted (stage 0 exempt)', async () => {
     const repo = fakeRepo()
-    await expect(runStage({ itemSetId: 'x', stage: 2, action: 'generate', repo })).rejects.toThrow('stage 1 must be accepted first')
+    await expectStageError(runStage({ itemSetId: 'x', stage: 2, action: 'generate', repo }), STAGE_ERRORS.PREV_NOT_ACCEPTED, /stage 1 must be accepted first/)
     const g0 = await runStage({ itemSetId: 'x', stage: 0, action: 'generate', repo })
     expect(g0.status.state).toBe('generated')
     // stage 0 이 generated 뿐(accepted 아님) → stage 1 거부
-    await expect(runStage({ itemSetId: 'x', stage: 1, action: 'generate', repo })).rejects.toThrow('stage 0 must be accepted first')
+    await expectStageError(runStage({ itemSetId: 'x', stage: 1, action: 'generate', repo }), STAGE_ERRORS.PREV_NOT_ACCEPTED, /stage 0 must be accepted first/)
     await runStage({ itemSetId: 'x', stage: 0, action: 'review', repo })
     await runStage({ itemSetId: 'x', stage: 0, action: 'accept', repo })
     const g1 = await runStage({ itemSetId: 'x', stage: 1, action: 'generate', repo })
@@ -70,7 +82,7 @@ describe('runStage', () => {
     const repo = fakeRepo({ acceptedUpTo: 3 })
     // stage 2 를 accepted 가 아닌 generated 로 되돌린다 → stage 3 생성은 거부돼야 하고, prior 에서도 빠져야 한다
     repo.statuses[2] = { ...repo.statuses[2], state: 'generated' }
-    await expect(runStage({ itemSetId: 'x', stage: 3, action: 'generate', repo })).rejects.toThrow('stage 2 must be accepted first')
+    await expectStageError(runStage({ itemSetId: 'x', stage: 3, action: 'generate', repo }), STAGE_ERRORS.PREV_NOT_ACCEPTED, /stage 2 must be accepted first/)
     // stage 3 이미 생성돼 있다고 치고 review 경로로 prior 를 관찰: buildPrompt 는 mock 이라 호출되지 않으므로 loadContext 의 prior 로 확인
     repo.statuses[2] = { ...repo.statuses[2], state: 'accepted' }
     const seen: Record<string, unknown>[] = []
@@ -82,9 +94,13 @@ describe('runStage', () => {
   })
   it('refuses stage ≥ 2 when fewer than 2 standards are linked', async () => {
     const repo = fakeRepo({ acceptedUpTo: 2, standards: [{ code: '[9수04-02]', text: '자료를 도수분포표로 나타내고 해석할 수 있다.' }] })
-    await expect(runStage({ itemSetId: 'x', stage: 2, action: 'generate', repo })).rejects.toThrow('성취기준이 2개 이상')
+    await expectStageError(runStage({ itemSetId: 'x', stage: 2, action: 'generate', repo }), STAGE_ERRORS.TOO_FEW_STANDARDS, /성취기준이 2개 이상/)
     const repo0 = fakeRepo({ standards: [] })
     const g = await runStage({ itemSetId: 'x', stage: 0, action: 'generate', repo: repo0 })
     expect(g.status.state).toBe('generated')
+  })
+  it('refuses to review before generate (nothing-to-review)', async () => {
+    const repo = fakeRepo({ acceptedUpTo: 3 })
+    await expectStageError(runStage({ itemSetId: 'x', stage: 3, action: 'review', repo }), STAGE_ERRORS.NOTHING_TO_REVIEW, /nothing to review/)
   })
 })

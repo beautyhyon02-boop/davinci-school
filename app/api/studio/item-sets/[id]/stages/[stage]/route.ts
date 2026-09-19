@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getSessionProfileOrNull } from '@/lib/auth/session'
-import { runStage } from '@/lib/studio/stages'
+import { runStage, StageError } from '@/lib/studio/stages'
 import { createSupabaseRepo } from '@/lib/studio/repo'
 
 export const maxDuration = 300
@@ -20,8 +20,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const n = Number(stage)
   if (![0,1,2,3,4,5,6].includes(n) || !['generate','review','accept'].includes(action)) return NextResponse.json({ error: 'bad request' }, { status: 400 })
   const supabase = await createClient()
-  const result = await runStage({ itemSetId: id, stage: n as 0|1|2|3|4|5|6, action, repo: createSupabaseRepo(supabase) })
-  return NextResponse.json(result)
+  try {
+    const result = await runStage({ itemSetId: id, stage: n as 0|1|2|3|4|5|6, action, repo: createSupabaseRepo(supabase) })
+    return NextResponse.json(result)
+  } catch (e) {
+    if (e instanceof StageError) return NextResponse.json({ error: e.code, message: e.message }, { status: 400 })
+    console.error('stage run failed', e)
+    return NextResponse.json({ error: 'internal' }, { status: 500 })
+  }
 }
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string; stage: string }> }) {

@@ -1,7 +1,7 @@
 # 프로젝트 현재 상태 (인수인계용)
 
 다른 컴퓨터에서 새 Claude 대화를 열 때 이 파일을 먼저 읽으면 이어서 작업할 수 있다.
-갱신: 2026-09-20
+갱신: 2026-09-21
 
 ## 무엇을 만드는가
 다빈치스쿨(탐구보고서 수업 본사, 가맹원 약 40곳) 메인 홈페이지 + 서논술형 AI 플랫폼.
@@ -39,14 +39,33 @@
 - 역사 통합 영역(`9역01`~`02`)은 세계사로 둔다(2026-09-20 확정).
 - 같은 대주제의 과목들은 같은 자료(A~D)를 공유한다(자료는 대주제 수준). 모든 자료는 자작.
 
-## 다음: 2주차-B 계획 (아직 안 씀)
-새 계획을 쓰기 전에 최종 검토 `.superpowers/sdd/2026-09-20-week2a-studio-core/final-review.md`의 "Recommendations" 절을 읽을 것. 담을 것:
-- 마법사 UI(단계별 생성 → 검토 → [다음]=accept, 3초 polling, "기본값으로 진행"은 클라이언트 루프), `model`/토큰 배지(mock 여부)
-- 1단계 성취기준 선택 UI(소단원의 후보를 관리자가 고른다 — 모델은 적합성만 판단, 후보 로딩은 UI 몫), `key_question` 선택 저장
-- 대주제 수준 자료·참여 과목(`themes.subjects`, `themes.materials`) — 지금은 `Ctx.theme.subjects = [itemSet.subject]`로 가짜
-- 원장 미리보기, 게시/버전(`item_set_versions`, 검증된 성취기준만 게시), 수치 자료 자동 그래프, 이미지 첨부 슬롯
-- 성취기준 검증 게이트(`verified_at` 없으면 게시 불가), `/admin/standards` PDF 쪽 입력
-- API 오류를 400/404 JSON 으로 매핑(지금은 500), GET stage 범위 검증
+## 2주차-B 완료 (2026-09-21)
+브랜치 `week2b-studio-ui`. 제작소 화면과 원장 열람 화면이 모두 붙었다.
+
+**화면·라우트**
+- `/admin/items` 대주제 목록 · `/admin/items/new` 대주제 생성
+- `/admin/items/[themeId]` 대주제 소개(0단계, `ThemeIntroPanel`) 생성/검토/확정, 공유 자료 A~D(`SharedMaterialsPanel`), 성취기준 선택(`StandardsPicker`)으로 세트 생성
+- `/admin/items/[themeId]/sets/[setId]` 세트 마법사(`StageWizard`/`useStageRunner`, 2~6단계 생성→검토→[다음]=accept, "기본값으로 진행"), 핵심질문 선택, 이미지 첨부(`Attachments`), 게시(`PublishPanel`, `item_set_versions` 스냅샷)
+- `/admin/standards` 성취기준 검증(과목·학교급 필터, `verified_at` 체크) — PDF 쪽 입력은 이번 범위 밖
+- `/teacher/items` 문항(세트) 목록 · `/teacher/items/[setId]` 게시된 세트 열람(검증된 성취기준·확정 자료만 노출)
+- API: `POST/GET /api/studio/item-sets/[id]/stages/[stage]`, `POST/GET /api/studio/themes/[id]/intro`, `POST /api/studio/upload`(첨부) — 알려진 실패는 400 `{error: code, message}`, 그 외는 500 `{error:'internal'}`(로그만 서버에 남김). 오류 코드는 `lib/studio/stages.ts`의 `STAGE_ERRORS`(`stage-prev-not-accepted`/`too-few-standards`/`nothing-to-review`/`accept-requires-review`) — `StageError`로 던지고 라우트가 매핑한다.
+
+**시연 절차**
+- 관리자: 대주제 생성 → 소개 생성/확정 → 공유 자료 → 세트 생성(성취기준 선택) → 마법사 2~6 [기본값으로 진행] → 핵심질문 선택 → 미리보기 → 게시
+- 원장: 로그인 → 문항 찾기 → 열기
+
+**대표님이 아직 하실 일**
+- 마이그레이션 0008(첨부 URL 화이트리스트 등) 호스팅 DB에 `npx supabase db push`
+- `git push` (지금 브랜치 `week2b-studio-ui` → PR → main)
+- `ANTHROPIC_API_KEY`를 `.env.local`과 Vercel 환경 변수에 입력, `AI_MOCK`은 비워 둠(값이 있으면 키가 있어도 mock)
+
+**알려진 한계**
+- `ANTHROPIC_API_KEY` 없이는 전부 mock 모드(가짜 응답, `model:'mock'` 배지)
+- hwp(한글) 내보내기 없음 — 화면에서 보고 복사/인쇄만 가능
+- 이미지 첨부는 버킷 정책(공개 읽기·업로드 제한) 설정이 남아 있어, 정책 전에는 업로드가 실패할 수 있음
+
+## 다음: 3주차 계획 (아직 안 씀)
+학생 배정·답안 제출·AI 채점. 새 계획을 쓰기 전에 이번 문서의 "기술 메모"와 스펙 §6 완료 기준을 다시 확인할 것.
 
 ## 3~4주차 메모
 - 3주차 첫 작업: 원장의 채점 결과 수정 금지 트리거, 답안 제출 후 불변 RLS, 학생 `seq` 할당 SQL 함수(`원코드-번호`). 채점은 `claude-sonnet-5`.

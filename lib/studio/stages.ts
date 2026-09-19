@@ -7,6 +7,24 @@ import type { ZodType } from 'zod'
 
 export { MAX_ATTEMPTS }
 
+/** runStage/runThemeIntro가 던지는 '알려진' 오류의 코드. API 라우트가 이 코드로 400을 매핑한다(그 외는 500). */
+export const STAGE_ERRORS = {
+  PREV_NOT_ACCEPTED: 'stage-prev-not-accepted',
+  TOO_FEW_STANDARDS: 'too-few-standards',
+  NOTHING_TO_REVIEW: 'nothing-to-review',
+  ACCEPT_REQUIRES_REVIEW: 'accept-requires-review',
+} as const
+export type StageErrorCode = (typeof STAGE_ERRORS)[keyof typeof STAGE_ERRORS]
+
+export class StageError extends Error {
+  code: StageErrorCode
+  constructor(code: StageErrorCode, message: string) {
+    super(message)
+    this.name = 'StageError'
+    this.code = code
+  }
+}
+
 export type StageStatus = {
   state: 'idle' | 'generated' | 'reviewed' | 'accepted' | 'failed'
   attempt: number
@@ -54,7 +72,7 @@ export async function runThemeIntro({ themeId, action, repo }: { themeId: string
   }
 
   const output = prev.output
-  if (output === undefined) throw new Error('nothing to review: generate first')
+  if (output === undefined) throw new StageError(STAGE_ERRORS.NOTHING_TO_REVIEW, 'nothing to review: generate first')
 
   if (action === 'review') {
     const p = buildReviewPrompt(0, ctx, output)
@@ -74,7 +92,7 @@ export async function runThemeIntro({ themeId, action, repo }: { themeId: string
   }
 
   // accept
-  if (prev.state !== 'reviewed' || !prev.review?.pass) throw new Error('accept requires a passing review')
+  if (prev.state !== 'reviewed' || !prev.review?.pass) throw new StageError(STAGE_ERRORS.ACCEPT_REQUIRES_REVIEW, 'accept requires a passing review')
   const status: StageStatus = { ...prev, state: 'accepted', updated_at: now() }
   const accepted = output as { intro: string; subject_ideas: { subject: string; idea: string }[] }
   await repo.saveThemeIntro(themeId, status, accepted)
@@ -85,7 +103,7 @@ export async function runStage({ itemSetId, stage, action, repo }: { itemSetId: 
   const ctx = await repo.loadContext(itemSetId)
   const prev = ctx.statuses?.[stage] ?? { state: 'idle', attempt: 0, updated_at: '' }
   // 세트는 소단원 하나 = 성취기준 2~6개(스펙 §1). 2단계부터는 성취기준이 없으면 프롬프트가 비고 원문 이탈 검사가 전부 걸리므로 먼저 막는다.
-  if (stage >= 2 && ctx.standards.length < 2) throw new Error('세트에 성취기준이 2개 이상 연결되어야 합니다')
+  if (stage >= 2 && ctx.standards.length < 2) throw new StageError(STAGE_ERRORS.TOO_FEW_STANDARDS, '세트에 성취기준이 2개 이상 연결되어야 합니다')
   // 이전 단계의 '확정(accepted)' 출력만 prior로 넘긴다 — 검토 실패·미검토 출력은 다음 단계의 근거가 되지 않는다
   for (let s = 0; s < stage; s++) {
     if (ctx.statuses?.[s]?.state === 'accepted' && ctx.outputs[s] !== undefined) ctx.prior[`stage${s}`] = ctx.outputs[s]
@@ -94,7 +112,7 @@ export async function runStage({ itemSetId, stage, action, repo }: { itemSetId: 
 
   if (action === 'generate') {
     // [다음]을 눌러야 확정(스펙 §2): n단계 생성은 n-1단계가 accepted 여야 한다(0단계는 예외)
-    if (stage >= 1 && ctx.statuses?.[stage - 1]?.state !== 'accepted') throw new Error(`stage ${stage - 1} must be accepted first`)
+    if (stage >= 1 && ctx.statuses?.[stage - 1]?.state !== 'accepted') throw new StageError(STAGE_ERRORS.PREV_NOT_ACCEPTED, `stage ${stage - 1} must be accepted first`)
     const attempt = prev.attempt + 1
     const p = buildPrompt(stage, ctx)
     try {
@@ -111,7 +129,7 @@ export async function runStage({ itemSetId, stage, action, repo }: { itemSetId: 
   }
 
   const output = ctx.outputs[stage]
-  if (output === undefined) throw new Error('nothing to review: generate first')
+  if (output === undefined) throw new StageError(STAGE_ERRORS.NOTHING_TO_REVIEW, 'nothing to review: generate first')
 
   if (action === 'review') {
     let review: ReviewT | null = null
@@ -142,7 +160,7 @@ export async function runStage({ itemSetId, stage, action, repo }: { itemSetId: 
   }
 
   // accept
-  if (prev.state !== 'reviewed' || !prev.review?.pass) throw new Error('accept requires a passing review')
+  if (prev.state !== 'reviewed' || !prev.review?.pass) throw new StageError(STAGE_ERRORS.ACCEPT_REQUIRES_REVIEW, 'accept requires a passing review')
   const status: StageStatus = { ...prev, state: 'accepted', updated_at: now() }
   await repo.saveStatus(itemSetId, stage, status); return { status }
 }

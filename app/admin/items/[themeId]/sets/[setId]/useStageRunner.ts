@@ -24,7 +24,7 @@ async function postAction(setId: string, stage: number, action: WizardActionKind
     body: JSON.stringify({ action }),
   })
   const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(data?.error ?? errors.generic)
+  if (!res.ok) throw new Error(data?.message ?? errors.generic)
   return data.status as StageStatus
 }
 

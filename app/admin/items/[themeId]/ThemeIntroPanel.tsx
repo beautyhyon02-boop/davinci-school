@@ -39,7 +39,7 @@ export function ThemeIntroPanel({ themeId, initialStatus }: { themeId: string; i
       })
       const data = await res.json()
       if (!res.ok) {
-        setError(data?.error ?? copy.errors.generic)
+        setError(data?.message ?? copy.errors.generic)
         return
       }
       setStatus(data.status)
