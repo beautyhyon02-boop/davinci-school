@@ -328,6 +328,7 @@ export const app = {
       uploading: '업로드 중…',
       empty: '첨부된 이미지가 없습니다.',
       delete: '삭제',
+      thumbnailAlt: (target: string, n: number) => `${target} 첨부 이미지 ${n}`,
       errors: {
         invalidTarget: '첨부 대상을 확인하세요.',
         invalidUrl: '이미지 주소를 확인할 수 없습니다.',

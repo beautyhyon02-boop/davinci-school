@@ -106,7 +106,13 @@ export function Attachments({ setId, materials, lessons }: { setId: string; mate
         </label>
         <label className="text-sm">
           <span className="block text-ink-500">{copy.fileLabel}</span>
-          <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp" className="mt-1 block text-sm" />
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            disabled={busy}
+            className="mt-1 block text-sm disabled:opacity-50"
+          />
         </label>
         <Button variant="ghost" disabled={busy} onClick={upload}>{busy ? copy.uploading : copy.upload}</Button>
       </div>
@@ -115,10 +121,10 @@ export function Attachments({ setId, materials, lessons }: { setId: string; mate
 
       <div className="mt-4 flex flex-wrap gap-3">
         {current && current.images.length === 0 && <p className="text-sm text-ink-500">{copy.empty}</p>}
-        {current?.images.map((url) => (
+        {current?.images.map((url, i) => (
           <div key={url} className="w-32 rounded-xl border border-ink-100 p-2 text-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={url} alt="" className="h-24 w-full rounded-lg object-cover" />
+            <img src={url} alt={copy.thumbnailAlt(current.label, i + 1)} className="h-24 w-full rounded-lg object-cover" />
             <button
               type="button"
               disabled={pending}

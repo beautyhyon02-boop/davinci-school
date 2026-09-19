@@ -43,3 +43,14 @@ export function validateUpload({ size, type, name, target }: UploadRuleInput): U
 export function sanitizeTarget(target: string): string {
   return target.replace(':', '_')
 }
+
+/**
+ * attachImage가 받는 url이 실제로 우리 Supabase 프로젝트의 materials 버킷 공개 URL인지 확인한다.
+ * (임의의 외부 URL을 자료/차시에 붙이는 것을 막는다 — 업로드 라우트가 반환한 URL만 허용.)
+ */
+export function isMaterialsPublicUrl(url: string, supabaseUrl: string): boolean {
+  const base = supabaseUrl.replace(/\/+$/, '')
+  if (!base) return false
+  const prefix = `${base}/storage/v1/object/public/materials/`
+  return url.startsWith(prefix)
+}

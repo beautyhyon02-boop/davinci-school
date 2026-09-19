@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { validateUpload, sanitizeTarget } from '@/lib/studio/upload-rules'
+import { validateUpload, sanitizeTarget, isMaterialsPublicUrl } from '@/lib/studio/upload-rules'
 
 describe('validateUpload', () => {
   it('accepts a png under 5MB for a material target', () => {
@@ -42,5 +42,30 @@ describe('sanitizeTarget', () => {
   it('replaces the colon so the value is safe to use as a storage path segment', () => {
     expect(sanitizeTarget('material:A')).toBe('material_A')
     expect(sanitizeTarget('lesson:3')).toBe('lesson_3')
+  })
+})
+
+describe('isMaterialsPublicUrl', () => {
+  const supabaseUrl = 'https://project.supabase.co'
+
+  it('accepts a materials bucket public url under our supabase url', () => {
+    const url = 'https://project.supabase.co/storage/v1/object/public/materials/sets/x/material_A/a.png'
+    expect(isMaterialsPublicUrl(url, supabaseUrl)).toBe(true)
+  })
+  it('accepts when supabaseUrl has a trailing slash', () => {
+    const url = 'https://project.supabase.co/storage/v1/object/public/materials/a.png'
+    expect(isMaterialsPublicUrl(url, 'https://project.supabase.co/')).toBe(true)
+  })
+  it('rejects a different host (not our supabase project)', () => {
+    const url = 'https://evil.example.com/storage/v1/object/public/materials/a.png'
+    expect(isMaterialsPublicUrl(url, supabaseUrl)).toBe(false)
+  })
+  it('rejects a different bucket', () => {
+    const url = 'https://project.supabase.co/storage/v1/object/public/avatars/a.png'
+    expect(isMaterialsPublicUrl(url, supabaseUrl)).toBe(false)
+  })
+  it('rejects a non-public (signed/private) materials path', () => {
+    const url = 'https://project.supabase.co/storage/v1/object/sign/materials/a.png'
+    expect(isMaterialsPublicUrl(url, supabaseUrl)).toBe(false)
   })
 })

@@ -211,6 +211,8 @@ describe('site content', () => {
     expect(app.studio.attachments.uploading).toBeTruthy()
     expect(app.studio.attachments.empty).toBeTruthy()
     expect(app.studio.attachments.delete).toBeTruthy()
+    expect(app.studio.attachments.thumbnailAlt('자료 A', 2)).toContain('자료 A')
+    expect(app.studio.attachments.thumbnailAlt('자료 A', 2)).toContain('2')
     expect(app.studio.attachments.errors.invalidTarget).toBeTruthy()
     expect(app.studio.attachments.errors.invalidUrl).toBeTruthy()
     expect(app.studio.attachments.errors.itemNotFound).toBeTruthy()

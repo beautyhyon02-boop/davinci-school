@@ -3,6 +3,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { getSessionProfile } from '@/lib/auth/session'
 import { STAGE_SCHEMAS, Materials, Lessons, type Stage } from '@/lib/studio/schemas'
+import { isMaterialsPublicUrl } from '@/lib/studio/upload-rules'
 import type { StageStatus } from '@/lib/studio/stages'
 import { app } from '@/content/site'
 
@@ -164,6 +165,11 @@ export async function attachImage(setId: string, target: string, url: string): P
   try {
     new URL(url)
   } catch {
+    return { ok: false, error: attachmentErrors.invalidUrl }
+  }
+  // 업로드 라우트가 반환한 materials 버킷 공개 URL만 허용한다 — 임의 외부 URL 첨부 방지.
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  if (!supabaseUrl || !isMaterialsPublicUrl(url, supabaseUrl)) {
     return { ok: false, error: attachmentErrors.invalidUrl }
   }
   return applyImages(setId, target, (images) => (images.includes(url) ? images : [...images, url]))
