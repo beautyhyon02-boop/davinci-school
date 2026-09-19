@@ -101,10 +101,12 @@ export function createSupabaseRepo(supabase: Supabase): Repo {
     },
 
     async saveStatus(itemSetId, stage, status) {
-      const { data, error: readErr } = await supabase.from('item_sets').select('stage_status').eq('id', itemSetId).single()
-      if (readErr || !data) throw new Error(`item_set not found: ${itemSetId}`)
-      const stageStatus = { ...(data.stage_status ?? {}), [`stage${stage}`]: status }
-      const { error } = await supabase.from('item_sets').update({ stage_status: stageStatus }).eq('id', itemSetId)
+      // read-modify-write 대신 DB 함수(set_stage_status)로 stage_status를 원자적으로 병합
+      const { error } = await supabase.rpc('set_stage_status', {
+        p_item_set_id: itemSetId,
+        p_key: `stage${stage}`,
+        p_value: status,
+      })
       if (error) throw new Error(error.message)
     },
 
@@ -114,7 +116,7 @@ export function createSupabaseRepo(supabase: Supabase): Repo {
         const { data } = await supabase.from('item_sets').select('theme_id').eq('id', entry.itemSetId).single()
         tId = data?.theme_id ?? null
       }
-      await supabase.from('generation_log').insert({
+      const { error } = await supabase.from('generation_log').insert({
         item_set_id: entry.itemSetId,
         theme_id: tId,
         stage: entry.stage,
@@ -128,6 +130,7 @@ export function createSupabaseRepo(supabase: Supabase): Repo {
         issues: entry.issues ?? null,
         error: entry.error ?? null,
       })
+      if (error) console.warn('[generation_log] insert failed:', error.message)
     },
   }
 }

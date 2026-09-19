@@ -10,7 +10,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const s = await getSessionProfile()
   if (s.role !== 'admin') return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   const { id, stage } = await params
-  const { action } = await req.json() as { action: 'generate' | 'review' | 'accept' }
+  let action: 'generate' | 'review' | 'accept'
+  try {
+    ;({ action } = await req.json() as { action: 'generate' | 'review' | 'accept' })
+  } catch {
+    return NextResponse.json({ error: 'bad request' }, { status: 400 })
+  }
   const n = Number(stage)
   if (![0,1,2,3,4,5,6].includes(n) || !['generate','review','accept'].includes(action)) return NextResponse.json({ error: 'bad request' }, { status: 400 })
   const supabase = await createClient()
