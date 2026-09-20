@@ -56,6 +56,7 @@ function sharedMaterialLettering(ctx: Ctx): string {
 /**
  * 가짜 응답(fixture) 키. 과목이 있으면 `stage2-generate-과학`처럼 과목을 붙여 과목별 fixture를 쓰게 하고,
  * 그 파일이 없으면 `lib/ai/mock.ts`가 과목을 뗀 기본 키로 떨어진다. 0단계(대주제 소개)는 과목이 없으므로 그대로다.
+ * 1단계도 과목이 붙지만 과목별 파일을 두지 않으므로 항상 기본 파일로 떨어진다(의도한 범위: 과목별 파일은 2~6단계만).
  */
 export function fixtureKeyFor(stage: Stage, role: 'generate' | 'review', ctx: Ctx) {
   return `stage${stage}-${role}${ctx.subject ? `-${ctx.subject}` : ''}`
