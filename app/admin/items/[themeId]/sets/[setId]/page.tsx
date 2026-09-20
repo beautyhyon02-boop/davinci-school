@@ -9,7 +9,7 @@ import { PackageView } from '@/components/studio/PackageView'
 import { canPublish, buildSnapshot } from '@/lib/studio/publish'
 import type { StageStatus } from '@/lib/studio/stages'
 import { app } from '@/content/site'
-import { WIZARD_STAGES, type WizardStage } from './useStageRunner'
+import { WIZARD_STAGES, type WizardStage } from '@/lib/studio/wizard-stages'
 
 const copy = app.studio.wizard
 

@@ -5,8 +5,9 @@ import { MAX_ATTEMPTS } from '@/lib/studio/max-attempts'
 import { nextAction, shouldStopOnFailure } from '@/lib/studio/next-action'
 import { app } from '@/content/site'
 
-export const WIZARD_STAGES = [2, 3, 4, 5, 6] as const
-export type WizardStage = (typeof WIZARD_STAGES)[number]
+import { WIZARD_STAGES, type WizardStage } from '@/lib/studio/wizard-stages'
+
+export { WIZARD_STAGES, type WizardStage }
 export type WizardActionKind = 'generate' | 'review' | 'accept'
 
 const errors = app.studio.wizard.errors
