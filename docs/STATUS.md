@@ -55,11 +55,12 @@
 - 원장: 로그인 → 문항 찾기 → 열기
 
 **대표님이 아직 하실 일**
-- `git push` (지금 브랜치 `week2b-studio-ui` → PR → main)
-- `ANTHROPIC_API_KEY`를 `.env.local`과 Vercel 환경 변수에 입력, `AI_MOCK`은 비워 둠(값이 있으면 키가 있어도 mock)
+- (2B는 main에 병합·push 완료, 2026-09-20)
+- **키가 오기 전 시연용**: Vercel → Settings → Environment Variables에 `AI_MOCK` = `1` 추가(Production·Preview·Development 모두) → Deployments에서 Redeploy. 운영 환경은 키가 없으면 mock으로 넘어가지 않고 "ANTHROPIC_API_KEY is not set" 오류가 난다.
+- **키가 오면**: `ANTHROPIC_API_KEY`를 `.env.local`과 Vercel 환경 변수에 입력, `AI_MOCK`은 삭제(또는 값 비움) 후 Redeploy(값이 있으면 키가 있어도 mock)
 
 **알려진 한계**
-- `ANTHROPIC_API_KEY` 없이는 전부 mock 모드(가짜 응답, `model:'mock'` 배지)
+- 로컬(개발)은 `ANTHROPIC_API_KEY` 없으면 mock 모드(가짜 응답, `model:'mock'` 배지). Vercel(운영)은 `AI_MOCK=1`을 넣어야 mock, 아니면 오류
 - hwp(한글) 내보내기 없음 — 화면에서 보고 복사/인쇄만 가능
 - 첨부 이미지는 `materials` 버킷 공개 읽기이므로 URL을 아는 사람은 누구나 볼 수 있음(비공개 자료는 올리지 말 것)
 
