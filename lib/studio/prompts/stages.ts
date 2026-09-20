@@ -53,10 +53,18 @@ function sharedMaterialLettering(ctx: Ctx): string {
   return `\n\n대주제 공유 자료 ID: ${ids.join(', ')} — 이 자료들은 다시 만들지 말고, 새로 만드는 세트 자료의 ID는 ${next}부터 이어서 붙여라(같은 ID를 다시 쓰면 그 자료는 버려진다).`
 }
 
+/**
+ * 가짜 응답(fixture) 키. 과목이 있으면 `stage2-generate-과학`처럼 과목을 붙여 과목별 fixture를 쓰게 하고,
+ * 그 파일이 없으면 `lib/ai/mock.ts`가 과목을 뗀 기본 키로 떨어진다. 0단계(대주제 소개)는 과목이 없으므로 그대로다.
+ */
+export function fixtureKeyFor(stage: Stage, role: 'generate' | 'review', ctx: Ctx) {
+  return `stage${stage}-${role}${ctx.subject ? `-${ctx.subject}` : ''}`
+}
+
 export function buildPrompt(stage: Stage, ctx: Ctx) {
   const prior = Object.keys(ctx.prior).length ? `\n\n지금까지 확정된 내용:\n${JSON.stringify(ctx.prior, null, 1)}` : ''
   const lettering = stage === 4 ? sharedMaterialLettering(ctx) : ''
-  return { system: RULES, user: `${header(ctx)}\n\n과제: ${TASKS[stage]}${lettering}${prior}`, fixtureKey: `stage${stage}-generate` }
+  return { system: RULES, user: `${header(ctx)}\n\n과제: ${TASKS[stage]}${lettering}${prior}`, fixtureKey: fixtureKeyFor(stage, 'generate', ctx) }
 }
 
 const REVIEW_FOCUS: Record<Stage, string> = {
@@ -75,5 +83,5 @@ export function buildReviewPrompt(stage: Stage, ctx: Ctx, output: unknown) {
   // RULES는 첫 블록(캐시), 검토자 지시는 둘째 블록(캐시 없음) → 생성·검토가 같은 캐시 항목을 공유한다
   const system: string[] = [RULES, REVIEWER]
   const user = `${header(ctx)}\n\n검토 초점: ${REVIEW_FOCUS[stage]}\n\n생성 결과:\n${JSON.stringify(output, null, 1)}`
-  return { system, user, fixtureKey: `stage${stage}-review` }
+  return { system, user, fixtureKey: fixtureKeyFor(stage, 'review', ctx) }
 }

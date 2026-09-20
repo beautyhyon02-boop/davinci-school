@@ -11,7 +11,7 @@ describe('prompts', () => {
     expect(p.system).toBe(RULES)
     expect(p.user).toContain('[9수04-02]')
     expect(p.user).toContain('중학교 1학년')
-    expect(p.fixtureKey).toBe('stage2-generate')
+    expect(p.fixtureKey).toBe('stage2-generate-수학')  // 과목별 fixture 키(없으면 기본 키로 폴백)
   })
   it('stage 3 task and rules agree with the Lesson schema on quiz counts', () => {
     expect(buildPrompt(3, ctx).user).toMatch(/논술형을 배치한 차시는 0문항/)
@@ -30,7 +30,7 @@ describe('prompts', () => {
     expect(r.system[1]).toMatch(/검토자/)   // 둘째 블록 = 검토자 지시(캐시 안 함)
     expect(r.user).toContain('"reconstruction": "X"')
     expect(r.user).toContain('[9수04-02]')
-    expect(r.fixtureKey).toBe('stage2-review')
+    expect(r.fixtureKey).toBe('stage2-review-수학')
   })
   it('stage 4 tells the model to continue material lettering after the shared ids', () => {
     const shared = ['A', 'B', 'C', 'D'].map(id => ({ id, title: `자료 ${id}`, kind: 'text', body: 'x', table: null, source: '자작' }))
