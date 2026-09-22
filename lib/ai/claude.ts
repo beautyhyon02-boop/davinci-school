@@ -22,7 +22,7 @@ export function isMock(): boolean {
 export type LogEntry = { model: string; input: number; output: number; cacheRead: number; ok: boolean; error?: string }
 export type CallInput<T> = {
   stage: number
-  role: 'generate' | 'review'
+  role: keyof typeof MODELS
   schema: ZodType<T>
   system: string | string[]  // 첫 블록 = 고정 규칙(캐시 대상). 뒤 블록(검토자 지시 등)은 캐시하지 않는다
   user: string               // 이번 호출의 가변 입력
