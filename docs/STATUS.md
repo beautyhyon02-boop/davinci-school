@@ -58,6 +58,7 @@
 - (2B는 main에 병합·push 완료, 2026-09-20)
 - **키가 오기 전 시연용**: Vercel → Settings → Environment Variables에 `AI_MOCK` = `1` 추가(Production·Preview·Development 모두) → Deployments에서 Redeploy. 운영 환경은 키가 없으면 mock으로 넘어가지 않고 "ANTHROPIC_API_KEY is not set" 오류가 난다.
 - ~~키가 오면~~ **2026-09-20 완료**: Vercel에 `ANTHROPIC_API_KEY` 등록, `AI_MOCK` 삭제, Redeploy. 스테이징에서 대주제 소개를 실제 AI로 생성 확인(20초). 노트북 `.env.local`에는 아직 키가 없음(로컬은 mock) — 로컬에서 실제 호출이 필요하면 그때 넣는다.
+- 마이그레이션 0009(수업 운영 표) 적용: 프로젝트 폴더 터미널에서 `supabase db push`
 
 **알려진 한계**
 - 로컬(개발)은 `ANTHROPIC_API_KEY` 없으면 mock 모드(가짜 응답, `model:'mock'` 배지). Vercel(운영)은 `AI_MOCK=1`을 넣어야 mock, 아니면 오류
