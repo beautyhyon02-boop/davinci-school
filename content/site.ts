@@ -443,6 +443,39 @@ export const app = {
       notFoundTitle: '게시된 문항을 찾을 수 없습니다.',
     },
   },
+  classroom: {
+    print: '인쇄',
+    students: {
+      title: '학생 관리',
+      columns: { name: '이름', grade: '학년', loginId: '아이디', assignments: '배정', actions: '동작' },
+      empty: '아직 등록된 학생이 없습니다. 오른쪽에서 첫 학생을 추가하세요.',
+      form: {
+        heading: '학생 추가',
+        nameLabel: '이름',
+        levelLabel: '학교급',
+        gradeLabel: '학년',
+        submit: '추가',
+        submitting: '만드는 중…',
+      },
+      issued: {
+        heading: '계정이 만들어졌습니다',
+        body: '아래 아이디와 초기 비밀번호는 지금 한 번만 보입니다. 인쇄하거나 복사해 학생에게 전해 주세요.',
+        loginId: '아이디',
+        password: '초기 비밀번호',
+        copy: '복사',
+        copied: '복사했습니다',
+        close: '닫기',
+      },
+      reset: { button: '비밀번호 초기화', confirm: '새 비밀번호를 만들까요? 학생은 이전 비밀번호로 로그인할 수 없게 됩니다.', done: '새 비밀번호' },
+      errors: {
+        nameMissing: '이름을 입력하세요.',
+        levelInvalid: '학교급을 고르세요.',
+        gradeInvalid: '학년은 1~6 사이 숫자여야 합니다.',
+        createFailed: '계정을 만들지 못했습니다. 잠시 후 다시 시도하세요.',
+        forbidden: '권한이 없습니다.',
+      },
+    },
+  },
 }
 
 export const email = {
