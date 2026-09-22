@@ -510,6 +510,38 @@ export const app = {
         invalidLessons: '차시 수가 올바르지 않습니다.',
       },
     },
+    student: {
+      listTitle: '내 과제',
+      empty: '아직 배정된 과제가 없어요.',
+      card: {
+        due: (d: string) => `마감 ${d}`,
+        progress: (open: number, quizDone: number, quizTotal: number, answerDone: number, answerTotal: number) =>
+          `${open}차시까지 열림 · 퀴즈 ${quizDone}/${quizTotal} · 답안 ${answerDone}/${answerTotal}`,
+        todo: '할 일 있음', reviewing: '선생님 확인 중', done: '결과 나옴', open: '열기',
+      },
+      lessonTab: (n: number) => `${n}차시`,
+      locked: '아직 열리지 않았어요',
+      keyQuestion: '이 시간의 질문',
+      materials: '자료',
+      quiz: {
+        heading: '마무리 퀴즈',
+        submit: '제출',
+        submitted: (correct: number, total: number) => `${total}문항 중 ${correct}개 정답`,
+        answerLabel: '정답', explanationLabel: '해설', yourAnswer: '내 답',
+        shortPlaceholder: '답을 쓰세요',
+      },
+      answer: {
+        heading: (label: string, points: number) => `${label} (${points}점)`,
+        conditions: '조건',
+        chars: (n: number) => `${n}자`,
+        saving: '저장 중…', saved: '임시저장됨',
+        submit: '제출', confirm: '제출하면 고칠 수 없어요. 제출할까요?',
+        submitted: '제출했어요. 선생님이 확인 중이에요.',
+        tooShort: '조금 더 써 보세요. 조건을 다시 읽어 보세요. (50자 이상)',
+        placeholder: '여기에 답안을 쓰세요',
+      },
+      errors: { notOpen: '아직 열리지 않은 차시예요.', alreadySubmitted: '이미 제출했어요.', saveFailed: '저장하지 못했어요. 다시 시도해 주세요.' },
+    },
   },
 }
 
