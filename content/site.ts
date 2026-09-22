@@ -97,7 +97,12 @@ export const app = {
   },
   dashboard: {
     admin: { title: '본사 대시보드', body: '가맹원·학생·채점 현황이 여기에 표시됩니다.' },
-    teacher: { title: '원장님 홈', body: '학생 현황과 최근 결과가 여기에 표시됩니다.' },
+    teacher: {
+      title: '원장님 홈',
+      body: '학생 현황과 최근 결과가 여기에 표시됩니다.',
+      stats: { pending: (n: number) => `검수 대기 ${n}건`, assignments: (n: number) => `진행 중 배정 ${n}개`, students: (n: number) => `학생 ${n}명` },
+      links: { review: '검수하러 가기', assign: '문항 찾기', students: '학생 관리' },
+    },
     student: { title: '내 과제', body: '아직 배정된 과제가 없어요.' },
   },
   adminInquiries: {

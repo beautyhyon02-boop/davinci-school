@@ -58,13 +58,41 @@
 - (2B는 main에 병합·push 완료, 2026-09-20)
 - **키가 오기 전 시연용**: Vercel → Settings → Environment Variables에 `AI_MOCK` = `1` 추가(Production·Preview·Development 모두) → Deployments에서 Redeploy. 운영 환경은 키가 없으면 mock으로 넘어가지 않고 "ANTHROPIC_API_KEY is not set" 오류가 난다.
 - ~~키가 오면~~ **2026-09-20 완료**: Vercel에 `ANTHROPIC_API_KEY` 등록, `AI_MOCK` 삭제, Redeploy. 스테이징에서 대주제 소개를 실제 AI로 생성 확인(20초). 노트북 `.env.local`에는 아직 키가 없음(로컬은 mock) — 로컬에서 실제 호출이 필요하면 그때 넣는다.
-- 마이그레이션 0009(수업 운영 표) 적용: 프로젝트 폴더 터미널에서 `supabase db push`
 
 **알려진 한계**
 - 로컬(개발)은 `ANTHROPIC_API_KEY` 없으면 mock 모드(가짜 응답, `model:'mock'` 배지). Vercel(운영)은 `AI_MOCK=1`을 넣어야 mock, 아니면 오류
 - 가짜 응답(fixture)은 **중1 수학, 성취기준 9수04-02·03·04** 세트와 **중1 과학, 성취기준 9과01-01·9과01-03** 세트를 흉내 낸다. 시연 연습에서 세트를 만들 때 수학이면 그 세 개를, 과학이면 그 두 개를 반드시 고를 것. **그 밖의 과목(국·영·사·한국사·세계사)은 과목 fixture가 없어 수학 fixture로 떨어지므로 2단계 검토가 "원문에 없는 표현"으로 실패한다**(검사기가 정상 작동한 것). 같은 과목이라도 성취기준을 다르게 고르면 마찬가지다. 자세한 규칙은 `data/studio-fixtures/README.md`. 대주제 공유 자료는 `docs/samples/2026-09-20-중1-일회용품-공유자료.json`을 붙여넣는다.
 - hwp(한글) 내보내기 없음 — 화면에서 보고 복사/인쇄만 가능
 - 첨부 이미지는 `materials` 버킷 공개 읽기이므로 URL을 아는 사람은 누구나 볼 수 있음(비공개 자료는 올리지 말 것)
+
+## 3주차-A 완료 (2026-09-23)
+브랜치 `week3a-classroom`. 학생 배정·답안 제출·AI 채점·원장 검수 화면과 로직이 모두 붙었다.
+
+**화면·라우트**
+- `/teacher` 원장 홈(대시보드: 검수 대기 수·진행 중 배정 수·학생 수)
+- `/teacher/students` 학생 관리(추가/목록/비밀번호 초기화)
+- `/teacher/items` 게시된 문항(세트) 목록 · `/teacher/items/[setId]` 세트 열람
+- `/teacher/assignments` 배정 현황(목록) · `/teacher/assignments/[id]` 배정 열기(차시 열기 조절)
+- `/student` 내 과제(배정된 세트 목록)
+- `/student/assignments/[id]` 과제(차시별 퀴즈·답안 제출·결과·재도전)
+- `/teacher/assignments?review=[setId]` 검수(퀴즈·답안별 AI 초안 또는 사람 채점, 확정·다시 채점·반려)
+- API: `POST /api/classroom/gradings/[id]/run`(AI 채점 실행) · `PATCH /api/classroom/gradings/[id]`(확정)
+
+**시연 절차**
+1. 원장: 학생 2명 추가(초기 비밀번호 메모)
+2. 원장: 문항 찾기 → 수학 세트 [배정하기] → "3차시까지 열기"
+3. 학생: 1차시 퀴즈 제출(즉시 결과) → 3차시 서술형·논술형 답안 각 60자 이상 제출 → "확인 중"
+4. 원장: 배정 현황 → 검수 대기 카드 → 점수 그대로 또는 수정 → 확정
+5. 학생: 결과 확인 → [다시 써 보기] → 2회차 제출 → 원장 확정 → 1·2회차 비교
+
+**대표님이 아직 하실 일**
+- 마이그레이션 0009(수업 운영 표) 적용: 프로젝트 폴더 터미널에서 `supabase db push`
+- `git push` 브랜치를 main에 병합 후 또는 직접 push
+
+**알려진 한계**
+- 사진·교재·공유 자료 생성(대시보드·시연 자료)은 3B에서
+- 비용 상한(월 채점 건수) 관리·관리자의 재채점 처리는 발표(2026-10-18) 뒤
+- 학생 계정 삭제 기능 없음(활동 기록 유지)
 
 ## 다음: 3주차 계획 (아직 안 씀)
 
