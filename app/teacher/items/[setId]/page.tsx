@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { PackageView } from '@/components/studio/PackageView'
 import type { Snapshot } from '@/lib/studio/publish'
+import { Button } from '@/components/ui/Button'
 import { app } from '@/content/site'
 
 const copy = app.teacherItems
@@ -26,6 +27,7 @@ export default async function TeacherItemDetailPage({ params }: { params: Promis
   return (
     <>
       <Link href="/teacher/items" className="text-sm text-mint-700 underline">{copy.detail.backToList}</Link>
+      <div className="mt-3"><Button href={`/teacher/assignments/new?set=${setId}`}>{app.classroom.assign.button}</Button></div>
       <div className="mt-4">
         <PackageView snapshot={snapshot} mode="teacher" showAnswers />
       </div>
