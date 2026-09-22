@@ -75,8 +75,8 @@
 - `/teacher/assignments` 배정 현황(목록) · `/teacher/assignments/[id]` 배정 열기(차시 열기 조절)
 - `/student` 내 과제(배정된 세트 목록)
 - `/student/assignments/[id]` 과제(차시별 퀴즈·답안 제출·결과·재도전)
-- `/teacher/assignments?review=[setId]` 검수(퀴즈·답안별 AI 초안 또는 사람 채점, 확정·다시 채점·반려)
-- API: `POST /api/classroom/gradings/[id]/run`(AI 채점 실행) · `PATCH /api/classroom/gradings/[id]`(확정)
+- `/teacher/assignments?review=[setId]` 검수(퀴즈·답안별 AI 초안 또는 사람 채점)
+- API: `POST /api/classroom/gradings/[id]/run`(AI 채점 실행). 확정·재채점·차시 열기·퀴즈 정오 뒤집기는 서버 액션 (`app/teacher/assignments/[setId]/actions.ts`).
 
 **시연 절차**
 1. 원장: 학생 2명 추가(초기 비밀번호 메모)
