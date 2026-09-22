@@ -41,4 +41,25 @@ describe('runGrading (mock)', () => {
     expect(await runGrading({ gradingId: 'g1', db: db as never })).toBe('drafted')
     expect(db.updates).toHaveLength(0)
   })
+  it('records failed with the error when the setup phase throws (answer not found)', async () => {
+    const db = fakeDb({ gradings: [{ id: 'g1', status: 'pending', answer_id: 'a1' }] })
+    const status = await runGrading({ gradingId: 'g1', db: db as never })
+    expect(status).toBe('failed')
+    const last = db.updates.at(-1)!.patch
+    expect(last).toEqual({ status: 'failed', error: 'answer not found' })
+  })
+  it('clamps ai_score to item.points when the draft score exceeds it', async () => {
+    const clampAssessment = JSON.parse(JSON.stringify(assessment))
+    clampAssessment.items[0].points = 1
+    const clampSnapshot = { ...snapshot, assessment: clampAssessment }
+    const db = fakeDb({
+      gradings: [{ id: 'g1', status: 'pending', answer_id: 'a1' }],
+      answers: [{ body: 'x'.repeat(60), item_no: 1, assignment_id: 's1', assignments: { item_set_id: 'set', item_set_version: 1, student_id: 'stu' } }],
+      item_set_versions: [{ snapshot: clampSnapshot }],
+      students: [{ grade: 1 }],
+    })
+    const status = await runGrading({ gradingId: 'g1', db: db as never })
+    expect(status).toBe('drafted')
+    expect(db.updates.at(-1)!.patch.ai_score).toBe(1)
+  })
 })

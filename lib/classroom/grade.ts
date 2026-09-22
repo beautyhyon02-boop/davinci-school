@@ -14,19 +14,19 @@ export async function runGrading({ gradingId, db }: { gradingId: string; db: Sup
   if (!g) throw new Error('grading not found')
   if (g.status !== 'pending' && g.status !== 'failed') return g.status as GradingStatus
 
-  const { data: ans } = await db.from('answers').select('body, item_no, assignment_id, assignments(item_set_id, item_set_version, student_id)').eq('id', g.answer_id).single()
-  const asg = (ans?.assignments as unknown as { item_set_id: string; item_set_version: number; student_id: string } | null)
-  if (!ans || !asg) throw new Error('answer not found')
-  const [{ data: ver }, { data: st }] = await Promise.all([
-    db.from('item_set_versions').select('snapshot').eq('item_set_id', asg.item_set_id).eq('version', asg.item_set_version).single(),
-    db.from('students').select('grade').eq('profile_id', asg.student_id).single(),
-  ])
-  if (!ver) throw new Error('snapshot not found')
-  const snapshot = ver.snapshot as Snapshot
-  const p = buildGradingPrompt({ snapshot, itemNo: ans.item_no, studentGrade: st?.grade ?? snapshot.cover.grade, answer: ans.body })
-
-  await db.from('gradings').update({ status: 'pending', error: null }).eq('id', gradingId)
   try {
+    const { data: ans } = await db.from('answers').select('body, item_no, assignment_id, assignments(item_set_id, item_set_version, student_id)').eq('id', g.answer_id).single()
+    const asg = (ans?.assignments as unknown as { item_set_id: string; item_set_version: number; student_id: string } | null)
+    if (!ans || !asg) throw new Error('answer not found')
+    const [{ data: ver }, { data: st }] = await Promise.all([
+      db.from('item_set_versions').select('snapshot').eq('item_set_id', asg.item_set_id).eq('version', asg.item_set_version).single(),
+      db.from('students').select('grade').eq('profile_id', asg.student_id).single(),
+    ])
+    if (!ver) throw new Error('snapshot not found')
+    const snapshot = ver.snapshot as Snapshot
+    const p = buildGradingPrompt({ snapshot, itemNo: ans.item_no, studentGrade: st?.grade ?? snapshot.cover.grade, answer: ans.body })
+
+    await db.from('gradings').update({ status: 'pending', error: null }).eq('id', gradingId)
     const r = await callStructured({ stage: 9, role: 'grade', schema: GradingDraftSchema, system: p.system, user: p.user, effort: 'medium', fixtureKey: p.fixtureKey })
     const item = snapshot.assessment!.items[ans.item_no - 1]
     const score = Math.min(r.data.score, item.points)
