@@ -72,3 +72,20 @@ export async function submitAnswer(assignmentId: string, itemNo: number, attempt
   revalidatePath(`/student/assignments/${assignmentId}`)
   return { ok: true, gradingId: g.id }
 }
+
+/** 1회차가 확정(공개)됐고 배정이 재도전 허용이면 2회차 줄을 만든다. */
+export async function startRetry(assignmentId: string, itemNo: number): Promise<{ ok: boolean; error?: string }> {
+  const { s, supabase, a } = await loadOwnAssignment(assignmentId)
+  if (!a.allow_retry || a.closed) return { ok: false, error: errors.notOpen }
+  const { data: first } = await supabase.from('answers').select('id').eq('assignment_id', assignmentId).eq('item_no', itemNo).eq('attempt', 1).maybeSingle()
+  if (!first) return { ok: false, error: errors.saveFailed }
+  const { data: g } = await supabase.from('student_gradings').select('id').eq('answer_id', first.id).maybeSingle()
+  if (!g) return { ok: false, error: errors.notOpen }
+  const { error } = await supabase.from('answers').upsert(
+    { assignment_id: assignmentId, item_no: itemNo, attempt: 2, body: '', source: 'student', entered_by: s.userId },
+    { onConflict: 'assignment_id,item_no,attempt', ignoreDuplicates: true },
+  )
+  if (error) return { ok: false, error: errors.saveFailed }
+  revalidatePath(`/student/assignments/${assignmentId}`)
+  return { ok: true }
+}

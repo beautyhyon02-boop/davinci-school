@@ -17,12 +17,15 @@ export default async function StudentHome() {
   const ids = rows.map((r) => r.id)
   const [{ data: quiz }, { data: answers }, { data: results }] = await Promise.all([
     supabase.from('quiz_responses').select('assignment_id, lesson_no').in('assignment_id', ids),
-    supabase.from('answers').select('assignment_id, submitted_at').in('assignment_id', ids),
-    supabase.from('student_gradings').select('answer_id, status'),
+    supabase.from('answers').select('id, assignment_id, submitted_at').in('assignment_id', ids),
+    supabase.from('student_gradings').select('answer_id'),
   ])
   const quizDone = (aid: string) => new Set((quiz ?? []).filter((q) => q.assignment_id === aid).map((q) => q.lesson_no)).size
   const answerDone = (aid: string) => (answers ?? []).filter((x) => x.assignment_id === aid && x.submitted_at).length
-  const confirmedCount = (results ?? []).length
+  // student_gradings 는 answer_id 만 가지고 있어 assignment_id 로 못 거른다 — 이미 불러온 answers 로 매핑한다.
+  // (전체 배정을 통틀어 confirmed 가 하나만 있어도 모든 카드가 "결과 나옴"으로 뜨는 결함을 막는다.)
+  const confirmedAnswerIds = new Set((results ?? []).map((r) => r.answer_id))
+  const confirmedCount = (aid: string) => (answers ?? []).filter((x) => x.assignment_id === aid && confirmedAnswerIds.has(x.id)).length
 
   return (
     <>
@@ -30,7 +33,7 @@ export default async function StudentHome() {
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         {rows.map((r) => {
           const submitted = answerDone(r.id)
-          const badge = confirmedCount > 0 ? copy.card.done : submitted > 0 ? copy.card.reviewing : copy.card.todo
+          const badge = confirmedCount(r.id) > 0 ? copy.card.done : submitted > 0 ? copy.card.reviewing : copy.card.todo
           return (
             <Card key={r.id}>
               <p className="text-lg font-bold">{r.item_sets?.themes?.title}</p>

@@ -541,6 +541,17 @@ export const app = {
         placeholder: '여기에 답안을 쓰세요',
       },
       errors: { notOpen: '아직 열리지 않은 차시예요.', alreadySubmitted: '이미 제출했어요.', saveFailed: '저장하지 못했어요. 다시 시도해 주세요.' },
+      result: {
+        heading: (label: string) => `${label} 결과`,
+        score: (s: number, max: number) => `${s}/${max}점`,
+        criteria: '요소별 점수', evidence: '근거 문장',
+        strengths: '잘한 점', improvements: '보완할 점', comment: '선생님 한마디',
+        overall: (total: number, max: number, grade: number, band: string) => `종합 ${total}/${max}점 · ${grade}등급 · ${band}`,
+        retry: '다시 써 보기',
+        retryHint: '피드백을 보고 같은 문항에 한 번 더 답을 쓸 수 있어요. 첫 번째 답과 점수는 그대로 남아요.',
+        attempt: (n: number) => `${n}회차`,
+        firstAttempt: '1회차 답안과 피드백 보기',
+      },
     },
     review: {
       quizHeading: '퀴즈 현황',
