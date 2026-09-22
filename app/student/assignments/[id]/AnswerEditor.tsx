@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useRef, useState, useTransition } from 'react'
+import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
 import { saveDraft, submitAnswer } from './actions'
 import { Button } from '@/components/ui/Button'
 import { app } from '@/content/site'
@@ -17,15 +17,24 @@ export function AnswerEditor({ assignmentId, itemNo, attempt, initialBody, submi
   const [isSubmitted, setSubmitted] = useState(submitted)
   const [pending, start] = useTransition()
   const dirty = useRef(false)
+  // 최신 값을 ref 로 들고 있는다(latest-ref 패턴) — persist 를 안정된 함수로 유지해 autosave 인터벌이
+  // 키 입력마다 재시작되지 않게 한다(그러면 계속 타이핑하는 동안 자동 저장이 blur 로만 동작하게 됨).
+  const bodyRef = useRef(body)
+  bodyRef.current = body
+  const submittedRef = useRef(isSubmitted)
+  submittedRef.current = isSubmitted
 
-  async function persist() {
-    if (!dirty.current || isSubmitted) return
+  const persist = useCallback(async () => {
+    if (!dirty.current || submittedRef.current) return
     setStatus(copy.saving)
-    const r = await saveDraft(assignmentId, itemNo, attempt, body)
+    const r = await saveDraft(assignmentId, itemNo, attempt, bodyRef.current)
     dirty.current = !r.ok
     setStatus(r.ok ? copy.saved : app.classroom.student.errors.saveFailed)
-  }
-  useEffect(() => { const t = setInterval(persist, AUTOSAVE_MS); return () => clearInterval(t) })
+  }, [assignmentId, itemNo, attempt])
+  useEffect(() => {
+    const t = setInterval(() => { persist() }, AUTOSAVE_MS)
+    return () => clearInterval(t)
+  }, [persist])
 
   function onSubmit() {
     if (!window.confirm(copy.confirm)) return

@@ -60,8 +60,11 @@ export async function submitAnswer(assignmentId: string, itemNo: number, attempt
   if (!ans) return { ok: false, error: errors.saveFailed }
   if (ans.submitted_at) return { ok: false, error: errors.alreadySubmitted }
   if (ans.body.trim().length < MIN_ANSWER_CHARS) return { ok: false, error: app.classroom.student.answer.tooShort }
-  const { error } = await supabase.from('answers').update({ submitted_at: new Date().toISOString() }).eq('id', ans.id)
-  if (error) return { ok: false, error: errors.saveFailed }
+  // RLS 가 걸러 0행이 갱신될 수 있다(예: select 와 update 사이에 배정이 닫힘) — 이때 error 는 null이므로
+  // 갱신된 행을 직접 확인해야 한다. 확인 없이 넘어가면 submitted_at 이 비어 있는데 gradings(pending) 이
+  // 생겨(answer_id unique) 이후 정상 제출까지 영구히 saveFailed 로 막힌다.
+  const { data: updated, error } = await supabase.from('answers').update({ submitted_at: new Date().toISOString() }).eq('id', ans.id).select('id').maybeSingle()
+  if (error || !updated) return { ok: false, error: errors.saveFailed }
   // gradings 는 학생 정책이 없으므로 service role 로 만든다
   const { createAdminClient } = await import('@/lib/supabase/admin')
   const { data: g, error: gErr } = await createAdminClient().from('gradings').insert({ answer_id: ans.id, academy_id: a.academy_id, status: 'pending' }).select('id').single()
