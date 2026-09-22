@@ -11,6 +11,9 @@ import { ASSESSMENT_LABELS } from '@/lib/classroom/lessons'
 import { app } from '@/content/site'
 import type { AssignmentRow, AnswerRow, GradingRow, QuizResponseRow } from '@/lib/classroom/types'
 
+// regradeAi 는 AI 호출을 기다린다 — 기본 서버 액션 시간 제한(기본값이 짧음)보다 여유를 둔다.
+export const maxDuration = 300
+
 const copy = app.classroom.assign
 
 // assignments.student_id → students(profile_id) 이지 profiles 로 곧장 이어지지 않으므로
@@ -74,7 +77,10 @@ export default async function AssignmentSetPage({ params }: { params: Promise<{ 
                   const a = latest(i + 1)
                   const first = own.find((x) => x.item_no === i + 1 && x.attempt === 1) ?? null
                   const prev = a?.attempt === 2 ? { score: gradingOf(first)?.final_score ?? null } : undefined
-                  return <ReviewCard key={i} item={{ itemNo: i + 1, label: ASSESSMENT_LABELS[i], points: it.points, answer: a, grading: gradingOf(a), prev }} />
+                  const grading = gradingOf(a)
+                  // regradeAi 는 updated_at 을 항상 갱신하지 않을 수 있으므로 status·model 도 key 에 포함해 재채점 후 카드 상태를 새로 마운트한다.
+                  const cardKey = `${i}-${grading?.id ?? 'none'}-${grading?.updated_at ?? ''}-${grading?.status ?? ''}-${grading?.model ?? ''}`
+                  return <ReviewCard key={cardKey} item={{ itemNo: i + 1, label: ASSESSMENT_LABELS[i], points: it.points, answer: a, grading, prev }} />
                 })}
               </div>
             </section>

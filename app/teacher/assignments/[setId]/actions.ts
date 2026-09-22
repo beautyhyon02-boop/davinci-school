@@ -34,7 +34,7 @@ export type ConfirmInput = { criteria: Criterion[]; strengths: string[]; improve
 export async function confirmGrading(gradingId: string, input: ConfirmInput): Promise<ActionResult> {
   const s = await assertTeacher()
   const supabase = await createClient()
-  const { data: g } = await supabase.from('gradings').select('id, status, ai_criteria, ai_score, ai_strengths, ai_improvements').eq('id', gradingId).maybeSingle()
+  const { data: g } = await supabase.from('gradings').select('id, status, ai_criteria, ai_score, ai_strengths, ai_improvements, confirmed_at').eq('id', gradingId).maybeSingle()
   if (!g) return { ok: false, error: rev.saveFailed }
   if (g.status !== 'drafted' && g.status !== 'confirmed') return { ok: false, error: rev.notDrafted }
   const criteria = (input?.criteria ?? (g.ai_criteria as Criterion[] | null) ?? []) as Criterion[]
@@ -45,7 +45,7 @@ export async function confirmGrading(gradingId: string, input: ConfirmInput): Pr
     status: 'confirmed', final_criteria: criteria, final_score: score,
     final_strengths: input?.strengths ?? g.ai_strengths, final_improvements: input?.improvements ?? g.ai_improvements,
     teacher_comment: input?.comment ?? null, adjust_note: input?.adjustNote || null,
-    confirmed_by: s.userId, confirmed_at: g.status === 'confirmed' ? undefined : now, updated_at: now,
+    confirmed_by: s.userId, confirmed_at: g.confirmed_at ?? now, updated_at: now,
   }).eq('id', gradingId)
   if (error) return { ok: false, error: rev.saveFailed }
   revalidatePath('/teacher/assignments'); return { ok: true }
