@@ -31,11 +31,16 @@ export async function submitQuiz(assignmentId: string, lessonNo: number, respons
   const { count } = await supabase.from('quiz_responses').select('id', { count: 'exact', head: true }).eq('assignment_id', assignmentId).eq('lesson_no', lessonNo)
   if ((count ?? 0) > 0) return { ok: false, error: errors.alreadySubmitted }
 
+  // service role 로 넣으므로 클라이언트 값은 문자열·길이만 받아들인다
+  const resp = (i: number) => (Array.isArray(responses) && typeof responses[i] === 'string' ? responses[i].slice(0, 500) : '')
   const rows = lesson.quiz.map((q, i) => ({
     assignment_id: assignmentId, lesson_no: lessonNo, quiz_no: i + 1,
-    response: responses[i] ?? '', correct: judgeQuiz(q, responses[i] ?? ''), source: 'student' as const,
+    response: resp(i), correct: judgeQuiz(q, resp(i)), source: 'student' as const,
   }))
-  const { error } = await supabase.from('quiz_responses').insert(rows)
+  // 학생에게는 quiz_responses 쓰기 정책이 없다(정오를 스스로 적지 못하게). 위의 본인·열린 차시·중복 검사를 사용자 클라이언트로
+  // 마친 뒤, 서버가 judgeQuiz 로 매긴 결과를 service role 로 넣는다(gradings 와 같은 방식). unique 제약이 동시 제출을 막는다.
+  const { createAdminClient } = await import('@/lib/supabase/admin')
+  const { error } = await createAdminClient().from('quiz_responses').insert(rows)
   if (error) return { ok: false, error: errors.saveFailed }
   revalidatePath(`/student/assignments/${assignmentId}`)
   return { ok: true, results: rows.map((r, i) => ({ correct: r.correct, answer: lesson.quiz[i].answer, explanation: lesson.quiz[i].explanation })) }
@@ -53,21 +58,32 @@ export async function saveDraft(assignmentId: string, itemNo: number, attempt: n
 
 export type SubmitResult = { ok: true; gradingId: string } | { ok: false; error: string }
 
-/** 50자 미만은 submitted_at 을 찍지 않고 돌려보낸다(스펙 §5.2). 성공하면 gradings(pending) 줄을 만들고 id 를 돌려준다. */
+/**
+ * 50자 미만은 submitted_at 을 찍지 않고 돌려보낸다(스펙 §5.2). 성공하면 gradings(pending) 줄을 만들고 id 를 돌려준다.
+ * 이미 제출됐는데 gradings 줄이 없으면(지난번 제출이 gradings 생성 직전에 실패) 그 줄만 만들어 이어 간다(멱등 복구).
+ */
 export async function submitAnswer(assignmentId: string, itemNo: number, attempt: number): Promise<SubmitResult> {
   const { supabase, a } = await loadOwnAssignment(assignmentId)
   const { data: ans } = await supabase.from('answers').select('id, body, submitted_at').eq('assignment_id', assignmentId).eq('item_no', itemNo).eq('attempt', attempt).maybeSingle()
   if (!ans) return { ok: false, error: errors.saveFailed }
-  if (ans.submitted_at) return { ok: false, error: errors.alreadySubmitted }
+  // gradings 는 학생 정책이 없으므로 조회·생성 모두 service role 로 한다(위에서 본인 답안임을 확인한 뒤)
+  const { createAdminClient } = await import('@/lib/supabase/admin')
+  const admin = createAdminClient()
+  if (ans.submitted_at) {
+    const { data: existing } = await admin.from('gradings').select('id').eq('answer_id', ans.id).maybeSingle()
+    if (existing) return { ok: false, error: errors.alreadySubmitted }
+    const { data: g, error: gErr } = await admin.from('gradings').insert({ answer_id: ans.id, academy_id: a.academy_id, status: 'pending' }).select('id').single()
+    if (gErr || !g) return { ok: false, error: errors.saveFailed }
+    revalidatePath(`/student/assignments/${assignmentId}`)
+    return { ok: true, gradingId: g.id }
+  }
   if (ans.body.trim().length < MIN_ANSWER_CHARS) return { ok: false, error: app.classroom.student.answer.tooShort }
   // RLS 가 걸러 0행이 갱신될 수 있다(예: select 와 update 사이에 배정이 닫힘) — 이때 error 는 null이므로
   // 갱신된 행을 직접 확인해야 한다. 확인 없이 넘어가면 submitted_at 이 비어 있는데 gradings(pending) 이
   // 생겨(answer_id unique) 이후 정상 제출까지 영구히 saveFailed 로 막힌다.
   const { data: updated, error } = await supabase.from('answers').update({ submitted_at: new Date().toISOString() }).eq('id', ans.id).select('id').maybeSingle()
   if (error || !updated) return { ok: false, error: errors.saveFailed }
-  // gradings 는 학생 정책이 없으므로 service role 로 만든다
-  const { createAdminClient } = await import('@/lib/supabase/admin')
-  const { data: g, error: gErr } = await createAdminClient().from('gradings').insert({ answer_id: ans.id, academy_id: a.academy_id, status: 'pending' }).select('id').single()
+  const { data: g, error: gErr } = await admin.from('gradings').insert({ answer_id: ans.id, academy_id: a.academy_id, status: 'pending' }).select('id').single()
   if (gErr || !g) return { ok: false, error: errors.saveFailed }
   revalidatePath(`/student/assignments/${assignmentId}`)
   return { ok: true, gradingId: g.id }

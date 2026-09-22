@@ -1,5 +1,5 @@
 'use client'
-import { useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import { confirmGrading, reopenGrading, requestRegrade, regradeAi } from './actions'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -20,8 +20,8 @@ const TONE: Record<keyof typeof copy.status, 'gray' | 'lemon' | 'mint' | 'lavend
 export function ReviewCard({ item }: { item: ReviewItem }) {
   const g = item.grading
   const st = statusOf(item)
-  const base = g?.final_criteria ?? g?.ai_criteria ?? []
-  const [criteria, setCriteria] = useState<Criterion[]>(base)
+  // 화면 시작값: 확정본이 있으면(확정 또는 다시 고치기 중) 확정본, 없으면 AI 초안
+  const [criteria, setCriteria] = useState<Criterion[]>(g?.final_criteria ?? g?.ai_criteria ?? [])
   const [strengths, setStrengths] = useState<string[]>(g?.final_strengths ?? g?.ai_strengths ?? [])
   const [improvements, setImprovements] = useState<string[]>(g?.final_improvements ?? g?.ai_improvements ?? [])
   const [comment, setComment] = useState(g?.teacher_comment ?? '')
@@ -29,7 +29,21 @@ export function ReviewCard({ item }: { item: ReviewItem }) {
   const [msg, setMsg] = useState<string | null>(null)
   const [open, setOpen] = useState(st === 'drafted')
   const [pending, start] = useTransition()
-  const edited = JSON.stringify({ criteria, strengths, improvements, comment }) !== JSON.stringify({ criteria: base, strengths: g?.ai_strengths ?? [], improvements: g?.ai_improvements ?? [], comment: '' })
+  // 재채점(drafted→drafted) 뒤 서버 값이 바뀌면 편집 상태를 새 값으로 되돌린다(page.tsx 의 key 와 이중 안전장치).
+  // ai_criteria 는 새로 그릴 때마다 객체가 새로 오므로 내용(JSON)으로 비교한다 — 다른 카드의 저장으로 이 카드 편집이 지워지지 않게.
+  const aiKey = JSON.stringify(g?.ai_criteria ?? null)
+  useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect -- 서버 값이 바뀐 때만 편집 상태를 다시 맞춘다 */
+    setCriteria(g?.final_criteria ?? g?.ai_criteria ?? [])
+    setStrengths(g?.final_strengths ?? g?.ai_strengths ?? [])
+    setImprovements(g?.final_improvements ?? g?.ai_improvements ?? [])
+    setComment(g?.teacher_comment ?? '')
+    setAdjustNote(g?.adjust_note ?? '')
+    /* eslint-enable react-hooks/set-state-in-effect */
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- id·updated_at·AI 초안 내용이 바뀔 때만 다시 맞춘다
+  }, [g?.id, g?.updated_at, aiKey])
+  // "고쳤는지"는 모든 칸을 AI 초안 하나와만 비교한다(확정본과 AI 초안을 섞어 비교하면 다시 확정할 때 원장 수정이 되돌아간다)
+  const edited = JSON.stringify({ criteria, strengths, improvements, comment }) !== JSON.stringify({ criteria: g?.ai_criteria ?? [], strengths: g?.ai_strengths ?? [], improvements: g?.ai_improvements ?? [], comment: '' })
   const score = criteria.reduce((s, c) => s + c.points, 0)
 
   const list = (label: string, xs: string[], set: (v: string[]) => void) => (
@@ -85,7 +99,7 @@ export function ReviewCard({ item }: { item: ReviewItem }) {
                   <p className="text-sm">{copy.strengths}: {strengths.join(' / ')}</p>
                   <p className="text-sm">{copy.improvements}: {improvements.join(' / ')}</p>
                   {comment && <p className="text-sm">{copy.comment}: {comment}</p>}
-                  <p className="text-xs text-ink-500">{copy.confirmedAt('', g.confirmed_at?.slice(0, 16).replace('T', ' ') ?? '')}</p>
+                  <p className="text-xs text-ink-500">{copy.confirmedAt(g.confirmed_at?.slice(0, 16).replace('T', ' ') ?? '')}</p>
                   <Button type="button" variant="ghost" disabled={pending} onClick={() => start(async () => { const r = await reopenGrading(g.id); setMsg(r.ok ? null : r.error) })}>{copy.reopen}</Button>
                 </>
               ) : (
@@ -107,8 +121,13 @@ export function ReviewCard({ item }: { item: ReviewItem }) {
               )}
               {msg && <p className="text-sm text-red-600">{msg}</p>}
             </div>
-          ) : g?.status === 'failed' ? (
-            <div><p className="text-sm text-red-600">{g.error}</p><Button type="button" variant="ghost" disabled={pending} onClick={() => start(async () => { await regradeAi(g.id) })}>{copy.regrade}</Button></div>
+          ) : g && (g.status === 'failed' || g.status === 'pending') ? (
+            // 실패 또는 멈춘 채점(pending) — [AI 다시 채점]으로 살린다. 실행 중이면 서버의 줄 잡기가 두 번째 실행을 막는다.
+            <div className="space-y-2">
+              {g.status === 'failed' ? <p className="text-sm text-red-600">{g.error}</p> : <p className="text-sm text-ink-500">{copy.status.pending}</p>}
+              <Button type="button" variant="ghost" disabled={pending} onClick={() => start(async () => { const r = await regradeAi(g.id); setMsg(r.ok ? null : r.error) })}>{copy.regrade}</Button>
+              {msg && <p className="text-sm text-red-600">{msg}</p>}
+            </div>
           ) : (
             <p className="text-sm text-ink-500">{copy.status.pending}</p>
           )}

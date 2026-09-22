@@ -40,6 +40,8 @@ export function AnswerEditor({ assignmentId, itemNo, attempt, initialBody, submi
     if (!window.confirm(copy.confirm)) return
     start(async () => {
       await persist()
+      // 저장이 실패했으면(아직 dirty) 서버에 남은 옛 본문이 제출되지 않도록 여기서 멈춘다
+      if (dirty.current) { setStatus(app.classroom.student.errors.saveFailed); return }
       const r = await submitAnswer(assignmentId, itemNo, attempt)
       if (!r.ok) { setStatus(r.error); return }
       setSubmitted(true); setStatus(copy.submitted)

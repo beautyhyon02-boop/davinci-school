@@ -78,7 +78,7 @@ export default async function AssignmentSetPage({ params }: { params: Promise<{ 
                   const first = own.find((x) => x.item_no === i + 1 && x.attempt === 1) ?? null
                   const prev = a?.attempt === 2 ? { score: gradingOf(first)?.final_score ?? null } : undefined
                   const grading = gradingOf(a)
-                  // regradeAi 는 updated_at 을 항상 갱신하지 않을 수 있으므로 status·model 도 key 에 포함해 재채점 후 카드 상태를 새로 마운트한다.
+                  // 채점 실행기·확정·다시 고치기는 모두 updated_at 을 새로 찍는다 — key 가 바뀌면 카드를 새로 마운트한다(ReviewCard 의 useEffect 와 이중 안전장치).
                   const cardKey = `${i}-${grading?.id ?? 'none'}-${grading?.updated_at ?? ''}-${grading?.status ?? ''}-${grading?.model ?? ''}`
                   return <ReviewCard key={cardKey} item={{ itemNo: i + 1, label: ASSESSMENT_LABELS[i], points: it.points, answer: a, grading, prev }} />
                 })}

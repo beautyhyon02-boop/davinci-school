@@ -572,7 +572,7 @@ export const app = {
       strengths: '잘한 점', improvements: '보완할 점', addLine: '문장 추가', remove: '지우기',
       comment: '원장 코멘트', adjustNote: '조정 이유(선택)',
       confirmAsIs: '그대로 확정', confirmEdited: '수정하여 확정', regrade: 'AI 다시 채점', requestRegrade: '재채점 요청(본사)', reopen: '다시 고치기',
-      confirmedAt: (who: string, at: string) => `공개됨 · ${who} · ${at}`,
+      confirmedAt: (at: string) => `공개됨 · ${at}`,
       overall: (total: number, max: number, grade: number, band: string) => `종합 ${total}/${max}점 · ${grade}등급 · ${band}`,
       overallPending: '세 문항이 모두 확정되면 종합 점수가 나옵니다.',
       compare: (a1: number, a2: number) => `1회차 ${a1}점 → 2회차 ${a2}점`,

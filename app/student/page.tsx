@@ -4,8 +4,11 @@ import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { app } from '@/content/site'
+import { ASSESSMENT_LABELS } from '@/lib/classroom/lessons'
 
 const copy = app.classroom.student
+// 목록 화면은 스냅샷을 읽지 않으므로 세트별 문항 수를 모른다 — 평가 문항 라벨 수(서술형1·서술형2·논술형 = 3)를 한 곳에서 가져온다.
+const ANSWER_TOTAL = ASSESSMENT_LABELS.length
 
 type Row = { id: string; open_lessons: number; due_at: string | null; item_set_id: string; item_set_version: number; item_sets: { subject: string; themes: { title: string } | null } | null }
 
@@ -38,7 +41,7 @@ export default async function StudentHome() {
             <Card key={r.id}>
               <p className="text-lg font-bold">{r.item_sets?.themes?.title}</p>
               <div className="mt-1 flex gap-1"><Badge tone="gray">{r.item_sets?.subject}</Badge><Badge tone="lemon">{badge}</Badge></div>
-              <p className="mt-2 text-sm text-ink-500">{copy.card.progress(r.open_lessons, quizDone(r.id), r.open_lessons, submitted, 3)}{r.due_at ? ` · ${copy.card.due(r.due_at.slice(0, 10))}` : ''}</p>
+              <p className="mt-2 text-sm text-ink-500">{copy.card.progress(r.open_lessons, quizDone(r.id), r.open_lessons, submitted, ANSWER_TOTAL)}{r.due_at ? ` · ${copy.card.due(r.due_at.slice(0, 10))}` : ''}</p>
               <div className="mt-3"><Button href={`/student/assignments/${r.id}`}>{copy.card.open}</Button></div>
             </Card>
           )

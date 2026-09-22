@@ -58,7 +58,10 @@ export default async function StudentAssignmentPage({ params }: { params: Promis
           <p className="mt-2">{lesson.goal}</p>
         </section>
         {lesson.quiz.length > 0 && (
-          <QuizForm assignmentId={id} lessonNo={no} quiz={lesson.quiz} done={done.length ? done.map((d) => ({ response: d.response, correct: d.correct })) : null} />
+          // 제출 전에는 정답·해설을 브라우저로 보내지 않는다(문제·유형·보기만). 제출한 뒤에야 결과 화면용으로 전체를 넘긴다.
+          <QuizForm assignmentId={id} lessonNo={no}
+            quiz={done.length ? lesson.quiz : lesson.quiz.map(({ q, type, choices }) => ({ q, type, choices }))}
+            done={done.length ? done.map((d) => ({ response: d.response, correct: d.correct })) : null} />
         )}
         {item && itemNo && (
           <AnswerEditor assignmentId={id} itemNo={itemNo} attempt={1} initialBody={ans1?.body ?? ''} submitted={!!ans1?.submitted_at}

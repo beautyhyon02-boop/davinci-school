@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/Button'
 import { app } from '@/content/site'
 
 const copy = app.classroom.student.quiz
-type Quiz = { q: string; type: 'choice' | 'short'; choices: string[] | null; answer: string; explanation: string }
+// answer·explanation 은 이미 제출한 차시에서만 온다(제출 전에는 서버가 빼고 보낸다). 방금 제출한 경우엔 submitQuiz 결과에서 읽는다.
+type Quiz = { q: string; type: 'choice' | 'short'; choices: string[] | null; answer?: string; explanation?: string }
 type Done = { response: string; correct: boolean }
 
 export function QuizForm({ assignmentId, lessonNo, quiz, done }: { assignmentId: string; lessonNo: number; quiz: Quiz[]; done: Done[] | null }) {
@@ -13,6 +14,7 @@ export function QuizForm({ assignmentId, lessonNo, quiz, done }: { assignmentId:
   const [result, setResult] = useState<QuizResult | null>(null)
   const [pending, start] = useTransition()
   const submitted = done ?? (result?.ok ? result.results.map((r, i) => ({ response: responses[i], correct: r.correct })) : null)
+  const keyOf = (i: number) => (!done && result?.ok ? result.results[i] : quiz[i])
 
   return (
     <section className="rounded-2xl bg-white p-5">
@@ -24,8 +26,8 @@ export function QuizForm({ assignmentId, lessonNo, quiz, done }: { assignmentId:
             {submitted ? (
               <div className={`mt-2 rounded-xl p-3 ${submitted[i].correct ? 'bg-mint-100' : 'bg-red-50'}`}>
                 <p>{copy.yourAnswer}: {submitted[i].response || '—'}</p>
-                <p>{copy.answerLabel}: {q.answer}</p>
-                <p className="text-sm text-ink-700">{copy.explanationLabel}: {q.explanation}</p>
+                <p>{copy.answerLabel}: {keyOf(i)?.answer ?? ''}</p>
+                <p className="text-sm text-ink-700">{copy.explanationLabel}: {keyOf(i)?.explanation ?? ''}</p>
               </div>
             ) : q.type === 'choice' ? (
               <div className="mt-2 grid gap-2 sm:grid-cols-2">
