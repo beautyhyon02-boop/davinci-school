@@ -111,6 +111,21 @@ describe('createSupabaseRepo (v2 columns)', () => {
     expect(tables.item_sets[0].key_question).toBeNull()
   })
 
+  // T6 관찰: 대주제 공유 자료는 v1 모양(source 문자열, role 없음)으로 저장돼 있다 — prior 로 넘길 때 v2 기본값을 입혀
+  // 5단계 [TS] '원자료(raw) 1개 이상' 검사가 공유 자료만 인용한 문항을 잘못 반려하지 않게 한다. context 로 적힌 자료는 그대로.
+  it('loadContext gives theme shared materials v2 defaults (source object, role raw unless context)', async () => {
+    const tables = seed()
+    tables.themes[0].materials = [
+      { id: 'A', title: '공유 A', kind: 'table', body: null, table: { columns: ['x'], rows: [[1]] }, source: '자작' },
+      { id: 'D', title: '공유 D', kind: 'text', body: '배경', table: null, source: { kind: '공개', attribution: '환경부(2024)' }, role: 'context', images: ['https://x.test/a.png'] },
+    ]
+    const ctx = await createSupabaseRepo(fakeSupabase(tables) as never).loadContext('set1')
+    expect(ctx.prior.shared_materials).toEqual([
+      { id: 'A', title: '공유 A', kind: 'table', body: null, table: { columns: ['x'], rows: [[1]] }, source: { kind: '자작', attribution: null, ai_assisted: false }, role: 'raw', images: [] },
+      { id: 'D', title: '공유 D', kind: 'text', body: '배경', table: null, source: { kind: '공개', attribution: '환경부(2024)', ai_assisted: false }, role: 'context', images: ['https://x.test/a.png'] },
+    ])
+  })
+
   it('loadContext leaves outputs empty for stages whose columns are still null', async () => {
     const ctx = await createSupabaseRepo(fakeSupabase(seed()) as never).loadContext('set1')
     expect(Object.keys(ctx.outputs)).toEqual([])

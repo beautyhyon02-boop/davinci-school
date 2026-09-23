@@ -2,6 +2,7 @@ import type { createClient } from '@/lib/supabase/server'
 import type { Ctx } from './prompts/stages'
 import type { Repo, StageStatus, ThemeRepo } from './stages'
 import { keyQuestionAfterStage2 } from './edit-rules'
+import { withMaterialDefaults } from './draft-defaults'
 
 type Supabase = Awaited<ReturnType<typeof createClient>>
 
@@ -83,7 +84,9 @@ export function createSupabaseRepo(supabase: Supabase): Repo {
       if (itemSet.notice_plan != null) outputs[7] = itemSet.notice_plan
 
       const prior: Record<string, unknown> = {}
-      if (theme.materials != null) prior.shared_materials = theme.materials
+      // 공유 자료는 v1 모양(source 문자열, role 없음)으로 저장돼 있을 수 있다 — v2 기본값(role raw, context 는 유지)을 입혀 넘긴다.
+      // 빠지면 5단계 [TS] '원자료 1개 이상' 검사가 공유 자료만 인용한 문항을 잘못 반려한다(T6 관찰).
+      if (Array.isArray(theme.materials)) prior.shared_materials = (theme.materials as unknown[]).map(withMaterialDefaults)
 
       return {
         theme: { title: theme.title, level: itemSet.level, grade: itemSet.grade, subjects },

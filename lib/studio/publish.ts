@@ -3,11 +3,22 @@ import { Materials, LessonDesign } from './schemas'
 import type { Material as MaterialSchema, Lesson as LessonSchema, Assessment as AssessmentSchema, TeacherGuide as TeacherGuideSchema } from './schemas'
 import type { StageStatus } from './stages'
 import type { SnapshotV2, UnitPlanT, ReconstructedStandardT, LearningGoalT, NoticePlanT } from './compat'
-export { upgradeSnapshot } from './compat'
+import { upgradeSnapshot as upgradeSnapshotCompat } from './compat'
+import { withMaterialDefaults, upgradeDraftColumns } from './draft-defaults'
 
 /** 게시 판 스냅샷(v2). 모양은 compat.ts 에 정의되어 있다 — 옛 v1 판은 읽을 때 upgradeSnapshot 으로 올린다. */
 export type Snapshot = SnapshotV2
 export type PublishStandard = { code: string; text: string }
+
+/**
+ * 게시 판 읽기 입구(스펙 §4.3). v1 판은 compat 이 v2 로 올리고, v2 판이라도 대주제 공유 자료가 v1 모양(source 문자열)으로
+ * 실린 채 게시됐을 수 있으므로 자료에 v2 기본값을 입힌다. 고칠 것이 없으면 같은 객체를 돌려준다.
+ */
+export function upgradeSnapshot(raw: unknown): Snapshot {
+  const s = upgradeSnapshotCompat(raw)
+  const needs = (s.materials ?? []).some((m) => typeof m.source !== 'object' || m.source === null || !m.role || !Array.isArray(m.images))
+  return needs ? { ...s, materials: s.materials.map(withMaterialDefaults) } : s
+}
 
 type MaterialT = z.infer<typeof MaterialSchema>
 type LessonT = z.infer<typeof LessonSchema>
@@ -20,7 +31,7 @@ type TeacherGuideT = z.infer<typeof TeacherGuideSchema>
  * 그때는 기본값만 손으로 채워 그대로 통과시킨다.
  */
 function materialsWithDefaults(items: MaterialT[] | null | undefined): MaterialT[] {
-  const list = items ?? []
+  const list = (items ?? []).map(withMaterialDefaults)
   const r = Materials.safeParse({ materials: list })
   return r.success ? r.data.materials : list.map((m) => ({ ...m, images: m.images ?? [], role: m.role ?? 'raw' }))
 }
@@ -80,11 +91,13 @@ export function buildSnapshot({ theme, itemSet, standards, version }: {
   standards: PublishStandard[]
   version: number
 }): Snapshot {
+  // 0011 이전 초안 열은 v1 모양일 수 있다 — v1 조각만 v2 로 올린다(v2 는 그대로). 미리보기가 터지지 않게 하는 가드.
+  const up = upgradeDraftColumns(itemSet)
   // 같은 id 가 겹치면 대주제(공유) 자료가 이긴다 — 스펙 §1 대로 한 대주제의 모든 과목이 자료 A~D 를 공유하므로,
   // 세트 자료가 같은 글자를 다시 쓰면 공유 자료가 조용히 사라지는 대신 세트 쪽을 버린다.
   const merged = new Map<string, MaterialT>()
   for (const m of materialsWithDefaults(theme.materials)) merged.set(m.id, m)
-  for (const m of materialsWithDefaults(itemSet.materials)) if (!merged.has(m.id)) merged.set(m.id, m)
+  for (const m of materialsWithDefaults(up.materials)) if (!merged.has(m.id)) merged.set(m.id, m)
   const materials = [...merged.values()].sort((a, b) => a.id.localeCompare(b.id))
   const models = Array.from(new Set(Object.values(itemSet.stage_status ?? {}).map((s) => s?.model).filter((m): m is string => !!m)))
   return {
@@ -94,15 +107,15 @@ export function buildSnapshot({ theme, itemSet, standards, version }: {
     intro: theme.intro ?? '',
     reconstruction: itemSet.reconstruction ?? '',
     reconstruction_detail: itemSet.reconstruction_detail ?? [],
-    learning_goals: itemSet.learning_goals ?? [],
+    learning_goals: up.learning_goals,
     key_question: itemSet.key_question ?? '',
     unit_plan: itemSet.unit_plan ?? null,
-    lessons: lessonsWithDefaults(itemSet.unit_plan ?? null, itemSet.lessons),
+    lessons: lessonsWithDefaults(itemSet.unit_plan ?? null, up.lessons),
     materials,
-    assessment: itemSet.assessment ?? null,
-    teacher_guide: itemSet.teacher_guide ?? null,
+    assessment: up.assessment,
+    teacher_guide: up.teacher_guide,
     notice_plan: itemSet.notice_plan ?? null,
-    references: collectReferences(itemSet.assessment ?? null),
+    references: collectReferences(up.assessment),
     generated_with: { models },
   }
 }
