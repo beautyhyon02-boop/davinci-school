@@ -128,11 +128,12 @@
 
 **실행 순서서**: `docs/runbooks/2026-09-29-five-subjects.md`(준비 → 성취기준 선택 → 과목별 생성 → 시연 흐름 → 대표님 12항목 체크리스트 → 실패 기록 → 알려진 한계).
 
-**대표님이 하실 일**
-1. 마이그레이션 0011(v2 열·안내장 표) 적용: `supabase db push` — 적용 전에는 2·3·7단계 저장이 "열 없음" 오류로 실패한다(0009도 아직이면 함께 적용됨).
-2. `studio-v2` 최종 검토 뒤 main 병합·`git push`, Vercel 재배포 확인.
-3. 공유 자료 B(작년·올해 일회용품 개수)가 아직 상대도수(0.24·0.30 — 수학 서술형 2의 정답)로 되어 있다. `docs/samples/2026-09-20-중1-일회용품-공유자료.json`과 호스팅 DB의 대주제 공유 자료를 원자료(개수) 표로 패치한다(순서서 A절 4번).
-4. 5일차 검토(순서서 E절, 과목×12항목 체크리스트를 `docs/review/2026-09-29-owner-review.md`에 기록).
+**대표님이 하실 일 (순서를 지킬 것 — 1번이 2번보다 먼저다)**
+1. **먼저** `studio-v2` 체크아웃에서 마이그레이션 0011(v2 열·안내장 표) 적용: `supabase db push`. 지금 배포된 main은 새 열·표를 전혀 읽지 않으므로 병합·배포보다 먼저 적용해도 안전하다. **반대로 하면**(main을 먼저 배포하고 db push를 나중에 하면) db push 전까지 관리자 세트 화면 전체 404, 모든 단계 생성 500, 게시·2단계 JSON 편집 저장 오류, 안내장 초안 만들기 실패가 난다(학생·원장의 게시판 열람 화면은 계속 작동한다). Supabase Table Editor에서 `item_sets`에 `unit_plan`·`reconstruction_detail`·`notice_plan` 세 열이, `lesson_notices` 표에 정책이 정확히 2개(`admin_all_lesson_notices`, `teacher_rw_lesson_notices`)인지 확인한다. **0010 파일은 없다** — 0009 다음이 0011인 건 번호만 비어 있는 것이다. 자세한 순서·근거는 `docs/runbooks/2026-09-29-five-subjects.md` A절 1~2번.
+2. **그 다음에** `studio-v2` 최종 검토 뒤 main 병합·`git push`, Vercel 재배포 확인(`ANTHROPIC_API_KEY` 설정·`AI_MOCK` 제거), 배포 뒤 기존 v1 게시본으로 smoke test(순서서 A절 3~4번).
+3. 공유 자료 B(작년·올해 일회용품 개수)가 아직 상대도수(0.24·0.30 — 수학 서술형 2의 정답)로 되어 있다. `docs/samples/2026-09-20-중1-일회용품-공유자료.json`과 호스팅 DB의 대주제 공유 자료를 원자료(개수) 표로 패치한다(순서서 A절 6번).
+4. 5일차 생성 전에 실제 3단계·5단계 생성 한 번씩 시간을 재 둔다(API `maxDuration=300`초, v2 출력은 v1의 3~4배, 5단계는 `effort:'xhigh'`). 300초에 가까우면 effort를 낮추지 말고 Fluid compute를 켜거나 플랜 제한을 올린다. 기존 초안 세트는 7단계가 "준비 전"이라 게시가 막히므로 2단계부터 다시 생성한다(순서서 A절 5번).
+5. 5일차 검토(순서서 E절, 과목×12항목 체크리스트를 `docs/review/2026-09-29-owner-review.md`에 기록).
 
 **뒤로 미룬 것 (§6.2 필수 아님, 2026-09-25 장부에 기록된 이탈 포함)**
 - 스펙 §6.2: `standard_levels`·`exemplars` DB 적재(지금은 파일), 안내장 발송·학생/학부모 열람(지금은 원장 확정·인쇄만), 활동지 수준별 세 장 자동 분화(지금은 한 장에 3층 표시), 초등·고등 학교급 분기, 역사 세트, 2025 국·수·영 예시 파일 반영, 동사 뱅크 파일화, 난이도 실측 루프, 복붙·외부 AI 탐지, 검수 QA 루틴, 3B 교재 인쇄(`lib/print/booklet.ts`)는 v2 `Snapshot` 타입 기준으로 착수.
@@ -141,12 +142,17 @@
 - 검토 prompt에 들어가는 3단계 프로젝션 축소(현재 stage 3 전체를 그대로 넣어 5~7단계 검토가 3만자 안팎 — Task 4 fix round 1에서 측정, "slim stage-3 review projection"으로 명명, 발표 뒤 최적화).
 - `app/admin/items/[themeId]/sets/[setId]/useStageRunner.ts`의 react-hooks eslint 오류 2건(리스트에 있던 사전 존재 오류, Task 5·7에서 그대로 확인만 함).
 - 스펙 부록 A C-24 두 문장 병합(Task 3 review, minor deferred).
-- `lib/` 안 검토·린트 이슈 문구가 한글 리터럴로 하드코딩됨(다국어 대응 시 손볼 대상, checks.ts부터 notice-lint.ts까지 관행 — Task 8 review minor deferred).
 
-**다음**: 최종 전체 리뷰(main..d8ddad6 범위) → main 병합 → 5일차 실제 생성·검토(순서서 절차대로).
+**받아들인 부채(accepted debt) — 고칠 수는 있지만 이번 범위에서는 그대로 두기로 함**
+- `lib/` 안 검토·린트 진단 문구가 한글 리터럴로 하드코딩됨(다국어 대응 시 손볼 대상). 같은 부류: `lib/studio/checks.ts`·`lib/classroom/notice-lint.ts`(이슈 문구, Task 8 review minor deferred), `lib/studio/stages.ts`(정적 검사 예외 문구, 예: "검토 반복 한도 도달 — 관리자가 직접 수정"), `lib/classroom/grade.ts`(`GradingAlignError` 메시지).
+- `app/admin/items/[themeId]/sets/[setId]/useStageRunner.ts`의 react-hooks eslint 오류 2건(위 목록과 중복 기재 — 사전 존재 오류, Task 5·7에서 확인만 함, 고치지 않음).
+
+**진행 중(문서 작성 시점 기준, 병렬 진행)**: 최종 전체 리뷰(main..d8ddad6 범위)에서 나온 지적 I1~I4(Important)·M5·M6(Minor)의 수정 회차가 코드 파일에서 진행 중이다. 이 절의 수치·목록은 그 수정이 반영되기 전 상태이므로, 수정이 들어오면 이 STATUS.md도 다시 확인해야 한다.
+
+**다음**: 위 수정 회차 반영 확인 → main 병합 → 5일차 실제 생성·검토(순서서 절차대로).
 
 **알려진 한계**
-- 사진 업로드 경로 없음 — 종이 답안 문항은 3B까지 학생이 직접 답할 수 없다.
+- **사진 업로드 경로 없음 — 수학 세트 서술형1은 이번 시연에서 채점이 끝나지 않는다.** 종이 답안 문항(대주제당 최대 1개)은 학생이 직접 답할 수 없고(3B까지), 수학 세트에서는 서술형1이 그 문항이다. 원장이 앱 안에서 채점할 방법이 없으므로 그 학생의 서술형1 점수와 종합 점수는 완성되지 않고, 2차시 안내장도 이 문항의 `essay_result` 없이 나간다.
 - 원장 화면은 A~E 등급을 그대로 보여준다(스펙에 원장 제한 규정 없음).
 - 가짜 응답(mock) fixture는 수학·과학만 v2다. 국·영·사는 실제 키로 생성해야 한다(2단계 [TS] 검사가 정상 작동해 다른 과목 성취기준으로는 실패한다).
 
