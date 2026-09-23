@@ -108,6 +108,8 @@ function staticCheck(stage: Stage, output: unknown, ctx: { standards: { code: st
   try {
     return staticIssues(stage, output, { standards: ctx.standards, prior: ctx.prior })
   } catch (e) {
+    // 옛 데이터가 아니라 checks.ts 회귀일 수도 있으므로 서버 로그에 흔적을 남긴다
+    console.error('[studio] staticIssues threw', { stage, err: e })
     return [{ kind: 'other', detail: `출력 형식을 검사할 수 없음(${(e as Error).message}) — 다시 생성해야 합니다` }]
   }
 }

@@ -71,6 +71,28 @@ describe('review focus v2', () => {
     expect(u).toContain('지금까지 확정된 내용'); expect(u).toContain('mergeable_with')
     expect(buildReviewPrompt(6, ctx, {}).user).not.toContain('지금까지 확정된 내용')
   })
+  it('review prior is scoped per stage (5 → 3·4, 7 → 3·5; nothing for 0/1)', () => {
+    const prior = {
+      stage0: { intro: 'INTRO_MARK' }, stage1: { recommended: [{ code: '[9수04-02]', reason: 'STAGE1_MARK' }] },
+      stage2: { standards: [{ code: '[9수04-02]', reconstructed_text: 'RECON_MARK' }], level_anchor: [{ code: '[9수04-02]', level: 'C', statement: 'ANCHOR_MARK' }] },
+      stage3: { unit_plan: { assessment_plan: { summative_placement: [{ lesson_no: 5, kind: '논술형' }] } }, lessons: [{ no: 1, topic: 'LESSON_MARK' }] },
+      stage4: { materials: [{ id: 'A', body: 'MATERIAL_BODY_MARK' }] },
+      stage5: { items: [{ rubric: { criteria: [{ name: 'RUBRIC_MARK' }] } }] },
+      stage6: { glossary: [{ term: 'GUIDE_MARK' }] },
+      shared_materials: [{ id: 'A', body: 'SHARED_MARK' }],
+    }
+    const u5 = buildReviewPrompt(5, { ...ctx, prior }, { items: [] }).user
+    expect(u5).toContain('"stage3"'); expect(u5).toContain('"stage4"'); expect(u5).toContain('LESSON_MARK'); expect(u5).toContain('MATERIAL_BODY_MARK')
+    expect(u5).toContain('SHARED_MARK')
+    for (const m of ['RECON_MARK', 'ANCHOR_MARK', 'STAGE1_MARK', 'INTRO_MARK', '"stage2"']) expect(u5).not.toContain(m)
+    const u7 = buildReviewPrompt(7, { ...ctx, prior }, {}).user
+    expect(u7).toContain('RUBRIC_MARK'); expect(u7).toContain('LESSON_MARK')
+    for (const m of ['MATERIAL_BODY_MARK', 'SHARED_MARK', 'GUIDE_MARK', 'RECON_MARK']) expect(u7).not.toContain(m)
+    expect(buildReviewPrompt(2, { ...ctx, prior }, {}).user).toContain('STAGE1_MARK')
+    expect(buildReviewPrompt(1, { ...ctx, prior }, {}).user).not.toContain('지금까지 확정된 내용')
+    // 생성 프롬프트는 여전히 전부 받는다
+    expect(buildPrompt(5, { ...ctx, prior }).user).toContain('RECON_MARK')
+  })
   it('review prompt includes the level block (C 문장) for level stages and keeps the fixture key format', () => {
     const r = buildReviewPrompt(2, ctx, {})
     expect(r.user).toMatch(/\[9수04-02\] 성취수준\(도달점 = C/); expect(r.fixtureKey).toBe('stage2-review-수학')

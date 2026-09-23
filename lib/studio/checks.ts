@@ -144,6 +144,8 @@ export function noticeTextIssues(text: string, where: string): Issue[] {
   for (const [re, why] of NOTICE_FORBIDDEN) if (re.test(text)) issues.push({ kind: 'notice', detail: `${where}: "${text.match(re)?.[0]}" — ${why}` })
   return issues
 }
+// N-01(다른 학생 이름·점수·순위)·N-03(확정 전 AI 초안 인용)은 학생 데이터가 든 학생별 안내장에서만 판정할 수 있어 7단계 틀에는 적용하지 않는다 —
+// T8에서 N-01은 lib/classroom/notice-lint.ts(원생 목록 대조), N-03은 안내장 초안 서버 액션(확정 채점만 읽음)이 맡는다.
 function noticePlanIssues(o: NoticePlanT): Issue[] {
   const issues: Issue[] = []
   for (const p of o.per_lesson) {

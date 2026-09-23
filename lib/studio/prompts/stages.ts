@@ -93,7 +93,7 @@ export function fixtureKeyFor(stage: Stage, role: 'generate' | 'review', ctx: Ct
   return `stage${stage}-${role}${ctx.subject ? `-${ctx.subject}` : ''}`
 }
 
-/** 지금까지 확정된 단계 출력. 생성은 이것을 근거로 쓰고, 검토는 단계 간 일치(병합 표시·채점표 요소명·자료 ID)를 이것과 대조한다. */
+/** 지금까지 확정된 단계 출력 전부(생성용). 검토는 필요한 단계만 넣는 priorBlockFor 를 쓴다. */
 function priorBlock(ctx: Ctx): string {
   return Object.keys(ctx.prior).length ? `\n\n지금까지 확정된 내용:\n${JSON.stringify(ctx.prior, null, 1)}` : ''
 }
@@ -121,11 +121,26 @@ const REVIEW_FOCUS: Record<Stage, string> = {
   6: '비전공자가 따라 할 수 있는 구체성. merge_guide가 3단계 병합 표시와 같은지, per_lesson 수가 차시 수와 같은지. common_errors가 채점표 요소와 연결되는지.',
   7: '문장이 활동명으로 시작하는지, 근거 없는 인성 평가가 없는지, 학부모가 읽어도 어색하지 않은지, 부정 서술어·비교·단독 평어가 없는지(notice). per_lesson 수가 차시 수와 같고 서·논술형이 있는 차시에만 criteria_phrases가 있는지. criteria_phrases의 요소명이 5단계 채점표와 같은지. home_study_suggestion이 혼자 실행 가능한 구체 행동인지.',
 }
+/**
+ * 검토에 붙이는 이전 단계(확정본). 검토 초점이 실제로 대조하는 단계만 넣는다 — 전부 넣으면 5~7단계 검토 입력이 4만 자를 넘는다.
+ * 2→1(추천 이유), 3→2(재구조화·목표), 4→3(자료가 쓰일 차시), 5→3·4(평가 배치·자료), 6→3·5(병합 표시·채점표), 7→3·5(차시·퀴즈 수, 채점표 요소명).
+ */
+const REVIEW_PRIOR: Record<Stage, number[]> = { 0: [], 1: [], 2: [1], 3: [2], 4: [3], 5: [3, 4], 6: [3, 5], 7: [3, 5] }
+/** 대주제 공유 자료(prior.shared_materials)를 같이 보여 줄 검토 단계: 4(공유 수치를 그대로 썼는지)·5(문항이 공유 자료 ID를 참조할 수 있음). */
+const REVIEW_SHARED_MATERIALS = new Set<Stage>([4, 5])
+
+function priorBlockFor(ctx: Ctx, stages: number[], extraKeys: string[] = []): string {
+  const keys = [...stages.map((n) => `stage${n}`), ...extraKeys].filter((k) => ctx.prior[k] !== undefined)
+  if (keys.length === 0) return ''
+  return `\n\n지금까지 확정된 내용(검토에 필요한 단계만):\n${JSON.stringify(Object.fromEntries(keys.map((k) => [k, ctx.prior[k]])), null, 1)}`
+}
+
 const REVIEWER = '당신은 이제 검토자다. 생성 결과가 규칙을 지켰는지 검사하고 pass/issues로만 답한다. 문제가 없으면 pass=true, issues=[]. issues[].kind는 fidelity·grade_level·coverage·quiz·rubric·level·source·notice·other 중 하나.'
 
 export function buildReviewPrompt(stage: Stage, ctx: Ctx, output: unknown) {
   // 규칙은 첫 블록(캐시), 검토자 지시는 둘째 블록(캐시 없음) → 같은 과목의 생성·검토가 같은 캐시 항목을 공유한다
   const system: string[] = [rulesFor(ctx.subject), REVIEWER]
-  const user = `${header(ctx)}${knowledgeBlocks(stage, ctx)}${priorBlock(ctx)}\n\n검토 초점: ${REVIEW_FOCUS[stage]}\n\n생성 결과:\n${JSON.stringify(output, null, 1)}`
+  const prior = priorBlockFor(ctx, REVIEW_PRIOR[stage], REVIEW_SHARED_MATERIALS.has(stage) ? ['shared_materials'] : [])
+  const user = `${header(ctx)}${knowledgeBlocks(stage, ctx)}${prior}\n\n검토 초점: ${REVIEW_FOCUS[stage]}\n\n생성 결과:\n${JSON.stringify(output, null, 1)}`
   return { system, user, fixtureKey: fixtureKeyFor(stage, 'review', ctx) }
 }
