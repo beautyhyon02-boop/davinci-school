@@ -8,7 +8,41 @@
       "온라인 플랫폼/디지털 도구 목록 컬럼 (우리는 학원 오프라인 수업)",
       "학교생활기록부 세부능력·특기사항 기재문 (원장은 학생부를 쓰지 않음)",
       "상/중/하 3단 평가기준 서술 전체 (우리는 MYP 4요소×0~4점 루브릭이 이미 확정되어 있어, 상중하는 참고용 '종합적 도달 모습' 서술로만 축약)"
-    ]
+    ],
+    "migration": {
+      "note": "이 스키마안은 lib/studio/schemas.ts의 기존 Lesson 타입과 shape가 다른 breaking change 3건을 포함한다. 적용 전 아래 소비처를 함께 고쳐야 한다. 상세: docs/research/corpus/wp7-lesson-design.md §11.",
+      "breaking_changes": [
+        {
+          "field": "Lesson.flow.intro / Lesson.flow.wrapup",
+          "old_shape": "string",
+          "new_shape": "string[]",
+          "renders_old_shape_in": ["components/studio/PackageView.tsx (~L174-178, {l.flow.intro} / {l.flow.wrapup} 그대로 문자열 렌더)"]
+        },
+        {
+          "field": "Lesson.flow.main",
+          "old_shape": "string",
+          "new_shape": "{ step_label: string, minutes: number, activities: string[] }[]",
+          "renders_old_shape_in": ["components/studio/PackageView.tsx (~L176, {l.flow.main} 그대로 문자열 렌더)"]
+        },
+        {
+          "field": "Lesson.materials → Lesson.materials_needed",
+          "old_shape": "materials: string[]",
+          "new_shape": "materials_needed: string[] (필드명 변경)",
+          "renders_old_shape_in": ["components/studio/PackageView.tsx (~L177, l.materials.length / l.materials.join(', '))"]
+        },
+        {
+          "field": "Lesson.quiz → Lesson.formative_check.quiz",
+          "old_shape": "quiz: QuizItem[] (Lesson 최상위)",
+          "new_shape": "formative_check: { quiz: QuizItem[] } (한 단계 감싸짐)",
+          "renders_old_shape_in": [
+            "components/studio/PackageView.tsx (~L184, <QuizView quiz={l.quiz} .../>)",
+            "app/student/assignments/[id]/page.tsx (~L63, L66, lesson.quiz.length / lesson.quiz.map(...))"
+          ]
+        }
+      ],
+      "not_found": "lib/print/* — 리포지토리에 해당 디렉터리 없음(2026-09-24 확인), 별도 수정 대상 없음.",
+      "also_update": ["lib/studio/schemas.ts (zod Lesson 정의 및 superRefine 경로)", "data/studio-fixtures/*.json (mock fixture를 새 shape로 갱신)"]
+    }
   },
   "$schema_style": "JSON Schema 유사 구조 (type/description/properties). 실제 구현은 zod로 lib/studio/schemas.ts에 반영 예정.",
   "definitions": {
@@ -17,21 +51,21 @@
       "description": "소단원 세트 하나(성취기준 2~6개, 4~6차시, 60분/차시)의 재구성·평가 계획. official §2(절차)의 ①~③ 단계, §3(a)(b)에 대응.",
       "properties": {
         "set_title": { "type": "string", "description": "세트명(예: '자료의 정리와 해석'). (재구성 자료집 '단원명'에 대응)" },
-        "grade": { "type": "string", "description": "교육과정 학년 하나만. 선행 전제 없음. (다빈치스쿨 확장 — 공식 자료는 학교 학급 단위라 이 제약이 없음, wp7 §9-5)" },
+        "grade": { "type": "string", "enum": ["초1","초2","초3","초4","초5","초6","중1","중2","중3","고1","고2","고3"], "description": "교육과정 학년 하나만(enum). 선행 전제 없음. (다빈치스쿨 확장 — 공식 자료는 '중학교 1~3학년'처럼 범위형 학급 단위 표기라 단일 학년 enum 자체가 우리 제약, wp7 §9-5)" },
         "standards": {
           "type": "array",
-          "description": "성취기준 재구조화 표(§3-a) 한 줄씩. 성취기준 원문은 절대 삭제하지 않고 보존한다(수학재구성 p.5).",
+          "description": "성취기준 재구조화 표(§3-a) 한 줄씩. 성취기준 원문은 절대 삭제하지 않고 보존한다(수학재구성 p.11).",
           "items": {
             "type": "object",
             "properties": {
               "code": { "type": "string", "description": "성취기준 코드 원문 그대로, 예: [9수04-02]" },
-              "original_text": { "type": "string", "description": "성취기준 원문(재구조화 이후에도 필수 보존). (수학재구성 p.5, p.87 '기존 성취기준' 컬럼)" },
+              "original_text": { "type": "string", "description": "성취기준 원문(재구조화 이후에도 필수 보존). (수학재구성 p.11, p.87 '기존 성취기준' 컬럼)" },
               "reconstruction_type": { "type": "string", "enum": ["통합", "재조정", "유지"], "description": "재구조화 3유형 중 하나. (수학재구성 p.13)" },
               "reconstructed_text": { "type": "string", "description": "재구조화한 성취기준 문장. type=유지면 original_text와 동일. (수학재구성 p.87 '재구조화한 성취기준' 컬럼)" },
               "reconstruction_reason": {
                 "type": "array",
-                "items": { "type": "string" },
-                "description": "재구조화 이유 태그. 공식 태그(원격수업 유용함/학습량 적정화/내용 연결/학습결손방지)를 다빈치스쿨 맥락으로 치환: '학원 60분 최적화'/'4~6차시 압축'/'비전공 원장 진행 용이'. (수학재구성 p.87, 다빈치스쿨 확장으로 태그 어휘만 교체)"
+                "items": { "type": "string", "enum": ["학원 60분 최적화", "4~6차시 압축", "비전공 원장 진행 용이"] },
+                "description": "재구조화 이유 태그(다빈치스쿨 어휘 3종 enum). 공식 태그(원격수업 유용함/학습량 적정화/내용 연결/학습결손방지)를 다빈치스쿨 맥락으로 1:1 치환한 것. (수학재구성 p.87, 다빈치스쿨 확장으로 태그 어휘만 교체)"
               },
               "learning_elements": { "type": "array", "items": { "type": "string" }, "description": "주요 학습요소(개념어 나열). (재구성 자료집 공통 '주요 학습요소' 컬럼)" }
             }
@@ -45,8 +79,10 @@
             "formative": { "type": "string", "description": "형성평가 방식 요약(차시별 퀴즈 3문항 등). 형성평가가 수행평가보다 항상 선행한다(wp7 §6). (다빈치스쿨 확장: '퀴즈 3문항 고정'은 공식 근거 없음, wp7 §9-4)" },
             "summative_placement": {
               "type": "array",
-              "items": { "type": "object", "properties": { "lesson_no": { "type": "integer" }, "kind": { "type": "string", "enum": ["서술형", "논술형"] } } },
-              "description": "서·논술형이 몇 차시째에 오는지. 관행상 서술형은 세트 중후반(3~4차시째), 논술형은 마지막 차시. (수학재구성 p.168-169, 사회재구성 p.148-149; wp7 §6)"
+              "minItems": 3,
+              "maxItems": 3,
+              "items": { "type": "object", "properties": { "lesson_no": { "type": "integer" }, "kind": { "type": "string", "enum": ["서술형1", "서술형2", "논술형"] } } },
+              "description": "서술형1·서술형2·논술형이 각각 몇 차시째에 오는지 정확히 3건(다빈치스쿨 세트는 항상 서술형2+논술형1로 끝남). kind는 lib/studio/schemas.ts의 Lesson.assessment enum('서술형1'|'서술형2'|'논술형'|null)과 값 집합을 맞춘다. 관행상 서술형은 세트 중후반, 논술형은 마지막 차시. (수학재구성 p.168-169, 사회재구성 p.148-149; wp7 §6. '서술형1/2' 구분 자체는 다빈치스쿨 확정 — official 자료에는 없음)"
             },
             "rubric_note": { "type": "string", "description": "상/중/하 종합적 도달 모습(참고 서술). 실제 채점은 별도 MYP 루브릭(4요소×0~4점) 사용. (수학재구성 p.170 총체적 채점기준 형식 차용, 배점 체계 자체는 다빈치스쿨 확정 방식)" }
           }
@@ -64,7 +100,7 @@
         "goal": { "type": "string", "description": "학습목표(도달점 서술문). (기존 스키마 유지, 공통 '학습목표' 컬럼)" },
         "time_budget": {
           "type": "object",
-          "description": "60분 배분. 공식 자료는 45/50분(학교) 또는 90분(대구 예외) 전제라 60분 표준 근거는 없음 — 다빈치스쿨이 독자 설정한 값(다빈치스쿨 확장, wp7 §9-1). 도입/전개/정리 3단 구조 자체는 official과 동일(재구성 자료집·대구 공통).",
+          "description": "60분 배분. 공식 자료는 45/50분(학교) 또는 90분(대구 예외) 전제라 60분 표준 근거는 없음 — 다빈치스쿨이 독자 설정한 값(다빈치스쿨 확장, wp7 §9-1). 도입/전개/정리 3단 구조 자체는 official과 동일(재구성 자료집·대구 공통). mergeable_with로 두 차시를 병합할 때는 각 차시의 time_budget을 그대로 이어붙이지 않고 120분을 도입/전개/정리로 재편성한다(예: 도입 10분+전개 90분+정리 20분) — 도입·정리가 두 번 반복되지 않는다는 뜻이며, 재구성 자료집의 차시 압축 관행(§4, 예: 11→7차시로 압축할 때 활동 단계 자체를 다시 짜는 것)과 같은 원리다.",
           "properties": {
             "intro_min": { "type": "integer", "default": 10, "description": "도입(전시 확인·동기유발·핵심질문 제시)" },
             "main_min": { "type": "integer", "default": 40, "description": "전개(개념학습+탐구/활동, 필요시 하위 소단계로 재분할). (대구수업평가설계 p.9 하위단계 분할 방식 차용)" },
@@ -97,6 +133,9 @@
           "properties": {
             "questions": {
               "type": "array",
+              "minItems": 2,
+              "maxItems": 4,
+              "description": "발문 2~4개(수학재구성 p.92-95의 Q1~Q3 관행에 맞춘 하한·상한, 다빈치스쿨 확장).",
               "items": {
                 "type": "object",
                 "properties": {
@@ -114,7 +153,14 @@
           "type": "object",
           "description": "이 차시의 형성평가(퀴즈). (기존 스키마 quiz 필드에 대응, §5 '활동지(형성평가)' 관행)",
           "properties": {
-            "quiz": { "type": "array", "maxItems": 3, "description": "논술형 차시가 아니면 정확히 3문항(다빈치스쿨 확장 규칙, 공식 근거 없음 — wp7 §9-4). 기존 QuizItem(q/type/choices/answer/explanation) 그대로 사용." }
+            "quiz": {
+              "type": "array",
+              "conditional_bounds": {
+                "if_assessment_is_논술형": { "minItems": 0, "maxItems": 0 },
+                "otherwise": { "minItems": 3, "maxItems": 3 }
+              },
+              "description": "차시가 논술형이 아니면 정확히 3문항, 논술형이면 0문항 — lib/studio/schemas.ts의 Lesson superRefine 문구를 그대로 옮긴 것: '논술형 차시에는 퀴즈 없음' / '논술형 차시가 아니면 퀴즈 3문항'(다빈치스쿨 확장 규칙, 공식 서식에 문항 수 고정 근거 없음 — wp7 §9-4). 기존 QuizItem(q/type/choices/answer/explanation) 그대로 사용."
+            }
           }
         },
         "assessment": { "type": ["string", "null"], "enum": ["서술형1", "서술형2", "논술형", null], "description": "이 차시에 배치된 서·논술형(있으면). (기존 스키마 유지, 배치 근거는 wp7 §6)" },
@@ -140,10 +186,11 @@
       ],
       "set_key_question": "많은 자료를 표와 그림으로 정리하면 무엇을 더 쉽게 알 수 있는가?",
       "assessment_plan": {
-        "formative": "차시별 퀴즈 3문항(선택형/단답형 혼합), 표·그래프 읽기 위주",
+        "formative": "차시별 퀴즈 3문항(선택형/단답형 혼합), 표·그래프 읽기 위주 — 3/5·4/5·5/5차시는 서·논술형 차시라 퀴즈 없음(0문항)",
         "summative_placement": [
-          { "lesson_no": 4, "kind": "서술형" },
-          { "lesson_no": 5, "kind": "논술형" }
+          { "lesson_no": 3, "kind": "서술형1", "_comment": "도수분포표·히스토그램을 보고 분포의 특징을 서술" },
+          { "lesson_no": 4, "kind": "서술형2", "_comment": "상대도수를 계산하고 두 집단의 분포를 비교·서술" },
+          { "lesson_no": 5, "kind": "논술형", "_comment": "자료 해석을 근거로 주장을 세우는 논술 — 세트 마지막 차시" }
         ],
         "rubric_note": "상: 계급·도수를 정확히 구분하고 히스토그램·도수분포다각형으로 표현·해석까지 서술함 / 중: 표·그래프는 정확히 작성하나 해석 서술이 단편적 / 하: 표는 작성하나 그래프 변환이나 해석에서 오류가 있음"
       }
