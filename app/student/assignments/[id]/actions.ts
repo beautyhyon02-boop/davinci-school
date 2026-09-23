@@ -27,13 +27,13 @@ export async function submitQuiz(assignmentId: string, lessonNo: number, respons
   const { supabase, a, snapshot } = await loadOwnAssignment(assignmentId)
   if (!isLessonOpen(a.open_lessons, lessonNo) || a.closed) return { ok: false, error: errors.notOpen }
   const lesson = snapshot.lessons.find((l) => l.no === lessonNo)
-  if (!lesson || lesson.quiz.length === 0) return { ok: false, error: errors.notOpen }
+  if (!lesson || lesson.formative_check.quiz.length === 0) return { ok: false, error: errors.notOpen }
   const { count } = await supabase.from('quiz_responses').select('id', { count: 'exact', head: true }).eq('assignment_id', assignmentId).eq('lesson_no', lessonNo)
   if ((count ?? 0) > 0) return { ok: false, error: errors.alreadySubmitted }
 
   // service role 로 넣으므로 클라이언트 값은 문자열·길이만 받아들인다
   const resp = (i: number) => (Array.isArray(responses) && typeof responses[i] === 'string' ? responses[i].slice(0, 500) : '')
-  const rows = lesson.quiz.map((q, i) => ({
+  const rows = lesson.formative_check.quiz.map((q, i) => ({
     assignment_id: assignmentId, lesson_no: lessonNo, quiz_no: i + 1,
     response: resp(i), correct: judgeQuiz(q, resp(i)), source: 'student' as const,
   }))
@@ -43,7 +43,7 @@ export async function submitQuiz(assignmentId: string, lessonNo: number, respons
   const { error } = await createAdminClient().from('quiz_responses').insert(rows)
   if (error) return { ok: false, error: errors.saveFailed }
   revalidatePath(`/student/assignments/${assignmentId}`)
-  return { ok: true, results: rows.map((r, i) => ({ correct: r.correct, answer: lesson.quiz[i].answer, explanation: lesson.quiz[i].explanation })) }
+  return { ok: true, results: rows.map((r, i) => ({ correct: r.correct, answer: lesson.formative_check.quiz[i].answer, explanation: lesson.formative_check.quiz[i].explanation })) }
 }
 
 export async function saveDraft(assignmentId: string, itemNo: number, attempt: number, body: string): Promise<{ ok: boolean }> {

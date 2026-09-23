@@ -86,6 +86,24 @@ export function validateStandardIds(
 export type SharedMaterial = z.infer<typeof Materials>['materials'][number]
 
 /**
+ * v2(2026-09-25)에서 자료 source 가 '자작' 문자열 → { kind, attribution, ai_assisted } 객체로 바뀌었다.
+ * DB 의 themes.materials 는 v1 모양으로 저장돼 있으므로, 화면이 내려 준 배열을 다시 저장할 수 있게 문자열 source 만 객체로 올린다.
+ * 나머지 필드는 그대로 두고 Materials 스키마가 검증한다('공개' 문자열이면 출처 문구가 없어 거부된다).
+ */
+function withV2Sources(input: unknown): unknown {
+  const list = (input as { materials?: unknown } | null)?.materials
+  if (!Array.isArray(list)) return input
+  return {
+    ...(input as object),
+    materials: list.map((m) =>
+      m && typeof m === 'object' && typeof (m as { source?: unknown }).source === 'string'
+        ? { ...m, source: { kind: (m as { source: string }).source, attribution: null, ai_assisted: false } }
+        : m,
+    ),
+  }
+}
+
+/**
  * 공유 자료 textarea 입력을 파싱한다. themes.materials 는 래퍼 없는 배열로 저장되지만(publish/repo 가 그렇게 읽는다)
  * 2A 스키마(`{ materials: [...] }`)를 그대로 붙여넣는 경로도 있으므로 두 모양을 모두 받는다 —
  * 그렇지 않으면 한 번 저장한 뒤 화면이 보여 주는 배열을 다시 저장할 수 없다.
@@ -98,7 +116,7 @@ export function parseSharedMaterialsInput(text: string): { ok: true; materials: 
     return { ok: false, error: errors.materialsInvalid }
   }
   const wrapped = Array.isArray(parsed) ? { materials: parsed } : parsed
-  const r = Materials.safeParse(wrapped)
+  const r = Materials.safeParse(withV2Sources(wrapped))
   if (!r.success) return { ok: false, error: errors.materialsInvalid }
   return { ok: true, materials: r.data.materials }
 }

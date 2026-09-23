@@ -44,7 +44,7 @@ export default async function AssignmentSetPage({ params }: { params: Promise<{ 
   const quizRows = (quiz ?? []) as QuizResponseRow[]
   const gradingRows = (gradings ?? []) as GradingRow[]
   const items = snapshot.assessment?.items ?? []
-  const lessonsMeta = snapshot.lessons.map((l) => ({ no: l.no, quizCount: l.quiz.length, types: l.quiz.map((q) => q.type) }))
+  const lessonsMeta = snapshot.lessons.map((l) => ({ no: l.no, quizCount: l.formative_check.quiz.length, types: l.formative_check.quiz.map((q) => q.type) }))
   const students = rows.map((r) => ({ assignmentId: r.id, name: r.students?.profiles?.name ?? '' }))
 
   return (
