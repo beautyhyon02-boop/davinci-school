@@ -1,5 +1,5 @@
 import type { z } from 'zod'
-import { Lesson, Material, Assessment, TeacherGuide, AssessmentItem, type ReconstructedStandard, type LearningGoal, type UnitPlan, type NoticePlan } from './schemas'
+import { Lesson, Material, Assessment, TeacherGuide, AssessmentItem, type ReconstructedStandard, type LearningGoal, type UnitPlan, type NoticePlan, type Reconstruction, type AXES } from './schemas'
 import { levelMapFor, levelRefFor } from './level-map'
 
 type LessonT = z.infer<typeof Lesson>
@@ -11,6 +11,9 @@ export type ReconstructedStandardT = z.infer<typeof ReconstructedStandard>
 export type LearningGoalT = z.infer<typeof LearningGoal>
 export type UnitPlanT = z.infer<typeof UnitPlan>
 export type NoticePlanT = z.infer<typeof NoticePlan>
+export type ReconstructionT = z.infer<typeof Reconstruction>
+type Axis = (typeof AXES)[number]
+type MainStepT = LessonT['flow']['main'][number]
 
 /** v2 스냅샷(publish.ts 의 Snapshot 과 동일 — 순환 import 를 피하려 여기서 구조적으로 정의). */
 export type SnapshotV2 = {
@@ -63,6 +66,29 @@ export function splitMaterialsV1(items: string[]): { used: string[]; needed: str
   return { used: [...used].sort(), needed }
 }
 
+const STEP_MARK = /[①②③④⑤⑥⑦⑧]/u
+/**
+ * v1 전개 한 문장 → v2 소단계. ①②③… 표식으로 나눠 앞 절반/뒤 절반을 20/20분 두 단계로, 표식이 2개 미만이면 40분 한 단계.
+ * 첫 표식 앞의 머리말("전개 40분 —")은 소단계 이름표가 대신하므로 버린다.
+ */
+export function splitMainV1(main: string): MainStepT[] {
+  const parts = main.split(/(?=[①②③④⑤⑥⑦⑧])/u).map((s) => s.trim()).filter(Boolean)
+  const marked = parts.length && !STEP_MARK.test(parts[0][0]) ? parts.slice(1) : parts
+  if (marked.length < 2) return [{ step_label: '전개', minutes: 40, activities: [main] }]
+  const half = Math.ceil(marked.length / 2)
+  return [{ step_label: '개념·활동', minutes: 20, activities: marked.slice(0, half) }, { step_label: '적용·정리', minutes: 20, activities: marked.slice(half) }]
+}
+
+/** 채점 요소 이름 → 세 축(스펙 §2.5). 낱말로만 고르는 결정적 규칙이며 맞지 않으면 과정·기능. */
+export function axisOf(name: string): Axis {
+  if (/제안|판단|태도|입장|실천|가치|의견/.test(name)) return '가치·태도'
+  if (/정확|정리|용어|개념|지식|계산/.test(name)) return '지식·이해'
+  return '과정·기능'
+}
+
+/** 0점 서술의 꼬리: 무응답과 '시도했으나 관련 내용 없음'을 모두 0점으로 적는다(스펙 §2.5 [TS]-2). */
+const ZERO_TAIL = ' (무응답과 시도했으나 관련 내용이 없는 경우 모두 0점)'
+
 /** v1 차시 → v2. cautionNotes 는 v1 지침서 per_lesson.notes(있으면). 발문·활동지는 퀴즈·핵심질문에서 결정적으로 만든다. */
 export function upgradeLessonV1(l: LessonV1, cautionNotes: string[]): LessonT {
   const { used, needed } = splitMaterialsV1(l.materials)
@@ -87,7 +113,10 @@ export function upgradeLessonV1(l: LessonV1, cautionNotes: string[]): LessonT {
   return {
     no: l.no, standards: l.standards, topic: l.goal.slice(0, 40), key_question: l.key_question, goal: l.goal,
     time_budget: { intro_min: 10, main_min: 40, wrapup_min: 10 },
-    flow: { intro: [l.flow.intro], main: [{ step_label: isEssay ? '논술형 작성' : '전개', minutes: 40, activities: [l.flow.main] }], wrapup: [l.flow.wrapup] },
+    // 논술형 차시: v1 은 전개(안내) + 정리 자리의 '평가 35분'이었다 → 안내 5분 + 논술형 작성 35분 두 소단계(스펙 §2.3 [TS])
+    flow: isEssay
+      ? { intro: [l.flow.intro], main: [{ step_label: '논술형 안내', minutes: 5, activities: [l.flow.main] }, { step_label: '논술형 작성', minutes: 35, activities: [l.flow.wrapup] }], wrapup: ['제출한 답안을 작성 조건과 하나씩 대조해 스스로 점검한다.'] }
+      : { intro: [l.flow.intro], main: splitMainV1(l.flow.main), wrapup: [l.flow.wrapup] },
     teacher_script: { questions },
     materials_used: used, materials_needed: needed,
     caution_notes: cautionNotes.length ? cautionNotes.slice(0, 4) : [l.goal],
@@ -118,7 +147,9 @@ function fillScale(levels: { points: number; expectation: string; example: strin
   let last = levels[levels.length - 1]
   for (let p = 0; p <= max; p++) {
     const hit = byPts.get(p) ?? last
-    scale.push({ points: p, descriptor: p === 0 && !byPts.get(0) ? '무응답 또는 시도했으나 관련 내용 없음' : hit.expectation, example: byPts.get(p)?.example ?? null })
+    const hit0 = byPts.get(0)
+    const zero = hit0 ? `${hit0.expectation}${ZERO_TAIL}` : '무응답 또는 시도했으나 관련 내용 없음'
+    scale.push({ points: p, descriptor: p === 0 ? zero : hit.expectation, example: byPts.get(p)?.example ?? null })
     if (byPts.get(p)) last = byPts.get(p)!
   }
   return scale
@@ -134,12 +165,12 @@ export function upgradeItemV1(it: ItemV1, exemplars: AssessmentV1['exemplars']):
   let rubric: ItemT['rubric']; let exemplar_answers: ItemT['exemplar_answers']
   if ('levels' in it.rubric) {
     const scale = fillScale(it.rubric.levels, it.points)
-    rubric = { criteria: [{ name: `${it.kind} 채점표`, axis: '과정·기능', condition_nos: allNos, max: it.points, scale }], holistic: null, notes: ['예시답안과 표현이 달라도 의미가 같으면 인정한다.'] }
+    rubric = { criteria: [{ name: `${it.kind} 채점표`, axis: axisOf(`${it.kind} 채점표`), condition_nos: allNos, max: it.points, scale }], holistic: null, notes: ['예시답안과 표현이 달라도 의미가 같으면 인정한다.'] }
     exemplar_answers = it.rubric.levels.filter((l) => l.points > 0 && l.example).map((l) => ({
       level: null, points: l.points, scores: [l.points], assumed_short_points: null, text: l.example!.length >= 20 ? l.example! : `${l.example} — ${l.expectation}`, rationale: `채점표 ${l.points}점 단계의 기대 수행에 해당함`,
     }))
   } else {
-    const criteria = it.rubric.criteria.map((c) => ({ name: c.name, axis: '과정·기능' as const, condition_nos: allNos, max: 4, scale: (['0', '1', '2', '3', '4'] as const).map((k) => ({ points: Number(k), descriptor: c.bands[k], example: null })) }))
+    const criteria = it.rubric.criteria.map((c) => ({ name: c.name, axis: axisOf(c.name), condition_nos: allNos, max: 4, scale: (['0', '1', '2', '3', '4'] as const).map((k) => ({ points: Number(k), descriptor: k === '0' ? `${c.bands[k]}${ZERO_TAIL}` : c.bands[k], example: null })) }))
     rubric = { criteria, holistic: { 상: criteria.map((c) => c.scale[4].descriptor).join(' / '), 중: criteria.map((c) => c.scale[2].descriptor).join(' / '), 하: criteria.map((c) => c.scale[1].descriptor).join(' / ') }, notes: ['예시답안과 표현이 달라도 의미가 같으면 인정한다.'] }
     exemplar_answers = exemplars.map((e) => {
       const sum = e.scores.reduce((s, v) => s + v, 0)
@@ -187,7 +218,7 @@ export function upgradeReconstructionV1(standards: { code: string; text: string 
   return standards.map((s) => ({ code: s.code, original_text: s.text, reconstruction_type: '유지', merged_with: [], reconstructed_text: s.text, reason: ['4~6차시 압축'], learning_elements: [s.text] }))
 }
 
-function unitPlanFrom(title: string, keyQuestion: string, lessons: LessonT[], a: AssessmentT | null): UnitPlanT {
+export function unitPlanFrom(title: string, keyQuestion: string, lessons: LessonT[], a: AssessmentT | null): UnitPlanT {
   return {
     set_title: title, set_key_question: keyQuestion || lessons[0]?.key_question || title,
     lesson_map: lessons.map((l) => ({ lesson_no: l.no, standards: l.standards, topic: l.topic })),
@@ -197,6 +228,21 @@ function unitPlanFrom(title: string, keyQuestion: string, lessons: LessonT[], a:
       rubric_note: a?.feedback_templates ?? { 상: '요구한 요소를 모두 충족', 중: '핵심 요소를 충족하나 설명이 부분적', 하: '일부 요소만 충족' },
     },
   }
+}
+
+const AXIS_HINT: [RegExp, '지식·이해' | '가치·태도'][] = [[/뜻|의미|용어|설명할 수 있다|이해/, '지식·이해'], [/인식|태도|참여|실천|가치|필요성|유용성/, '가치·태도']]
+/**
+ * v1 2단계 출력 → v2 2단계(Reconstruction). 학습 목표 축은 낱말로 고르고, 빠진 축은 첫·끝·둘째 목표에 채워 세 축을 모두 갖춘다
+ * (zod superRefine). 재구조화 표는 원문 유지(upgradeReconstructionV1), level_anchor 는 서버(enrichOutput)가 채운다.
+ */
+export function buildReconstructionV2(v1: { reconstruction: string; learning_goals: string[]; key_question_candidates: string[] }, standards: { code: string; text: string }[]): ReconstructionT {
+  const goals: LearningGoalT[] = v1.learning_goals.map((text) => ({ text, axis: AXIS_HINT.find(([re]) => re.test(text))?.[1] ?? '과정·기능' }))
+  const has = (a: Axis) => goals.some((g) => g.axis === a)
+  if (!has('지식·이해')) goals[0] = { ...goals[0], axis: '지식·이해' }
+  if (!has('가치·태도')) goals[goals.length - 1] = { ...goals[goals.length - 1], axis: '가치·태도' }
+  const mid = Math.min(1, goals.length - 1)
+  if (!has('과정·기능')) goals[mid] = { ...goals[mid], axis: '과정·기능' }
+  return { standards: upgradeReconstructionV1(standards), reconstruction: v1.reconstruction, learning_goals: goals, level_anchor: [], key_question_candidates: v1.key_question_candidates }
 }
 
 export function upgradeSnapshot(raw: unknown): SnapshotV2 {

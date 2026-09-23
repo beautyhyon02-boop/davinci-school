@@ -1,7 +1,8 @@
 // tests/compat.test.ts
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { upgradeSnapshot, isV1Snapshot, upgradeLessonV1, upgradeAssessmentV1 } from '@/lib/studio/compat'
+import { upgradeSnapshot, isV1Snapshot, upgradeLessonV1, upgradeAssessmentV1, splitMainV1, axisOf, buildReconstructionV2 } from '@/lib/studio/compat'
+import { Reconstruction } from '@/lib/studio/schemas'
 import { Lesson, Assessment, LessonDesign, Materials, TeacherGuide } from '@/lib/studio/schemas'
 
 const fx = (k: string) => JSON.parse(readFileSync(`data/studio-fixtures/${k}.json`, 'utf8'))
@@ -32,7 +33,7 @@ describe('upgradeSnapshot (v1 → v2)', () => {
   it('lesson: materials split into ids/needed, quiz moves under formative_check, flow becomes arrays', () => {
     const l = upgradeLessonV1(v1('stage3-generate').lessons[0], [])
     expect(l.materials_used).toEqual(['A', 'B']); expect(l.materials_needed).toEqual(['축제 삽화 3장'])
-    expect(l.formative_check.quiz).toHaveLength(3); expect(l.flow.main[0].minutes).toBe(40)
+    expect(l.formative_check.quiz).toHaveLength(3); expect(l.flow.main.reduce((s, m) => s + m.minutes, 0)).toBe(40)
     expect(l.teacher_script.questions).toHaveLength(3)
     expect(Lesson.safeParse(l).success).toBe(true)
   })
@@ -76,5 +77,47 @@ describe('upgradeSnapshot (v1 → v2)', () => {
     // JSON 왕복(DB 저장 후 다시 읽은 v2 판)도 그대로 둔다
     const again = upgradeSnapshot(JSON.parse(JSON.stringify(s)))
     expect(again).toEqual(s)
+  })
+})
+
+describe('compat 보강 (T6)', () => {
+  it('splitMainV1: ①② 표식으로 나눠 20/20분 두 소단계, 표식 앞머리("전개 40분 —")는 버림, 표식이 없으면 40분 한 단계', () => {
+    const two = splitMainV1('① 가 ② 나 ③ 다 ④ 라')
+    expect(two).toEqual([{ step_label: '개념·활동', minutes: 20, activities: ['① 가', '② 나'] }, { step_label: '적용·정리', minutes: 20, activities: ['③ 다', '④ 라'] }])
+    const headed = splitMainV1('전개 40분 — ① 가 ② 나 ③ 다')
+    expect(headed.map((m) => m.activities)).toEqual([['① 가', '② 나'], ['③ 다']])
+    expect(splitMainV1('표식 없는 전개')).toEqual([{ step_label: '전개', minutes: 40, activities: ['표식 없는 전개'] }])
+  })
+  it('axisOf: 요소 이름의 낱말로 축을 고른다', () => {
+    expect(axisOf('제안과 근거의 연결')).toBe('가치·태도')
+    expect(axisOf('실천 가능성(개인·사회 구분)')).toBe('가치·태도')
+    expect(axisOf('자료 정리의 정확성')).toBe('지식·이해')
+    expect(axisOf('해석의 타당성')).toBe('과정·기능')
+    expect(axisOf('서술형 채점표')).toBe('과정·기능')
+  })
+  it('upgradeLessonV1: 논술형 차시는 안내 5분 + 논술형 작성 35분 두 소단계', () => {
+    const essay = v1('stage3-generate').lessons.find((l: { assessment: string | null }) => l.assessment === '논술형')
+    const l = upgradeLessonV1(essay, [])
+    expect(l.flow.main.length).toBe(2)
+    expect(l.flow.main.some((m) => m.step_label.includes('논술형') && m.minutes >= 35)).toBe(true)
+    expect(l.flow.main.reduce((s, m) => s + m.minutes, 0)).toBe(l.time_budget.main_min)
+    expect(Lesson.safeParse(l).success).toBe(true)
+  })
+  it('upgradeAssessmentV1: 0점 서술에 무응답·시도 구분, 논술형 요소 축에 가치·태도가 있다', () => {
+    const a = upgradeAssessmentV1(v1('stage5-generate'))
+    for (const it of a.items) for (const c of it.rubric.criteria) {
+      const zero = c.scale.find((s) => s.points === 0)!.descriptor
+      expect(zero).toMatch(/무응답/); expect(zero).toMatch(/시도/)
+    }
+    expect(a.items[2].rubric.criteria.map((c) => c.axis)).toContain('가치·태도')
+    expect(a.items[0].rubric.criteria[0].axis).toBe('과정·기능')
+  })
+  it('buildReconstructionV2: 세 축이 모두 있는 학습 목표와 원문 그대로의 재구조화 표', () => {
+    const standards = fx('standards-math')
+    const r = buildReconstructionV2(v1('stage2-generate'), standards)
+    expect(Reconstruction.safeParse(r).error?.issues ?? []).toEqual([])
+    expect(new Set(r.learning_goals.map((g) => g.axis)).size).toBe(3)
+    expect(r.standards.map((s) => s.original_text)).toEqual(standards.map((s: { text: string }) => s.text))
+    expect(r.level_anchor).toEqual([])
   })
 })
