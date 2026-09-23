@@ -144,3 +144,44 @@ describe('compat 보강 (T6)', () => {
     expect(r.level_anchor).toEqual([])
   })
 })
+
+describe('compat v1 업그레이드 흔적 없애기 (fix wave I3)', () => {
+  type V1L = Parameters<typeof upgradeLessonV1>[0]
+  for (const sfx of ['', '-과학']) {
+    it(`upgradeLessonV1${sfx}: 활동지 expected·발문 expected_answer 가 차시 목표 문장을 되쓰지 않고, if_stuck 에 "N분 —" 머리말이 없다`, () => {
+      const lessons = v1(`stage3-generate${sfx}`).lessons as V1L[]
+      const goals = lessons.map((l) => l.goal.trim())
+      for (const raw of lessons) {
+        const l = upgradeLessonV1(raw, [])
+        expect(Lesson.safeParse(l).success).toBe(true)
+        for (const t of l.worksheet.tasks) expect(goals, `${l.no}차시 활동지 ${t.no}`).not.toContain(t.expected.trim())
+        for (const q of l.teacher_script.questions) {
+          expect(goals, `${l.no}차시 발문 ${q.prompt}`).not.toContain(q.expected_answer.trim())
+          expect(q.if_stuck).not.toMatch(/\d+\s*분\s*—/)
+          // 힌트가 예상 답을 그대로 말하지 않는다(L-06)
+          if (q.expected_answer.length >= 4) expect(q.if_stuck).not.toContain(q.expected_answer)
+        }
+      }
+    })
+  }
+  it('도전 과제 기본값은 핵심질문에서 만든 교사 확인 문장이다(목표 문장 아님)', () => {
+    const raw = (v1('stage3-generate').lessons as V1L[])[0]
+    const challenge = upgradeLessonV1(raw, []).worksheet.tasks.find((t) => t.tier === '도전')!
+    expect(challenge.expected).toMatch(/^교사 확인: /); expect(challenge.expected).toContain(raw.key_question.replace(/[?？]$/, ''))
+  })
+  it('upgradeItemV1: 서술형 예시답안 text 는 채점표 서술을 덧붙이지 않고, 그 서술은 rationale 로 간다', () => {
+    for (const sfx of ['', '-과학']) {
+      const src = v1(`stage5-generate${sfx}`)
+      const a = upgradeAssessmentV1(src)
+      expect(Assessment.safeParse(a).error?.issues ?? []).toEqual([])
+      for (const [i, it] of a.items.entries()) {
+        for (const e of it.exemplar_answers) expect(e.text, `${sfx} 문항 ${i + 1} ${e.points}점`).not.toContain(' — ')
+        const levels = (src.items[i].rubric as { levels?: { points: number; expectation: string; example: string | null }[] }).levels
+        for (const lv of (levels ?? []).filter((x) => x.points > 0 && x.example)) {
+          const e = it.exemplar_answers.find((x) => x.points === lv.points)!
+          expect(e.text).toContain(lv.example!); expect(e.rationale).toContain(lv.expectation)
+        }
+      }
+    }
+  })
+})

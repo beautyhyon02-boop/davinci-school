@@ -70,14 +70,14 @@ for (const set of SETS) describe(`${set.subject} fixtures (v2)`, () => {
   it('stage4 materials do not carry the answers the items ask for (C-03)', () => {
     const { materials } = loadFixture(`stage4-generate${set.suffix}`) as { materials: { id: string; body: string | null; role: string }[] }
     const body = (id: string) => materials.find((m) => m.id === id)?.body ?? ''
-    // 수학 문항 1(도수분포표)·문항 2(상대도수 0.24·0.30)의 답이 자료 본문에 없어야 한다
+    // 수학 문항 1(도수분포표)·문항 2(상대도수 0.24·0.30)의 답이 자료 본문에 없어야 한다 — 공유 자료 B는 두 과목 모두 개수만 싣는다(M5)
     expect(body('A')).not.toMatch(/1·3·6|30~40|도수/)
-    if (set.subject === '수학') expect(body('B')).not.toMatch(/0\.24|0\.30|상대도수/)
+    expect(body('B')).not.toMatch(/0\.24|0\.30|상대도수/)
     // 과학 4차시 퀴즈·서술형 2가 끌어낼 결론("여러 번 써야 이득")이 자료 E에 없어야 한다
     expect(body('E')).not.toMatch(/이득/)
     expect(materials.some((m) => m.role === 'raw')).toBe(true)
   })
-  it('the lesson that carries each 서술형 item does not hand out its answer (C-03 at lesson level)', () => {
+  it('no lesson hands out a 서술형 answer (C-03 at lesson level: flow of the carrying lesson; quizzes·worksheets·scripts of every lesson)', () => {
     // 문항이 학생에게 구하게 하는 값·결론. 같은 차시의 전개 활동·발문·활동지·퀴즈·유의점이 이것을 미리 말하면 안 된다.
     const ANSWERS: Record<string, RegExp[]> = {
       수학: [/30개 이상 40개 미만|30~40|1·3·6·5·4·1/, /0\.24|0\.30/],
@@ -88,9 +88,29 @@ for (const set of SETS) describe(`${set.subject} fixtures (v2)`, () => {
     const items = (loadFixture(`stage5-generate${set.suffix}`) as { items: { kind: string; lesson_no: number }[] }).items.filter((i) => i.kind === '서술형')
     items.forEach((it, k) => {
       const l = lessons.find((x) => x.no === it.lesson_no)!
-      const texts = [...l.flow.main.flatMap((m) => m.activities), JSON.stringify(l.teacher_script), JSON.stringify(l.worksheet), JSON.stringify(l.formative_check), ...l.caution_notes]
+      const texts = [...l.flow.main.flatMap((m) => m.activities), ...l.caution_notes]
       for (const t of texts) expect(t, `${it.lesson_no}차시`).not.toMatch(ANSWERS[set.subject][k])
+      // 재도전 때 다른 차시의 퀴즈·활동지·발문이 답을 주면 안 된다(M6: 수학 3차시 "가장 높은 직사각형의 계급")
+      for (const o of lessons) for (const t of [JSON.stringify(o.teacher_script), JSON.stringify(o.worksheet), JSON.stringify(o.formative_check)]) {
+        expect(t, `서술형 ${k + 1}의 답이 ${o.no}차시 퀴즈·활동지·발문에`).not.toMatch(ANSWERS[set.subject][k])
+      }
     })
+  })
+  it('lessons carry no v1 upgrade artifacts (I3: goal sentence reused as expected, "N분 —" headers in hints)', () => {
+    const { lessons } = loadFixture(`stage3-generate${set.suffix}`) as { lessons: { no: number; goal: string; teacher_script: { questions: { expected_answer: string; if_stuck: string }[] }; worksheet: { tasks: { no: number; expected: string }[] } }[] }
+    const goals = lessons.map((l) => l.goal.trim())
+    for (const l of lessons) {
+      for (const t of l.worksheet.tasks) expect(goals, `${l.no}차시 활동지 ${t.no}`).not.toContain(t.expected.trim())
+      for (const q of l.teacher_script.questions) {
+        expect(goals, `${l.no}차시 발문`).not.toContain(q.expected_answer.trim())
+        expect(q.if_stuck, `${l.no}차시 발문 힌트`).not.toMatch(/\d+\s*분\s*—/)
+        if (q.expected_answer.length >= 4) expect(q.if_stuck, `${l.no}차시 힌트가 예상 답을 그대로 말함`).not.toContain(q.expected_answer)
+      }
+    }
+  })
+  it('예시답안 text is the student answer only (no rubric descriptor glued with " — ")', () => {
+    const a = loadFixture(`stage5-generate${set.suffix}`) as { items: { exemplar_answers: { points: number; text: string }[] }[] }
+    for (const [i, it] of a.items.entries()) for (const e of it.exemplar_answers) expect(e.text, `문항 ${i + 1} ${e.points}점`).not.toContain(' — ')
   })
   it('evaluation elements are "~하기" noun forms (C-18)', () => {
     const a = loadFixture(`stage5-generate${set.suffix}`) as { items: { evaluation_elements: string[] }[] }

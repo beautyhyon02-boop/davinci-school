@@ -90,26 +90,44 @@ export function axisOf(name: string): Axis {
 /** 0점 서술의 꼬리: 무응답과 '시도했으나 관련 내용 없음'을 모두 0점으로 적는다(스펙 §2.5 [TS]-2). */
 const ZERO_TAIL = ' (무응답과 시도했으나 관련 내용이 없는 경우 모두 0점)'
 
-/** v1 차시 → v2. cautionNotes 는 v1 지침서 per_lesson.notes(있으면). 발문·활동지는 퀴즈·핵심질문에서 결정적으로 만든다. */
+/** 핵심질문 끝의 물음표를 뗀 몸통(교사 확인 문장에 넣는다). */
+const kqCore = (kq: string) => kq.trim().replace(/[?？]+$/u, '')
+const squash = (s: string) => s.replace(/\s+/g, '')
+/** 막혔을 때 힌트(L-06): v1 퀴즈 해설이 정답을 그대로 담고 있으면 정답을 말하지 않는 중립 힌트로 바꾼다. */
+function hintFor(q: QuizV1): string {
+  const answer = squash(q.answer)
+  if (answer.length < 2 || !squash(q.explanation).includes(answer)) return q.explanation
+  return q.type === 'choice'
+    ? '보기를 하나씩 자료나 배운 뜻과 대조해, 맞지 않는 것부터 지워 보게 한다.'
+    : '질문의 핵심 낱말에 밑줄을 긋고, 자료나 배운 뜻에서 같은 낱말이 나오는 곳을 찾아보게 한다.'
+}
+
+/**
+ * v1 차시 → v2. cautionNotes 는 v1 지침서 per_lesson.notes(있으면). 발문·활동지는 퀴즈·핵심질문에서 결정적으로 만든다.
+ * v1 에는 도전 과제·논술형 차시 발문의 예상 답이 없다 — 차시 목표 문장이나 흐름 문장("도입 10분 — …")을 옮기면 정답처럼 읽히므로
+ * 핵심질문에서 만든 '교사 확인' 기준과 정답을 말하지 않는 힌트를 넣는다(L-06·L-08). 좋은 기준은 AI 생성본·PATCHES 가 채운다.
+ */
 export function upgradeLessonV1(l: LessonV1, cautionNotes: string[]): LessonT {
   const { used, needed } = splitMaterialsV1(l.materials)
   const isEssay = l.assessment === '논술형'
-  const fromQuiz = l.quiz.map((q) => ({ prompt: q.q, expected_answer: q.answer, if_stuck: q.explanation }))
+  const kq = kqCore(l.key_question)
+  const fromQuiz = l.quiz.map((q) => ({ prompt: q.q, expected_answer: q.answer, if_stuck: hintFor(q) }))
   const questions = fromQuiz.length >= 2 ? fromQuiz.slice(0, 4) : [
-    { prompt: l.key_question, expected_answer: l.goal, if_stuck: l.flow.intro },
-    { prompt: `${l.key_question} — 자료에서 근거가 되는 수치 하나를 찾아보자.`, expected_answer: l.goal, if_stuck: l.flow.main },
+    { prompt: l.key_question, expected_answer: `학생마다 다를 수 있음 — 자료의 수치나 내용을 근거로 들어 "${kq}"에 답하면 인정`, if_stuck: '핵심질문을 다시 읽고, 자료에서 질문과 관련된 부분에 밑줄을 그어 보게 한다.' },
+    { prompt: `${l.key_question} — 자료에서 근거가 되는 수치 하나를 찾아보자.`, expected_answer: '자료에 실제로 있는 수치 하나(단위 포함)와 그 수치가 있는 자료 이름', if_stuck: '자료의 제목과 표의 열 이름을 먼저 읽고, 질문과 관련된 칸을 손가락으로 짚어 보게 한다.' },
   ]
   const q = l.quiz
+  const challenge = { no: 3, tier: '도전' as const, level_ref: 'A~B' as const, answer_space: 'lines' as const, expected: `교사 확인: 자료의 수치나 내용을 근거로 "${kq}"에 대한 자신의 판단과 이유를 썼는지 본다(정답 문장은 하나가 아님)` }
   const tasks = q.length >= 2
     ? [
         { no: 1, prompt: q[0].q, tier: '기본' as const, level_ref: 'D~E' as const, answer_space: 'short' as const, expected: q[0].answer },
         { no: 2, prompt: q[1].q, tier: '표준' as const, level_ref: 'C' as const, answer_space: 'short' as const, expected: q[1].answer },
-        { no: 3, prompt: l.key_question, tier: '도전' as const, level_ref: 'A~B' as const, answer_space: 'lines' as const, expected: l.goal },
+        { ...challenge, prompt: l.key_question },
       ]
     : [
-        { no: 1, prompt: l.key_question, tier: '기본' as const, level_ref: 'D~E' as const, answer_space: 'short' as const, expected: l.goal },
-        { no: 2, prompt: `${l.key_question} 근거가 되는 자료의 수치를 두 개 적어 보자.`, tier: '표준' as const, level_ref: 'C' as const, answer_space: 'lines' as const, expected: l.goal },
-        { no: 3, prompt: `${l.key_question} 자신의 판단과 이유를 문단으로 써 보자.`, tier: '도전' as const, level_ref: 'A~B' as const, answer_space: 'lines' as const, expected: l.goal },
+        { no: 1, prompt: l.key_question, tier: '기본' as const, level_ref: 'D~E' as const, answer_space: 'short' as const, expected: `교사 확인: "${kq}"에 자기 말로 한 문장 답을 썼는지 본다` },
+        { no: 2, prompt: `${l.key_question} 근거가 되는 자료의 수치를 두 개 적어 보자.`, tier: '표준' as const, level_ref: 'C' as const, answer_space: 'lines' as const, expected: '교사 확인: 자료에 실제로 있는 수치 두 개를 단위와 함께 옮겨 적었는지 본다' },
+        { ...challenge, prompt: `${l.key_question} 자신의 판단과 이유를 문단으로 써 보자.` },
       ]
   return {
     no: l.no, standards: l.standards, topic: l.goal.slice(0, 40), key_question: l.key_question, goal: l.goal,
@@ -146,6 +164,7 @@ export function evaluationElement(stem: string): string {
   const irregular = L_DROP.find(([re]) => re.test(core))
   return irregular ? core.replace(irregular[0], irregular[1]) : core.replace(/시오$/u, '기')
 }
+const SHORT_EXEMPLAR = '(짧은 답안 예시, 학생이 쓴 전부) '
 function fillScale(levels: { points: number; expectation: string; example: string | null }[], max: number) {
   const byPts = new Map(levels.map((l) => [l.points, l]))
   const scale = []
@@ -171,8 +190,12 @@ export function upgradeItemV1(it: ItemV1, exemplars: AssessmentV1['exemplars']):
   if ('levels' in it.rubric) {
     const scale = fillScale(it.rubric.levels, it.points)
     rubric = { criteria: [{ name: `${it.kind} 채점표`, axis: axisOf(`${it.kind} 채점표`), condition_nos: allNos, max: it.points, scale }], holistic: null, notes: ['예시답안과 표현이 달라도 의미가 같으면 인정한다.'] }
+    // 예시답안 text 는 학생 답안 그대로 둔다(채점표 서술을 덧붙이지 않음) — 서술은 rationale 로. zod 가 text 20자 이상을 요구하므로
+    // 짧은 v1 예시는 앞에 '짧은 답안' 표시만 붙인다(표시는 답안 내용이 아니다).
     exemplar_answers = it.rubric.levels.filter((l) => l.points > 0 && l.example).map((l) => ({
-      level: null, points: l.points, scores: [l.points], assumed_short_points: null, text: l.example!.length >= 20 ? l.example! : `${l.example} — ${l.expectation}`, rationale: `채점표 ${l.points}점 단계의 기대 수행에 해당함`,
+      level: null, points: l.points, scores: [l.points], assumed_short_points: null,
+      text: l.example!.length >= 20 ? l.example! : `${SHORT_EXEMPLAR}${l.example}`,
+      rationale: `채점표 ${l.points}점 단계에 해당함: ${l.expectation}`,
     }))
   } else {
     const criteria = it.rubric.criteria.map((c) => ({ name: c.name, axis: axisOf(c.name), condition_nos: allNos, max: 4, scale: (['0', '1', '2', '3', '4'] as const).map((k) => ({ points: Number(k), descriptor: k === '0' ? `${c.bands[k]}${ZERO_TAIL}` : c.bands[k], example: null })) }))
