@@ -55,13 +55,14 @@ export function isV1Snapshot(raw: unknown): boolean {
 }
 
 const PAPER_PREFIX = /^\[종이 답안\]\s*/
-const MATERIAL_ID = /(?:^|[^A-Z])([A-Z])(?![A-Z])/
+const MATERIAL_ID = /(?:^|[^A-Z])([A-Z])(?![A-Z])/g
 
+/** v1 준비물/조건 문장에서 '자료 X' ID(대문자 한 글자, 여러 개면 모두)를 뽑고 나머지는 준비물로 남긴다. */
 export function splitMaterialsV1(items: string[]): { used: string[]; needed: string[] } {
   const used = new Set<string>(); const needed: string[] = []
   for (const s of items) {
-    const m = s.match(MATERIAL_ID)
-    if (m && /자료/.test(s)) used.add(m[1]); else needed.push(s)
+    const ids = /자료/.test(s) ? [...s.matchAll(MATERIAL_ID)].map((m) => m[1]) : []
+    if (ids.length) ids.forEach((id) => used.add(id)); else needed.push(s)
   }
   return { used: [...used].sort(), needed }
 }

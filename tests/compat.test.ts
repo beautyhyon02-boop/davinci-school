@@ -1,7 +1,7 @@
 // tests/compat.test.ts
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { upgradeSnapshot, isV1Snapshot, upgradeLessonV1, upgradeAssessmentV1, splitMainV1, axisOf, buildReconstructionV2, upgradeTeacherGuideV1 } from '@/lib/studio/compat'
+import { upgradeSnapshot, isV1Snapshot, upgradeLessonV1, upgradeAssessmentV1, splitMainV1, axisOf, buildReconstructionV2, upgradeTeacherGuideV1, splitMaterialsV1 } from '@/lib/studio/compat'
 import { Reconstruction } from '@/lib/studio/schemas'
 import { Lesson, Assessment, LessonDesign, Materials, TeacherGuide } from '@/lib/studio/schemas'
 
@@ -111,6 +111,11 @@ describe('compat 보강 (T6)', () => {
     }
     expect(a.items[2].rubric.criteria.map((c) => c.axis)).toContain('가치·태도')
     expect(a.items[0].rubric.criteria[0].axis).toBe('과정·기능')
+  })
+  it('splitMaterialsV1: 한 문장에 자료가 여럿이면 모두 잡는다(PET·PP 같은 약어는 자료가 아님)', () => {
+    expect(splitMaterialsV1(['자료 D와 자료 E를 근거로 쓴다', 'PET·PP 컵', '자료 B'])).toEqual({ used: ['B', 'D', 'E'], needed: ['PET·PP 컵'] })
+    const a = upgradeAssessmentV1(v1('stage5-generate-과학'))
+    expect(a.items.map((i) => i.materials_used)).toEqual([['D', 'E'], ['D', 'E'], ['B', 'D']])
   })
   it('upgradeTeacherGuideV1: 병합 쌍은 한 번씩만(1↔2 를 [1,2]·[2,1] 두 번 적지 않음)', () => {
     const lessons = v1('stage3-generate').lessons.map((l: Parameters<typeof upgradeLessonV1>[0]) => upgradeLessonV1(l, []))
