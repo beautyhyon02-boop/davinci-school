@@ -19,7 +19,8 @@ export const NOTICE_FORBIDDEN: [RegExp, string][] = [
   [/등수|석차|상위\s*\d+%|백분위|평균보다/, '등수·백분위·비교 표현 금지'],
   [/(매우 우수|보통|미흡)\s*[.!]?$/, '단독 평어로 문장을 끝내지 않음'],
 ]
-const SUGGEST_ENDINGS = /(봅시다|하세요|해요|하기 바랍니다|보세요)[.!]?$/
+/** 청유형 종결(N-12). lib/classroom/notice-lint.ts 도 같은 규칙을 쓴다. */
+export const SUGGEST_ENDINGS = /(봅시다|하세요|해요|하기 바랍니다|보세요)[.!]?$/
 
 function reconstructionIssues(o: ReconstructionT, ctx: CheckCtx): Issue[] {
   const issues: Issue[] = []

@@ -41,3 +41,10 @@
 
 html { color: var(--color-ink-900); background: #fff; }
 body { @apply antialiased; }
+
+/* 인쇄(안내장 등): 옆 메뉴·버튼·편집 칸을 숨기고 본문만 남긴다 */
+@media print {
+  aside, nav, .no-print { display: none !important; }
+  main { padding: 0 !important; }
+  @page { margin: 14mm; }
+}

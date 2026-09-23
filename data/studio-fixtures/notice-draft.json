@@ -1,0 +1,15 @@
+{
+ "quiz_notes": [{ "quiz_no": 2, "note": "계급은 정확히 찾았으나 도수를 세는 과정에서 헷갈렸어요" }],
+ "criteria_feedback": [
+  { "criterion_name": "서술형 채점표", "good_point": "도수분포표 활동에서 계급을 정확하게 나누어 표를 완성함", "improve_point": "표는 맞게 그렸으나 가장 큰 계급 문장을 빠뜨림 — 표를 그린 뒤 한 문장으로 정리해 봅시다" },
+  { "criterion_name": "자료 정리의 정확성", "good_point": "자료 정리 활동에서 두 해의 수치를 표로 정확하게 옮김", "improve_point": "표는 정확하나 단위를 한 곳에서 빠뜨림 — 표를 다 쓴 뒤 단위를 한 번 더 확인해 봅시다" },
+  { "criterion_name": "해석의 타당성", "good_point": "자료 해석 활동에서 가장 크게 변한 항목을 정확하게 찾아냄", "improve_point": "변화는 찾았으나 이유 설명이 짧음 — 수치 하나를 근거로 붙여 한 문장 더 써 봅시다" },
+  { "criterion_name": "제안과 근거의 연결", "good_point": "감축 목표 제안 활동에서 실천할 수 있는 목표를 구체적으로 세움", "improve_point": "목표는 분명하나 근거 수치와의 연결이 약함 — 목표 옆에 근거 수치를 함께 적어 봅시다" },
+  { "criterion_name": "수학적 표현과 서술", "good_point": "서술 활동에서 비율과 도수를 알맞은 용어로 정확하게 표현함", "improve_point": null },
+  { "criterion_name": "과학적 근거의 정확성", "good_point": "근거 찾기 활동에서 자료의 수치를 정확하게 인용함", "improve_point": "수치는 맞게 옮겼으나 어느 자료인지 밝히지 않음 — 자료 기호를 함께 적어 봅시다" },
+  { "criterion_name": "문제와 해결 방안의 연결", "good_point": "해결 방안 활동에서 문제의 원인과 방안을 차례대로 연결함", "improve_point": "연결은 자연스러우나 예상 효과가 빠짐 — 방안마다 기대 효과를 한 줄 덧붙여 봅시다" },
+  { "criterion_name": "실천 가능성(개인·사회 구분)", "good_point": "실천 방안 활동에서 개인과 사회의 실천을 나누어 구체적으로 제시함", "improve_point": null },
+  { "criterion_name": "서술", "good_point": "글쓰기 활동에서 서론·본론·결론을 갖추어 차분하게 서술함", "improve_point": "구성은 갖추었으나 결론이 짧음 — 주장 한 문장을 결론에 다시 써 봅시다" }
+ ],
+ "improvement_comment": "첫 답안을 출발점으로 빠뜨렸던 해석 문장을 스스로 채워 넣어 재도전에서 점수를 올림"
+}
