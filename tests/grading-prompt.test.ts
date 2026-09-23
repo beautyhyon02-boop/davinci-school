@@ -3,10 +3,10 @@ import { readFileSync } from 'node:fs'
 import { buildGradingPrompt, GRADING_RULES } from '@/lib/classroom/grading-prompt'
 import { upgradeSnapshot } from '@/lib/studio/publish'
 
-// 수학 fixture 로 스냅샷을 조립한다(5단계 평가 = stage5-generate.json). fixture 가 아직 v1 이므로(T6 전) 채점 경로(grade.ts)와 같이
-// upgradeSnapshot 으로 v2 모양으로 올린 뒤 넘긴다.
+// 수학 fixture 로 스냅샷을 조립한다(5단계 평가 = stage5-generate.json, T6 부터 v2). 채점 경로(grade.ts)와 같이 upgradeSnapshot 을 거친다
+// (schema_version 2 라 그대로 통과).
 const assessment = JSON.parse(readFileSync('data/studio-fixtures/stage5-generate.json', 'utf8'))
-const snapshot = upgradeSnapshot({ cover: { title: 'T', subject: '수학', level: '중', grade: 1, version: 1, published_at: '' }, standards: [], intro: '', reconstruction: '',
+const snapshot = upgradeSnapshot({ schema_version: 2, cover: { title: 'T', subject: '수학', level: '중', grade: 1, version: 1, published_at: '' }, standards: [], intro: '', reconstruction: '',
   learning_goals: [], key_question: '', lessons: [], materials: [], assessment, teacher_guide: null, generated_with: { models: [] } })
 
 describe('buildGradingPrompt', () => {

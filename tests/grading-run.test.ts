@@ -41,7 +41,8 @@ function fakeDb(rows: Record<string, unknown[]>, opts: { claim?: boolean } = {})
 }
 
 const assessment = JSON.parse(readFileSync('data/studio-fixtures/stage5-generate.json', 'utf8'))
-const snapshot = { cover: { title: 'T', subject: '수학', level: '중', grade: 1, version: 1, published_at: '' }, lessons: [], materials: [], standards: [], intro: '', reconstruction: '', learning_goals: [], key_question: '', assessment, teacher_guide: null, generated_with: { models: [] } }
+// stage5-generate.json 은 T6 부터 v2 — 스냅샷도 v2 로 표시해야 grade.ts 의 upgradeSnapshot 이 v1 로 오인해 다시 올리지 않는다
+const snapshot = { schema_version: 2, cover: { title: 'T', subject: '수학', level: '중', grade: 1, version: 1, published_at: '' }, lessons: [], materials: [], standards: [], intro: '', reconstruction: '', learning_goals: [], key_question: '', assessment, teacher_guide: null, generated_with: { models: [] } }
 const answerRows = { body: 'x'.repeat(60), item_no: 1, assignment_id: 's1', assignments: { item_set_id: 'set', item_set_version: 1, student_id: 'stu' } }
 
 describe('runGrading (mock)', () => {
