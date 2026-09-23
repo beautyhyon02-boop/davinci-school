@@ -54,7 +54,7 @@ function MaterialChart({ material }: { material: Material }) {
   return <div className="mt-3"><RelativeFreqBars rows={spec.rows} columns={spec.columns} title={spec.title} /></div>
 }
 
-function MaterialsSection({ materials }: { materials: Material[] }) {
+export function MaterialsSection({ materials }: { materials: Material[] }) {
   if (materials.length === 0) return null
   return (
     <Card>

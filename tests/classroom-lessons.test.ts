@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { assessmentItemNoForLesson, lessonNoForItem, isLessonOpen, ASSESSMENT_LABELS } from '@/lib/classroom/lessons'
+import { assessmentItemNoForLesson, lessonNoForItem, isLessonOpen, ASSESSMENT_LABELS, materialIdsForLesson } from '@/lib/classroom/lessons'
 
 // 최소 스냅샷: lessons 의 assessment 라벨과 assessment.items 의 순서로 문항 번호(1-based)를 정한다
 const snapshot = {
@@ -28,5 +28,13 @@ describe('isLessonOpen', () => {
   it('opens lessons up to open_lessons', () => {
     expect(isLessonOpen(3, 3)).toBe(true)
     expect(isLessonOpen(3, 4)).toBe(false)
+  })
+})
+
+describe('materialIdsForLesson', () => {
+  it('extracts A~Z ids from "자료 X" entries and ignores other items', () => {
+    expect(materialIdsForLesson({ materials: ['축제 삽화 3장', '자료 A', '자료 B'] })).toEqual(['A', 'B'])
+    expect(materialIdsForLesson({ materials: ['자료 B', '자료 A'] })).toEqual(['A', 'B'])
+    expect(materialIdsForLesson({ materials: [] })).toEqual([])
   })
 })

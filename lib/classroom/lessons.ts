@@ -24,3 +24,13 @@ export function lessonNoForItem(snapshot: Snapshot, itemNo: number): number {
 export function isLessonOpen(openLessons: number, lessonNo: number): boolean {
   return lessonNo >= 1 && lessonNo <= openLessons
 }
+
+/** 3단계 차시의 materials 목록("자료 A", "자료 B", "축제 삽화 3장"…)에서 공유/세트 자료 id(A~Z)만 뽑는다. */
+export function materialIdsForLesson(lesson: { materials: string[] }): string[] {
+  const ids = new Set<string>()
+  for (const s of lesson.materials) {
+    const m = s.match(/(?:^|[^A-Z])([A-Z])(?![A-Z])/)
+    if (m && /자료/.test(s)) ids.add(m[1])
+  }
+  return [...ids].sort()
+}
