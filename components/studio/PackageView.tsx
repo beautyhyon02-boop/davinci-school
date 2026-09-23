@@ -29,7 +29,8 @@ function MaterialTable({ material }: { material: Material }) {
   if (!material.table) return null
   return (
     <div className="mt-2 overflow-x-auto">
-      <table className="w-full min-w-[420px] text-left text-sm">
+      {/* 표는 가운데 정렬, 너무 넓지 않게(최대 560px). 숫자 칸은 오른쪽 정렬. */}
+      <table className="mx-auto w-full max-w-[560px] min-w-[320px] text-left text-sm">
         <thead>
           <tr className="border-b border-ink-100 text-ink-500">
             {material.table.columns.map((col, i) => <th key={i} className="py-1 pr-3">{col}</th>)}
@@ -38,7 +39,7 @@ function MaterialTable({ material }: { material: Material }) {
         <tbody>
           {material.table.rows.map((row, i) => (
             <tr key={i} className="border-b border-ink-50">
-              {row.map((cell, j) => <td key={j} className="py-1 pr-3">{String(cell)}</td>)}
+              {row.map((cell, j) => <td key={j} className={`py-1 pr-3 ${typeof cell === 'number' ? 'text-right tabular-nums' : ''}`}>{String(cell)}</td>)}
             </tr>
           ))}
         </tbody>
@@ -50,8 +51,9 @@ function MaterialTable({ material }: { material: Material }) {
 function MaterialChart({ material }: { material: Material }) {
   const spec = detectChart(material)
   if (!spec) return null
-  if (spec.kind === 'histogram') return <div className="mt-3"><Histogram values={spec.values} binSize={spec.binSize} title={spec.title} /></div>
-  return <div className="mt-3"><RelativeFreqBars rows={spec.rows} columns={spec.columns} title={spec.title} /></div>
+  // 그래프는 가운데, 최대 480px — 넓은 화면에서 화면을 다 차지하지 않게(대표님 요청 2026-09-23).
+  if (spec.kind === 'histogram') return <div className="mx-auto mt-3 w-full max-w-[480px]"><Histogram values={spec.values} binSize={spec.binSize} title={spec.title} /></div>
+  return <div className="mx-auto mt-3 w-full max-w-[480px]"><RelativeFreqBars rows={spec.rows} columns={spec.columns} title={spec.title} /></div>
 }
 
 export function MaterialsSection({ materials }: { materials: Material[] }) {
