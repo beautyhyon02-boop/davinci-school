@@ -40,3 +40,15 @@ describe('judgeQuiz lenient short answers', () => {
     expect(judgeQuiz({ type: 'short', answer: '0.30', choices: null }, '0.3')).toBe(true)
   })
 })
+
+describe('judgeQuiz ranges and inline units', () => {
+  const cls = { type: 'short' as const, answer: '30개 이상 40개 미만', choices: null }
+  it('treats class-interval spellings as the same answer', () => {
+    expect(judgeQuiz(cls, '30이상 40미만')).toBe(true)
+    expect(judgeQuiz(cls, '30 이상 40 미만')).toBe(true)
+    expect(judgeQuiz(cls, '30~40')).toBe(true)
+    expect(judgeQuiz(cls, '30-40')).toBe(true)
+    expect(judgeQuiz(cls, '30개부터 40개까지')).toBe(true)
+    expect(judgeQuiz(cls, '20 이상 30 미만')).toBe(false)
+  })
+})

@@ -10,10 +10,16 @@ export type QuizKey = { type: 'choice' | 'short'; answer: string; choices: strin
 const TRAILING_UNITS = /(개|명|곳|번|회|점|원|장|마리|권|대|살|년|월|일|시간|분|초|퍼센트|%|cm|mm|km|kg|g|m|l|ℓ)+$/
 const TRAILING_ENDINGS = /(입니다|이다|이에요|예요|이요|요|임|다)$/
 
+const UNIT_AFTER_DIGIT = /(\d)(개|명|곳|번|회|점|원|장|마리|권|대|살|년|월|일|시간|분|초|퍼센트|%|cm|mm|km|kg|g|m|l|ℓ)/g
+// "30 이상 40 미만" / "30이상40미만" / "30~40" / "30-40" / "30부터40까지" → "30~40"
+const RANGE = /(\d+(?:\.\d+)?)(?:이상|부터|~|-|–|—|에서)(\d+(?:\.\d+)?)(?:미만|까지|이하)?/g
+
 export function coreOfShort(s: string): string {
   let x = normalizeShort(s)
   x = x.replace(TRAILING_ENDINGS, '')
+  x = x.replace(UNIT_AFTER_DIGIT, '$1')   // 숫자 뒤 단위는 위치에 상관없이 제거("30개 이상 40개 미만" → "30이상40미만")
   x = x.replace(TRAILING_UNITS, '')
+  x = x.replace(RANGE, '$1~$2')          // 범위 표기 통일
   return x
 }
 
