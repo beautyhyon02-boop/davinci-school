@@ -138,9 +138,13 @@ function stemV2(stem: string, points: number): string {
   const stripped = stem.replace(/\s*[\(\[]\s*\d+\s*점\s*[\)\]]\s*$/u, '').trim()
   return `${stripped} [${points}점]`
 }
-function evaluationElement(stem: string): string {
-  const core = stem.replace(/\s*[\(\[]\s*\d+\s*점\s*[\)\]]\s*$/u, '').replace(/\.$/, '')
-  return core.replace(/(하시오|쓰시오|서술하시오|구하시오|정하시오|고르시오)$/u, '기').replace(/시오$/u, '기')
+// ㄹ 탈락 동사는 "~시오" 앞에서 ㄹ이 빠진다(만들다 → 만드시오) — 명사형으로 돌릴 때 되살린다
+const L_DROP: [RegExp, string][] = [[/만드시오$/u, '만들기'], [/여시오$/u, '열기']]
+/** 문두 → 평가 요소 "~하기" 명사형(C-18). 배점 꼬리·마침표를 떼고 "~시오"만 "~기"로 바꾼다(동사 어간은 그대로: 쓰시오 → 쓰기). */
+export function evaluationElement(stem: string): string {
+  const core = stem.replace(/\s*[\(\[]\s*\d+\s*점\s*[\)\]]\s*$/u, '').trim().replace(/\.$/, '')
+  const irregular = L_DROP.find(([re]) => re.test(core))
+  return irregular ? core.replace(irregular[0], irregular[1]) : core.replace(/시오$/u, '기')
 }
 function fillScale(levels: { points: number; expectation: string; example: string | null }[], max: number) {
   const byPts = new Map(levels.map((l) => [l.points, l]))

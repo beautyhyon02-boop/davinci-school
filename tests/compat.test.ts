@@ -1,7 +1,7 @@
 // tests/compat.test.ts
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { upgradeSnapshot, isV1Snapshot, upgradeLessonV1, upgradeAssessmentV1, splitMainV1, axisOf, buildReconstructionV2, upgradeTeacherGuideV1, splitMaterialsV1 } from '@/lib/studio/compat'
+import { upgradeSnapshot, isV1Snapshot, upgradeLessonV1, upgradeAssessmentV1, splitMainV1, axisOf, buildReconstructionV2, upgradeTeacherGuideV1, splitMaterialsV1, evaluationElement } from '@/lib/studio/compat'
 import { Reconstruction } from '@/lib/studio/schemas'
 import { Lesson, Assessment, LessonDesign, Materials, TeacherGuide } from '@/lib/studio/schemas'
 
@@ -116,6 +116,19 @@ describe('compat 보강 (T6)', () => {
     expect(splitMaterialsV1(['자료 D와 자료 E를 근거로 쓴다', 'PET·PP 컵', '자료 B'])).toEqual({ used: ['B', 'D', 'E'], needed: ['PET·PP 컵'] })
     const a = upgradeAssessmentV1(v1('stage5-generate-과학'))
     expect(a.items.map((i) => i.materials_used)).toEqual([['D', 'E'], ['D', 'E'], ['B', 'D']])
+  })
+  it('evaluationElement: 문두 끝의 "~시오"를 "~기" 명사형으로(동사 어간은 남김, C-18)', () => {
+    const cases: [string, string][] = [
+      ['도수가 가장 큰 계급을 쓰시오. (3점)', '도수가 가장 큰 계급을 쓰기'],
+      ['상대도수를 구하시오.', '상대도수를 구하기'],
+      ['판단한 이유를 서술하시오. [16점]', '판단한 이유를 서술하기'],
+      ['제안서를 작성하시오.', '제안서를 작성하기'],
+      ['알맞은 방안을 고르시오.', '알맞은 방안을 고르기'],
+      ['감축 목표를 정하시오.', '감축 목표를 정하기'],
+      ['도수분포표로 나타내시오.', '도수분포표로 나타내기'],
+      ['히스토그램을 만드시오.', '히스토그램을 만들기'],
+    ]
+    for (const [stem, want] of cases) expect(evaluationElement(stem)).toBe(want)
   })
   it('upgradeTeacherGuideV1: 병합 쌍은 한 번씩만(1↔2 를 [1,2]·[2,1] 두 번 적지 않음)', () => {
     const lessons = v1('stage3-generate').lessons.map((l: Parameters<typeof upgradeLessonV1>[0]) => upgradeLessonV1(l, []))

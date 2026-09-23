@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { draftNoticePlan } from '@/lib/studio/notice-draft'
+import { draftNoticePlan, objectParticle } from '@/lib/studio/notice-draft'
 import { upgradeLessonV1, upgradeAssessmentV1 } from '@/lib/studio/compat'
 import { NoticePlan, NOTICE_DISCLAIMER } from '@/lib/studio/schemas'
 import { staticIssues } from '@/lib/studio/checks'
@@ -34,5 +34,19 @@ describe('draftNoticePlan', () => {
     const plan = draftNoticePlan(lessons, null)
     expect(plan.per_lesson.every((p) => p.criteria_phrases === null)).toBe(true)
     expect(NoticePlan.safeParse(plan).success).toBe(true)
+  })
+  it('objectParticle: 받침이 없으면 를, 있으면 을, 한글이 아니면 을(를)', () => {
+    expect(objectParticle('표')).toBe('를'); expect(objectParticle('그림')).toBe('을'); expect(objectParticle('컵')).toBe('을')
+    expect(objectParticle('도수분포표')).toBe('를'); expect(objectParticle('PET')).toBe('을(를)'); expect(objectParticle('')).toBe('을(를)')
+  })
+  for (const sfx of ['', '-과학']) it(`stage7${sfx} fixture: 조사가 맞고, 보완 문구는 "써 봅시다"로 끝나며 따옴표가 짝이 맞다`, () => {
+    const plan = json(`data/studio-fixtures/stage7-generate${sfx}.json`) as { per_lesson: { preview: string; criteria_phrases: { good: string[]; improve: string[] }[] | null }[] }
+    for (const p of plan.per_lesson) {
+      expect(p.preview).not.toContain('을(를)')
+      for (const c of p.criteria_phrases ?? []) {
+        for (const t of c.improve) expect(t).toMatch(/써 봅시다$/)
+        for (const t of [...c.good, ...c.improve]) { expect((t.match(/"/g) ?? []).length % 2, t).toBe(0); expect(t).not.toMatch(/[“”‘’]/) }
+      }
+    }
   })
 })

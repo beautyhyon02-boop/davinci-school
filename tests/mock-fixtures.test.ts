@@ -77,6 +77,25 @@ for (const set of SETS) describe(`${set.subject} fixtures (v2)`, () => {
     expect(body('E')).not.toMatch(/이득/)
     expect(materials.some((m) => m.role === 'raw')).toBe(true)
   })
+  it('the lesson that carries each 서술형 item does not hand out its answer (C-03 at lesson level)', () => {
+    // 문항이 학생에게 구하게 하는 값·결론. 같은 차시의 전개 활동·발문·활동지·퀴즈·유의점이 이것을 미리 말하면 안 된다.
+    const ANSWERS: Record<string, RegExp[]> = {
+      수학: [/30개 이상 40개 미만|30~40|1·3·6·5·4·1/, /0\.24|0\.30/],
+      // 과학 서술형 1은 자료 D·E의 근거를 인용하게 하는 문항(재활용이 어려운 이유는 자료 D 본문 그대로)이라 차시 대조에서 뺀다 — (?!)는 아무것도 맞추지 않음
+      과학: [/(?!)/,/여러 번 (써야|사용해야|반복해 사용해야) 이득|여러 번 반복해 사용할 것/],
+    }
+    const { lessons } = loadFixture(`stage3-generate${set.suffix}`) as { lessons: { no: number; flow: { main: { activities: string[] }[] }; teacher_script: unknown; worksheet: unknown; formative_check: unknown; caution_notes: string[] }[] }
+    const items = (loadFixture(`stage5-generate${set.suffix}`) as { items: { kind: string; lesson_no: number }[] }).items.filter((i) => i.kind === '서술형')
+    items.forEach((it, k) => {
+      const l = lessons.find((x) => x.no === it.lesson_no)!
+      const texts = [...l.flow.main.flatMap((m) => m.activities), JSON.stringify(l.teacher_script), JSON.stringify(l.worksheet), JSON.stringify(l.formative_check), ...l.caution_notes]
+      for (const t of texts) expect(t, `${it.lesson_no}차시`).not.toMatch(ANSWERS[set.subject][k])
+    })
+  })
+  it('evaluation elements are "~하기" noun forms (C-18)', () => {
+    const a = loadFixture(`stage5-generate${set.suffix}`) as { items: { evaluation_elements: string[] }[] }
+    for (const e of a.items.flatMap((i) => i.evaluation_elements)) { expect(e).toMatch(/(하|쓰|구하|르|내|정하|들)기$/); expect(e).not.toMatch(/[을를로] 기$|\s기$/) }
+  })
   it('stage5 items reference raw materials, total 22, exemplar bands match', () => {
     const a = loadFixture(`stage5-generate${set.suffix}`) as { items: { kind: string; points: number; min_competency: string | null; conditions: { answer_mode: string }; exemplar_answers: { points: number; level: string | null; assumed_short_points: number | null }[] }[]; grade_boundaries: { min: number; max: number; band: string }[] }
     expect(a.items.reduce((s, i) => s + i.points, 0)).toBe(22)
