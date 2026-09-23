@@ -1,4 +1,5 @@
 import type { Snapshot } from '@/lib/studio/publish'
+type AssessmentItem = NonNullable<Snapshot['assessment']>['items'][number]
 
 /** 3단계 차시 스키마의 assessment 라벨. 순서 = 5단계 items 순서 = 문항 번호(1-based). */
 export const ASSESSMENT_LABELS = ['서술형1', '서술형2', '논술형'] as const
@@ -33,4 +34,10 @@ export function materialIdsForLesson(lesson: { materials_used: string[] }): stri
 /** 표·그래프를 종이에 직접 작성하는 문항(answer_mode 'paper')인지. 학생 화면은 입력칸 대신 종이 답안 안내를 보인다. */
 export function isPaperItem(snapshot: Snapshot, itemNo: number): boolean {
   return snapshot.assessment?.items[itemNo - 1]?.conditions.answer_mode === 'paper'
+}
+
+/** 학생 답안 칸에 넘기는 조건(스펙 §2.9 학생 화면: 조건 문장·분량·형식만 + 답안 방식). 동사·배점·분류는 넘기지 않는다. */
+export function studentConditions(item: AssessmentItem): { length: string; format: string; answer_mode: 'screen' | 'paper'; items: { no: number; text: string }[] } {
+  const c = item.conditions
+  return { length: c.length, format: c.format, answer_mode: c.answer_mode, items: c.items.map((x) => ({ no: x.no, text: x.text })) }
 }

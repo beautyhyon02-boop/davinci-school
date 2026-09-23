@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getSessionProfile } from '@/lib/auth/session'
 import { loadAssignmentSnapshot } from '@/lib/classroom/snapshot'
 import { judgeQuiz } from '@/lib/classroom/quiz'
-import { isLessonOpen } from '@/lib/classroom/lessons'
+import { isLessonOpen, isPaperItem } from '@/lib/classroom/lessons'
 import { app } from '@/content/site'
 
 const errors = app.classroom.student.errors
@@ -47,8 +47,9 @@ export async function submitQuiz(assignmentId: string, lessonNo: number, respons
 }
 
 export async function saveDraft(assignmentId: string, itemNo: number, attempt: number, body: string): Promise<{ ok: boolean }> {
-  const { s, supabase, a } = await loadOwnAssignment(assignmentId)
-  if (a.closed) return { ok: false }
+  const { s, supabase, a, snapshot } = await loadOwnAssignment(assignmentId)
+  // 종이 답안 문항은 화면에 입력칸이 없다 — 원장이 사진으로 올린다. 학생 액션을 직접 불러도 저장하지 않는다.
+  if (a.closed || isPaperItem(snapshot, itemNo)) return { ok: false }
   const { error } = await supabase.from('answers').upsert(
     { assignment_id: assignmentId, item_no: itemNo, attempt, body, source: 'student', entered_by: s.userId, saved_at: new Date().toISOString() },
     { onConflict: 'assignment_id,item_no,attempt' },
@@ -63,7 +64,8 @@ export type SubmitResult = { ok: true; gradingId: string } | { ok: false; error:
  * 이미 제출됐는데 gradings 줄이 없으면(지난번 제출이 gradings 생성 직전에 실패) 그 줄만 만들어 이어 간다(멱등 복구).
  */
 export async function submitAnswer(assignmentId: string, itemNo: number, attempt: number): Promise<SubmitResult> {
-  const { supabase, a } = await loadOwnAssignment(assignmentId)
+  const { supabase, a, snapshot } = await loadOwnAssignment(assignmentId)
+  if (isPaperItem(snapshot, itemNo)) return { ok: false, error: errors.paperOnly }
   const { data: ans } = await supabase.from('answers').select('id, body, submitted_at').eq('assignment_id', assignmentId).eq('item_no', itemNo).eq('attempt', attempt).maybeSingle()
   if (!ans) return { ok: false, error: errors.saveFailed }
   // gradings 는 학생 정책이 없으므로 조회·생성 모두 service role 로 한다(위에서 본인 답안임을 확인한 뒤)

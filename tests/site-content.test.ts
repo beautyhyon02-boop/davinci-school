@@ -312,6 +312,28 @@ describe('site content', () => {
     expect(app.packageView.generatedWithHeading).toBeTruthy()
   })
 
+  it('exposes the v2 student answer copy (paper-answer notice, numbered condition label, paper-only error)', () => {
+    expect(app.classroom.student.paperAnswer).toContain('종이')
+    expect(app.classroom.student.conditionItem(2)).toContain('2')
+    expect(app.classroom.student.errors.paperOnly).toBeTruthy()
+  })
+
+  it('exposes packageView v2 copy (unit plan, lessons v2, item card, rubric, notice plan, answers toggle)', () => {
+    const c = app.packageView
+    expect(c.unitPlan.placement('논술형', 5)).toContain('5')
+    expect(c.lessons.timeLabel(10, 40, 10)).toContain('40')
+    expect(c.lessons.stepLabel('개념·활동', 20)).toContain('20')
+    expect(c.lessons.worksheetTier('기본', 'D~E')).toContain('D~E')
+    expect(c.assessment.conditions.itemNo(3)).toContain('3')
+    expect(c.assessment.conditions.answerMode.paper).toBeTruthy()
+    expect(c.assessment.conditions.answerMode.screen).toBeTruthy()
+    expect(c.rubric.criterionLabel('요소', 4)).toContain('4')
+    expect(c.materials.sourceLabel.공개).toBeTruthy()
+    expect(c.materials.roleLabel.context).toBeTruthy()
+    expect(c.noticePlanHeading).toBeTruthy()
+    expect(c.answersToggle).toBeTruthy()
+  })
+
   it('exposes teacherItems copy (title, filters, card, empty, detail)', () => {
     expect(app.teacherItems.title).toBeTruthy()
     expect(app.teacherItems.filters.levelLabel).toBeTruthy()

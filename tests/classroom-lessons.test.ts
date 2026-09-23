@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { assessmentItemNoForLesson, lessonNoForItem, isLessonOpen, ASSESSMENT_LABELS, materialIdsForLesson, isPaperItem } from '@/lib/classroom/lessons'
+import { assessmentItemNoForLesson, lessonNoForItem, isLessonOpen, ASSESSMENT_LABELS, materialIdsForLesson, isPaperItem, studentConditions } from '@/lib/classroom/lessons'
 
 // 최소 스냅샷: lessons 의 assessment 라벨과 assessment.items 의 순서로 문항 번호(1-based)를 정한다
 const snapshot = {
@@ -46,5 +46,12 @@ describe('isPaperItem', () => {
     expect(isPaperItem(s, 2)).toBe(false)
     expect(isPaperItem(s, 3)).toBe(false)
     expect(isPaperItem({ assessment: null } as never, 1)).toBe(false)
+  })
+})
+
+describe('studentConditions', () => {
+  it('keeps only what the student sees: numbered texts, length, format and answer mode', () => {
+    const item = { conditions: { items: [{ no: 1, text: '조건 문장', verb: '쓰다', points: 1, category: '내용' }], length: '두 문장', format: '문장', answer_mode: 'paper', overflow_rule: '앞의 것만' } } as never
+    expect(studentConditions(item)).toEqual({ length: '두 문장', format: '문장', answer_mode: 'paper', items: [{ no: 1, text: '조건 문장' }] })
   })
 })
