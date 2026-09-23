@@ -15,6 +15,7 @@ describe('prompts v2', () => {
     const u = buildPrompt(2, ctx).user
     expect(u).toMatch(/\[9수04-02\] 성취수준\(도달점 = C/); expect(u).toContain('주어진 자료')
     expect(u).toMatch(/통합\/재조정\/유지/); expect(u).toMatch(/지식·이해\/과정·기능\/가치·태도/)
+    expect(u).toContain('merged_with'); expect(u).toMatch(/original_text와 merged_with 성취기준 원문에 있는 어휘만/)
   })
   it('stage 3 asks for unit_plan + lessons with 60-minute budgets, scripts, worksheet tiers, and includes exemplars', () => {
     const u = buildPrompt(3, ctx).user
@@ -23,7 +24,8 @@ describe('prompts v2', () => {
   })
   it('stage 5 asks for the item card fields, injects A~E and exemplars, and forbids copying', () => {
     const u = buildPrompt(5, ctx).user
-    for (const f of ['evaluation_elements', 'situation', 'condition_nos', 'answer_mode', 'exemplar_answers', 'level_map', 'holistic', 'notes', 'references']) expect(u).toContain(f)
+    for (const f of ['evaluation_elements', 'situation', 'condition_nos', 'answer_mode', 'exemplar_answers', 'level_map', 'holistic', 'notes', 'references', 'assumed_short_points', 'lesson_no']) expect(u).toContain(f)
+    expect(u).toMatch(/summative_placement/)
     expect(u).toMatch(/\[3점\]/); expect(u).toMatch(/\[16점\]/); expect(u).toMatch(/그대로 옮기지 않는다/); expect(u).toMatch(/E: /)
   })
   it('stage 7 asks for per-lesson notice plan for essay lessons only (owner default) and the fixed footer', () => {
