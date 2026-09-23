@@ -36,6 +36,7 @@ create policy admin_all_lesson_notices on lesson_notices for all
   using (current_user_role() = 'admin') with check (current_user_role() = 'admin');
 
 drop policy if exists teacher_rw_lesson_notices on lesson_notices;
+-- 원장 삭제(delete)도 일부러 허용한다(for all) — 0009 teacher_rw_quiz·teacher_rw_answers 와 같은 관례.
 create policy teacher_rw_lesson_notices on lesson_notices for all
   using (
     current_user_role() = 'teacher' and academy_id = current_academy_id()

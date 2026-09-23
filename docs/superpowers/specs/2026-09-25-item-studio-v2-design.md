@@ -449,7 +449,9 @@ WP5 README 관찰과 wp4 §8·wp7 §7·wp1 §4에서 뽑았다. "규모"는 예�
 발표 뒤:
 - `standard_levels(code text, school_level text, scheme text, level text, statement text, merged_with text[], domain text, unit text, source_file text, pages int[], primary key (code, level))`와 `domain_levels(subject, school_level, domain, level, axis, statement, pages)`. 적재는 `scripts/import-levels.ts`가 `data/reference/levels/*.json`을 그대로 펼친다(966 성취기준 × 3~5 수준 ≈ 4,200행; `merged_levels`는 `merged_with`로). DB 대조는 `coverage.md`가 이미 코드 집합 일치를 확인했으므로 적재 후 행 수만 검사.
 - `exemplars` 표(레코드 JSON을 jsonb로, 색인 열 `subject, school_level, grade, kind, code_prefix[]`)와 `references` 표(세트 판 ↔ 예시 id).
-- `notices`(학생별 안내장, `assignment_id, lesson_no, body jsonb, status: draft|confirmed|sent, confirmed_by, sent_at, viewed_at`) — 발송·열람 로그(학부모 확인 대체, wp13 §2).
+- 학생별 안내장 발송·열람 로그(`sent` 상태, `sent_at`, `viewed_at` — 학부모 확인 대체, wp13 §2). 표 자체는 0011에 이미 있다(아래).
+
+**반영(2026-09-25, 0011)**: 학생별 안내장 표는 발표 전 범위로 당겨 `lesson_notices`로 만들었다(1주차 `notices`는 홈페이지 공지사항 표라 이름을 달리함). 열: `id, assignment_id, academy_id, lesson_no(1~8), body jsonb, status(draft|confirmed), drafted_by, drafted_at, confirmed_at, updated_at`, `unique(assignment_id, lesson_no)`. RLS: 관리자 전체, 원장 자기 원 배정만 읽기·쓰기, 학생 없음. `sent` 상태·`sent_at`·`viewed_at`(발송·열람)은 발표 뒤.
 
 ### 4.3 기존 데이터 처리
 
@@ -513,7 +515,7 @@ D1→D2·D3·D4는 병렬 가능(D2~D4는 D1의 타입만 있으면 됨). D5·D6
 | 항목 | 내용 | 추정 |
 |---|---|---|
 | DB 적재 | `standard_levels`·`domain_levels`·`exemplars`·`references` 표 + import 스크립트, 로더 교체 | 1일 |
-| 안내장 운영 | `notices` 표, 원장 확정·발송 UI, 학부모 열람 링크·로그, A5 인쇄 | 1.5일 |
+| 안내장 운영 | `lesson_notices` 발송·열람 열(표는 0011, §4.2), 원장 발송 UI, 학부모 열람 링크·로그, A5 인쇄 | 1.5일 |
 | 활동지 3판 | 기본/표준/도전을 세 장으로 자동 분화, 원장이 학생별 배부 | 0.5일 |
 | 학교급 분기 | 초등(A~C·B 도달점), 고등(최소 능력 필수·5단계·이수 40% 맥락) (wp1 §6·§7-16·17) | 1일 |
 | 역사 세트 | 사료 균형·인용 조건 템플릿, 역사 예시 은행 보강(미추출 사례) | 0.5일 |

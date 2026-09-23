@@ -17,7 +17,8 @@ export function buildGradingPrompt({ snapshot, itemNo, studentGrade, answer }: G
   if (!a) throw new Error('snapshot has no assessment')
   const item = a.items[itemNo - 1]
   if (!item) throw new Error(`item ${itemNo} not found`)
-  // v2 채점표(요소별 max 가변 척도)·문항별 예시답안을 그대로 옮기는 최소 판. 규칙 블록(rules/grading.ts)·유의점·A~E 구간을 넣는 재작성은 Task 7.
+  // v2 채점표(요소별 max 가변 척도)·유의점·A~E 예상 구간·문항별 예시답안을 그대로 옮기는 최소 판(G-03: 채점은 이 넷만 근거로).
+  // 규칙 블록(rules/grading.ts)·총체적 기준을 넣는 재작성은 Task 7.
   const { criteria } = item.rubric
   const rubric = criteria
     .map((c) => `- ${c.name}(max=${c.max}): ${[...c.scale].sort((x, y) => y.points - x.points).map((s) => `${s.points}=${s.descriptor}`).join(' / ')}`)
@@ -32,6 +33,8 @@ export function buildGradingPrompt({ snapshot, itemNo, studentGrade, answer }: G
     `조건: 분량 ${item.conditions.length} / 필수 ${item.conditions.items.map((c) => `(${c.no}) ${c.text}`).join(', ')} / 형식 ${item.conditions.format}`,
     `채점표:\n${rubric}`,
     `요소 구성: ${criteriaHint}`,
+    `유의점: ${item.rubric.notes.join(' / ')}`,
+    `A~E 예상 구간:\n${item.level_map.map((l) => `- ${l.level}: ${l.min}~${l.max}점 — ${l.trait}`).join('\n')}`,
     `예시 답안(이 문항):\n${exemplars}`,
     `학생 답안:\n${answer}`,
   ].join('\n\n')

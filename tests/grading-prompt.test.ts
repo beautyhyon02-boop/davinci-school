@@ -31,4 +31,17 @@ describe('buildGradingPrompt', () => {
     expect(p.user).toContain(`(max=${item.rubric.criteria[0].max})`)
     expect(p.user).not.toContain(snapshot.assessment!.items[2].exemplar_answers[0].text)
   })
+  it('G-03: sends the item\'s notes (유의점) and A~E expected ranges, after the rubric and before the exemplars', () => {
+    const item = snapshot.assessment!.items[0]
+    const p = buildGradingPrompt({ snapshot, itemNo: 1, studentGrade: 1, answer: 'x'.repeat(60) })
+    expect(p.user).toContain(`유의점: ${item.rubric.notes.join(' / ')}`)
+    const a = item.level_map[0]
+    expect(p.user).toContain(`- ${a.level}: ${a.min}~${a.max}점 — ${a.trait}`)
+    expect(item.level_map).toHaveLength(5)
+    for (const lv of item.level_map) expect(p.user).toContain(`- ${lv.level}: ${lv.min}~${lv.max}점`)
+    const at = (s: string) => p.user.indexOf(s)
+    expect(at('채점표:')).toBeLessThan(at('유의점:'))
+    expect(at('유의점:')).toBeLessThan(at('A~E 예상 구간:'))
+    expect(at('A~E 예상 구간:')).toBeLessThan(at('예시 답안(이 문항):'))
+  })
 })
