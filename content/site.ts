@@ -381,7 +381,7 @@ export const app = {
     keyQuestionHeading: '핵심 질문',
     materialsHeading: '자료',
     materials: {
-      idLabel: 'ID',
+      idLabel: '자료',
       imagesAlt: (title: string, n: number) => `${title} 첨부 이미지 ${n}`,
     },
     lessonsHeading: '차시',
