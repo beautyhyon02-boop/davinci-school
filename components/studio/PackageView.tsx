@@ -80,10 +80,14 @@ export function MaterialsSection({ materials }: { materials: Material[] }) {
   return (
     <Card>
       <SectionHeading>{copy.materialsHeading}</SectionHeading>
-      <div className="mt-3 space-y-4">
+      <div className="mt-3 space-y-6">
         {materials.map((m) => (
-          <div key={m.id} className="rounded-xl border border-ink-100 p-3">
-            <p className="text-sm font-semibold">{copy.materials.idLabel} {m.id} · {m.title}</p>
+          <div key={m.id} className="rounded-xl border border-ink-100 bg-ink-100/30 p-4">
+            {/* 자료마다 큰 라벨(자료 A/B…)로 구분이 한눈에 보이게 */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full bg-mint-500 px-3 py-1 text-sm font-bold text-white">{copy.materials.idLabel} {m.id}</span>
+              <p className="text-base font-bold">{m.title}</p>
+            </div>
             {m.body && <p className="mt-1 whitespace-pre-wrap text-sm">{m.body}</p>}
             <MaterialTable material={m} />
             <MaterialChart material={m} />
