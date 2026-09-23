@@ -537,7 +537,10 @@ export const app = {
       },
       answer: {
         heading: (label: string, points: number) => `${label} (${points}점)`,
-        conditions: '조건',
+        stem: '문항',
+        conditions: '작성 조건 (아래 조건을 모두 지켜 쓰세요)',
+        conditionLength: '분량:',
+        conditionFormat: '형식:',
         chars: (n: number) => `${n}자`,
         saving: '저장 중…', saved: '임시저장됨',
         submit: '제출', confirm: '제출하면 고칠 수 없어요. 제출할까요?',

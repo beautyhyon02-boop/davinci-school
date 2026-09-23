@@ -68,7 +68,7 @@ export default async function StudentAssignmentPage({ params }: { params: Promis
         )}
         {item && itemNo && (
           <AnswerEditor assignmentId={id} itemNo={itemNo} attempt={1} initialBody={ans1?.body ?? ''} submitted={!!ans1?.submitted_at}
-            label={ASSESSMENT_LABELS[itemNo - 1]} points={item.points} conditions={item.conditions} />
+            label={ASSESSMENT_LABELS[itemNo - 1]} points={item.points} stem={item.stem} conditions={item.conditions} />
         )}
         {item && itemNo && (() => {
           const r1 = resultOf(ans1)
@@ -80,7 +80,7 @@ export default async function StudentAssignmentPage({ params }: { params: Promis
               {r1 && assignment.allow_retry && !ans2 && <RetryButton assignmentId={id} itemNo={itemNo} />}
               {ans2 && (
                 <AnswerEditor assignmentId={id} itemNo={itemNo} attempt={2} initialBody={ans2.body} submitted={!!ans2.submitted_at}
-                  label={`${ASSESSMENT_LABELS[itemNo - 1]} · ${copy.result.attempt(2)}`} points={item.points} conditions={item.conditions} />
+                  label={`${ASSESSMENT_LABELS[itemNo - 1]} · ${copy.result.attempt(2)}`} points={item.points} stem={item.stem} conditions={item.conditions} />
               )}
               {r2 && <ResultView label={ASSESSMENT_LABELS[itemNo - 1]} points={item.points} attempt={2} grading={r2} />}
             </>

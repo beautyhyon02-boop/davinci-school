@@ -8,9 +8,9 @@ const copy = app.classroom.student.answer
 
 const AUTOSAVE_MS = 30000
 
-export function AnswerEditor({ assignmentId, itemNo, attempt, initialBody, submitted, label, points, conditions }: {
+export function AnswerEditor({ assignmentId, itemNo, attempt, initialBody, submitted, label, points, stem, conditions }: {
   assignmentId: string; itemNo: number; attempt: number; initialBody: string; submitted: boolean
-  label: string; points: number; conditions: { length: string; required: string[]; format: string }
+  label: string; points: number; stem: string; conditions: { length: string; required: string[]; format: string }
 }) {
   const [body, setBody] = useState(initialBody)
   const [status, setStatus] = useState<string | null>(null)
@@ -53,9 +53,15 @@ export function AnswerEditor({ assignmentId, itemNo, attempt, initialBody, submi
   return (
     <section className="rounded-2xl bg-white p-5">
       <h3 className="text-lg font-bold">{copy.heading(label, points)}</h3>
+      <p className="mt-2 text-sm font-semibold text-ink-500">{copy.stem}</p>
+      <p className="mt-1 whitespace-pre-wrap text-lg font-semibold">{stem}</p>
       <div className="mt-2 rounded-xl bg-ink-100/60 p-3 text-sm">
         <p className="font-semibold">{copy.conditions}</p>
-        <ul className="list-disc pl-5"><li>{conditions.length}</li>{conditions.required.map((c, i) => <li key={i}>{c}</li>)}<li>{conditions.format}</li></ul>
+        <ul className="list-disc pl-5">
+          <li><span className="text-ink-500">{copy.conditionLength}</span> {conditions.length}</li>
+          {conditions.required.map((c, i) => <li key={i}>{c}</li>)}
+          <li><span className="text-ink-500">{copy.conditionFormat}</span> {conditions.format}</li>
+        </ul>
       </div>
       <textarea value={body} readOnly={isSubmitted} placeholder={copy.placeholder} rows={10}
         onChange={(e) => { setBody(e.target.value); dirty.current = true }} onBlur={persist}
