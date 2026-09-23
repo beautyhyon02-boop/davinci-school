@@ -5,20 +5,23 @@ import { keyQuestionAfterStage2 } from './edit-rules'
 
 type Supabase = Awaited<ReturnType<typeof createClient>>
 
-// stage별 item_sets 컬럼 매핑: 0/1은 stage_status에만 저장, 2~6은 전용 컬럼을 둔다.
-// (2단계는 reconstruction/learning_goals 컬럼 + stage_status.stage2.output.key_question_candidates)
+// stage별 item_sets 컬럼 매핑: 0/1은 stage_status에만 저장, 2~7은 전용 컬럼을 둔다(마이그레이션 0011).
+// 2단계: reconstruction_detail(재구조화 표 = 출력 standards) + reconstruction + learning_goals 컬럼,
+//        level_anchor·key_question_candidates 는 stage_status.stage2.output 에서 읽는다.
+// 3단계: unit_plan + lessons. 7단계: notice_plan.
+// app/admin/items/[themeId]/sets/[setId]/actions.ts 의 stageColumns 와 같아야 한다.
 
 /**
- * 단계별 상태 맵(0~6)을 만든다. 1~6단계는 item_sets.stage_status 에 있지만 0단계(대주제 소개)는
+ * 단계별 상태 맵(0~7)을 만든다. 1~7단계는 item_sets.stage_status 에 있지만 0단계(대주제 소개)는
  * 대주제(themes.intro_ideas)에 저장되므로 여기서 합류시킨다 — 빠뜨리면 runStage 의 prior 루프가
- * stage0 을 영영 accepted 로 보지 못해 확정된 대주제 소개가 2~6단계 프롬프트에 들어가지 않는다.
+ * stage0 을 영영 accepted 로 보지 못해 확정된 대주제 소개가 2~7단계 프롬프트에 들어가지 않는다.
  */
 export function buildStatuses(
   stageStatus: Record<string, StageStatus | undefined>,
   introIdeas: StageStatus | null | undefined,
 ): Record<number, StageStatus> {
   const statuses: Record<number, StageStatus> = {}
-  for (let s = 0; s <= 6; s++) {
+  for (let s = 0; s <= 7; s++) {
     const st = stageStatus[`stage${s}`]
     if (st) statuses[s] = st
   }
@@ -33,7 +36,7 @@ export function createSupabaseRepo(supabase: Supabase): Repo {
     async loadContext(itemSetId): Promise<Ctx & { outputs: Record<number, unknown>; statuses?: Record<number, StageStatus> }> {
       const { data: itemSet, error: itemSetErr } = await supabase
         .from('item_sets')
-        .select('theme_id, subject, level, grade, reconstruction, learning_goals, lessons, materials, assessment, teacher_guide, stage_status')
+        .select('theme_id, subject, level, grade, reconstruction, reconstruction_detail, learning_goals, unit_plan, lessons, materials, assessment, teacher_guide, notice_plan, stage_status')
         .eq('id', itemSetId)
         .single()
       if (itemSetErr || !itemSet) throw new Error(`item_set not found: ${itemSetId}`)
@@ -64,14 +67,20 @@ export function createSupabaseRepo(supabase: Supabase): Repo {
       const outputs: Record<number, unknown> = {}
       if (introIdeas?.output !== undefined) outputs[0] = introIdeas.output
       if (stageStatus.stage1?.output !== undefined) outputs[1] = stageStatus.stage1.output
+      // 2·3단계는 v2 출력 전체(재구조화 표·level_anchor, unit_plan)를 되살린다 — 빠지면 다음 단계 프롬프트와 검토가
+      // 그 근거를 못 보고, placementIssues(5단계 lesson_no ↔ 평가 계획)처럼 unit_plan 이 있어야 도는 [TS] 검사가 조용히 건너뛰어진다.
       if (itemSet.reconstruction != null) {
-        const candidates = (stageStatus.stage2?.output as { key_question_candidates?: string[] } | undefined)?.key_question_candidates ?? []
-        outputs[2] = { reconstruction: itemSet.reconstruction, learning_goals: itemSet.learning_goals ?? [], key_question_candidates: candidates }
+        const st2 = stageStatus.stage2?.output as { key_question_candidates?: string[]; level_anchor?: unknown[] } | undefined
+        outputs[2] = {
+          standards: itemSet.reconstruction_detail ?? [], reconstruction: itemSet.reconstruction, learning_goals: itemSet.learning_goals ?? [],
+          level_anchor: st2?.level_anchor ?? [], key_question_candidates: st2?.key_question_candidates ?? [],
+        }
       }
-      if (itemSet.lessons != null) outputs[3] = { lessons: itemSet.lessons }
+      if (itemSet.lessons != null) outputs[3] = { unit_plan: itemSet.unit_plan ?? null, lessons: itemSet.lessons }
       if (itemSet.materials != null) outputs[4] = { materials: itemSet.materials }
       if (itemSet.assessment != null) outputs[5] = itemSet.assessment
       if (itemSet.teacher_guide != null) outputs[6] = itemSet.teacher_guide
+      if (itemSet.notice_plan != null) outputs[7] = itemSet.notice_plan
 
       const prior: Record<string, unknown> = {}
       if (theme.materials != null) prior.shared_materials = theme.materials
@@ -92,20 +101,20 @@ export function createSupabaseRepo(supabase: Supabase): Repo {
         case 1:
           return // 전용 컬럼 없음 — stage_status에만 저장 (saveStatus에서 처리)
         case 2: {
-          const o = output as { reconstruction: string; learning_goals: string[]; key_question_candidates?: string[] }
+          const o = output as { standards: unknown; reconstruction: string; learning_goals: unknown; key_question_candidates?: string[] }
           // 2단계를 다시 만들면 핵심질문 후보가 바뀐다 — 이미 고른 핵심질문이 새 후보에 없으면 함께 비운다.
           const { data: current } = await supabase.from('item_sets').select('key_question').eq('id', itemSetId).single()
           const keyQuestion = keyQuestionAfterStage2(current?.key_question as string | null | undefined, o.key_question_candidates ?? [])
           const { error } = await supabase
             .from('item_sets')
-            .update({ reconstruction: o.reconstruction, learning_goals: o.learning_goals, key_question: keyQuestion })
+            .update({ reconstruction: o.reconstruction, reconstruction_detail: o.standards, learning_goals: o.learning_goals, key_question: keyQuestion })
             .eq('id', itemSetId)
           if (error) throw new Error(error.message)
           return
         }
         case 3: {
-          const o = output as { lessons: unknown }
-          const { error } = await supabase.from('item_sets').update({ lessons: o.lessons }).eq('id', itemSetId)
+          const o = output as { unit_plan: unknown; lessons: unknown }
+          const { error } = await supabase.from('item_sets').update({ unit_plan: o.unit_plan, lessons: o.lessons }).eq('id', itemSetId)
           if (error) throw new Error(error.message)
           return
         }
@@ -122,6 +131,11 @@ export function createSupabaseRepo(supabase: Supabase): Repo {
         }
         case 6: {
           const { error } = await supabase.from('item_sets').update({ teacher_guide: output }).eq('id', itemSetId)
+          if (error) throw new Error(error.message)
+          return
+        }
+        case 7: {
+          const { error } = await supabase.from('item_sets').update({ notice_plan: output }).eq('id', itemSetId)
           if (error) throw new Error(error.message)
           return
         }
