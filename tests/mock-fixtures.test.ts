@@ -1,147 +1,125 @@
 import { describe, it, expect, beforeAll } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { loadFixture } from '@/lib/ai/mock'
-import { buildPrompt, buildReviewPrompt, type Ctx } from '@/lib/studio/prompts/stages'
 import { STAGE_SCHEMAS, Review } from '@/lib/studio/schemas'
+import { staticIssues } from '@/lib/studio/checks'
 import { checkReconstructionFidelity } from '@/lib/studio/fidelity'
 import { runStage, type Repo, type StageStatus } from '@/lib/studio/stages'
+import { buildPrompt, buildReviewPrompt } from '@/lib/studio/prompts/stages'
+import { buildFixturesV2, serialize } from '@/scripts/upgrade-fixtures-v2'
 
-const SCIENCE_STAGES = [2, 3, 4, 5, 6] as const
+const STAGES = [2, 3, 4, 5, 6, 7] as const
+const SETS = [{ suffix: '', subject: '수학', standards: 'standards-math.json' }, { suffix: '-과학', subject: '과학', standards: 'standards-science.json' }] as const
+const std = (f: string) => JSON.parse(readFileSync(`data/studio-fixtures/${f}`, 'utf8')) as { code: string; text: string }[]
 
-function ctxFor(subject: string): Ctx {
-  return {
-    theme: { title: '학교 축제, 일회용품을 줄이자', level: '중', grade: 1, subjects: ['수학', '과학'] },
-    subject,
-    standards: [{ code: '[9과01-01]', text: '과학적 탐구 방법을 …' }, { code: '[9과01-03]', text: '인류의 지속가능한 삶을 …' }],
-    prior: {},
-  }
-}
-
-describe('subject-aware fixture keys', () => {
-  it('buildPrompt/buildReviewPrompt append the subject when there is one', () => {
-    expect(buildPrompt(3, ctxFor('과학')).fixtureKey).toBe('stage3-generate-과학')
-    expect(buildReviewPrompt(3, ctxFor('과학'), {}).fixtureKey).toBe('stage3-review-과학')
-    expect(buildPrompt(2, ctxFor('수학')).fixtureKey).toBe('stage2-generate-수학')
-  })
-  it('stage 0 (theme level, no subject) keeps the plain key', () => {
-    expect(buildPrompt(0, ctxFor('')).fixtureKey).toBe('stage0-generate')
-    expect(buildReviewPrompt(0, ctxFor(''), {}).fixtureKey).toBe('stage0-review')
-  })
-})
-
-describe('loadFixture subject fallback', () => {
-  it('uses the subject file when it exists', () => {
-    const science = loadFixture('stage2-generate-과학') as { reconstruction: string }
-    expect(science.reconstruction).toContain('과학적 탐구 방법')
+describe('fixture keys', () => {
+  const ctx = { theme: { title: 't', level: '중', grade: 1, subjects: ['수학', '과학'] }, subject: '과학', standards: [], prior: {} }
+  it('append the subject; stage 0 keeps the plain key', () => {
+    expect(buildPrompt(7, ctx).fixtureKey).toBe('stage7-generate-과학'); expect(buildReviewPrompt(7, ctx, {}).fixtureKey).toBe('stage7-review-과학')
+    expect(buildPrompt(3, ctx).fixtureKey).toBe('stage3-generate-과학'); expect(buildPrompt(2, { ...ctx, subject: '수학' }).fixtureKey).toBe('stage2-generate-수학')
+    expect(buildPrompt(0, { ...ctx, subject: '' }).fixtureKey).toBe('stage0-generate'); expect(buildReviewPrompt(0, { ...ctx, subject: '' }, {}).fixtureKey).toBe('stage0-review')
   })
   it('falls back to the base file when the subject file is missing', () => {
-    const fallback = loadFixture('stage2-generate-국어')
-    const base = JSON.parse(readFileSync('data/studio-fixtures/stage2-generate.json', 'utf8'))
-    expect(fallback).toEqual(base)
-  })
-  it('still reports the missing key when neither file exists', () => {
+    expect(loadFixture('stage2-generate-국어')).toEqual(JSON.parse(readFileSync('data/studio-fixtures/stage2-generate.json', 'utf8')))
+    expect((loadFixture('stage2-generate-과학') as { reconstruction: string }).reconstruction).toContain('과학적 탐구 방법')
     expect(() => loadFixture('stage9-generate-과학')).toThrow(/fixture not found/)
     expect(() => loadFixture('nope')).toThrow(/fixture not found/)
   })
 })
 
-describe('과학 fixtures', () => {
-  for (const n of SCIENCE_STAGES) {
-    // generate fixture 는 아직 v1 모양이다(v2 변환은 tests/compat.test.ts 가 검사). T6 에서 v2 fixture 로 재생성하면서 이 파일을 다시 쓴다.
-    it.skip(`stage${n} 과학 generate fixture validates`, () => {
-      const gen = loadFixture(`stage${n}-generate-과학`)
-      const parsed = STAGE_SCHEMAS[n].safeParse(gen)
-      expect(parsed.error?.issues ?? []).toEqual([])
-      expect(parsed.success).toBe(true)
-    })
-    it(`stage${n} 과학 review fixture validates`, () => {
-      expect(Review.safeParse(loadFixture(`stage${n}-review-과학`)).success).toBe(true)
-    })
-  }
-
-  it('stage2 reconstruction is faithful to the 과학 standards', () => {
-    const gen = loadFixture('stage2-generate-과학') as { reconstruction: string; key_question_candidates: string[] }
-    const std = JSON.parse(readFileSync('data/studio-fixtures/standards-science.json', 'utf8')) as { code: string; text: string }[]
-    expect(std.map(s => s.code)).toEqual(['[9과01-01]', '[9과01-03]'])
-    const f = checkReconstructionFidelity(gen.reconstruction, std.map(s => s.text))
-    expect(f.unknownTokens).toEqual([])
-    expect(f.ok).toBe(true)
-    expect(gen.key_question_candidates).toHaveLength(3)
-    expect(gen.key_question_candidates[0]).toBe('축제의 일회용컵 문제를 줄이기 위해 우리 학교가 무엇을 바꾸는 것이 과학적으로 가장 타당한가?')
-  })
-
-  it('standards-science.json is copied verbatim from data/standards/과학.json', () => {
-    const fixture = JSON.parse(readFileSync('data/studio-fixtures/standards-science.json', 'utf8')) as { code: string; text: string }[]
-    const all = JSON.parse(readFileSync('data/standards/과학.json', 'utf8')) as { code: string; text: string }[]
-    for (const s of fixture) expect(all.find(x => x.code === s.code)?.text).toBe(s.text)
-  })
-
-  it('stage3 lessons cover both 과학 standards and place each assessment once', () => {
-    const { lessons } = loadFixture('stage3-generate-과학') as { lessons: { standards: string[]; assessment: string | null }[] }
-    const codes = new Set(lessons.flatMap(l => l.standards))
-    expect([...codes].sort()).toEqual(['[9과01-01]', '[9과01-03]'])
-    expect(lessons.map(l => l.assessment)).toEqual([null, null, '서술형1', '서술형2', '논술형'])
-  })
-
-  it('stage4 emits only the set-specific material 자료 E', () => {
-    const { materials } = loadFixture('stage4-generate-과학') as { materials: { id: string; source: string }[] }
-    expect(materials.map(m => m.id)).toEqual(['E'])
-    expect(materials[0].source).toBe('자작')
-  })
-
-  it('stage5 totals 22 points and its exemplar scores match the grade table', () => {
-    const a = loadFixture('stage5-generate-과학') as {
-      items: { kind: string; points: number; lesson_no: number }[]
-      grade_boundaries: { grade: number; min: number; max: number }[]
-      exemplars: { scores: number[]; total: number; grade: number }[]
+describe('fixture v2 conversion script', () => {
+  it('is deterministic and the files on disk are exactly its output (re-running leaves git clean)', () => {
+    const a = buildFixturesV2(); const b = buildFixturesV2()
+    expect(a.problems).toEqual([])
+    expect(Object.keys(a.files).sort()).toEqual(Object.keys(b.files).sort())
+    for (const [name, data] of Object.entries(a.files)) {
+      expect(serialize(data), name).toBe(serialize(b.files[name]))
+      expect(readFileSync(`data/studio-fixtures/${name}`, 'utf8'), name).toBe(serialize(data))
     }
-    expect(a.items.reduce((s, i) => s + i.points, 0)).toBe(22)
-    expect(a.items.map(i => i.lesson_no)).toEqual([3, 4, 5])
-    for (const ex of a.exemplars) {
-      const extended = ex.scores.reduce((s, v) => s + v, 0)
-      expect(extended).toBeLessThanOrEqual(16)
-      expect(ex.total).toBeGreaterThanOrEqual(extended)
-      const band = a.grade_boundaries.find(b => ex.total >= b.min && ex.total <= b.max)
-      expect(band?.grade).toBe(ex.grade)
-    }
-  })
-
-  it('stage6 has one per_lesson note block per 3단계 차시', () => {
-    const { lessons } = loadFixture('stage3-generate-과학') as { lessons: { no: number }[] }
-    const { per_lesson } = loadFixture('stage6-generate-과학') as { per_lesson: { no: number }[] }
-    expect(per_lesson.map(p => p.no)).toEqual(lessons.map(l => l.no))
+    expect(Object.keys(a.files)).toHaveLength(14)
   })
 })
 
-describe('runStage end-to-end in mock mode (과학)', () => {
-  beforeAll(() => { process.env.AI_MOCK = '1'; delete process.env.ANTHROPIC_API_KEY })
+for (const set of SETS) describe(`${set.subject} fixtures (v2)`, () => {
+  const standards = std(set.standards)
+  const prior: Record<string, unknown> = {}
+  for (const n of STAGES) it(`stage${n} validates against v2 zod and passes static checks`, () => {
+    const gen = loadFixture(`stage${n}-generate${set.suffix}`)
+    const parsed = STAGE_SCHEMAS[n].safeParse(gen)
+    expect(parsed.error?.issues.map((i) => `${i.path.join('.')}: ${i.message}`) ?? []).toEqual([])
+    expect(staticIssues(n, gen, { standards, prior }).map((i) => `${i.kind}: ${i.detail}`)).toEqual([])
+    expect(Review.safeParse(loadFixture(`stage${n}-review${set.suffix}`)).success).toBe(true)
+    prior[`stage${n}`] = gen
+  })
+  it('stage2 standards carry the verbatim originals and the reconstruction is faithful', () => {
+    const gen = loadFixture(`stage2-generate${set.suffix}`) as { standards: { code: string; original_text: string }[]; level_anchor: unknown[]; reconstruction: string; learning_goals: { axis: string }[] }
+    for (const s of gen.standards) expect(standards.find((x) => x.code === s.code)?.text).toBe(s.original_text)
+    expect(gen.level_anchor.length).toBe(standards.length)
+    expect(checkReconstructionFidelity(gen.reconstruction, standards.map((s) => s.text)).unknownTokens).toEqual([])
+    expect(new Set(gen.learning_goals.map((g) => g.axis)).size).toBe(3)
+  })
+  it('stage3 covers every standard, places 서술형1→서술형2→논술형 and gives the essay lesson a 35-minute writing step', () => {
+    const { lessons, unit_plan } = loadFixture(`stage3-generate${set.suffix}`) as { lessons: { no: number; standards: string[]; assessment: string | null; flow: { main: { step_label: string; minutes: number }[] } }[]; unit_plan: { assessment_plan: { summative_placement: { lesson_no: number }[] } } }
+    expect([...new Set(lessons.flatMap((l) => l.standards))].sort()).toEqual(standards.map((s) => s.code).sort())
+    expect(lessons.filter((l) => l.assessment).map((l) => l.assessment)).toEqual(['서술형1', '서술형2', '논술형'])
+    const essay = lessons.find((l) => l.assessment === '논술형')!
+    expect(essay.flow.main.some((m) => m.step_label.includes('논술형') && m.minutes >= 35)).toBe(true)
+    const items = (loadFixture(`stage5-generate${set.suffix}`) as { items: { lesson_no: number }[] }).items
+    expect(items.map((i) => i.lesson_no)).toEqual(unit_plan.assessment_plan.summative_placement.map((p) => p.lesson_no))
+  })
+  it('stage4 materials do not carry the answers the items ask for (C-03)', () => {
+    const { materials } = loadFixture(`stage4-generate${set.suffix}`) as { materials: { id: string; body: string | null; role: string }[] }
+    const body = (id: string) => materials.find((m) => m.id === id)?.body ?? ''
+    // 수학 문항 1(도수분포표)·문항 2(상대도수 0.24·0.30)의 답이 자료 본문에 없어야 한다
+    expect(body('A')).not.toMatch(/1·3·6|30~40|도수/)
+    if (set.subject === '수학') expect(body('B')).not.toMatch(/0\.24|0\.30|상대도수/)
+    // 과학 4차시 퀴즈·서술형 2가 끌어낼 결론("여러 번 써야 이득")이 자료 E에 없어야 한다
+    expect(body('E')).not.toMatch(/이득/)
+    expect(materials.some((m) => m.role === 'raw')).toBe(true)
+  })
+  it('stage5 items reference raw materials, total 22, exemplar bands match', () => {
+    const a = loadFixture(`stage5-generate${set.suffix}`) as { items: { kind: string; points: number; min_competency: string | null; conditions: { answer_mode: string }; exemplar_answers: { points: number; level: string | null; assumed_short_points: number | null }[] }[]; grade_boundaries: { min: number; max: number; band: string }[] }
+    expect(a.items.reduce((s, i) => s + i.points, 0)).toBe(22)
+    expect(a.items.every((i) => i.min_competency)).toBe(true)
+    expect(a.items.filter((i) => i.conditions.answer_mode === 'paper').length).toBeLessThanOrEqual(1)
+    for (const it of a.items.filter((i) => i.kind === '서술형')) expect(it.exemplar_answers.map((e) => e.points).sort()).toEqual([1, 2, 3])
+    const essay = a.items.find((i) => i.kind === '논술형')!
+    for (const ex of essay.exemplar_answers) {
+      expect(ex.assumed_short_points).not.toBeNull()
+      const total = ex.points + ex.assumed_short_points!
+      expect(a.grade_boundaries.find((b) => total >= b.min && total <= b.max)?.band).toBe(ex.level)
+    }
+  })
+  it('stage6 and stage7 have one entry per lesson; criteria phrases only on assessed lessons, named after the rubric', () => {
+    const { lessons } = loadFixture(`stage3-generate${set.suffix}`) as { lessons: { no: number }[] }
+    const { per_lesson } = loadFixture(`stage6-generate${set.suffix}`) as { per_lesson: { no: number }[] }
+    expect(per_lesson.map((p) => p.no)).toEqual(lessons.map((l) => l.no))
+    const plan = loadFixture(`stage7-generate${set.suffix}`) as { per_lesson: { lesson_no: number; criteria_phrases: { criterion_name: string }[] | null }[] }
+    expect(plan.per_lesson.map((p) => p.lesson_no)).toEqual(lessons.map((l) => l.no))
+    const items = (loadFixture(`stage5-generate${set.suffix}`) as { items: { lesson_no: number; rubric: { criteria: { name: string }[] } }[] }).items
+    for (const p of plan.per_lesson) {
+      const item = items.find((i) => i.lesson_no === p.lesson_no)
+      expect(p.criteria_phrases?.map((c) => c.criterion_name) ?? null).toEqual(item ? item.rubric.criteria.map((c) => c.name) : null)
+    }
+  })
+})
 
-  // v1 fixture 는 v2 스키마를 통과하지 못한다 — T6 에서 v2 fixture 로 재생성하면서 켠다
-  it.skip('runs 2~6단계 generate → review → accept with the 과학 fixtures', async () => {
-    const standards = JSON.parse(readFileSync('data/studio-fixtures/standards-science.json', 'utf8')) as { code: string; text: string }[]
-    const outputs: Record<number, unknown> = {}
-    const statuses: Record<number, StageStatus> = {}
-    for (let s = 0; s < 2; s++) {
-      outputs[s] = { placeholder: `stage${s}` }
-      statuses[s] = { state: 'accepted', attempt: 1, output: outputs[s], review: { pass: true, issues: [] }, updated_at: '' }
-    }
+describe('runStage end-to-end in mock mode (2~7단계)', () => {
+  beforeAll(() => { process.env.AI_MOCK = '1'; delete process.env.ANTHROPIC_API_KEY })
+  for (const set of SETS) it(`${set.subject}: generate → review → accept for every stage`, async () => {
+    const standards = std(set.standards); const outputs: Record<number, unknown> = {}; const statuses: Record<number, StageStatus> = {}
+    for (let s = 0; s < 2; s++) { outputs[s] = { placeholder: `stage${s}` }; statuses[s] = { state: 'accepted', attempt: 1, output: outputs[s], review: { pass: true, issues: [] }, updated_at: '' } }
     const repo: Repo = {
-      async loadContext() {
-        return { theme: { title: '학교 축제, 일회용품을 줄이자', level: '중', grade: 1, subjects: ['수학', '과학'] }, subject: '과학', standards, prior: {}, outputs, statuses }
-      },
-      async saveOutput(_id, stage, out) { outputs[stage] = out },
-      async saveStatus(_id, stage, st) { statuses[stage] = st },
-      async log() {},
+      async loadContext() { return { theme: { title: '학교 축제, 일회용품을 줄이자', level: '중', grade: 1, subjects: ['수학', '과학'] }, subject: set.subject, standards, prior: {}, outputs, statuses } },
+      async saveOutput(_id, stage, out) { outputs[stage] = out }, async saveStatus(_id, stage, st) { statuses[stage] = st }, async log() {},
     }
-    for (const stage of SCIENCE_STAGES) {
+    for (const stage of STAGES) {
       const g = await runStage({ itemSetId: 'x', stage, action: 'generate', repo })
-      expect(g.status.error).toBeUndefined()
-      expect(g.status.state).toBe('generated')
-      expect(g.status.model).toBe('mock')
-      const r = await runStage({ itemSetId: 'x', stage, action: 'review', repo })
+      expect(g.status.error, `stage${stage} generate`).toBeUndefined(); expect(g.status.state).toBe('generated'); expect(g.status.model).toBe('mock')
+      const r = await runStage({ itemSetId: 'x', stage, action: 'review', repo }); expect(r.status.review?.issues ?? [], `stage${stage} review`).toEqual([])
       expect(r.status.review?.pass).toBe(true)
-      expect(await runStage({ itemSetId: 'x', stage, action: 'accept', repo }).then(a => a.status.state)).toBe('accepted')
+      expect((await runStage({ itemSetId: 'x', stage, action: 'accept', repo })).status.state).toBe('accepted')
     }
-    expect((outputs[4] as { materials: { id: string }[] }).materials[0].id).toBe('E')
+    expect((outputs[7] as { per_lesson: unknown[] }).per_lesson.length).toBe((outputs[3] as { lessons: unknown[] }).lessons.length)
   })
 })

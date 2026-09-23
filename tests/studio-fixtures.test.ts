@@ -4,9 +4,9 @@ import { STAGE_SCHEMAS, Review, Assessment } from '@/lib/studio/schemas'
 import { checkReconstructionFidelity } from '@/lib/studio/fidelity'
 
 describe('studio fixtures', () => {
-  for (const n of [0, 1, 2, 3, 4, 5, 6] as const) {
-    // 2~6단계 generate fixture 는 아직 v1 모양이다(v2 변환은 tests/compat.test.ts 가 검사). T6 에서 v2 fixture 로 재생성하면 skip 을 푼다.
-    ;(n >= 2 ? it.skip : it)(`stage${n} generate fixture validates`, () => {
+  // 2~7단계는 v2 fixture(scripts/upgrade-fixtures-v2.ts 가 만듦) — [TS] 검사까지는 tests/mock-fixtures.test.ts 가 본다
+  for (const n of [0, 1, 2, 3, 4, 5, 6, 7] as const) {
+    it(`stage${n} generate fixture validates`, () => {
       const gen = JSON.parse(readFileSync(`data/studio-fixtures/stage${n}-generate.json`, 'utf8'))
       expect(STAGE_SCHEMAS[n].safeParse(gen).success).toBe(true)
     })

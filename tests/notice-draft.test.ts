@@ -8,6 +8,14 @@ import { staticIssues } from '@/lib/studio/checks'
 const json = (p: string) => JSON.parse(readFileSync(p, 'utf8'))
 
 describe('draftNoticePlan', () => {
+  it('produces a valid plan with criteria phrases only on essay lessons', () => {
+    const s3 = json('data/studio-fixtures/stage3-generate.json'); const s5 = json('data/studio-fixtures/stage5-generate.json')
+    const plan = draftNoticePlan(s3.lessons, s5)
+    expect(NoticePlan.safeParse(plan).error?.issues ?? []).toEqual([])
+    expect(plan.per_lesson.filter((p) => p.criteria_phrases).map((p) => p.lesson_no)).toEqual(s5.items.map((i: { lesson_no: number }) => i.lesson_no))
+    expect(staticIssues(7, plan, { standards: [], prior: {} })).toEqual([])
+    expect(plan.per_lesson.at(-1)?.preview).toMatch(/마무리/)
+  })
   it('follows lesson order, quiz count, rubric criterion names and the fixed disclaimer (upgraded v1 input)', () => {
     const lessons = json('tests/fixtures/v1/stage3-generate-과학.json').lessons.map((l: Parameters<typeof upgradeLessonV1>[0]) => upgradeLessonV1(l, []))
     const a = upgradeAssessmentV1(json('tests/fixtures/v1/stage5-generate-과학.json'))

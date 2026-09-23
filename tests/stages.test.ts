@@ -36,8 +36,7 @@ function fakeRepo(opts: { acceptedUpTo?: number; standards?: { code: string; tex
 }
 
 describe('runStage', () => {
-  // 2단계 mock fixture 가 아직 v1 이라 v2 스키마에서 generate 가 실패한다 — T6 에서 v2 fixture 로 재생성하면 켠다
-  it.skip('generate → review → accept for stage 2 (records model and review result)', async () => {
+  it('generate → review → accept for stage 2 (records model and review result)', async () => {
     const repo = fakeRepo({ acceptedUpTo: 2 })
     const g = await runStage({ itemSetId: 'x', stage: 2, action: 'generate', repo })
     expect(g.status.state).toBe('generated')
@@ -51,8 +50,7 @@ describe('runStage', () => {
     expect(a.status.state).toBe('accepted')
     expect(a.status.model).toBe('mock')
   })
-  // 2단계 mock fixture 가 아직 v1 이라 v2 스키마에서 generate 가 실패한다 — T6 에서 v2 fixture 로 재생성하면 켠다
-  it.skip('stage 2 review fails locally on unfaithful reconstruction without calling AI', async () => {
+  it('stage 2 review fails locally on unfaithful reconstruction without calling AI', async () => {
     const repo = fakeRepo({ acceptedUpTo: 2 })
     await runStage({ itemSetId: 'x', stage: 2, action: 'generate', repo })
     ;(repo.outputs[2] as { reconstruction: string }).reconstruction = '학생은 축제 일회용품 감축 방안을 제안할 수 있다.'
@@ -63,8 +61,7 @@ describe('runStage', () => {
     expect(reviewLog?.model).toBe('static')
     expect((reviewLog?.issues as { pass: boolean }).pass).toBe(false)
   })
-  // 2단계 mock fixture 가 아직 v1 이라 v2 스키마에서 generate 가 실패한다 — T6 에서 v2 fixture 로 재생성하면 켠다
-  it.skip('refuses to accept before review passes', async () => {
+  it('refuses to accept before review passes', async () => {
     const repo = fakeRepo({ acceptedUpTo: 3 })
     await runStage({ itemSetId: 'x', stage: 3, action: 'generate', repo })
     await expectStageError(runStage({ itemSetId: 'x', stage: 3, action: 'accept', repo }), STAGE_ERRORS.ACCEPT_REQUIRES_REVIEW, /review/)
@@ -128,9 +125,8 @@ describe('runStage v2 hooks', () => {
     expect(r.status.review?.issues.some((i) => i.kind === 'fidelity')).toBe(true)
     expect(logs.at(-1)).toMatchObject({ model: 'static', ok: false })
   })
-  // 2단계 mock fixture 가 아직 v1 이라 zod 에서 먼저 실패한다 — T6 에서 v2 fixture 로 재생성하면 켠다
-  // (같은 동작은 tests/stages-v2-hooks.test.ts 가 가짜 callStructured 로 지금 검사한다)
-  it.skip('generate stores the enriched output (level_anchor filled) in mock mode', async () => {
+  // (같은 동작을 tests/stages-v2-hooks.test.ts 는 가짜 callStructured 로, 여기서는 v2 mock fixture 로 검사한다)
+  it('generate stores the enriched output (level_anchor filled) in mock mode', async () => {
     process.env.AI_MOCK = '1'
     const outputs: Record<number, unknown> = {}
     const statuses: Record<number, StageStatus> = { 0: { state: 'accepted', attempt: 1, output: {}, updated_at: '' }, 1: { state: 'accepted', attempt: 1, output: {}, updated_at: '' } }
