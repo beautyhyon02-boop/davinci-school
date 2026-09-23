@@ -61,6 +61,8 @@ npx supabase db push
 (`supabase/config.toml`의 `project_id = "davinci-school"`는 로컬 라벨일 뿐, 프로젝트 ref가 아닙니다.)  
 `supabase/migrations/` 폴더의 마이그레이션이 순서대로 적용됩니다. 새 마이그레이션을 추가한 뒤에도 같은 `db push`를 다시 실행하면 됩니다.
 
+주요 마이그레이션(발췌): `20260918000001_schema.sql`(기본 스키마) · `20260919000004_role_in_app_metadata.sql`(역할 저장 위치) · `20260920000006_studio.sql`/`20260920000007_studio_fixes.sql`(제작소 v1) · `20260921000008_studio_ui.sql`(대주제 공유 자료) · `20260922000009_classroom.sql`(수업 운영: 배정·채점·퀴즈) · `20260925000011_studio_v2.sql`(제작소 v2: `item_sets.unit_plan/reconstruction_detail/notice_plan` 열 + 학생별 안내장 표 `lesson_notices`). 다시 실행해도 안전합니다(열·표·정책 모두 "있으면 건너뜀").
+
 > **역할 저장 위치:** 계정의 `role`/`academy_id`/`login_id`는 `auth.users`의 **app_metadata**에 저장됩니다
 > (service role 키로만 수정 가능). `user_metadata`에는 이름만 둡니다.
 > 마이그레이션 `20260919000004` 이전에 만든 계정은 아래 "운영 체크리스트"의 백필 스크립트로 옮겨야 합니다.
@@ -119,18 +121,28 @@ npm run test:watch      # 감시 모드
 python -m pytest tests/extract_standards_test.py -q
 ```
 
-## 제작소 시연 절차
+## 제작소 시연 절차 (v2)
 
-문항 제작소(2주차-B)를 시연할 때는 다음 순서로 보여 주세요.
+문항 제작소를 시연할 때는 다음 순서로 보여 주세요. 단계는 0~7까지 있고(7 = 차시별 피드백 안내장 틀), **게시하려면 2~7단계가 모두 확정**돼야 합니다. 5과목(국·영·수·과·사) 실제 생성의 자세한 순서는 `docs/runbooks/2026-09-29-five-subjects.md`를 참고하세요.
 
 1. **관리자**로 로그인
-2. `/admin/items` → 대주제 생성 → 소개 생성 → 검토 → 확정
+2. `/admin/items` → 대주제 생성 → 소개(0단계) 생성 → 검토 → 확정
 3. 대주제 화면에서 공유 자료(A~D) 작성
-4. 성취기준 선택으로 세트 생성
-5. 세트 마법사에서 2~6단계를 [기본값으로 진행]으로 한 번에 처리
-6. 핵심질문 선택
-7. 미리보기로 확인 후 게시
-8. **원장** 계정으로 로그인 → `/teacher/items`에서 문항(세트) 찾기 → 열어서 확인
+4. `/admin/standards`에서 사용할 성취기준의 원문 확인 체크(검증 안 된 성취기준은 게시가 막힙니다)
+5. 성취기준 선택으로 세트 생성
+6. 세트 마법사에서 2~7단계를 순서대로 [생성]→[검토]→[다음](=확정). 검토는 항상 정적 검사([TS])가 먼저 돌고 통과해야 AI 검토로 넘어갑니다. 반복 한도는 단계마다 3회이고, 넘으면 [JSON 편집]으로 직접 고칩니다. **단계를 편집하면 그 뒤 단계(7단계까지)가 전부 다시 만들어야 하는 상태로 돌아갑니다.**
+7. 핵심질문 선택
+8. 미리보기(패키지 화면)로 지도안·문항 카드·안내장 틀을 확인 후 게시
+9. **원장** 계정으로 로그인 → `/teacher/items`에서 문항(세트) 찾기 → 열어서 정답이 접혀 있는지 확인
+
+## 제작소 지식 베이스·규칙·가짜 응답 모드 (v2)
+
+- **성취수준·예시 은행·서식 파일**(파일 기반, DB 적재는 발표 뒤 — 스펙 §6.2):
+  - `data/reference/levels/<과목>-<초|중>.json` — 성취기준 코드별 A~E(또는 A~C) 성취수준 문장. `lib/reference/levels.ts`가 코드로 조회한다.
+  - `data/reference/exemplars/<교과>/*.json` — 실제 문항·채점기준 예시 은행(539건). `lib/reference/exemplars.ts`가 점수·폴백 규칙으로 골라 압축 카드를 만든다.
+  - `data/reference/templates/*.json` — 지도안·안내장 서식.
+- **프롬프트 규칙**: `lib/studio/prompts/rules/`(공통 `common.ts`, 차시 `lesson.ts`, 채점 `grading.ts`, 안내장 `notice.ts`, 과목별 `subjects/{국어,영어,수학,과학,사회,역사}.ts`). 규칙 ID(C-/L-/S-/G-/N-)는 스펙 부록 A와 1:1로 대응한다. 규칙을 고치면 이미 확정된 단계에는 반영되지 않으므로 2단계부터 다시 생성해야 한다.
+- **가짜 응답(mock) 모드 v2**: `data/studio-fixtures/`는 중1 **수학**(성취기준 9수04-02·03·04)과 **과학**(9과01-01·9과01-03) 세트만 0~7단계 전부 갖추고 있다. 국·영·사·역사는 fixture가 없으므로 실제 키로 생성해야 한다(자세한 규칙은 `data/studio-fixtures/README.md`). fixture는 손으로 고치지 않고 `scripts/upgrade-fixtures-v2.ts`의 `PATCHES`에 이유와 함께 적은 뒤 다시 실행한다(`npx tsx scripts/upgrade-fixtures-v2.ts`) — 재실행 결과가 기존 파일과 바이트 단위로 같아야 한다.
 
 ## 수업 운영 시연 절차
 
@@ -210,11 +222,14 @@ python -m pytest tests/extract_standards_test.py -q
 - [ ] **Supabase Auth URL** — Site URL 과 Redirect URLs 에 Vercel 주소 등록(위 3단계).
 - [ ] **서비스 역할 키 관리** — `SUPABASE_SERVICE_ROLE_KEY`는 서버(Vercel 환경 변수)와 운영 스크립트에서만 사용합니다.
       유출이 의심되면 Supabase → Project Settings → API 에서 재발급하고 Vercel 과 `.env.local`을 갱신하세요.
+- [ ] **제작소 v2 안내장** — v2로 게시한 세트만 학생별 차시 안내장(초안·확정·인쇄)을 지원합니다. v1 시절에 게시된 판은 화면에서 자동으로 업그레이드해 보여 주지만, 안내장은 만들 수 없습니다(다시 게시해야 함).
 
 ## 문서
 
-- **설계 명세:** `docs/superpowers/specs/2026-09-18-davinci-school-website-design.md`
+- **설계 명세:** `docs/superpowers/specs/2026-09-18-davinci-school-website-design.md`(홈페이지), `docs/superpowers/specs/2026-09-25-item-studio-v2-design.md`(제작소 v2)
 - **구현 계획:** `docs/superpowers/plans/`
+- **현재 상태·인수인계:** `docs/STATUS.md`
+- **5과목 생성 실행 순서서:** `docs/runbooks/2026-09-29-five-subjects.md`
 
 ## 주의사항
 

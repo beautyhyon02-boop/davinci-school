@@ -1,7 +1,7 @@
 # 프로젝트 현재 상태 (인수인계용)
 
 다른 컴퓨터에서 새 Claude 대화를 열 때 이 파일을 먼저 읽으면 이어서 작업할 수 있다.
-갱신: 2026-09-25 (제작소 v2 Task 5)
+갱신: 2026-09-25 (제작소 v2 Task 9 — 문서)
 
 ## 무엇을 만드는가
 다빈치스쿨(탐구보고서 수업 본사, 가맹원 약 40곳) 메인 홈페이지 + 서논술형 AI 플랫폼.
@@ -98,19 +98,57 @@
 - 비용 상한(월 채점 건수) 관리·관리자의 재채점 처리는 발표(2026-10-18) 뒤
 - 학생 계정 삭제 기능 없음(활동 기록 유지)
 
-## 제작소 v2 (브랜치 `studio-v2`, 진행 중 — 2026-09-25 계획 Task 5까지)
-계획 `docs/superpowers/plans/2026-09-25-item-studio-v2-core.md`, 스펙 `docs/superpowers/specs/2026-09-25-item-studio-v2-design.md`.
-- 단계는 **0~7**(7 = 차시별 피드백 안내장 틀, 마법사 2~7). 게시하려면 2~7단계가 모두 확정돼야 한다.
-- 검토 반복 한도는 모든 단계 3회(첫 [TS] 정적 검사 실패 뒤에도 다시 생성 가능, 3회째에 [JSON 편집] 유도).
-- 게시 스냅샷은 v2(`schema_version: 2`, `unit_plan`·`reconstruction_detail`·`notice_plan`·`references`). v1 시절 게시 판은 그대로 두고 읽을 때 `upgradeSnapshot`으로 올린다.
+## 제작소 v2 핵심 완료 (브랜치 `studio-v2`, 2026-09-25 계획 Task 1~9)
+계획 `docs/superpowers/plans/2026-09-25-item-studio-v2-core.md`, 스펙 `docs/superpowers/specs/2026-09-25-item-studio-v2-design.md`. 진행 장부(모든 판단·이탈 기록) `.superpowers/sdd/2026-09-25-item-studio-v2-core/progress.md`, Task별 보고서는 같은 폴더의 `task-N-report.md`.
+
+- 단계는 **0~7**(7 = 차시별 피드백 안내장 틀, 마법사 2~7). 게시하려면 2~7단계가 모두 확정돼야 한다(`PUBLISH_STAGES`, `lib/studio/publish.ts`).
+- 검토 반복 한도는 모든 단계 3회(`MAX_ATTEMPTS`, `lib/studio/max-attempts.ts`). 검토는 항상 [TS] 정적 검사가 먼저 돌고(모델 호출 없음) 통과해야 AI 검토로 넘어간다. 3회째도 실패하면 "생성이 반복해서 실패했습니다. [JSON 편집]으로 직접 입력해 주세요."
+- 단계를 편집하면 그 뒤 단계(7단계까지)가 전부 "준비 전"으로 초기화된다(`lib/studio/edit-rules.ts`).
+- 게시 스냅샷은 v2(`schema_version: 2`, `unit_plan`·`reconstruction_detail`·`notice_plan`·`references`). v1 시절 게시 판은 그대로 두고 읽을 때 `upgradeSnapshot`(`lib/studio/compat.ts`)으로 올린다 — DB 재작성 없음.
 - 마이그레이션 **0011**(`20260925000011_studio_v2.sql`): `item_sets.unit_plan/reconstruction_detail/notice_plan` 열 + 학생별 안내장 표 `lesson_notices`(기존 공지사항 표 `notices`와 이름이 겹쳐 따로 둠).
 
-**대표님이 하실 일**
-- 마이그레이션 0011(v2 열·안내장 표) 적용: `supabase db push` — 적용 전에는 2·3·7단계 저장이 "열 없음" 오류로 실패한다(0009도 아직이면 함께 적용됨).
+**브랜치 내용 (Task별)**
+| Task | 무엇을 했나 | 핵심 파일 |
+|---|---|---|
+| 1 | 스키마 v2(0~7단계), 7등급↔수준 대응표, v1→v2 업그레이더, [TS] 정적 검사 | `lib/studio/{schemas,level-map,compat,checks}.ts` |
+| 2 | 성취수준 로더·예시 은행 선택기·서버 채움(enrich) | `lib/reference/{levels,exemplars}.ts`, `lib/studio/enrich.ts` |
+| 3 | 규칙 부록 A → 코드(ID·출처 태그) 분할, 성취수준·예시 은행 주입 프롬프트 | `lib/studio/prompts/rules/**`, `lib/studio/prompts/stages.ts` |
+| 4 | 단계별 검토 초점 v2, [TS] 선행 검토, enrich 출력 저장, 검토 prior 단계별 축소 | `lib/studio/stages.ts`, `lib/studio/prompts/stages.ts` |
+| 5 | 마이그레이션 0011, repo 2·3·7단계 열 저장·복원, 스냅샷 v2, 7단계 게시 조건, 마법사 확장, tsc 46→0 | `supabase/migrations/20260925000011_studio_v2.sql`, `lib/studio/{repo,publish}.ts` |
+| 6 | fixture v2(수학·과학, 2~7단계), `draftNoticePlan`, 변환 스크립트, C-03 정답 유출 제거 | `scripts/upgrade-fixtures-v2.ts`, `data/studio-fixtures/*`, `lib/studio/notice-draft.ts` |
+| 7 | PackageView v2 카드(스펙 §2.9), 학생 화면(종이 답안·번호 조건), 채점 프롬프트 v2, 채점 기준 정합(`alignCriteria`) | `components/studio/PackageView.tsx`, `lib/classroom/grading-prompt.ts` |
+| 8 | 학생별 차시 안내장(조립·린트·원장 확정·인쇄) | `lib/classroom/{notice,notice-lint,notice-prompt}.ts`, `app/teacher/assignments/[setId]/notices/**` |
+| 9 | 문서(이 절), 실행 순서서, fixture README, 자리 채움 검사 테스트 | `docs/runbooks/2026-09-29-five-subjects.md`, `tests/no-placeholder.test.ts` |
 
-**알려진 한계(뒤 Task에서 해소)**
-- 가짜 응답 fixture가 아직 v1이라 로컬 mock 생성은 v2 검사에 걸린다(Task 6).
-- 미리보기(PackageView)·학생 화면·채점 프롬프트는 v2 필드를 읽는 최소 판(Task 7에서 v2 카드로 재작성). v2 이전에 저장된 **초안** 세트(DB 열이 v1 모양)는 미리보기가 깨질 수 있으니 2단계부터 다시 만든다(스펙 §4.3).
+**현재 수치 (HEAD `d8ddad6` 기준, 2026-09-25 재확인)**
+- `npx vitest run`: 52 files / **444 tests, 0 skipped, 0 failed**.
+- `npx tsc --noEmit`: **0 errors**.
+- `npm run build`: 성공(전 라우트 컴파일).
+- `npx eslint`: 알려진 사전 존재 오류 2건(`useStageRunner.ts` 40:3·50:5, react-hooks) — Task 5 보고서에서 베이스 커밋에도 있었음을 확인. 그 외 파일은 clean.
+
+**실행 순서서**: `docs/runbooks/2026-09-29-five-subjects.md`(준비 → 성취기준 선택 → 과목별 생성 → 시연 흐름 → 대표님 12항목 체크리스트 → 실패 기록 → 알려진 한계).
+
+**대표님이 하실 일**
+1. 마이그레이션 0011(v2 열·안내장 표) 적용: `supabase db push` — 적용 전에는 2·3·7단계 저장이 "열 없음" 오류로 실패한다(0009도 아직이면 함께 적용됨).
+2. `studio-v2` 최종 검토 뒤 main 병합·`git push`, Vercel 재배포 확인.
+3. 공유 자료 B(작년·올해 일회용품 개수)가 아직 상대도수(0.24·0.30 — 수학 서술형 2의 정답)로 되어 있다. `docs/samples/2026-09-20-중1-일회용품-공유자료.json`과 호스팅 DB의 대주제 공유 자료를 원자료(개수) 표로 패치한다(순서서 A절 4번).
+4. 5일차 검토(순서서 E절, 과목×12항목 체크리스트를 `docs/review/2026-09-29-owner-review.md`에 기록).
+
+**뒤로 미룬 것 (§6.2 필수 아님, 2026-09-25 장부에 기록된 이탈 포함)**
+- 스펙 §6.2: `standard_levels`·`exemplars` DB 적재(지금은 파일), 안내장 발송·학생/학부모 열람(지금은 원장 확정·인쇄만), 활동지 수준별 세 장 자동 분화(지금은 한 장에 3층 표시), 초등·고등 학교급 분기, 역사 세트, 2025 국·수·영 예시 파일 반영, 동사 뱅크 파일화, 난이도 실측 루프, 복붙·외부 AI 탐지, 검수 QA 루틴, 3B 교재 인쇄(`lib/print/booklet.ts`)는 v2 `Snapshot` 타입 기준으로 착수.
+- `lib/studio/prompts/rules/index.ts`의 `FOLDER_FOR` 죽은 코드, `localeCompare` 동점 처리 미정(Task 2 리뷰 minor).
+- 초등 `school_level` 스키마 확장(현재 중·고 기준 — Task 2 리뷰 minor).
+- 검토 prompt에 들어가는 3단계 프로젝션 축소(현재 stage 3 전체를 그대로 넣어 5~7단계 검토가 3만자 안팎 — Task 4 fix round 1에서 측정, "slim stage-3 review projection"으로 명명, 발표 뒤 최적화).
+- `app/admin/items/[themeId]/sets/[setId]/useStageRunner.ts`의 react-hooks eslint 오류 2건(리스트에 있던 사전 존재 오류, Task 5·7에서 그대로 확인만 함).
+- 스펙 부록 A C-24 두 문장 병합(Task 3 review, minor deferred).
+- `lib/` 안 검토·린트 이슈 문구가 한글 리터럴로 하드코딩됨(다국어 대응 시 손볼 대상, checks.ts부터 notice-lint.ts까지 관행 — Task 8 review minor deferred).
+
+**다음**: 최종 전체 리뷰(main..d8ddad6 범위) → main 병합 → 5일차 실제 생성·검토(순서서 절차대로).
+
+**알려진 한계**
+- 사진 업로드 경로 없음 — 종이 답안 문항은 3B까지 학생이 직접 답할 수 없다.
+- 원장 화면은 A~E 등급을 그대로 보여준다(스펙에 원장 제한 규정 없음).
+- 가짜 응답(mock) fixture는 수학·과학만 v2다. 국·영·사는 실제 키로 생성해야 한다(2단계 [TS] 검사가 정상 작동해 다른 과목 성취기준으로는 실패한다).
 
 ## 다음: 3주차 계획 (아직 안 씀)
 
