@@ -12,6 +12,8 @@
 
 ## Global Constraints
 
+- **답안 방식(2026-09-23 대표님 결정)**: 표·그래프·수식 작성이 필요한 문항은 화면 입력이 아니라 **종이 답안 → 사진 읽기**가 기본이다. 5단계 conditions.format 이 `[종이 답안]`으로 시작하면 학생 화면은 입력 칸 대신 "종이에 풀어 선생님께 내세요" 안내를 보여 준다(Task 4에 포함). 사진 읽기 프롬프트는 **수식·표를 정확히 옮기는 규칙**을 담는다: 분수는 `290/1200`, 소수는 `0.24`, 등호·단위·계급 표기(`10 이상 20 미만: 1`)를 그대로, 표는 줄마다 `열1 | 열2`, 자신 없는 수식은 반드시 `uncertain`에. 3B 첫 과제 전에 실제 키로 손글씨 수식 사진 3장을 읽혀 정확도를 확인한다(Task 3 Step 7에 수동 확인 추가).
+
 - 문구는 `content/site.ts`(`app.classroom.photo`, `app.print`, `app.studio.materials` 확장)에서만. tsx 한글 리터럴 금지(주석·도메인 값 예외).
 - 사진: JPG/PNG/WebP만(Claude 이미지 입력 형식), 장당 10MB, 한 번에 6장까지. 버킷 `answer-photos`는 **비공개**; 경로 `<academy_id>/<assignment_id>/<lesson_no>-<uuid>.<ext>`; 읽기·쓰기 정책은 경로 첫 조각 = `current_academy_id()`인 원장과 admin만.
 - 사진 읽기 결과는 DB에 바로 저장하지 않는다. 원장이 [저장·채점]을 눌러야 `quiz_responses(source='photo')`·`answers(source='photo', photo_path, entered_by=원장, submitted_at=now)`·`gradings(pending)`가 생기고 `runGrading`이 돈다. 같은 학생·차시에 이미 앱 입력(퀴즈 또는 제출 답안)이 있으면 덮어쓰지 않고 오류 문구.
