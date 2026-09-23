@@ -90,12 +90,39 @@ describe('review focus v2', () => {
     for (const m of ['MATERIAL_BODY_MARK', 'SHARED_MARK', 'GUIDE_MARK', 'RECON_MARK']) expect(u7).not.toContain(m)
     expect(buildReviewPrompt(2, { ...ctx, prior }, {}).user).toContain('STAGE1_MARK')
     expect(buildReviewPrompt(1, { ...ctx, prior }, {}).user).not.toContain('지금까지 확정된 내용')
-    // 생성 프롬프트는 여전히 전부 받는다
+    // 5단계 생성은 2단계(level_anchor)를 받는다(생성 범위는 아래 generate prior 시험)
     expect(buildPrompt(5, { ...ctx, prior }).user).toContain('RECON_MARK')
   })
   it('review prompt includes the level block (C 문장) for level stages and keeps the fixture key format', () => {
     const r = buildReviewPrompt(2, ctx, {})
     expect(r.user).toMatch(/\[9수04-02\] 성취수준\(도달점 = C/); expect(r.fixtureKey).toBe('stage2-review-수학')
     expect(r.system).toEqual([rulesFor('수학'), expect.stringMatching(/kind는 fidelity·grade_level·coverage·quiz·rubric·level·source·notice·other/)])
+  })
+})
+
+describe('generate prior is scoped per stage (I2)', () => {
+  const prior = {
+    stage0: { intro: 'INTRO_MARK' }, stage1: { recommended: [{ code: '[9수04-02]', reason: 'STAGE1_MARK' }] },
+    stage2: { standards: [{ code: '[9수04-02]', reconstructed_text: 'RECON_MARK' }], level_anchor: [{ code: '[9수04-02]', level: 'C', statement: 'ANCHOR_MARK' }] },
+    stage3: { unit_plan: { assessment_plan: { summative_placement: [{ lesson_no: 5, kind: '논술형' }] } }, lessons: [{ no: 1, topic: 'LESSON_MARK' }] },
+    stage4: { materials: [{ id: 'C', body: 'MATERIAL_BODY_MARK' }] },
+    stage5: { items: [{ rubric: { criteria: [{ name: 'RUBRIC_MARK' }] } }] },
+    stage6: { glossary: [{ term: 'GUIDE_MARK' }] },
+    shared_materials: [{ id: 'A', body: 'SHARED_MARK' }],
+  }
+  const ALL = ['INTRO_MARK', 'STAGE1_MARK', 'RECON_MARK', 'ANCHOR_MARK', 'LESSON_MARK', 'MATERIAL_BODY_MARK', 'RUBRIC_MARK', 'GUIDE_MARK', 'SHARED_MARK']
+  const expectOnly = (stage: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7, present: string[]) => {
+    const u = buildPrompt(stage, { ...ctx, prior }).user
+    for (const m of present) expect(u, `stage ${stage} should include ${m}`).toContain(m)
+    for (const m of ALL.filter((x) => !present.includes(x))) expect(u, `stage ${stage} should not include ${m}`).not.toContain(m)
+  }
+  // 0단계(확정된 대주제 소개)는 1~7단계 모두가 받는다(theme-intro.test.ts)
+  it('stage 7 generate carries stage 3 and 5 only (not 2/4/6, not shared materials)', () => expectOnly(7, ['INTRO_MARK', 'LESSON_MARK', 'RUBRIC_MARK']))
+  it('stage 6 generate carries stage 3 and 5 only', () => expectOnly(6, ['INTRO_MARK', 'LESSON_MARK', 'RUBRIC_MARK']))
+  it('stage 5 generate carries stage 2 (level_anchor), 3, 4 and the shared materials', () => expectOnly(5, ['INTRO_MARK', 'RECON_MARK', 'ANCHOR_MARK', 'LESSON_MARK', 'MATERIAL_BODY_MARK', 'SHARED_MARK']))
+  it('stage 4 generate carries stage 2, 3 and the shared materials', () => expectOnly(4, ['INTRO_MARK', 'RECON_MARK', 'ANCHOR_MARK', 'LESSON_MARK', 'SHARED_MARK']))
+  it('stages 1~3 carry only the previous stage (+ intro); stage 0 carries nothing', () => {
+    expectOnly(3, ['INTRO_MARK', 'RECON_MARK', 'ANCHOR_MARK']); expectOnly(2, ['INTRO_MARK', 'STAGE1_MARK']); expectOnly(1, ['INTRO_MARK']); expectOnly(0, [])
+    expect(buildPrompt(0, { ...ctx, prior }).user).not.toContain('지금까지 확정된 내용')
   })
 })

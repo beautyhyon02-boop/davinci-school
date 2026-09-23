@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
 import * as claude from '@/lib/ai/claude'
 import { runGrading, claimableOr, RUN_LEASE_MS, alignCriteria, GradingAlignError } from '@/lib/classroom/grade'
+import { buildGradingPrompt } from '@/lib/classroom/grading-prompt'
+import { loadFixture } from '@/lib/ai/mock'
 
 // 모델 호출 여부를 세기 위해 callStructured 를 원본을 감싼 spy 로 바꾼다(동작은 그대로 mock fixture)
 vi.mock('@/lib/ai/claude', async (importOriginal) => {
@@ -175,6 +177,29 @@ describe('runGrading stores rubric-aligned criteria', () => {
     expect(last.ai_criteria.map((c) => [c.name, c.max])).toEqual(assessment.items[2].rubric.criteria.map((c: { name: string; max: number }) => [c.name, c.max]))
     expect(last.ai_score).toBe(last.ai_criteria.reduce((s, c) => s + c.points, 0))
   })
+})
+
+describe('mock grading fixtures are keyed by subject (I1)', () => {
+  const prev = process.env.AI_MOCK
+  beforeEach(() => { process.env.AI_MOCK = '1'; vi.mocked(claude.callStructured).mockClear() })
+  afterEach(() => { process.env.AI_MOCK = prev })
+  const sci = JSON.parse(readFileSync('data/studio-fixtures/stage5-generate-과학.json', 'utf8'))
+  const sciSnapshot = { ...snapshot, cover: { ...snapshot.cover, subject: '과학' }, assessment: sci }
+  it('buildGradingPrompt asks for grading-{kind}-{subject} (mock falls back to grading-{kind})', () => {
+    expect(buildGradingPrompt({ snapshot: sciSnapshot as never, itemNo: 3, studentGrade: 1, answer: 'x' }).fixtureKey).toBe('grading-논술형-과학')
+    expect(buildGradingPrompt({ snapshot: snapshot as never, itemNo: 1, studentGrade: 1, answer: 'x' }).fixtureKey).toBe('grading-서술형-수학')
+    expect(loadFixture('grading-논술형-수학')).toEqual(JSON.parse(readFileSync('data/studio-fixtures/grading-논술형.json', 'utf8')))
+  })
+  for (const [label, snap, a, itemNo] of [['과학 논술형', sciSnapshot, sci, 3], ['과학 서술형', sciSnapshot, sci, 1], ['수학 논술형', snapshot, assessment, 3]] as const) {
+    it(`${label}: the mock draft aligns with the item rubric (no GradingAlignError)`, async () => {
+      const db = fakeDb({ gradings: [{ id: 'g1', status: 'pending', answer_id: 'a1' }], answers: [{ ...answerRows, item_no: itemNo }], item_set_versions: [{ snapshot: snap }], students: [{ grade: 1 }] })
+      const status = await runGrading({ gradingId: 'g1', db: db as never })
+      expect(db.updates.at(-1)!.patch.error ?? null).toBeNull()
+      expect(status).toBe('drafted')
+      const last = db.updates.at(-1)!.patch as { ai_criteria: { name: string; max: number }[] }
+      expect(last.ai_criteria.map((c) => [c.name, c.max])).toEqual(a.items[itemNo - 1].rubric.criteria.map((c: { name: string; max: number }) => [c.name, c.max]))
+    })
+  }
 })
 
 describe('claimableOr', () => {

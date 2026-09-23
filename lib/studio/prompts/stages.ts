@@ -93,16 +93,22 @@ export function fixtureKeyFor(stage: Stage, role: 'generate' | 'review', ctx: Ct
   return `stage${stage}-${role}${ctx.subject ? `-${ctx.subject}` : ''}`
 }
 
-/** 지금까지 확정된 단계 출력 전부(생성용). 검토는 필요한 단계만 넣는 priorBlockFor 를 쓴다. */
-function priorBlock(ctx: Ctx): string {
-  return Object.keys(ctx.prior).length ? `\n\n지금까지 확정된 내용:\n${JSON.stringify(ctx.prior, null, 1)}` : ''
-}
+/**
+ * 생성에 붙이는 이전 단계(확정본). 과제 문장이 실제로 기대는 단계만 넣는다 — 전부 넣으면 5~7단계 생성 입력이 4만~5만 자가 된다.
+ * 2←1(추천 성취기준), 3←2(재구조화·목표·level_anchor), 4←2·3(목표·자료가 쓰일 차시), 5←2·3·4(level_anchor 척도 근거·평가 배치·자료),
+ * 6←3·5(병합 표시·채점표), 7←3·5(차시·퀴즈, 채점표 요소명). 0단계(확정된 대주제 소개, 몇 문장)는 1~7단계 모두에 넣는다 —
+ * 대주제 맥락이 모든 단계의 근거라서다(repo.ts buildStatuses 주석·tests/theme-intro.test.ts).
+ */
+const GENERATE_PRIOR: Record<Stage, number[]> = { 0: [], 1: [0], 2: [0, 1], 3: [0, 2], 4: [0, 2, 3], 5: [0, 2, 3, 4], 6: [0, 3, 5], 7: [0, 3, 5] }
+/** 대주제 공유 자료(prior.shared_materials)를 같이 보여 줄 생성 단계: 4(공유 수치를 그대로 쓰고 ID를 이어 붙임)·5(문항이 공유 자료 ID를 참조). */
+const GENERATE_SHARED_MATERIALS = new Set<Stage>([4, 5])
 
 export function buildPrompt(stage: Stage, ctx: Ctx) {
   const lettering = stage === 4 ? sharedMaterialLettering(ctx) : ''
+  const prior = priorBlockFor(ctx, GENERATE_PRIOR[stage], GENERATE_SHARED_MATERIALS.has(stage) ? ['shared_materials'] : [], '이 단계에 필요한 것만')
   return {
     system: rulesFor(ctx.subject),
-    user: `${header(ctx)}${knowledgeBlocks(stage, ctx)}\n\n과제: ${TASKS[stage]}${lettering}${priorBlock(ctx)}`,
+    user: `${header(ctx)}${knowledgeBlocks(stage, ctx)}\n\n과제: ${TASKS[stage]}${lettering}${prior}`,
     fixtureKey: fixtureKeyFor(stage, 'generate', ctx),
   }
 }
@@ -129,10 +135,11 @@ const REVIEW_PRIOR: Record<Stage, number[]> = { 0: [], 1: [], 2: [1], 3: [2], 4:
 /** 대주제 공유 자료(prior.shared_materials)를 같이 보여 줄 검토 단계: 4(공유 수치를 그대로 썼는지)·5(문항이 공유 자료 ID를 참조할 수 있음). */
 const REVIEW_SHARED_MATERIALS = new Set<Stage>([4, 5])
 
-function priorBlockFor(ctx: Ctx, stages: number[], extraKeys: string[] = []): string {
+/** 생성(GENERATE_PRIOR)·검토(REVIEW_PRIOR)가 같이 쓴다. scope 는 머리말 괄호 안 문구. */
+function priorBlockFor(ctx: Ctx, stages: number[], extraKeys: string[] = [], scope = '검토에 필요한 단계만'): string {
   const keys = [...stages.map((n) => `stage${n}`), ...extraKeys].filter((k) => ctx.prior[k] !== undefined)
   if (keys.length === 0) return ''
-  return `\n\n지금까지 확정된 내용(검토에 필요한 단계만):\n${JSON.stringify(Object.fromEntries(keys.map((k) => [k, ctx.prior[k]])), null, 1)}`
+  return `\n\n지금까지 확정된 내용(${scope}):\n${JSON.stringify(Object.fromEntries(keys.map((k) => [k, ctx.prior[k]])), null, 1)}`
 }
 
 const REVIEWER = '당신은 이제 검토자다. 생성 결과가 규칙을 지켰는지 검사하고 pass/issues로만 답한다. 문제가 없으면 pass=true, issues=[]. issues[].kind는 fidelity·grade_level·coverage·quiz·rubric·level·source·notice·other 중 하나.'

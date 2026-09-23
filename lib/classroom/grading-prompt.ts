@@ -8,7 +8,8 @@ export type GradingPromptInput = { snapshot: Snapshot; itemNo: number; studentGr
 
 /**
  * 채점 프롬프트(스펙 §2.9 채점). 문항의 채점표(요소별 max 가변 척도)·총체적 기준·유의점·A~E 예상 구간·이 문항의 예시답안·조건을
- * 그대로 옮긴다 — G-03: 채점은 이것들만 근거로 한다. fixtureKey 는 mock 모드용(grading-서술형/논술형).
+ * 그대로 옮긴다 — G-03: 채점은 이것들만 근거로 한다. fixtureKey 는 mock 모드용 `grading-{종류}-{과목}` — 과목 파일
+ * (예: grading-논술형-과학, 채점표 요소 이름이 과목마다 다르다)이 없으면 lib/ai/mock.ts 가 과목을 뗀 grading-{종류} 로 떨어진다.
  */
 export function buildGradingPrompt({ snapshot, itemNo, studentGrade, answer }: GradingPromptInput) {
   const a = snapshot.assessment
@@ -35,5 +36,5 @@ export function buildGradingPrompt({ snapshot, itemNo, studentGrade, answer }: G
     `예시 답안(이 문항):\n${exemplars}`,
     `학생 답안:\n${answer}`,
   ].filter(Boolean).join('\n\n')
-  return { system: [GRADING_RULES], user, fixtureKey: `grading-${item.kind}` }
+  return { system: [GRADING_RULES], user, fixtureKey: `grading-${item.kind}-${snapshot.cover.subject}` }
 }

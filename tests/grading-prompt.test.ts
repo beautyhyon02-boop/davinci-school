@@ -17,11 +17,11 @@ describe('buildGradingPrompt v2', () => {
     expect(p.user).toContain(assessment.items[0].rubric.notes[0])
     expect(p.user).toContain(assessment.items[0].exemplar_answers[0].text.slice(0, 20))
     expect(p.user).not.toContain(assessment.items[2].exemplar_answers[0].text.slice(0, 20))
-    expect(p.user).toMatch(/max=\d/); expect(p.user).toMatch(/A~E 예상 구간/); expect(p.fixtureKey).toBe('grading-서술형')
+    expect(p.user).toMatch(/max=\d/); expect(p.user).toMatch(/A~E 예상 구간/); expect(p.fixtureKey).toBe('grading-서술형-수학')
   })
   it('논술형 lists 4 criteria names with max=4 and the holistic bands', () => {
     const p = buildGradingPrompt({ snapshot, itemNo: 3, studentGrade: 1, answer: 'x'.repeat(60) })
-    expect(p.fixtureKey).toBe('grading-논술형')
+    expect(p.fixtureKey).toBe('grading-논술형-수학')
     for (const c of assessment.items[2].rubric.criteria) expect(p.user).toContain(`${c.name}(max=4`)
     expect(p.user).toContain(assessment.items[2].rubric.holistic.상)
   })
