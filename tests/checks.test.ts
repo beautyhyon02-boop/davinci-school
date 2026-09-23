@@ -42,6 +42,30 @@ describe('staticIssues', () => {
     const noPartial = structuredClone(assessmentV2); Object.assign(noPartial.items[0].exemplar_answers[1], noPartial.items[0].exemplar_answers[0])
     expect(staticIssues(5, noPartial, { standards, prior }).some((i) => i.detail.includes('부분점수'))).toBe(true)
   })
+  it('stage 5: grade_boundaries level_ref must follow the 7등급↔수준 table', () => {
+    const prior = { stage4: { materials }, stage3: { lessons: [] } }
+    const wrongRef = structuredClone(assessmentV2); wrongRef.grade_boundaries[0].level_ref = 'B'
+    const issues = staticIssues(5, wrongRef, { standards, prior })
+    expect(issues).toEqual([{ kind: 'rubric', detail: '등급 7의 level_ref(B)가 7등급↔수준 대응표(A)와 다름' }])
+  })
+  it('stage 5: 서술형 exemplars must cover every score 1..points', () => {
+    const prior = { stage4: { materials }, stage3: { lessons: [] } }
+    const full = structuredClone(assessmentV2)
+    expect(full.items[0].exemplar_answers.map((e) => e.points)).toEqual([3, 2, 1])
+    expect(staticIssues(5, full, { standards, prior }).filter((i) => i.detail.includes('부분점수'))).toEqual([])
+    const noOne = structuredClone(assessmentV2); noOne.items[0].exemplar_answers.splice(2, 1)
+    const issues = staticIssues(5, noOne, { standards, prior }).filter((i) => i.detail.includes('부분점수'))
+    expect(issues).toHaveLength(1)
+    expect(issues[0]).toMatchObject({ kind: 'rubric' }); expect(issues[0].detail).toContain('문항 1'); expect(issues[0].detail).toContain('(1점 단계)')
+  })
+  it('stage 3: a 논술형 lesson needs a 논술형 writing step of 35+ minutes', () => {
+    const plan = { set_title: 't', set_key_question: 'q?', lesson_map: [], assessment_plan: { formative: 'f', summative_placement: [], rubric_note: { 상: 'a', 중: 'b', 하: 'c' } } }
+    const lessons = (main: typeof lessonV2.flow.main) => [1, 2, 3, 4].map((no) => ({ ...lessonV2, no, assessment: no === 4 ? '논술형' : null, flow: no === 4 ? { ...lessonV2.flow, main } : lessonV2.flow }))
+    const has35 = (main: typeof lessonV2.flow.main) => staticIssues(3, { unit_plan: plan, lessons: lessons(main) }, { standards, prior: {} }).some((i) => i.detail.includes('35분'))
+    expect(has35(lessonV2.flow.main)).toBe(true)
+    expect(has35([{ step_label: '논술형 작성', minutes: 30, activities: ['쓰기'] }, { step_label: '자료 읽기', minutes: 10, activities: ['읽기'] }])).toBe(true)
+    expect(has35([{ step_label: '자료 읽기', minutes: 5, activities: ['읽기'] }, { step_label: '논술형 작성', minutes: 35, activities: ['쓰기'] }])).toBe(false)
+  })
   it('stage 6/7: merge pairs must match lessons; notice plan lint', () => {
     const lessons = [1, 2, 3, 4].map((no) => ({ ...lessonV2, no, mergeable_with: no === 1 ? 2 : null }))
     const guide = { general: { materials: [], schedule_note: 's', purpose: 'p' }, glossary: [], merge_guide: [{ lessons: [3, 4], skip_activities: ['x'], time_budget_120: { intro_min: 10, main_min: 90, wrapup_min: 20 } }], grading_guide: { common_errors: [], review_tips: [], retry_guidance: '' }, per_lesson: [] }

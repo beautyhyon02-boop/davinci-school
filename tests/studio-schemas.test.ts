@@ -24,7 +24,7 @@ const short = (lesson_no: number) => ({ kind: '서술형', lesson_no, points: 3,
   conditions: { items: [{ no: 1, text: '값을 구할 것. (2점)', verb: '구하다', points: 2, category: '내용' }, { no: 2, text: '이유를 한 문장으로 쓸 것. (1점)', verb: '쓰다', points: 1, category: '형식' }],
     length: '문장 1개', format: '~다', answer_mode: 'screen', overflow_rule: null },
   rubric: { criteria: [{ ...criterion('계산', 2), condition_nos: [1] }, { ...criterion('이유', 1), condition_nos: [2] }], holistic: null, notes: ['반올림 오차 허용'] },
-  exemplar_answers: [{ level: null, points: 3, scores: [2, 1], assumed_short_points: null, text: '0.24와 0.30이며 총합이 달라 비율로 비교한다.', rationale: '두 조건 모두 충족' }, { level: null, points: 2, scores: [2, 0], assumed_short_points: null, text: '0.24와 0.30이다. 그냥 비교했다.', rationale: '값은 맞으나 이유 조건을 충족하지 못함' }],
+  exemplar_answers: [{ level: null, points: 3, scores: [2, 1], assumed_short_points: null, text: '0.24와 0.30이며 총합이 달라 비율로 비교한다.', rationale: '두 조건 모두 충족' }, { level: null, points: 2, scores: [2, 0], assumed_short_points: null, text: '0.24와 0.30이다. 그냥 비교했다.', rationale: '값은 맞으나 이유 조건을 충족하지 못함' }, { level: null, points: 1, scores: [1, 0], assumed_short_points: null, text: '0.24는 맞고 0.28이다. 이유는 없다.', rationale: '값 하나만 맞고 이유가 없음' }],
   level_map: [{ level: 'A', min: 3, max: 3, trait: '모두 정확' }, { level: 'B', min: 2, max: 2, trait: '계산 정확' }, { level: 'C', min: 1, max: 1, trait: '부분' }, { level: 'D', min: 0, max: 0, trait: '시도' }, { level: 'E', min: 0, max: 0, trait: '미도달' }],
   min_competency: null, references: [] })
 const essay = { ...short(5), kind: '논술형', points: 16, stem: '자료 A·B를 근거로 줄일 품목을 정하시오. [16점]',

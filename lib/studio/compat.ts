@@ -43,6 +43,7 @@ type AssessmentV1 = { items: ItemV1[]; grade_boundaries: { grade: number; min: n
 type GuideV1 = { general: GuideT['general']; glossary: GuideT['glossary']; per_lesson: { no: number; notes: string[] }[] }
 
 export function isV1Snapshot(raw: unknown): boolean {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return false
   const s = raw as { schema_version?: number; lessons?: { flow?: { intro?: unknown } }[]; assessment?: { exemplars?: unknown } | null }
   if (s?.schema_version === 2) return false
   if (Array.isArray(s?.lessons) && s.lessons[0] && typeof s.lessons[0].flow?.intro === 'string') return true
@@ -199,6 +200,9 @@ function unitPlanFrom(title: string, keyQuestion: string, lessons: LessonT[], a:
 }
 
 export function upgradeSnapshot(raw: unknown): SnapshotV2 {
+  // 빈 값·객체 아님·cover 없음은 스냅샷이 아니다 — TypeError 대신 분명한 오류로 멈춘다
+  const cover = raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as { cover?: unknown }).cover : undefined
+  if (!cover || typeof cover !== 'object') throw new Error('snapshot has no cover')
   if (!isV1Snapshot(raw)) return raw as SnapshotV2
   const s = raw as { cover: SnapshotV2['cover']; standards: SnapshotV2['standards']; intro: string; reconstruction: string; learning_goals: (string | LearningGoalT)[]; key_question: string; lessons: LessonV1[]; materials: MaterialV1[]; assessment: AssessmentV1 | null; teacher_guide: GuideV1 | null; generated_with: { models: string[] } }
   const notesFor = (no: number) => s.teacher_guide?.per_lesson.find((p) => p.no === no)?.notes ?? []

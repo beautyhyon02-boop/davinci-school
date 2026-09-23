@@ -49,6 +49,7 @@ export const QuizItem = z.object({
   answer: z.string().min(1),
   explanation: z.string().min(3),
 })
+// 설계(§2.3)는 expected_answer min(2) — 한 글자 정답('10' 아닌 '4' 같은 수·기호)을 받으려고 min(1)로 완화했다
 export const ScriptQuestion = z.object({ prompt: z.string().min(5), expected_answer: z.string().min(1), if_stuck: z.string().min(2) })
 export const WorksheetTask = z.object({
   no: z.number().int().min(1), prompt: z.string().min(5), tier: z.enum(TIERS), level_ref: z.enum(['D~E', 'C', 'A~B']),

@@ -1,5 +1,6 @@
 import type { z } from 'zod'
 import { checkReconstructionFidelity } from './fidelity'
+import { levelRefFor } from './level-map'
 import type { Stage, ReviewKind, Reconstruction, LessonDesign, Materials, Assessment, TeacherGuide, NoticePlan } from './schemas'
 
 export type Issue = { kind: ReviewKind; detail: string }
@@ -51,6 +52,8 @@ function lessonIssues(o: LessonDesignT, ctx: CheckCtx): Issue[] {
       else if (l.assessment && other.assessment) issues.push({ kind: 'other', detail: `${l.no}·${other.no}차시 병합: 둘 다 서·논술형 차시` })
     }
     if (l.flow.main.length < 2) issues.push({ kind: 'other', detail: `${l.no}차시 전개 소단계가 2개 미만` })
+    // 스펙 §2.3: 논술형 차시는 전개에 "논술형 작성(35분 이상)" 소단계가 있어야 한다(zod 가 아니라 [TS] — 올린 v1 판도 검토로 돌린다)
+    if (l.assessment === '논술형' && !l.flow.main.some((m) => m.step_label.includes('논술형') && m.minutes >= 35)) issues.push({ kind: 'other', detail: `${l.no}차시: 논술형 차시에는 35분 이상 작성 단계가 필요` })
     for (const [i, q] of l.formative_check.quiz.entries()) {
       if (q.type === 'choice' && (!q.choices || !q.choices.includes(q.answer))) issues.push({ kind: 'quiz', detail: `${l.no}차시 퀴즈 ${i + 1}: 정답이 보기에 없음` })
     }
@@ -76,6 +79,10 @@ function materialIssues(o: MaterialsT): Issue[] {
 
 function assessmentIssues(o: AssessmentT, ctx: CheckCtx): Issue[] {
   const issues: Issue[] = []
+  for (const b of o.grade_boundaries) {
+    const want = levelRefFor(b.grade)
+    if (b.level_ref !== want) issues.push({ kind: 'rubric', detail: `등급 ${b.grade}의 level_ref(${b.level_ref})가 7등급↔수준 대응표(${want})와 다름` })
+  }
   const materials = ((ctx.prior.stage4 as MaterialsT | undefined)?.materials ?? []).concat(((ctx.prior.shared_materials as MaterialsT['materials'] | undefined) ?? []))
   const byId = new Map(materials.map((m) => [m.id, m]))
   for (const [i, it] of o.items.entries()) {
@@ -86,7 +93,12 @@ function assessmentIssues(o: AssessmentT, ctx: CheckCtx): Issue[] {
       for (let k = 1; k < sorted.length; k++) if (adverbOnlyDiff(sorted[k - 1].descriptor, sorted[k].descriptor)) issues.push({ kind: 'level', detail: `문항 ${i + 1} ${c.name}: ${sorted[k - 1].points}→${sorted[k].points}점이 부사만 다름` })
       if (!/무응답|미응답|미작성/.test(sorted[0].descriptor) || !/시도|일부|관련/.test(sorted[0].descriptor)) issues.push({ kind: 'rubric', detail: `문항 ${i + 1} ${c.name}: 0점 서술에 무응답·시도 구분이 없음` })
     }
-    if (it.kind === '서술형' && !it.exemplar_answers.some((e) => e.points > 0 && e.points < it.points)) issues.push({ kind: 'rubric', detail: `문항 ${i + 1}: 부분점수 예시답안이 없음` })
+    if (it.kind === '서술형') {
+      // 스펙 §2.5: 서술형은 총점 단계마다(1..배점, 0점 제외) 예시답안 1개. zod 는 만점 1개만 강제한다.
+      const covered = new Set(it.exemplar_answers.map((e) => e.points))
+      const missing = Array.from({ length: it.points }, (_, k) => k + 1).filter((p) => !covered.has(p))
+      if (missing.length) issues.push({ kind: 'rubric', detail: `문항 ${i + 1}: 부분점수 예시답안이 없음(${missing.join('·')}점 단계) — 1~${it.points}점 단계마다 하나씩 필요` })
+    }
     if (it.kind === '논술형' && !it.situation) issues.push({ kind: 'other', detail: '논술형에 과제 상황(역할·청중·목적·결과물)이 없음' })
     if (it.kind === '논술형' && !it.rubric.criteria.some((c) => c.axis === '가치·태도')) issues.push({ kind: 'level', detail: '논술형 4요소 중 가치·태도 축이 없음(정당화 가능성 기준으로 서술)' })
   }

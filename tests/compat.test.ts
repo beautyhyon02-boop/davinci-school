@@ -45,6 +45,10 @@ describe('upgradeSnapshot (v1 → v2)', () => {
     expect(a.grade_boundaries.find((b) => b.grade === 7)?.level_ref).toBe('A')
     expect('exemplars' in a).toBe(false)
   })
+  it('refuses input that is not a snapshot with a clear error', () => {
+    for (const bad of [{}, null, undefined, [], 'x', { cover: null }]) expect(() => upgradeSnapshot(bad)).toThrow('snapshot has no cover')
+    expect(isV1Snapshot(null)).toBe(false); expect(isV1Snapshot('x')).toBe(false); expect(isV1Snapshot([])).toBe(false)
+  })
   it('returns a v2 snapshot untouched', () => {
     const s = upgradeSnapshot(snapshotV1)
     expect(upgradeSnapshot(s)).toBe(s)
