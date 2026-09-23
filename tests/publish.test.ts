@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { canPublish, buildSnapshot } from '@/lib/studio/publish'
+import type { z } from 'zod'
+import { canPublish, buildSnapshot, collectReferences } from '@/lib/studio/publish'
+import type { Material } from '@/lib/studio/schemas'
 import type { StageStatus } from '@/lib/studio/stages'
+
+type MaterialT = z.infer<typeof Material>
 
 function accepted(model = 'mock'): StageStatus {
   return { state: 'accepted', attempt: 1, model, updated_at: '2026-01-01T00:00:00.000Z' }
@@ -12,10 +16,11 @@ const allAccepted: Record<string, StageStatus | undefined> = {
   stage4: accepted(),
   stage5: accepted(),
   stage6: accepted(),
+  stage7: accepted(),
 }
 
 describe('canPublish', () => {
-  it('passes when stages 2-6 are accepted, all standards verified, and a key question is set', () => {
+  it('passes when stages 2-7 are accepted, all standards verified, and a key question is set', () => {
     const r = canPublish({
       statuses: allAccepted,
       standards: [{ code: '[9수04-02]', verified: true }],
@@ -24,7 +29,7 @@ describe('canPublish', () => {
     expect(r).toEqual({ ok: true, blockers: [] })
   })
 
-  it('blocks with stageNotAccepted:<n> for each stage 2-6 that is not accepted', () => {
+  it('blocks with stageNotAccepted:<n> for each stage 2-7 that is not accepted', () => {
     const r = canPublish({
       statuses: { ...allAccepted, stage3: { state: 'reviewed', attempt: 1, updated_at: '' }, stage5: undefined },
       standards: [{ code: '[9수04-02]', verified: true }],
@@ -34,6 +39,13 @@ describe('canPublish', () => {
     expect(r.blockers).toContain('stageNotAccepted:3')
     expect(r.blockers).toContain('stageNotAccepted:5')
     expect(r.blockers).not.toContain('stageNotAccepted:2')
+  })
+
+  it('blocks stageNotAccepted:7 when the notice plan is not accepted', () => {
+    const r = canPublish({ statuses: { ...allAccepted, stage7: undefined }, standards: [], keyQuestion: 'q' })
+    expect(r.blockers).toContain('stageNotAccepted:7')
+    const reviewed = canPublish({ statuses: { ...allAccepted, stage7: { state: 'reviewed', attempt: 1, updated_at: '' } }, standards: [], keyQuestion: 'q' })
+    expect(reviewed).toEqual({ ok: false, blockers: ['stageNotAccepted:7'] })
   })
 
   it('blocks with unverifiedStandard:<code> for each unverified standard', () => {
@@ -68,13 +80,20 @@ describe('canPublish', () => {
       'stageNotAccepted:4',
       'stageNotAccepted:5',
       'stageNotAccepted:6',
+      'stageNotAccepted:7',
       'unverifiedStandard:[9수04-02]',
       'noKeyQuestion',
     ])
   })
 })
 
-const baseTheme = { title: '자연보호 프로젝트', level: '중', grade: 2, intro: '학교 축제에서 일회용품을 줄이자.', materials: null as null | { id: string; title: string; kind: 'table' | 'text' | 'chart'; body: string | null; table: null; source: '자작'; images: string[] }[] }
+const baseTheme = { title: '자연보호 프로젝트', level: '중', grade: 2, intro: '학교 축제에서 일회용품을 줄이자.', materials: null as null | MaterialT[] }
+
+const goals = [
+  { text: '목표1을 설명할 수 있다.', axis: '지식·이해' as const },
+  { text: '목표2를 구할 수 있다.', axis: '과정·기능' as const },
+  { text: '목표3의 가치를 인식한다.', axis: '가치·태도' as const },
+]
 
 const baseItemSet = {
   subject: '수학' as const,
@@ -82,17 +101,20 @@ const baseItemSet = {
   grade: 2,
   version: 1,
   reconstruction: '재구성 문장',
-  learning_goals: ['목표1', '목표2', '목표3'],
+  reconstruction_detail: null,
+  learning_goals: goals,
   key_question: '핵심질문',
+  unit_plan: null,
   lessons: [],
-  materials: null as null | { id: string; title: string; kind: 'table' | 'text' | 'chart'; body: string | null; table: null; source: '자작'; images: string[] }[],
+  materials: null as null | MaterialT[],
   assessment: null,
   teacher_guide: null,
+  notice_plan: null,
   stage_status: { stage2: accepted('claude-a'), stage4: accepted('claude-b') } as Record<string, StageStatus | undefined>,
 }
 
-function material(id: string, title: string) {
-  return { id, title, kind: 'text' as const, body: '본문', table: null, source: '자작' as const, images: [] as string[] }
+function material(id: string, title: string): MaterialT {
+  return { id, title, kind: 'text', body: '본문', table: null, source: { kind: '자작', attribution: null, ai_assisted: false }, role: 'raw', images: [] }
 }
 
 describe('buildSnapshot', () => {
@@ -105,9 +127,28 @@ describe('buildSnapshot', () => {
     expect(typeof snap.cover.published_at).toBe('string')
     expect(snap.intro).toBe(baseTheme.intro)
     expect(snap.reconstruction).toBe('재구성 문장')
-    expect(snap.learning_goals).toEqual(['목표1', '목표2', '목표3'])
+    expect(snap.learning_goals).toEqual(goals)
     expect(snap.key_question).toBe('핵심질문')
     expect(snap.standards).toEqual([{ code: '[9수04-02]', text: '원문' }])
+  })
+
+  it('buildSnapshot emits schema_version 2, unit_plan, reconstruction_detail, notice_plan and merged references', () => {
+    const s = buildSnapshot({ theme: { ...baseTheme, materials: null }, standards: [{ code: '[9수04-02]', text: 't' }], version: 1,
+      itemSet: { ...baseItemSet, unit_plan: { set_title: 'u' }, reconstruction_detail: [{ code: '[9수04-02]' }], notice_plan: { per_lesson: [] },
+        assessment: { items: [{ references: [{ id: 'math-jaryojip-001', source: 'a.pdf p.1' }] }, { references: [{ id: 'math-jaryojip-001', source: 'a.pdf p.1' }, { id: 'k25-과학-01', source: 'b.pdf p.28' }] }], grade_boundaries: [], feedback_templates: { 상: '', 중: '', 하: '' } } } as never })
+    expect(s.schema_version).toBe(2); expect(s.unit_plan).toEqual({ set_title: 'u' }); expect(s.notice_plan).toEqual({ per_lesson: [] })
+    expect(s.reconstruction_detail).toHaveLength(1); expect(s.references.map((r) => r.id)).toEqual(['k25-과학-01', 'math-jaryojip-001'])
+  })
+
+  it('defaults the v2-only fields when the set has none yet (null columns)', () => {
+    const s = buildSnapshot({ theme: baseTheme, itemSet: baseItemSet, standards: [], version: 1 })
+    expect(s).toMatchObject({ schema_version: 2, reconstruction_detail: [], unit_plan: null, notice_plan: null, references: [] })
+  })
+
+  it('collectReferences ignores items without references and keeps one entry per id, sorted by id', () => {
+    expect(collectReferences(null)).toEqual([])
+    expect(collectReferences({ items: [{}, { references: [{ id: 'b', source: 's2' }, { id: 'a', source: 's1' }, { id: 'b', source: 's2' }] }] } as never))
+      .toEqual([{ id: 'a', source: 's1' }, { id: 'b', source: 's2' }])
   })
 
   it('uses the version passed in verbatim — first publish (no prior item_set_versions row) is 1', () => {

@@ -21,7 +21,7 @@ export default async function SetWizardPage({ params }: { params: Promise<{ them
 
   const { data: itemSet } = await supabase
     .from('item_sets')
-    .select('id, theme_id, subject, level, grade, status, version, key_question, stage_status, materials, lessons, reconstruction, learning_goals, assessment, teacher_guide')
+    .select('id, theme_id, subject, level, grade, status, version, key_question, stage_status, materials, unit_plan, lessons, reconstruction, reconstruction_detail, learning_goals, assessment, teacher_guide, notice_plan')
     .eq('id', setId)
     .single()
   if (!itemSet || itemSet.theme_id !== themeId) notFound()
