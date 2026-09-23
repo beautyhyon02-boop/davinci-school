@@ -250,7 +250,7 @@ export const app = {
     wizard: {
       backToTheme: '← 세트 목록으로',
       versionLabel: (v: number) => `버전 ${v}`,
-      stageNames: { 2: '재구성·목표·핵심질문', 3: '차시 설계', 4: '자료', 5: '평가', 6: '교사용 지침서' } as Record<number, string>,
+      stageNames: { 2: '재구성·목표·핵심질문', 3: '차시 설계', 4: '자료', 5: '평가', 6: '교사용 지침서', 7: '안내장 틀' } as Record<number, string>,
       stateLabel: { idle: '준비 전', generated: '생성됨', reviewed: '검토됨', accepted: '확정됨', failed: '실패' },
       reviewPass: '통과',
       reviewFail: '통과 못함',
@@ -281,6 +281,7 @@ export const app = {
       stage2: {
         reconstructionLabel: '재구성 문장',
         goalsLabel: '학습 목표',
+        goal: (text: string, axis: string) => `${text} (${axis})`,
         candidatesLabel: '핵심질문 후보',
       },
       stage3: {
@@ -305,11 +306,14 @@ export const app = {
         boundariesHeading: '등급표',
         boundary: (grade: number, min: number, max: number, band: string) => `${grade}등급: ${min}~${max} (${band})`,
         exemplarsHeading: '예시답안',
-        exemplar: (level: string, grade: number) => `${level} — ${grade}등급`,
+        exemplarCount: (itemNo: number, n: number) => `${itemNo}번 문항 예시답안 ${n}개`,
       },
       stage6: {
         termsCount: (n: number) => `용어 ${n}개`,
         notesCount: (n: number) => `차시별 메모 ${n}개`,
+      },
+      stage7: {
+        summary: (lessons: number, essays: number) => `차시 ${lessons}개 · 서·논술형 차시 문구 ${essays}개`,
       },
       errors: {
         invalidJson: 'JSON 형식을 확인하세요.',

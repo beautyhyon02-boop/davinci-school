@@ -1,10 +1,11 @@
 import { STAGE_ERRORS, type StageErrorCode, type StageStatus } from './stages'
+import { WIZARD_STAGES } from './wizard-stages'
 
-/** 마법사가 다루는(= 관리자가 JSON 으로 직접 고칠 수 있는) 단계. */
-export const EDITABLE_STAGES = [2, 3, 4, 5, 6] as const
+/** 마법사가 다루는(= 관리자가 JSON 으로 직접 고칠 수 있는) 단계 — 마법사 단계 목록과 같다(2~7). */
+export const EDITABLE_STAGES = WIZARD_STAGES
 export type EditableStage = (typeof EDITABLE_STAGES)[number]
 
-const LAST_STAGE = 6
+const LAST_STAGE = 7
 
 /**
  * n단계를 직접 수정(JSON 편집)해도 되는지 순수하게 판정한다. 생성과 같은 확정 게이트를 적용한다 —
@@ -33,7 +34,7 @@ export function canEditStage({
 }
 
 /**
- * n단계를 고치면 n+1..6단계는 바뀐 근거 위에 만들어진 낡은 출력이므로 idle 로 되돌린다(출력·검토 폐기).
+ * n단계를 고치면 n+1..7단계는 바뀐 근거 위에 만들어진 낡은 출력이므로 idle 로 되돌린다(출력·검토 폐기).
  * 이미 idle 인 단계는 되돌릴 게 없으므로 건너뛴다 — set_stage_status 호출 수를 필요한 만큼만 낸다.
  */
 export function downstreamResets(

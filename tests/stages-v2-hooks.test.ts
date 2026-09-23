@@ -3,6 +3,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { callStructured } from '@/lib/ai/claude'
 import { runStage, type Repo, type StageStatus, type LogRow } from '@/lib/studio/stages'
+import { MAX_ATTEMPTS } from '@/lib/studio/max-attempts'
+import { nextAction } from '@/lib/studio/next-action'
 
 vi.mock('@/lib/ai/claude', () => ({ callStructured: vi.fn() }))
 const call = vi.mocked(callStructured)
@@ -49,11 +51,22 @@ describe('runStage v2 hooks (fake callStructured)', () => {
     expect(logs).toHaveLength(1)
     expect(logs[0]).toMatchObject({ role: 'review', model: 'static', ok: false, input: 0, output: 0, cacheRead: 0, issues: { pass: false } })
   })
-  it('static failure follows MAX_ATTEMPTS (stage 2 limit 1 → exhausted at attempt 1)', async () => {
+  it('MAX_ATTEMPTS is 3 for every stage 0..7 (ruling: a non-developer admin must be able to regenerate after a miss)', () => {
+    for (const s of [0, 1, 2, 3, 4, 5, 6, 7] as const) expect(MAX_ATTEMPTS[s]).toBe(3)
+  })
+  it('a static failure on attempt 1 leaves room to regenerate (no limit error, next action is generate)', async () => {
     const bad = unfaithful()
     const statuses: Record<number, StageStatus> = { 1: accepted(), 2: { state: 'generated', attempt: 1, output: bad, updated_at: '' } }
     const r = await runStage({ itemSetId: 'x', stage: 2, action: 'review', repo: repo({ 2: bad }, statuses, []) })
+    expect(r.status.error).toBeUndefined()
+    expect(nextAction(r.status, MAX_ATTEMPTS[2] ?? 1)).toBe('generate')
+  })
+  it('static failure follows MAX_ATTEMPTS (stage 2 limit 3 → exhausted at attempt 3)', async () => {
+    const bad = unfaithful()
+    const statuses: Record<number, StageStatus> = { 1: accepted(), 2: { state: 'generated', attempt: 3, output: bad, updated_at: '' } }
+    const r = await runStage({ itemSetId: 'x', stage: 2, action: 'review', repo: repo({ 2: bad }, statuses, []) })
     expect(r.status.error).toMatch(/한도/)
+    expect(nextAction(r.status, MAX_ATTEMPTS[2] ?? 1)).toBe('edit')
   })
   it('an output the static checks cannot read (old v1 shape) becomes an issue instead of a crash, without a model call', async () => {
     const v1 = { reconstruction: '자료를 나타내고 해석할 수 있다.', key_questions: ['q?'] }
