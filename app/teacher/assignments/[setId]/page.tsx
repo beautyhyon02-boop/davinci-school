@@ -17,13 +17,13 @@ export const maxDuration = 300
 const copy = app.classroom.assign
 
 // assignments.student_id → students(profile_id) 이지 profiles 로 곧장 이어지지 않으므로
-// students!inner(...) 를 거쳐 profiles 를 끌어온다(문항 4 브리핑의 대안 형태).
+// assignments→students 에는 FK 가 둘(student_id, academy 복합키)이라 !inner 만 쓰면 PostgREST 가 모호하다고 거부한다 — student_id FK 이름을 명시한다.
 type Row = AssignmentRow & { students: { profile_id: string; profiles: { name: string } | null } | null }
 
 export default async function AssignmentSetPage({ params }: { params: Promise<{ setId: string }> }) {
   const { setId } = await params
   const supabase = await createClient()
-  const { data } = await supabase.from('assignments').select('*, students!inner(profile_id, profiles(name))').eq('item_set_id', setId).order('created_at')
+  const { data } = await supabase.from('assignments').select('*, students!assignments_student_id_fkey(profile_id, profiles(name))').eq('item_set_id', setId).order('created_at')
   const rows = (data ?? []) as unknown as Row[]
   if (rows.length === 0) notFound()
   const snapshot = await loadAssignmentSnapshot(supabase, setId, rows[0].item_set_version)
