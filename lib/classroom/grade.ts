@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { callStructured } from '@/lib/ai/claude'
 import { GradingDraftSchema } from './grading-schema'
 import { buildGradingPrompt } from './grading-prompt'
-import type { Snapshot } from '@/lib/studio/publish'
+import { upgradeSnapshot, type Snapshot } from '@/lib/studio/publish'
 import type { GradingStatus } from './types'
 
 /**
@@ -49,7 +49,7 @@ export async function runGrading({ gradingId, db }: { gradingId: string; db: Sup
       db.from('students').select('grade').eq('profile_id', asg.student_id).single(),
     ])
     if (!ver) throw new Error('snapshot not found')
-    const snapshot = ver.snapshot as Snapshot
+    const snapshot: Snapshot = upgradeSnapshot(ver.snapshot)   // v1 판도 v2 모양으로 읽는다(스펙 §4.3)
     const p = buildGradingPrompt({ snapshot, itemNo: ans.item_no, studentGrade: st?.grade ?? snapshot.cover.grade, answer: ans.body })
 
     const r = await callStructured({ stage: 9, role: 'grade', schema: GradingDraftSchema, system: p.system, user: p.user, effort: 'medium', fixtureKey: p.fixtureKey })

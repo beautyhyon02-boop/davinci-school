@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { PackageView } from '@/components/studio/PackageView'
-import type { Snapshot } from '@/lib/studio/publish'
+import { upgradeSnapshot, type Snapshot } from '@/lib/studio/publish'
 import { Button } from '@/components/ui/Button'
 import { app } from '@/content/site'
 
@@ -22,7 +22,7 @@ export default async function TeacherItemDetailPage({ params }: { params: Promis
     .maybeSingle()
   if (!data) notFound()
 
-  const snapshot = data.snapshot as Snapshot
+  const snapshot: Snapshot = upgradeSnapshot(data.snapshot)   // v1 판도 v2 모양으로 읽는다(스펙 §4.3)
 
   return (
     <>

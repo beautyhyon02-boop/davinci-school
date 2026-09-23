@@ -5,21 +5,18 @@ import { Histogram } from './Histogram'
 import { RelativeFreqBars } from './RelativeFreqBars'
 import { detectChart } from '@/lib/studio/charts'
 import type { Snapshot } from '@/lib/studio/publish'
-import type { Lesson as LessonSchema, QuizItem as QuizItemSchema, Material as MaterialSchema, AssessmentItem as AssessmentItemSchema, ShortRubric as ShortRubricSchema, ExtendedRubric as ExtendedRubricSchema } from '@/lib/studio/schemas'
+import type { Lesson as LessonSchema, QuizItem as QuizItemSchema, Material as MaterialSchema, AssessmentItem as AssessmentItemSchema, Rubric as RubricSchema } from '@/lib/studio/schemas'
 import { app } from '@/content/site'
 
+// v2 스냅샷을 기존 카드 배치 그대로 보여 주는 최소 판(흐름·준비물·퀴즈 위치, 요소별 척도, 문항별 예시답안).
+// 스펙 §2.9 의 v2 카드(재구조화 표·평가 계획·발문 대본·활동지·A~E·안내장 틀·참고 자료) 재작성은 Task 7.
 type Lesson = z.infer<typeof LessonSchema>
 type QuizItem = z.infer<typeof QuizItemSchema>
 type Material = z.infer<typeof MaterialSchema>
 type AssessmentItem = z.infer<typeof AssessmentItemSchema>
-type ShortRubric = z.infer<typeof ShortRubricSchema>
-type ExtendedRubric = z.infer<typeof ExtendedRubricSchema>
+type Rubric = z.infer<typeof RubricSchema>
 
 const copy = app.packageView
-
-function isShortRubric(rubric: ShortRubric | ExtendedRubric): rubric is ShortRubric {
-  return 'levels' in rubric
-}
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return <h2 className="text-lg font-bold">{children}</h2>
@@ -171,12 +168,12 @@ function LessonsSection({ lessons, showAnswers }: { lessons: Lesson[]; showAnswe
           <div key={l.no} className="rounded-xl border border-ink-100 p-3">
             <p className="text-sm font-semibold">{c.no} {l.no}</p>
             <div className="mt-2 grid gap-2 text-sm sm:grid-cols-3">
-              <p><span className="font-semibold text-ink-500">{copy.lessons.flow.intro}</span> {l.flow.intro}</p>
-              <p><span className="font-semibold text-ink-500">{copy.lessons.flow.main}</span> {l.flow.main}</p>
-              <p><span className="font-semibold text-ink-500">{copy.lessons.flow.wrapup}</span> {l.flow.wrapup}</p>
+              <p><span className="font-semibold text-ink-500">{copy.lessons.flow.intro}</span> {l.flow.intro.join(' ')}</p>
+              <p><span className="font-semibold text-ink-500">{copy.lessons.flow.main}</span> {l.flow.main.map((s) => `${s.step_label}(${s.minutes}′): ${s.activities.join(' ')}`).join(' / ')}</p>
+              <p><span className="font-semibold text-ink-500">{copy.lessons.flow.wrapup}</span> {l.flow.wrapup.join(' ')}</p>
             </div>
-            {l.materials.length > 0 && (
-              <p className="mt-2 text-sm"><span className="font-semibold text-ink-500">{copy.lessons.materialsLabel}:</span> {l.materials.join(', ')}</p>
+            {l.materials_used.length + l.materials_needed.length > 0 && (
+              <p className="mt-2 text-sm"><span className="font-semibold text-ink-500">{copy.lessons.materialsLabel}:</span> {[...l.materials_used.map((id) => `${copy.materials.idLabel} ${id}`), ...l.materials_needed].join(', ')}</p>
             )}
             {(l.images ?? []).length > 0 && (
               <div className="mt-2 flex flex-wrap gap-2">
@@ -186,7 +183,7 @@ function LessonsSection({ lessons, showAnswers }: { lessons: Lesson[]; showAnswe
                 ))}
               </div>
             )}
-            <QuizView quiz={l.quiz} showAnswers={showAnswers} />
+            <QuizView quiz={l.formative_check.quiz} showAnswers={showAnswers} />
           </div>
         ))}
       </div>
@@ -231,48 +228,35 @@ function TeacherGuideSection({ guide }: { guide: Snapshot['teacher_guide'] }) {
   )
 }
 
-function RubricView({ rubric }: { rubric: ShortRubric | ExtendedRubric }) {
+// v2 채점표: 요소마다 0..max 척도(서술형 1~3요소, 논술형 4요소 × 0~4). 요소별로 점수·기대 응답·예시 표를 하나씩 그린다.
+function RubricView({ rubric }: { rubric: Rubric }) {
   const c = copy
-  if (isShortRubric(rubric)) {
-    return (
-      <table className="mt-2 w-full min-w-[420px] text-left text-sm">
-        <thead>
-          <tr className="border-b border-ink-100 text-ink-500">
-            <th className="py-1 pr-3">{c.shortRubric.pointsLabel}</th>
-            <th className="py-1 pr-3">{c.shortRubric.expectationLabel}</th>
-            <th className="py-1 pr-3">{c.shortRubric.exampleLabel}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rubric.levels.map((lv, i) => (
-            <tr key={i} className="border-b border-ink-50">
-              <td className="py-1 pr-3">{lv.points}</td>
-              <td className="py-1 pr-3">{lv.expectation}</td>
-              <td className="py-1 pr-3">{lv.example ?? '-'}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    )
-  }
-  const bandKeys = ['4', '3', '2', '1', '0'] as const
   return (
-    <table className="mt-2 w-full min-w-[640px] text-left text-sm">
-      <thead>
-        <tr className="border-b border-ink-100 text-ink-500">
-          <th className="py-1 pr-3">{c.extendedRubric.criteriaLabel}</th>
-          {bandKeys.map((k) => <th key={k} className="py-1 pr-3">{c.extendedRubric.bandLabel(Number(k))}</th>)}
-        </tr>
-      </thead>
-      <tbody>
-        {rubric.criteria.map((criterion, i) => (
-          <tr key={i} className="border-b border-ink-50">
-            <td className="py-1 pr-3 font-semibold">{criterion.name}</td>
-            {bandKeys.map((k) => <td key={k} className="py-1 pr-3">{criterion.bands[k]}</td>)}
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <div className="mt-2 space-y-3">
+      {rubric.criteria.map((criterion, i) => (
+        <div key={i} className="overflow-x-auto">
+          <p className="text-sm font-semibold">{c.extendedRubric.criteriaLabel}: {criterion.name} · {c.extendedRubric.bandLabel(criterion.max)}</p>
+          <table className="mt-1 w-full min-w-[420px] text-left text-sm">
+            <thead>
+              <tr className="border-b border-ink-100 text-ink-500">
+                <th className="py-1 pr-3">{c.shortRubric.pointsLabel}</th>
+                <th className="py-1 pr-3">{c.shortRubric.expectationLabel}</th>
+                <th className="py-1 pr-3">{c.shortRubric.exampleLabel}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[...criterion.scale].sort((a, b) => b.points - a.points).map((step) => (
+                <tr key={step.points} className="border-b border-ink-50">
+                  <td className="py-1 pr-3">{step.points}</td>
+                  <td className="py-1 pr-3">{step.descriptor}</td>
+                  <td className="py-1 pr-3">{step.example ?? '-'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ))}
+    </div>
   )
 }
 
@@ -288,7 +272,7 @@ function AssessmentItemView({ item }: { item: AssessmentItem }) {
       <p className="mt-2 whitespace-pre-wrap text-sm">{item.stem}</p>
       <ul className="mt-2 space-y-0.5 text-sm text-ink-500">
         <li>{c.conditions.lengthLabel}: {item.conditions.length}</li>
-        <li>{c.conditions.requiredLabel}: {item.conditions.required.join(', ')}</li>
+        <li>{c.conditions.requiredLabel}: {item.conditions.items.map((cond) => cond.text).join(', ')}</li>
         <li>{c.conditions.formatLabel}: {item.conditions.format}</li>
       </ul>
       <div>
@@ -337,17 +321,19 @@ function AssessmentSection({ assessment }: { assessment: Snapshot['assessment'] 
       <Card>
         <SectionHeading>{copy.exemplarsHeading}</SectionHeading>
         <div className="mt-3 space-y-3">
-          {assessment.exemplars.map((ex, i) => (
-            <div key={i} className="rounded-xl border border-ink-100 p-3 text-sm">
+          {/* v2: 예시답안은 문항마다 있다(세트 공통 exemplars 폐지) */}
+          {assessment.items.flatMap((item, itemIdx) => item.exemplar_answers.map((ex, i) => (
+            <div key={`${itemIdx}-${i}`} className="rounded-xl border border-ink-100 p-3 text-sm">
               <div className="flex flex-wrap items-center gap-2">
-                <Badge tone="gray">{e.levelLabel[ex.level]}</Badge>
-                <Badge tone="gray">{e.gradeLabel(ex.grade)}</Badge>
-                <Badge tone="gray">{e.totalLabel(ex.total)}</Badge>
+                <Badge tone="gray">{copy.assessment.kindLabel[item.kind]}</Badge>
+                <Badge tone="gray">{copy.assessment.lessonLabel(item.lesson_no)}</Badge>
+                {ex.level && <Badge tone="gray">{e.levelLabel[ex.level]}</Badge>}
+                <Badge tone="gray">{e.totalLabel(ex.points)}</Badge>
               </div>
               <p className="mt-2 whitespace-pre-wrap">{ex.text}</p>
               <p className="mt-1 text-ink-500">{e.scoresLabel}: {ex.scores.join(', ')}</p>
             </div>
-          ))}
+          )))}
         </div>
       </Card>
 
@@ -406,7 +392,7 @@ export function PackageView({
       <Card>
         <SectionHeading>{c.learningGoalsHeading}</SectionHeading>
         <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
-          {snapshot.learning_goals.map((g, i) => <li key={i}>{g}</li>)}
+          {snapshot.learning_goals.map((g, i) => <li key={i}>{g.text}</li>)}
         </ul>
       </Card>
 

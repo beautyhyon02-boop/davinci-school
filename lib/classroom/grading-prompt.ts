@@ -17,20 +17,22 @@ export function buildGradingPrompt({ snapshot, itemNo, studentGrade, answer }: G
   if (!a) throw new Error('snapshot has no assessment')
   const item = a.items[itemNo - 1]
   if (!item) throw new Error(`item ${itemNo} not found`)
-  const rubric = 'criteria' in item.rubric
-    ? item.rubric.criteria.map((c) => `- ${c.name}: 4=${c.bands['4']} / 3=${c.bands['3']} / 2=${c.bands['2']} / 1=${c.bands['1']} / 0=${c.bands['0']}`).join('\n')
-    : item.rubric.levels.map((l) => `- ${l.points}점: ${l.expectation}${l.example ? ` (예: ${l.example})` : ''}`).join('\n')
-  const criteriaHint = 'criteria' in item.rubric
-    ? `요소 4개(${item.rubric.criteria.map((c) => c.name).join(', ')}) 각 0~4점, max=4`
-    : `요소 1개(이름: "${item.kind} 채점표"), max=${item.points}`
-  const exemplars = a.exemplars.map((e) => `[${e.level}] 총점 ${e.total} (${e.grade}등급)\n${e.text}`).join('\n\n')
+  // v2 채점표(요소별 max 가변 척도)·문항별 예시답안을 그대로 옮기는 최소 판. 규칙 블록(rules/grading.ts)·유의점·A~E 구간을 넣는 재작성은 Task 7.
+  const { criteria } = item.rubric
+  const rubric = criteria
+    .map((c) => `- ${c.name}(max=${c.max}): ${[...c.scale].sort((x, y) => y.points - x.points).map((s) => `${s.points}=${s.descriptor}`).join(' / ')}`)
+    .join('\n')
+  const criteriaHint = `요소 ${criteria.length}개(${criteria.map((c) => `${c.name} 0~${c.max}점`).join(', ')})`
+  const exemplars = item.exemplar_answers
+    .map((e) => `[${e.level ?? `${e.points}점`}] 총점 ${e.points} (요소별 ${e.scores.join('·')})\n${e.text}`)
+    .join('\n\n')
   const user = [
     `학생 학년: ${snapshot.cover.level} ${studentGrade}학년 · 과목: ${snapshot.cover.subject}`,
     `문항(${item.kind}, ${item.points}점):\n${item.stem}`,
-    `조건: 분량 ${item.conditions.length} / 필수 ${item.conditions.required.join(', ')} / 형식 ${item.conditions.format}`,
+    `조건: 분량 ${item.conditions.length} / 필수 ${item.conditions.items.map((c) => `(${c.no}) ${c.text}`).join(', ')} / 형식 ${item.conditions.format}`,
     `채점표:\n${rubric}`,
     `요소 구성: ${criteriaHint}`,
-    `예시 답안(세트 전체 기준):\n${exemplars}`,
+    `예시 답안(이 문항):\n${exemplars}`,
     `학생 답안:\n${answer}`,
   ].join('\n\n')
   return { system: [GRADING_RULES], user, fixtureKey: `grading-${item.kind}` }

@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { getSessionProfile } from '@/lib/auth/session'
 import { loadAssignmentSnapshot } from '@/lib/classroom/snapshot'
-import { assessmentItemNoForLesson, ASSESSMENT_LABELS, materialIdsForLesson } from '@/lib/classroom/lessons'
+import { assessmentItemNoForLesson, ASSESSMENT_LABELS } from '@/lib/classroom/lessons'
 import { MaterialsSection } from '@/components/studio/PackageView'
 import { overallFor, gradeFor } from '@/lib/classroom/scoring'
 import { LessonTabs } from './LessonTabs'
@@ -59,11 +59,11 @@ export default async function StudentAssignmentPage({ params }: { params: Promis
           <p className="mt-2">{lesson.goal}</p>
         </section>
         {/* 이 차시가 쓰는 자료(표·자동 그래프·설명글) — 결석생도 앱만 보고 풀 수 있어야 한다(스펙 §5.2). */}
-        <MaterialsSection materials={snapshot.materials.filter((m) => materialIdsForLesson(lesson).includes(m.id))} />
-        {lesson.quiz.length > 0 && (
+        <MaterialsSection materials={snapshot.materials.filter((m) => lesson.materials_used.includes(m.id))} />
+        {lesson.formative_check.quiz.length > 0 && (
           // 제출 전에는 정답·해설을 브라우저로 보내지 않는다(문제·유형·보기만). 제출한 뒤에야 결과 화면용으로 전체를 넘긴다.
           <QuizForm assignmentId={id} lessonNo={no}
-            quiz={done.length ? lesson.quiz : lesson.quiz.map(({ q, type, choices }) => ({ q, type, choices }))}
+            quiz={done.length ? lesson.formative_check.quiz : lesson.formative_check.quiz.map(({ q, type, choices }) => ({ q, type, choices }))}
             done={done.length ? done.map((d) => ({ response: d.response, correct: d.correct })) : null} />
         )}
         {item && itemNo && (

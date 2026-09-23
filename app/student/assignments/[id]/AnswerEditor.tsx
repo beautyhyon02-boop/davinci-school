@@ -10,7 +10,8 @@ const AUTOSAVE_MS = 30000
 
 export function AnswerEditor({ assignmentId, itemNo, attempt, initialBody, submitted, label, points, stem, conditions }: {
   assignmentId: string; itemNo: number; attempt: number; initialBody: string; submitted: boolean
-  label: string; points: number; stem: string; conditions: { length: string; required: string[]; format: string }
+  // v2 조건 모양(conditions.items). answer_mode 'paper' 안내 화면은 Task 7.
+  label: string; points: number; stem: string; conditions: { length: string; format: string; items: { no: number; text: string }[] }
 }) {
   const [body, setBody] = useState(initialBody)
   const [status, setStatus] = useState<string | null>(null)
@@ -59,7 +60,7 @@ export function AnswerEditor({ assignmentId, itemNo, attempt, initialBody, submi
         <p className="font-semibold">{copy.conditions}</p>
         <ul className="list-disc pl-5">
           <li><span className="text-ink-500">{copy.conditionLength}</span> {conditions.length}</li>
-          {conditions.required.map((c, i) => <li key={i}>{c}</li>)}
+          {conditions.items.map((c) => <li key={c.no}>{c.text}</li>)}
           <li><span className="text-ink-500">{copy.conditionFormat}</span> {conditions.format}</li>
         </ul>
       </div>
