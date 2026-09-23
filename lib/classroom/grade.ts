@@ -3,7 +3,7 @@ import { callStructured } from '@/lib/ai/claude'
 import { GradingDraftSchema } from './grading-schema'
 import { buildGradingPrompt } from './grading-prompt'
 import { upgradeSnapshot, type Snapshot } from '@/lib/studio/publish'
-import type { GradingStatus } from './types'
+import type { Criterion, GradingStatus } from './types'
 
 /**
  * 실행 임대 시간. 채점 실행기가 줄을 잡으면(pending + updated_at=지금) 이 시간 동안은 다른 호출이 다시 잡지 못한다.
@@ -19,6 +19,20 @@ export const RUN_LEASE_MS = 300_000
 export function claimableOr(statuses: GradingStatus[], now = Date.now()): string {
   const cutoff = new Date(now - RUN_LEASE_MS).toISOString()
   return [`status.in.(${statuses.join(',')})`, 'updated_at.is.null', `updated_at.lt."${cutoff}"`].join(',')
+}
+
+/**
+ * AI 초안의 요소를 문항 채점표에 맞춘다(스펙 §2.9: ai_criteria[].max 는 요소 max 를 따른다 — 서술형은 1~3).
+ * 같은 이름의 요소가 있으면 그 max, 이름이 달라도 요소 수가 같으면 같은 자리의 요소(이름도 채점표 것으로)를 쓴다.
+ * 맞출 수 없는 요소는 그대로 둔다. 점수는 max 로 자르고 score 는 요소 점수 합으로 다시 계산한다.
+ */
+export function alignCriteria(criteria: Criterion[], rubric: { criteria: { name: string; max: number }[] }): { criteria: Criterion[]; score: number } {
+  const sameCount = criteria.length === rubric.criteria.length
+  const aligned = criteria.map((c, i) => {
+    const r = rubric.criteria.find((x) => x.name === c.name) ?? (sameCount ? rubric.criteria[i] : undefined)
+    return r ? { ...c, name: r.name, max: r.max, points: Math.min(c.points, r.max) } : c
+  })
+  return { criteria: aligned, score: aligned.reduce((s, c) => s + c.points, 0) }
 }
 
 /**
@@ -54,9 +68,10 @@ export async function runGrading({ gradingId, db }: { gradingId: string; db: Sup
 
     const r = await callStructured({ stage: 9, role: 'grade', schema: GradingDraftSchema, system: p.system, user: p.user, effort: 'medium', fixtureKey: p.fixtureKey })
     const item = snapshot.assessment!.items[ans.item_no - 1]
-    const score = Math.min(r.data.score, item.points)
+    const aligned = alignCriteria(r.data.criteria, item.rubric)
+    const score = Math.min(aligned.score, item.points)
     await db.from('gradings').update({
-      status: 'drafted', ai_criteria: r.data.criteria, ai_score: score, ai_strengths: r.data.strengths, ai_improvements: r.data.improvements,
+      status: 'drafted', ai_criteria: aligned.criteria, ai_score: score, ai_strengths: r.data.strengths, ai_improvements: r.data.improvements,
       model: r.model, input_tokens: r.usage.input, output_tokens: r.usage.output, updated_at: new Date().toISOString(),
     }).eq('id', gradingId)
     return 'drafted'

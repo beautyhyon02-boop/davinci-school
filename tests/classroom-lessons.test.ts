@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { assessmentItemNoForLesson, lessonNoForItem, isLessonOpen, ASSESSMENT_LABELS, materialIdsForLesson } from '@/lib/classroom/lessons'
+import { assessmentItemNoForLesson, lessonNoForItem, isLessonOpen, ASSESSMENT_LABELS, materialIdsForLesson, isPaperItem } from '@/lib/classroom/lessons'
 
 // 최소 스냅샷: lessons 의 assessment 라벨과 assessment.items 의 순서로 문항 번호(1-based)를 정한다
 const snapshot = {
@@ -32,9 +32,19 @@ describe('isLessonOpen', () => {
 })
 
 describe('materialIdsForLesson', () => {
-  it('extracts A~Z ids from "자료 X" entries and ignores other items', () => {
-    expect(materialIdsForLesson({ materials: ['축제 삽화 3장', '자료 A', '자료 B'] })).toEqual(['A', 'B'])
-    expect(materialIdsForLesson({ materials: ['자료 B', '자료 A'] })).toEqual(['A', 'B'])
-    expect(materialIdsForLesson({ materials: [] })).toEqual([])
+  it('returns the ids from materials_used sorted, ignoring preparation items', () => {
+    expect(materialIdsForLesson({ materials_used: ['B', 'A'], materials_needed: ['축제 삽화 3장'] } as never)).toEqual(['A', 'B'])
+    expect(materialIdsForLesson({ materials_used: ['A', 'A'] })).toEqual(['A'])
+    expect(materialIdsForLesson({ materials_used: [] } as never)).toEqual([])
+  })
+})
+
+describe('isPaperItem', () => {
+  it('is true only for an item whose conditions.answer_mode is paper', () => {
+    const s = { assessment: { items: [{ conditions: { answer_mode: 'paper' } }, { conditions: { answer_mode: 'screen' } }] } } as never
+    expect(isPaperItem(s, 1)).toBe(true)
+    expect(isPaperItem(s, 2)).toBe(false)
+    expect(isPaperItem(s, 3)).toBe(false)
+    expect(isPaperItem({ assessment: null } as never, 1)).toBe(false)
   })
 })

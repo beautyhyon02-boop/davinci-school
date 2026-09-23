@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
 import * as claude from '@/lib/ai/claude'
-import { runGrading, claimableOr, RUN_LEASE_MS } from '@/lib/classroom/grade'
+import { runGrading, claimableOr, RUN_LEASE_MS, alignCriteria } from '@/lib/classroom/grade'
 
 // 모델 호출 여부를 세기 위해 callStructured 를 원본을 감싼 spy 로 바꾼다(동작은 그대로 mock fixture)
 vi.mock('@/lib/ai/claude', async (importOriginal) => {
@@ -112,6 +112,36 @@ describe('runGrading (mock)', () => {
     const status = await runGrading({ gradingId: 'g1', db: db as never })
     expect(status).toBe('drafted')
     expect(db.updates.at(-1)!.patch.ai_score).toBe(1)
+  })
+})
+
+describe('alignCriteria (ai_criteria max follows the rubric)', () => {
+  const rubric = { criteria: [{ name: '서술형 채점표', max: 3 }] }
+  it('sets max from the rubric criterion of the same name and caps points', () => {
+    const r = alignCriteria([{ name: '서술형 채점표', points: 4, max: 4, evidence: 'e', note: 'n' }], rubric)
+    expect(r.criteria).toEqual([{ name: '서술형 채점표', points: 3, max: 3, evidence: 'e', note: 'n' }])
+    expect(r.score).toBe(3)
+  })
+  it('matches by position when the names differ but the counts agree, and keeps the rubric name', () => {
+    const r = alignCriteria([{ name: '채점표', points: 2, max: 4, evidence: 'e', note: 'n' }], rubric)
+    expect(r.criteria[0]).toMatchObject({ name: '서술형 채점표', max: 3, points: 2 }); expect(r.score).toBe(2)
+  })
+  it('leaves unmatched criteria as they are when the counts differ', () => {
+    const r = alignCriteria([{ name: 'a', points: 1, max: 2, evidence: 'e', note: 'n' }, { name: 'b', points: 1, max: 1, evidence: 'e', note: 'n' }], rubric)
+    expect(r.criteria.map((c) => c.max)).toEqual([2, 1]); expect(r.score).toBe(2)
+  })
+})
+
+describe('runGrading stores rubric-aligned criteria', () => {
+  const prev = process.env.AI_MOCK
+  beforeEach(() => { process.env.AI_MOCK = '1'; vi.mocked(claude.callStructured).mockClear() })
+  afterEach(() => { process.env.AI_MOCK = prev })
+  it('논술형 mock draft: ai_criteria names and max equal the item 3 rubric, ai_score = sum', async () => {
+    const db = fakeDb({ gradings: [{ id: 'g1', status: 'pending', answer_id: 'a1' }], answers: [{ ...answerRows, item_no: 3 }], item_set_versions: [{ snapshot }], students: [{ grade: 1 }] })
+    expect(await runGrading({ gradingId: 'g1', db: db as never })).toBe('drafted')
+    const last = db.updates.at(-1)!.patch as { ai_criteria: { name: string; max: number; points: number }[]; ai_score: number }
+    expect(last.ai_criteria.map((c) => [c.name, c.max])).toEqual(assessment.items[2].rubric.criteria.map((c: { name: string; max: number }) => [c.name, c.max]))
+    expect(last.ai_score).toBe(last.ai_criteria.reduce((s, c) => s + c.points, 0))
   })
 })
 
