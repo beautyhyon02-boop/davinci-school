@@ -1,0 +1,170 @@
+{
+  "_meta": {
+    "title": "다빈치스쿨 차시별 활동 기록·피드백 안내장 — WP8 근거",
+    "purpose": "학원(다빈치스쿨)은 공식 학교생활기록부(학생부) 교과세부능력및특기사항(세특)을 대신 쓸 수 없다. 이 템플릿은 세특 도출 파이프라인(채점기준×수준 → 관찰근거 → 문장)과 문장 패턴을 학원 맥락(학생+학부모 공동 수신, 확정 채점·퀴즈·재도전 데이터 기반)에 맞게 재구성한 '안내장' 산출 스키마다.",
+    "grounding": "각 필드 설명 끝의 괄호는 근거 문서. docs/research/corpus/wp8-feedback-record.md §1(d)의 4색 모델(파랑=성취수준/초록=근거/빨강=역량/검정=총평, 도움자료 p.3)과 §3의 문장 패턴을 뼈대로 쓴다. 근거가 없는 필드는 '(다빈치스쿨 확장, 공식 서식 없음)'으로 표시.",
+    "not_adopted_from_official_docs": [
+      "500자(1500Byte) 학기 합산 상한 — 공식 세특 규정은 '학기 전체'가 단위이나(수학기재예시 p.12), 안내장은 '차시 1건'이 단위이므로 그대로 적용하지 않고 섹션별 독자 상한을 새로 정함(wp8 §5, §7-3).",
+      "순수 3인칭 서술 단일 문체 — 공식 세특은 3인칭 완료형만 쓰지만(wp8 §1-c), 안내장은 학부모(3인칭 요약)와 학생(2인칭 청유형)을 동시에 수신하므로 섹션별로 문체를 분리함(wp8 §7-1).",
+      "타 학생 동료평가 인용 — 사회과연수자료집 사례는 동료평가·모둠 비교를 포함하지만(p.77-84), 안내장은 개인정보 보호상 자기 학생 데이터만 다룸(wp8 §6-1,2)."
+    ]
+  },
+  "$schema_style": "JSON Schema 유사 구조 (type/description/properties). 실제 구현 스키마는 lib/studio/schemas.ts 관례(zod)를 참고하여 추후 반영 예정. Assessment(서·논술형 루브릭), QuizItem(퀴즈)은 이미 존재하는 스키마이므로 이 템플릿은 그 산출물을 '입력'으로 소비하는 하류(downstream) 문서로 설계했다.",
+  "field_authorship_legend": {
+    "data": "AI가 새로 쓰지 않고 기존 시스템 데이터(퀴즈 채점 결과, Assessment 루브릭 점수, 차시 계획)를 그대로 복사하는 필드",
+    "ai_draft": "AI가 데이터 기반으로 초안을 쓰되, 반드시 원장 확정(승인/수정) 후에만 발송 가능한 필드 (wp8 §6-3, wp4 §9의 'AI 초안 → 교사 확정' 게이트 승계)",
+    "director": "원장이 직접 쓰거나, AI 초안을 원장이 자유롭게 고쳐 쓰는 필드 — 시스템이 이 필드에 대해 발송을 막지 않음"
+  },
+  "definitions": {
+    "Notice": {
+      "type": "object",
+      "description": "학생 1인당, 차시 1개당 발행되는 안내장 1건. 5개 섹션(wp8 §5)으로 구성.",
+      "properties": {
+        "student_name": { "type": "string", "description": "학생 이름. (data — 원생 정보에서 그대로)" },
+        "lesson_no": { "type": "integer", "description": "차시 번호. (data — Lesson.no, lib/studio/schemas.ts)" },
+        "date": { "type": "string", "format": "date", "description": "수업일. (data)" },
+
+        "lesson_context": {
+          "type": "object",
+          "description": "① 이번 차시 학습 내용. 도움자료 4색 모델의 '검정(교사 총평)'이 아니라 순수 사실 안내이므로 전량 data — AI가 새로 짓지 않는다. (wp8 §1-b)",
+          "properties": {
+            "key_question": { "type": "string", "description": "이번 차시 핵심질문. (data — Lesson.key_question 그대로 복사)" },
+            "goal": { "type": "string", "description": "학습목표. (data — Lesson.goal 그대로 복사)" },
+            "topic_summary": { "type": "string", "maxLength": 60, "description": "학부모가 한눈에 알아볼 '오늘 무엇을 배웠는지' 1문장 요약. 문장 패턴: [도입: 활동 맥락] 그대로, 예 '~활동에서 ~을 배웠습니다'(wp8 §3-a 도입 단). (ai_draft — Lesson 필드들을 학부모 친화 문장으로 재진술)" }
+          }
+        },
+
+        "participation": {
+          "type": "object",
+          "description": "② 참여·퀴즈 결과. 도움자료 4색 모델의 '초록(수행 과정·결과, 근거)'에 대응. (wp8 §1-b, §5)",
+          "properties": {
+            "quiz": {
+              "type": "object",
+              "properties": {
+                "correct": { "type": "integer", "description": "정답 문항 수. (data — QuizItem 채점 결과 합산)" },
+                "total": { "type": "integer", "description": "전체 문항 수(항상 3). (data — Lesson.quiz.length, lib/studio/schemas.ts)" },
+                "items": {
+                  "type": "array",
+                  "description": "문항별 정오표. (data)",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "q": { "type": "string", "description": "문항. (data — QuizItem.q)" },
+                      "is_correct": { "type": "boolean", "description": "(data)" },
+                      "note": { "type": "string", "nullable": true, "maxLength": 40, "description": "틀린 문항에 한해 1줄 코멘트. 문장 패턴: [부분 긍정]+[역접]+[완곡 결함 서술], 예 '계급은 정확히 찾았으나 도수 세는 과정에서 헷갈렸어요'(wp8 §3-b '하' 규칙 — 부정 서술어 금지). (ai_draft)" }
+                    }
+                  }
+                }
+              }
+            },
+            "director_comment": { "type": "string", "nullable": true, "maxLength": 80, "description": "수업 중 태도·참여 관찰 코멘트. 반드시 구체적 행동 근거를 동반(wp8 §6-8). 문장 패턴: [태도·역량 단], 예 '오늘 모둠 활동에서 먼저 손을 들어 발표함'. (director — 원장이 수업 중 관찰한 사실이라 AI가 지어낼 수 없음, 비워두면 안내장에서 섹션 생략)" }
+          }
+        },
+
+        "essay_result": {
+          "type": "object",
+          "nullable": true,
+          "description": "③ 서·논술형 결과. 해당 차시에 서·논술형이 없으면 null. 도움자료 4색 모델의 '파랑(확정 성취수준)'+'빨강(역량)'에 대응. 반드시 원장이 최종 점수를 확정한 뒤에만 채워진다 — AI 채점 직후 미확정 상태의 점수·코멘트는 이 필드에 넣지 않는다(wp8 §6-3, wp4 §9 게이트).",
+          "properties": {
+            "kind": { "type": "string", "enum": ["서술형", "논술형"], "description": "(data — AssessmentItem.kind)" },
+            "confirmed_score": { "type": "integer", "description": "원장이 확정한 점수. (data — 원장 확정 후 값, AI 초안 아님)" },
+            "total_points": { "type": "integer", "description": "만점. (data — AssessmentItem.points)" },
+            "band": { "type": "string", "enum": ["상", "중", "하"], "description": "채점 결과가 속하는 밴드. (data — 점수를 grade_boundaries에 대응시켜 산출)" },
+            "criteria_feedback": {
+              "type": "array",
+              "description": "루브릭 요소별 코멘트. 요소명은 그대로 노출하고 요소와 무관한 인상평을 쓰지 않는다(wp8 §6-11). 배열 순서 = ExtendedRubric.criteria 순서.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "criterion_name": { "type": "string", "description": "루브릭 요소명. (data — ExtendedRubric.criteria[].name)" },
+                  "band_score": { "type": "integer", "minimum": 0, "maximum": 4, "description": "요소별 점수(0~4). (data)" },
+                  "good_point": { "type": "string", "maxLength": 60, "description": "잘한 점. 반드시 1개 이상, 항상 개선점보다 먼저 옴(wp8 §6-6, §3-c). 문장 패턴: [활동명]+[구체 행위]+[정도부사], 예 '분배법칙을 정확하게 적용하여 식을 전개함'. (ai_draft)" },
+                  "improve_point": { "type": "string", "nullable": true, "maxLength": 60, "description": "보완할 점. band_score가 만점이면 null 허용. 문장 패턴: [부분 긍정]+역접+[완곡 결함 서술]+[구체 행동 제안], 예 '식은 맞게 세웠으나 마지막 부호 처리에서 실수함 — 검산 습관을 들여봅시다'(wp8 §3-b, §6-5,12: 부정 서술어 금지 + 혼자 실행 가능한 다음 행동 필수). (ai_draft)" }
+                }
+              }
+            },
+            "retry": {
+              "type": "object",
+              "nullable": true,
+              "description": "재도전 기록. 공식 자료에 대응 근거 없는 다빈치스쿨 신규 필드(wp8 §7-3) — 학기 초/말 성장 서술(사회과연수자료집 p.19-23)의 '단일 차시·단일 문항' 축소판으로 설계.",
+              "properties": {
+                "attempted": { "type": "boolean", "description": "재도전 여부. (data)" },
+                "before_score": { "type": "integer", "description": "초회 점수. (data)" },
+                "after_score": { "type": "integer", "description": "재도전 점수. (data)" },
+                "improvement_comment": { "type": "string", "nullable": true, "maxLength": 70, "description": "향상 근거. 이전 점수를 '실패'로 규정하지 않고 '출발점'으로 재구성(wp8 §6-9). 문장 패턴: [무엇을 스스로 고쳤는지 구체 행위]+[결과], 예 '첫 시도 후 스스로 식을 다시 세워 계산 실수를 고쳐냄'. (ai_draft)" }
+              }
+            }
+          }
+        },
+
+        "next_lesson": {
+          "type": "object",
+          "description": "④ 다음 차시 안내·가정 학습 제안. 청유형(2인칭)으로 학생에게 직접 말하듯 쓴다(wp8 §7-1, §3-c 문체).",
+          "properties": {
+            "preview": { "type": "string", "maxLength": 50, "description": "다음 차시 예고. 문장 패턴: '다음 시간에는 ~을 배워요'. (data 기반 ai_draft — 다음 Lesson.topic 참고)" },
+            "home_study_suggestion": { "type": "string", "maxLength": 60, "description": "가정 학습 제안. 반드시 학생 혼자 실행 가능한 구체 행동 1개 포함, 추상적 격려로 끝내지 않음(wp8 §6-12). 문장 패턴: [구체 행동]+[청유형 종결], 예 '오늘 틀린 문항과 같은 유형 2개만 더 풀어봅시다'. (ai_draft)" }
+          }
+        },
+
+        "director_message": { "type": "string", "nullable": true, "maxLength": 100, "description": "⑤ 원장 한마디. 도움자료 4색 모델의 '검정(교사 총평)'에 대응 — 특정 성취기준에 국한되지 않는 전체적 인상(도움자료 p.3). 근거 없는 인성 평가만 쓰지 않도록 구체 관찰 1개 이상 포함 권장(wp8 §6-8). (director — 시스템이 발송을 막지 않는 유일한 자유 서술 필드, AI 초안 제공 가능하나 항상 원장이 최종 수정)" },
+
+        "footer_disclaimer": { "type": "string", "const": "본 안내장은 학교생활기록부가 아니며, 학원 자체 학습 기록입니다.", "description": "고정 고지문. 공식 자료에는 대응 근거 없음 — 사교육 기관이라는 맥락에서 다빈치스쿨이 신규로 추가하는 법적/신뢰 고지(wp8 §7-2). (다빈치스쿨 확장, 공식 서식 없음 — 모든 안내장에 예외 없이 고정 삽입)" }
+      }
+    }
+  },
+  "example": {
+    "_comment": "중1 수학 2차시(도수분포표→히스토그램, data/reference/templates/lesson-design.json의 example.lesson과 동일 차시). 서술형1=2/3점 → 재도전 3/3, 퀴즈 2/3. WP8 지시대로 완전히 작성한 예시.",
+    "student_name": "김OO",
+    "lesson_no": 2,
+    "date": "2026-09-24",
+    "lesson_context": {
+      "key_question": "표로 보는 것과 그림으로 보는 것은 자료를 이해하는 데 무엇이 다른가?",
+      "goal": "도수분포표의 자료를 히스토그램으로 나타내고, 히스토그램에서 계급·도수·전체 학생 수를 읽을 수 있다.",
+      "topic_summary": "지난 시간 만든 도수분포표를 히스토그램(그림)으로 나타내는 방법을 배웠습니다."
+    },
+    "participation": {
+      "quiz": {
+        "correct": 2,
+        "total": 3,
+        "items": [
+          { "q": "히스토그램에서 직사각형의 가로는 무엇을 나타내는가?", "is_correct": true, "note": null },
+          { "q": "도수가 가장 큰 계급을 무엇을 보고 찾는가?", "is_correct": true, "note": null },
+          { "q": "도수분포다각형은 히스토그램의 각 직사각형의 무엇을 이어서 그리는가?", "is_correct": false, "note": "직사각형은 잘 그렸으나 '중점을 잇는다'는 표현을 정확히 떠올리지 못했어요" }
+        ]
+      },
+      "director_comment": "짝과 히스토그램을 맞바꿔 확인하는 활동에 적극적으로 참여함"
+    },
+    "essay_result": {
+      "kind": "서술형",
+      "confirmed_score": 2,
+      "total_points": 3,
+      "band": "중",
+      "criteria_feedback": [
+        {
+          "criterion_name": "계급·도수 구분",
+          "band_score": 3,
+          "good_point": "도수분포표에서 계급과 도수를 정확하게 구분하여 표시함",
+          "improve_point": null
+        },
+        {
+          "criterion_name": "히스토그램 변환·해석",
+          "band_score": 2,
+          "good_point": "히스토그램의 막대는 정확한 높이로 그림",
+          "improve_point": "막대는 맞게 그렸으나 '어느 계급에 학생이 가장 많은지' 서술을 빠뜨림 — 다음에는 그래프를 그린 뒤 한 문장으로 정리하는 연습을 해봅시다"
+        }
+      ],
+      "retry": {
+        "attempted": true,
+        "before_score": 2,
+        "after_score": 3,
+        "improvement_comment": "빠뜨렸던 해석 문장을 스스로 채워 넣어 재도전에서 만점을 받음"
+      }
+    },
+    "next_lesson": {
+      "preview": "다음 시간에는 상대도수를 배워요.",
+      "home_study_suggestion": "오늘 틀린 문항과 같은 유형으로 도수분포다각형 그리기 1개만 더 풀어봅시다."
+    },
+    "director_message": "표를 그림으로 바꾸는 과정을 차근차근 따라오는 모습이 좋았습니다. 해석 문장을 스스로 채워 재도전에서 만점을 받은 점을 칭찬해 주세요.",
+    "footer_disclaimer": "본 안내장은 학교생활기록부가 아니며, 학원 자체 학습 기록입니다."
+  }
+}
