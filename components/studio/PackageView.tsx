@@ -25,25 +25,44 @@ function SectionHeading({ children }: { children: React.ReactNode }) {
   return <h2 className="text-lg font-bold">{children}</h2>
 }
 
+const SPLIT_ROWS_OVER = 12
+
+function TableGrid({ columns, rows, className }: { columns: string[]; rows: (string | number)[][]; className: string }) {
+  return (
+    <table className={className}>
+      <thead>
+        <tr className="border-b border-ink-100 text-ink-500">
+          {columns.map((col, i) => <th key={i} className="px-3 py-1 text-center">{col}</th>)}
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((row, i) => (
+          <tr key={i} className="border-b border-ink-50">
+            {row.map((cell, j) => <td key={j} className={`px-3 py-1 ${typeof cell === 'number' ? 'text-center tabular-nums' : 'text-left'}`}>{String(cell)}</td>)}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )
+}
+
 function MaterialTable({ material }: { material: Material }) {
   if (!material.table) return null
+  const { columns, rows } = material.table
+  // 두 열짜리 긴 표(부스 20개 등)는 반으로 나눠 나란히 — 세로 스크롤을 절반으로(대표님 요청 2026-09-23).
+  if (columns.length === 2 && rows.length > SPLIT_ROWS_OVER) {
+    const half = Math.ceil(rows.length / 2)
+    return (
+      <div className="mx-auto mt-2 grid max-w-[560px] grid-cols-2 gap-6 text-sm">
+        <TableGrid columns={columns} rows={rows.slice(0, half)} className="w-full" />
+        <TableGrid columns={columns} rows={rows.slice(half)} className="w-full" />
+      </div>
+    )
+  }
   return (
     <div className="mt-2 overflow-x-auto">
       {/* 표는 가운데 정렬, 너무 넓지 않게(최대 560px). 머리글·숫자 칸은 가운데, 글자 칸은 왼쪽. */}
-      <table className="mx-auto w-full max-w-[560px] min-w-[320px] text-sm">
-        <thead>
-          <tr className="border-b border-ink-100 text-ink-500">
-            {material.table.columns.map((col, i) => <th key={i} className="px-3 py-1 text-center">{col}</th>)}
-          </tr>
-        </thead>
-        <tbody>
-          {material.table.rows.map((row, i) => (
-            <tr key={i} className="border-b border-ink-50">
-              {row.map((cell, j) => <td key={j} className={`px-3 py-1 ${typeof cell === 'number' ? 'text-center tabular-nums' : 'text-left'}`}>{String(cell)}</td>)}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <TableGrid columns={columns} rows={rows} className="mx-auto w-full max-w-[560px] min-w-[320px] text-sm" />
     </div>
   )
 }
