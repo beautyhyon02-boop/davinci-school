@@ -23,7 +23,8 @@ export function LessonTabs({ lessons, openLessons, initial, panels }: { lessons:
           )
         })}
       </div>
-      <div className="mt-4">{panels[active]}</div>
+      {/* key={active}: 차시를 바꾸면 패널 안의 QuizForm/AnswerEditor 가 새로 마운트되어 이전 차시 상태(응답·결과)를 물려받지 않는다. */}
+      <div key={active} className="mt-4">{panels[active]}</div>
     </div>
   )
 }
