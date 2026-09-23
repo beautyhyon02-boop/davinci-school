@@ -26,3 +26,17 @@ describe('judgeQuiz', () => {
     expect(judgeQuiz({ type: 'short', answer: '히스토그램 / 도수분포다각형', choices: null }, '도수분포다각형')).toBe(true)
   })
 })
+
+describe('judgeQuiz lenient short answers', () => {
+  it('ignores trailing units and sentence endings', () => {
+    const six = { type: 'short' as const, answer: '6', choices: null }
+    expect(judgeQuiz(six, '6개')).toBe(true)
+    expect(judgeQuiz(six, '6 개')).toBe(true)
+    expect(judgeQuiz(six, '6개입니다')).toBe(true)
+    expect(judgeQuiz(six, '6.0')).toBe(true)
+    expect(judgeQuiz(six, '7개')).toBe(false)
+    expect(judgeQuiz({ type: 'short', answer: '20곳', choices: null }, '20')).toBe(true)
+    expect(judgeQuiz({ type: 'short', answer: '상대도수', choices: null }, '상대도수입니다')).toBe(true)
+    expect(judgeQuiz({ type: 'short', answer: '0.30', choices: null }, '0.3')).toBe(true)
+  })
+})
