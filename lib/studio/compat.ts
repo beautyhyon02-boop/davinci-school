@@ -195,7 +195,9 @@ export function upgradeAssessmentV1(a: AssessmentV1): AssessmentT {
 }
 
 export function upgradeTeacherGuideV1(g: GuideV1, lessons: LessonT[], assessment: AssessmentT | null): GuideT {
-  const merge_guide = lessons.filter((l) => l.mergeable_with !== null).map((l) => {
+  // 병합은 양쪽 차시에 서로 적혀 있다(1→2, 2→1) — 앞 번호 쪽에서 한 번만 만든다. 한쪽만 적힌 쌍도 빠뜨리지 않는다.
+  const pairs = lessons.filter((l) => l.mergeable_with !== null && (l.no < l.mergeable_with || !lessons.some((x) => x.no === l.mergeable_with && x.mergeable_with === l.no)))
+  const merge_guide = pairs.map((l) => {
     const other = lessons.find((x) => x.no === l.mergeable_with)
     return { lessons: [l.no, l.mergeable_with!] as [number, number], skip_activities: other ? other.flow.intro : l.flow.wrapup, time_budget_120: { intro_min: 10, main_min: 90, wrapup_min: 20 } }
   })

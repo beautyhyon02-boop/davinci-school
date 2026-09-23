@@ -1,7 +1,7 @@
 // tests/compat.test.ts
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { upgradeSnapshot, isV1Snapshot, upgradeLessonV1, upgradeAssessmentV1, splitMainV1, axisOf, buildReconstructionV2 } from '@/lib/studio/compat'
+import { upgradeSnapshot, isV1Snapshot, upgradeLessonV1, upgradeAssessmentV1, splitMainV1, axisOf, buildReconstructionV2, upgradeTeacherGuideV1 } from '@/lib/studio/compat'
 import { Reconstruction } from '@/lib/studio/schemas'
 import { Lesson, Assessment, LessonDesign, Materials, TeacherGuide } from '@/lib/studio/schemas'
 
@@ -111,6 +111,11 @@ describe('compat 보강 (T6)', () => {
     }
     expect(a.items[2].rubric.criteria.map((c) => c.axis)).toContain('가치·태도')
     expect(a.items[0].rubric.criteria[0].axis).toBe('과정·기능')
+  })
+  it('upgradeTeacherGuideV1: 병합 쌍은 한 번씩만(1↔2 를 [1,2]·[2,1] 두 번 적지 않음)', () => {
+    const lessons = v1('stage3-generate').lessons.map((l: Parameters<typeof upgradeLessonV1>[0]) => upgradeLessonV1(l, []))
+    const g = upgradeTeacherGuideV1(v1('stage6-generate'), lessons, null)
+    expect(g.merge_guide.map((m) => m.lessons)).toEqual([[1, 2], [3, 4]])
   })
   it('buildReconstructionV2: 세 축이 모두 있는 학습 목표와 원문 그대로의 재구조화 표', () => {
     const standards = fx('standards-math')
