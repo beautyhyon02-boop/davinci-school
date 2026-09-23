@@ -35,4 +35,29 @@ describe('exemplar selection', () => {
     expect(picked.length).toBeGreaterThanOrEqual(3)
     expect(picked.every((r) => r.subject === '수학')).toBe(true)
   })
+  it('every real-bank card stays <=900 chars and always cites the full, untruncated source', () => {
+    const bank = loadExemplarBank()
+    for (const r of bank) {
+      const card = exemplarCard(r)
+      expect(card.length).toBeLessThanOrEqual(900)
+      const firstLine = card.split('\n')[0]
+      expect(firstLine.startsWith(`[예시 ${r.id}]`)).toBe(true)
+      const pages = r.source.pages.length ? ` p.${r.source.pages[0]}${r.source.pages.length > 1 ? `-${r.source.pages[r.source.pages.length - 1]}` : ''}` : ''
+      const expectedSource = `출처: ${r.source.file}${pages}`
+      const sourceLine = card.split('\n').find((l) => l.startsWith('출처: '))
+      expect(sourceLine).toBe(expectedSource)
+    }
+  })
+  it('keeps the source line intact even when every field is absurdly long', () => {
+    const huge = rec({
+      context: 'c'.repeat(3000), stem: 's'.repeat(3000), conditions: ['d'.repeat(3000)],
+      rubric: { type: '분석적', criteria: [{ name: 'n'.repeat(500), levels: [{ points: 3, desc: '정확' }] }], notes: 'm'.repeat(3000) },
+      exemplar_answers: [{ level: '만점', text: 'a'.repeat(3000) }], source: { file: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.pdf', pages: [1, 2] },
+    })
+    const card = exemplarCard(huge)
+    expect(card.length).toBeLessThanOrEqual(900)
+    expect(card).toContain('출처: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.pdf p.1-2')
+    expect(card.split('\n').at(-1)).toBe('출처: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.pdf p.1-2')
+    expect(card.startsWith(`[예시 ${huge.id}]`)).toBe(true)
+  })
 })

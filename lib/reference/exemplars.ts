@@ -64,9 +64,14 @@ export function selectExemplars(q: ExemplarQuery, n = 4, source: ExemplarRecord[
 }
 
 const cut = (s: string | null | undefined, n: number) => (s ?? '').replace(/\s+/g, ' ').slice(0, n)
+const CARD_MAX = 900
 export function exemplarCard(r: ExemplarRecord): string {
   const pages = r.source.pages.length ? ` p.${r.source.pages[0]}${r.source.pages.length > 1 ? `-${r.source.pages[r.source.pages.length - 1]}` : ''}` : ''
   const crit = r.rubric?.criteria?.map((c) => `${c.name}(${c.levels.map((l) => l.points ?? '-').join('/')})`).join(', ') ?? ''
+  // The source line (출처) must always survive intact — 공공누리 attribution is mandatory (design §1.2).
+  // So it is computed first and reserved space is carved out of the 900-char budget before the
+  // rest of the card is truncated, instead of truncating the whole joined string from the end.
+  const source = `출처: ${r.source.file}${pages}`
   const lines = [
     `[예시 ${r.id}] ${r.subject} ${r.school_level}${r.grade ?? ''} ${r.kind} ${r.points ?? '-'}점 · ${cut(r.unit, 30)} · ${r.standard_codes.join(' ')}`,
     `자료: ${cut(r.context, 120)}`,
@@ -75,9 +80,11 @@ export function exemplarCard(r: ExemplarRecord): string {
     crit ? `채점 요소: ${cut(crit, 150)}` : '',
     r.rubric?.notes ? `유의점: ${cut(r.rubric.notes, 100)}` : '',
     r.exemplar_answers[0] ? `예시답안(${r.exemplar_answers[0].level}): ${cut(r.exemplar_answers[0].text, 200)}` : '',
-    `출처: ${r.source.file}${pages}`,
   ].filter(Boolean)
-  return lines.join('\n').slice(0, 900)
+  const body = lines.join('\n')
+  const budget = CARD_MAX - source.length - 1 // -1 for the newline joining body and source
+  const fitted = body.length <= budget ? body : budget > 0 ? `${body.slice(0, Math.max(0, budget - 1))}…` : ''
+  return fitted ? `${fitted}\n${source}` : source
 }
 
 export function exemplarsBlock(q: ExemplarQuery, n = 4, source?: ExemplarRecord[]): string {
