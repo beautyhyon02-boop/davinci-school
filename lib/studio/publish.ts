@@ -16,8 +16,10 @@ export type PublishStandard = { code: string; text: string }
  */
 export function upgradeSnapshot(raw: unknown): Snapshot {
   const s = upgradeSnapshotCompat(raw)
-  const needs = (s.materials ?? []).some((m) => typeof m.source !== 'object' || m.source === null || !m.role || !Array.isArray(m.images))
-  return needs ? { ...s, materials: s.materials.map(withMaterialDefaults) } : s
+  const broken = (m: MaterialT) => typeof m.source !== 'object' || m.source === null || !m.role || !Array.isArray(m.images)
+  if (!(s.materials ?? []).some(broken)) return s
+  // 고칠 자료만 새 객체로, 멀쩡한 v2 자료는 같은 객체 그대로
+  return { ...s, materials: s.materials.map((m) => (broken(m) ? withMaterialDefaults(m) : m)) }
 }
 
 type MaterialT = z.infer<typeof MaterialSchema>

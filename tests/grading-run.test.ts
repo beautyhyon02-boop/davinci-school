@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
 import * as claude from '@/lib/ai/claude'
-import { runGrading, claimableOr, RUN_LEASE_MS, alignCriteria } from '@/lib/classroom/grade'
+import { runGrading, claimableOr, RUN_LEASE_MS, alignCriteria, GradingAlignError } from '@/lib/classroom/grade'
 
 // 모델 호출 여부를 세기 위해 callStructured 를 원본을 감싼 spy 로 바꾼다(동작은 그대로 mock fixture)
 vi.mock('@/lib/ai/claude', async (importOriginal) => {
@@ -115,20 +115,52 @@ describe('runGrading (mock)', () => {
   })
 })
 
-describe('alignCriteria (ai_criteria max follows the rubric)', () => {
-  const rubric = { criteria: [{ name: '서술형 채점표', max: 3 }] }
+describe('alignCriteria (strict by name; ai_criteria max follows the rubric)', () => {
+  const cr = (name: string, points: number, max = 4) => ({ name, points, max, evidence: 'e', note: 'n' })
+  const essay = { criteria: [{ name: 'A 요소', max: 4 }, { name: 'B 요소', max: 4 }, { name: 'C 요소', max: 4 }, { name: 'D 요소', max: 4 }] }
   it('sets max from the rubric criterion of the same name and caps points', () => {
-    const r = alignCriteria([{ name: '서술형 채점표', points: 4, max: 4, evidence: 'e', note: 'n' }], rubric)
+    const r = alignCriteria([cr('서술형 채점표', 4)], { criteria: [{ name: '서술형 채점표', max: 3 }] })
     expect(r.criteria).toEqual([{ name: '서술형 채점표', points: 3, max: 3, evidence: 'e', note: 'n' }])
     expect(r.score).toBe(3)
   })
-  it('matches by position when the names differ but the counts agree, and keeps the rubric name', () => {
-    const r = alignCriteria([{ name: '채점표', points: 2, max: 4, evidence: 'e', note: 'n' }], rubric)
-    expect(r.criteria[0]).toMatchObject({ name: '서술형 채점표', max: 3, points: 2 }); expect(r.score).toBe(2)
+  it('reorders by name into rubric order and matches names ignoring surrounding/repeated spaces', () => {
+    const r = alignCriteria([cr('D 요소', 1), cr(' B  요소 ', 3), cr('A 요소', 4), cr('C 요소', 2)], essay)
+    expect(r.criteria.map((c) => [c.name, c.points])).toEqual([['A 요소', 4], ['B 요소', 3], ['C 요소', 2], ['D 요소', 1]])
+    expect(r.score).toBe(10)
   })
-  it('leaves unmatched criteria as they are when the counts differ', () => {
-    const r = alignCriteria([{ name: 'a', points: 1, max: 2, evidence: 'e', note: 'n' }, { name: 'b', points: 1, max: 1, evidence: 'e', note: 'n' }], rubric)
-    expect(r.criteria.map((c) => c.max)).toEqual([2, 1]); expect(r.score).toBe(2)
+  it('fails with the missing criterion named when the AI omits one', () => {
+    expect(() => alignCriteria([cr('A 요소', 1), cr('B 요소', 1), cr('C 요소', 1)], essay)).toThrow(GradingAlignError)
+    try { alignCriteria([cr('A 요소', 1), cr('B 요소', 1), cr('C 요소', 1)], essay) } catch (e) {
+      expect((e as GradingAlignError).missing).toEqual(['D 요소']); expect((e as Error).message).toContain('D 요소')
+    }
+  })
+  it('fails with the extra name when the AI invents or renames a criterion (no positional fallback)', () => {
+    try { alignCriteria([cr('채점표', 2, 3)], { criteria: [{ name: '서술형 채점표', max: 3 }] }); expect.unreachable() } catch (e) {
+      expect(e).toBeInstanceOf(GradingAlignError)
+      expect((e as GradingAlignError).missing).toEqual(['서술형 채점표']); expect((e as GradingAlignError).extra).toEqual(['채점표'])
+    }
+  })
+  it('fails when a name is repeated (count differs after matching)', () => {
+    expect(() => alignCriteria([cr('A 요소', 1), cr('A 요소', 2), cr('B 요소', 1), cr('C 요소', 1), cr('D 요소', 1)], essay)).toThrow(/A 요소/)
+  })
+})
+
+describe('runGrading fails loudly on a draft that does not match the rubric', () => {
+  const prev = process.env.AI_MOCK
+  beforeEach(() => { process.env.AI_MOCK = '1'; vi.mocked(claude.callStructured).mockClear() })
+  afterEach(() => { process.env.AI_MOCK = prev })
+  it('records failed with the missing criterion named and writes no partial draft', async () => {
+    vi.mocked(claude.callStructured).mockResolvedValueOnce({
+      data: { criteria: [{ name: '엉뚱한 요소', points: 2, max: 3, evidence: 'e', note: 'n' }], score: 2, strengths: ['잘한 점 문장'], improvements: ['보완할 점 문장'] },
+      usage: { input: 0, output: 0, cacheRead: 0 }, model: 'mock',
+    } as never)
+    const db = fakeDb({ gradings: [{ id: 'g1', status: 'pending', answer_id: 'a1' }], answers: [answerRows], item_set_versions: [{ snapshot }], students: [{ grade: 1 }] })
+    expect(await runGrading({ gradingId: 'g1', db: db as never })).toBe('failed')
+    const last = db.updates.at(-1)!.patch
+    expect(last.status).toBe('failed')
+    expect(String(last.error)).toContain('서술형 채점표')
+    expect(typeof last.updated_at).toBe('string')
+    expect(db.updates.some((u) => u.patch.status === 'drafted' || 'ai_criteria' in u.patch)).toBe(false)
   })
 })
 

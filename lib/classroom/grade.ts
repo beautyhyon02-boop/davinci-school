@@ -21,18 +21,36 @@ export function claimableOr(statuses: GradingStatus[], now = Date.now()): string
   return [`status.in.(${statuses.join(',')})`, 'updated_at.is.null', `updated_at.lt."${cutoff}"`].join(',')
 }
 
+/** AI 초안의 요소가 문항 채점표와 이름으로 맞지 않을 때. missing = 초안에 없는 채점표 요소, extra = 채점표에 없는(또는 겹친) 초안 요소. */
+export class GradingAlignError extends Error {
+  constructor(readonly missing: string[], readonly extra: string[]) {
+    super(`채점 요소가 채점표와 맞지 않음 — 빠진 요소: ${missing.join(', ') || '없음'} / 채점표에 없는 요소: ${extra.join(', ') || '없음'}`)
+    this.name = 'GradingAlignError'
+  }
+}
+
+const normName = (s: string) => s.trim().replace(/\s+/g, ' ')
+
 /**
- * AI 초안의 요소를 문항 채점표에 맞춘다(스펙 §2.9: ai_criteria[].max 는 요소 max 를 따른다 — 서술형은 1~3).
- * 같은 이름의 요소가 있으면 그 max, 이름이 달라도 요소 수가 같으면 같은 자리의 요소(이름도 채점표 것으로)를 쓴다.
- * 맞출 수 없는 요소는 그대로 둔다. 점수는 max 로 자르고 score 는 요소 점수 합으로 다시 계산한다.
+ * AI 초안의 요소를 문항 채점표에 이름으로(앞뒤·겹친 공백만 무시) 엄격히 맞춘다(스펙 §2.9: ai_criteria[].max 는 요소 max 를 따른다).
+ * 채점표 순서로 다시 늘어놓고 이름·max 는 채점표 것, 점수는 max 로 자르며 score = 요소 점수 합(G-09).
+ * 빠진 요소·채점표에 없는 이름·같은 이름 중복이 하나라도 있으면 GradingAlignError — 일부만 채점된 초안은 만들지 않는다.
  */
 export function alignCriteria(criteria: Criterion[], rubric: { criteria: { name: string; max: number }[] }): { criteria: Criterion[]; score: number } {
-  const sameCount = criteria.length === rubric.criteria.length
-  const aligned = criteria.map((c, i) => {
-    const r = rubric.criteria.find((x) => x.name === c.name) ?? (sameCount ? rubric.criteria[i] : undefined)
-    return r ? { ...c, name: r.name, max: r.max, points: Math.min(c.points, r.max) } : c
+  const byName = new Map<string, Criterion>()
+  const extra: string[] = []
+  for (const c of criteria) {
+    const key = normName(c.name)
+    if (byName.has(key) || !rubric.criteria.some((r) => normName(r.name) === key)) extra.push(c.name)
+    else byName.set(key, c)
+  }
+  const missing = rubric.criteria.filter((r) => !byName.has(normName(r.name))).map((r) => r.name)
+  if (missing.length || extra.length) throw new GradingAlignError(missing, extra)
+  const aligned = rubric.criteria.map((r) => {
+    const c = byName.get(normName(r.name))!
+    return { ...c, name: r.name, max: r.max, points: Math.min(c.points, r.max) }
   })
-  return { criteria: aligned, score: aligned.reduce((s, c) => s + c.points, 0) }
+  return { criteria: aligned, score: aligned.reduce((sum, c) => sum + c.points, 0) }
 }
 
 /**
