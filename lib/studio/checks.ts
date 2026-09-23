@@ -102,6 +102,28 @@ function assessmentIssues(o: AssessmentT, ctx: CheckCtx): Issue[] {
     if (it.kind === '논술형' && !it.situation) issues.push({ kind: 'other', detail: '논술형에 과제 상황(역할·청중·목적·결과물)이 없음' })
     if (it.kind === '논술형' && !it.rubric.criteria.some((c) => c.axis === '가치·태도')) issues.push({ kind: 'level', detail: '논술형 4요소 중 가치·태도 축이 없음(정당화 가능성 기준으로 서술)' })
   }
+  issues.push(...placementIssues(o, ctx))
+  return issues
+}
+
+/**
+ * 문항 lesson_no ↔ 3단계 평가 계획(summative_placement) 대조. 서술형1·2는 둘 다 '서술형' 문항이므로 문항 순서가 아니라
+ * 종류+차시로 짝짓는다(두 서술형 문항의 순서가 바뀌어도 차시가 맞으면 통과). 3단계 확정본이 prior에 없으면 건너뛴다.
+ */
+function placementIssues(o: AssessmentT, ctx: CheckCtx): Issue[] {
+  const plan = (ctx.prior.stage3 as Partial<LessonDesignT> | undefined)?.unit_plan?.assessment_plan?.summative_placement
+  if (!Array.isArray(plan) || plan.length === 0) return []
+  const family = (k: string) => (k.startsWith('서술형') ? '서술형' : '논술형')
+  const issues: Issue[] = []
+  for (const [i, it] of o.items.entries()) {
+    if (!plan.some((p) => family(p.kind) === it.kind && p.lesson_no === it.lesson_no)) {
+      const want = plan.filter((p) => family(p.kind) === it.kind).map((p) => `${p.kind} ${p.lesson_no}차시`).join('·')
+      issues.push({ kind: 'coverage', detail: `문항 ${i + 1}(${it.kind}): lesson_no ${it.lesson_no}가 3단계 평가 배치(${want})와 다름` })
+    }
+  }
+  for (const p of plan) {
+    if (!o.items.some((it) => it.kind === family(p.kind) && it.lesson_no === p.lesson_no)) issues.push({ kind: 'coverage', detail: `평가 계획 ${p.kind}(${p.lesson_no}차시)에 해당하는 문항이 없음` })
+  }
   return issues
 }
 

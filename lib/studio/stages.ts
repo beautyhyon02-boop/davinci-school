@@ -1,6 +1,7 @@
 import { STAGE_SCHEMAS, Review, type Stage, type ReviewT } from './schemas'
 import { buildPrompt, buildReviewPrompt, type Ctx } from './prompts/stages'
-import { checkReconstructionFidelity } from './fidelity'
+import { staticIssues, type Issue } from './checks'
+import { enrichOutput } from './enrich'
 import { callStructured } from '@/lib/ai/claude'
 import { MAX_ATTEMPTS } from './max-attempts'
 import type { ZodType } from 'zod'
@@ -99,6 +100,18 @@ export async function runThemeIntro({ themeId, action, repo }: { themeId: string
   return { status }
 }
 
+/**
+ * staticIssues 를 부른다. 검사는 zod 를 통과한 v2 출력을 전제하므로, 형식이 다른 출력(v2 이전에 저장된 판, 손으로 고친 판)에서
+ * 던지면 500 대신 '다시 생성' 이슈 하나로 돌려 검토 AI 호출 없이 반려한다.
+ */
+function staticCheck(stage: Stage, output: unknown, ctx: { standards: { code: string; text: string }[]; prior: Record<string, unknown> }): Issue[] {
+  try {
+    return staticIssues(stage, output, { standards: ctx.standards, prior: ctx.prior })
+  } catch (e) {
+    return [{ kind: 'other', detail: `출력 형식을 검사할 수 없음(${(e as Error).message}) — 다시 생성해야 합니다` }]
+  }
+}
+
 export async function runStage({ itemSetId, stage, action, repo }: { itemSetId: string; stage: Stage; action: 'generate' | 'review' | 'accept'; repo: Repo }) {
   const ctx = await repo.loadContext(itemSetId)
   const prev = ctx.statuses?.[stage] ?? { state: 'idle', attempt: 0, updated_at: '' }
@@ -119,8 +132,10 @@ export async function runStage({ itemSetId, stage, action, repo }: { itemSetId: 
       const r = await callStructured({ stage, role: 'generate', schema: STAGE_SCHEMAS[stage] as ZodType<unknown>, system: p.system, user: p.user,
         effort: stage === 5 ? 'xhigh' : 'high', fixtureKey: p.fixtureKey,
         log: e => repo.log({ itemSetId, stage, role: 'generate', attempt, ...e }) })
-      await repo.saveOutput(itemSetId, stage, r.data)
-      const status: StageStatus = { state: 'generated', attempt, output: r.data, model: r.model, updated_at: now() }
+      // 서버가 채우는 값(2단계 level_anchor, 5단계 min_competency)을 넣은 뒤 저장한다 — 모델 원출력이 아니라 이것이 검토·확정·게시의 대상
+      const data = enrichOutput(stage, r.data, { standards: ctx.standards, prior: ctx.prior })
+      await repo.saveOutput(itemSetId, stage, data)
+      const status: StageStatus = { state: 'generated', attempt, output: data, model: r.model, updated_at: now() }
       await repo.saveStatus(itemSetId, stage, status); return { status }
     } catch (e) {
       const status: StageStatus = { state: 'failed', attempt, error: (e as Error).message, updated_at: now() }
@@ -132,26 +147,27 @@ export async function runStage({ itemSetId, stage, action, repo }: { itemSetId: 
   if (output === undefined) throw new StageError(STAGE_ERRORS.NOTHING_TO_REVIEW, 'nothing to review: generate first')
 
   if (action === 'review') {
-    let review: ReviewT | null = null
+    // [TS] 순수 검사가 먼저(스펙 §2): 걸리면 검토 AI를 부르지 않고 그 결과를 검토 결과로 저장한다(model 'static', ok false)
+    const issues = staticCheck(stage, output, ctx)
+    if (issues.length > 0) {
+      const review: ReviewT = { pass: false, issues }
+      await repo.log({ itemSetId, stage, role: 'review', attempt: prev.attempt, model: 'static', input: 0, output: 0, cacheRead: 0, ok: false, issues: review })
+      const exhausted = prev.attempt >= (MAX_ATTEMPTS[stage] ?? 1)
+      const status: StageStatus = { state: 'reviewed', attempt: prev.attempt, output, review, updated_at: now(),
+        ...(prev.model ? { model: prev.model } : {}),
+        ...(exhausted ? { error: '검토 반복 한도 도달 — 관리자가 직접 수정' } : {}) }
+      await repo.saveStatus(itemSetId, stage, status); return { status }
+    }
     // 검토 결과({pass, issues})를 generation_log.issues 에 남기기 위해, 성공한 호출의 로그 행은 검토 결과가 나온 뒤에 기록한다
     let pending: LogRow | null = null
-    if (stage === 2) {
-      const f = checkReconstructionFidelity((output as { reconstruction: string }).reconstruction, ctx.standards.map(s => s.text))
-      if (!f.ok) {
-        review = { pass: false, issues: [{ kind: 'fidelity', detail: `원문에 없는 표현: ${f.unknownTokens.join(', ')}` }] }
-        pending = { itemSetId, stage, role: 'review', attempt: prev.attempt, model: 'local-fidelity', input: 0, output: 0, cacheRead: 0, ok: true }
-      }
-    }
-    if (!review) {
-      const p = buildReviewPrompt(stage, ctx, output)
-      const r = await callStructured({ stage, role: 'review', schema: Review, system: p.system, user: p.user, fixtureKey: p.fixtureKey,
-        log: async e => {
-          const row: LogRow = { itemSetId, stage, role: 'review', attempt: prev.attempt, ...e }
-          if (e.ok) pending = row; else await repo.log(row)
-        } })
-      review = r.data
-    }
-    if (pending) await repo.log({ ...pending, issues: { pass: review.pass, issues: review.issues } })
+    const p = buildReviewPrompt(stage, ctx, output)
+    const r = await callStructured({ stage, role: 'review', schema: Review, system: p.system, user: p.user, fixtureKey: p.fixtureKey,
+      log: async e => {
+        const row: LogRow = { itemSetId, stage, role: 'review', attempt: prev.attempt, ...e }
+        if (e.ok) pending = row; else await repo.log(row)
+      } })
+    const review = r.data
+    if (pending) await repo.log({ ...(pending as LogRow), issues: { pass: review.pass, issues: review.issues } })
     const exhausted = !review.pass && prev.attempt >= (MAX_ATTEMPTS[stage] ?? 1)
     const status: StageStatus = { state: 'reviewed', attempt: prev.attempt, output, review, updated_at: now(),
       ...(prev.model ? { model: prev.model } : {}),

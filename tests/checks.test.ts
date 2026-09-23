@@ -58,6 +58,21 @@ describe('staticIssues', () => {
     expect(issues).toHaveLength(1)
     expect(issues[0]).toMatchObject({ kind: 'rubric' }); expect(issues[0].detail).toContain('문항 1'); expect(issues[0].detail).toContain('(1점 단계)')
   })
+  it('stage 5: items[].lesson_no must match the stage 3 summative_placement, and every placement needs an item', () => {
+    const placement = (s1: number, s2: number, es: number) => ({ stage4: { materials }, stage3: { lessons: [], unit_plan: { assessment_plan: { summative_placement: [{ lesson_no: s1, kind: '서술형1' }, { lesson_no: s2, kind: '서술형2' }, { lesson_no: es, kind: '논술형' }] } } } })
+    const lessonNoIssues = (prior: Record<string, unknown>, out = assessmentV2) => staticIssues(5, out, { standards, prior }).filter((i) => i.detail.includes('lesson_no') || i.detail.includes('평가 계획'))
+    expect(lessonNoIssues(placement(2, 4, 5))).toEqual([])
+    const swapped = structuredClone(assessmentV2); swapped.items = [swapped.items[1], swapped.items[0], swapped.items[2]]
+    expect(lessonNoIssues(placement(2, 4, 5), swapped)).toEqual([])
+    const wrong = lessonNoIssues(placement(2, 3, 5))
+    expect(wrong).toHaveLength(2)
+    expect(wrong.every((i) => i.kind === 'coverage')).toBe(true)
+    expect(wrong[0].detail).toContain('문항 2'); expect(wrong[0].detail).toContain('4')
+    expect(wrong[1].detail).toContain('서술형2'); expect(wrong[1].detail).toContain('3차시')
+    expect(lessonNoIssues(placement(2, 4, 6)).map((i) => i.detail).join('|')).toMatch(/문항 3.*\|.*논술형\(6차시\)/)
+    const doubled = structuredClone(assessmentV2); doubled.items[1].lesson_no = 2
+    expect(lessonNoIssues(placement(2, 4, 5), doubled).some((i) => i.detail.includes('서술형2(4차시)'))).toBe(true)
+  })
   it('stage 3: a 논술형 lesson needs a 논술형 writing step of 35+ minutes', () => {
     const plan = { set_title: 't', set_key_question: 'q?', lesson_map: [], assessment_plan: { formative: 'f', summative_placement: [], rubric_note: { 상: 'a', 중: 'b', 하: 'c' } } }
     const lessons = (main: typeof lessonV2.flow.main) => [1, 2, 3, 4].map((no) => ({ ...lessonV2, no, assessment: no === 4 ? '논술형' : null, flow: no === 4 ? { ...lessonV2.flow, main } : lessonV2.flow }))

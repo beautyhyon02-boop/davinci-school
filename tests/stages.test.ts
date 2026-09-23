@@ -60,7 +60,7 @@ describe('runStage', () => {
     expect(r.status.review?.pass).toBe(false)
     expect(r.status.review?.issues[0].kind).toBe('fidelity')
     const reviewLog = repo.logs.find(l => l.role === 'review')
-    expect(reviewLog?.model).toBe('local-fidelity')
+    expect(reviewLog?.model).toBe('static')
     expect((reviewLog?.issues as { pass: boolean }).pass).toBe(false)
   })
   // 2단계 mock fixture 가 아직 v1 이라 v2 스키마에서 generate 가 실패한다 — T6 에서 v2 fixture 로 재생성하면 켠다
@@ -105,5 +105,36 @@ describe('runStage', () => {
   it('refuses to review before generate (nothing-to-review)', async () => {
     const repo = fakeRepo({ acceptedUpTo: 3 })
     await expectStageError(runStage({ itemSetId: 'x', stage: 3, action: 'review', repo }), STAGE_ERRORS.NOTHING_TO_REVIEW, /nothing to review/)
+  })
+})
+
+describe('runStage v2 hooks', () => {
+  const standards = [{ code: '[9수04-02]', text: '자료를 줄기와 잎 그림, 도수분포표, 히스토그램, 도수분포다각형으로 나타내고 해석할 수 있다.' }, { code: '[9수04-03]', text: '상대도수를 구하고, 상대도수의 분포를 표나 그래프로 나타내고 해석할 수 있다.' }]
+  function repoWith(outputs: Record<number, unknown>, statuses: Record<number, StageStatus>, logs: unknown[]): Repo {
+    return {
+      async loadContext() { return { theme: { title: 't', level: '중', grade: 1, subjects: ['수학'] }, subject: '수학', standards, prior: {}, outputs, statuses } },
+      async saveOutput(_id, stage, out) { outputs[stage] = out },
+      async saveStatus(_id, stage, st) { statuses[stage] = st },
+      async log(e) { logs.push(e) },
+    }
+  }
+  it('review runs static checks before the model and logs model:"static" on failure', async () => {
+    process.env.AI_MOCK = '1'
+    const bad = { standards: [{ code: '[9수04-02]', original_text: '틀린 원문', reconstruction_type: '유지', merged_with: [], reconstructed_text: '틀린 원문', reason: ['4~6차시 압축'], learning_elements: ['x'] }], reconstruction: '통계청 자료를 해석할 수 있다.', learning_goals: [], level_anchor: [], key_question_candidates: [] }
+    const statuses: Record<number, StageStatus> = { 1: { state: 'accepted', attempt: 1, output: {}, updated_at: '' }, 2: { state: 'generated', attempt: 1, output: bad, updated_at: '' } }
+    const logs: { model: string; ok: boolean }[] = []
+    const r = await runStage({ itemSetId: 'x', stage: 2, action: 'review', repo: repoWith({ 2: bad }, statuses, logs) })
+    expect(r.status.review?.pass).toBe(false)
+    expect(r.status.review?.issues.some((i) => i.kind === 'fidelity')).toBe(true)
+    expect(logs.at(-1)).toMatchObject({ model: 'static', ok: false })
+  })
+  // 2단계 mock fixture 가 아직 v1 이라 zod 에서 먼저 실패한다 — T6 에서 v2 fixture 로 재생성하면 켠다
+  // (같은 동작은 tests/stages-v2-hooks.test.ts 가 가짜 callStructured 로 지금 검사한다)
+  it.skip('generate stores the enriched output (level_anchor filled) in mock mode', async () => {
+    process.env.AI_MOCK = '1'
+    const outputs: Record<number, unknown> = {}
+    const statuses: Record<number, StageStatus> = { 0: { state: 'accepted', attempt: 1, output: {}, updated_at: '' }, 1: { state: 'accepted', attempt: 1, output: {}, updated_at: '' } }
+    await runStage({ itemSetId: 'x', stage: 2, action: 'generate', repo: repoWith(outputs, statuses, []) })
+    expect((outputs[2] as { level_anchor: unknown[] }).level_anchor.length).toBe(2)
   })
 })

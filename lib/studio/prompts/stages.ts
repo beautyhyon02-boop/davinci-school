@@ -93,33 +93,39 @@ export function fixtureKeyFor(stage: Stage, role: 'generate' | 'review', ctx: Ct
   return `stage${stage}-${role}${ctx.subject ? `-${ctx.subject}` : ''}`
 }
 
+/** 지금까지 확정된 단계 출력. 생성은 이것을 근거로 쓰고, 검토는 단계 간 일치(병합 표시·채점표 요소명·자료 ID)를 이것과 대조한다. */
+function priorBlock(ctx: Ctx): string {
+  return Object.keys(ctx.prior).length ? `\n\n지금까지 확정된 내용:\n${JSON.stringify(ctx.prior, null, 1)}` : ''
+}
+
 export function buildPrompt(stage: Stage, ctx: Ctx) {
-  const prior = Object.keys(ctx.prior).length ? `\n\n지금까지 확정된 내용:\n${JSON.stringify(ctx.prior, null, 1)}` : ''
   const lettering = stage === 4 ? sharedMaterialLettering(ctx) : ''
   return {
     system: rulesFor(ctx.subject),
-    user: `${header(ctx)}${knowledgeBlocks(stage, ctx)}\n\n과제: ${TASKS[stage]}${lettering}${prior}`,
+    user: `${header(ctx)}${knowledgeBlocks(stage, ctx)}\n\n과제: ${TASKS[stage]}${lettering}${priorBlock(ctx)}`,
     fixtureKey: fixtureKeyFor(stage, 'generate', ctx),
   }
 }
 
-// REVIEW_FOCUS·buildReviewPrompt는 Task 4에서 v2 검토 초점으로 교체된다. 여기서는 규칙 블록만 과목별로 바꾸고 7단계 자리를 채운다.
+/**
+ * 검토 AI 초점(스펙 §2 각 단계의 [AI] 항목). [TS] 순수 검사(lib/studio/checks.ts)가 먼저 돌고, 통과했을 때만 이 검토가 불린다 —
+ * 그래서 여기에는 기계로 판정하기 어려운 것(의미·수준·구체성)과 기계 검사의 판단 근거를 사람 말로 다시 적은 것만 둔다.
+ */
 const REVIEW_FOCUS: Record<Stage, string> = {
   0: '소개문이 학년 수준인지, 과목별 아이디어가 그 과목 성취기준으로 이어질 수 있는지.',
   1: '추천한 성취기준이 해당 학년 교과서 범위인지(다른 학년 내용이면 grade_level 이슈).',
-  2: '재구성에 원문에 없는 동사·대상·개념이 있는지(fidelity). 핵심질문 후보가 사실 확인형인지. 학습 목표가 성취기준을 벗어나는지.',
-  3: '모든 성취기준이 어느 차시엔가 배정됐는지(coverage). 퀴즈가 차시 핵심질문을 점검하는지, 정답이 맞는지(quiz). 서술형1·2·논술형이 각 1회 배치됐는지.',
-  4: '수치 자료의 합계·비율이 맞는지. 자료가 답을 대신하지 않는지(문항이 요구할 정리·계산 결과가 자료에 미리 적혀 있으면 kind other 로 지적). 학년 어휘 수준.',
-  5: '채점표로 예시답안 상/중/하를 실제로 채점했을 때 적힌 점수·등급이 나오는지(rubric). 배점 합계 22, 등급표 일치. 문두가 조건+평가요소+기능+배점인지. conditions가 학생 혼자 답안을 쓸 수 있을 만큼 구체적인지(length가 셀 수 있는 분량인지, "제한 없음" 같은 빈 조건이 없는지 — 있으면 kind other). 성취기준 이탈 여부.',
-  6: '비전공자가 따라 할 수 있는 구체성. 차시 수와 per_lesson 수 일치.',
-  7: '차시 수와 per_lesson 수 일치. 서·논술형이 있는 차시만 criteria_phrases가 있고 요소명이 채점표와 같은지. 다른 학생 비교·등수·부정 서술어가 없는지.',
+  2: '재구조화 문장마다 원문에 없는 동사·대상·개념이 있는지(fidelity). 재구조화 문장이 위의 C 문장(도달점)보다 좁거나 다른 활동인지(level). 통합이면 merged_with에 함께 묶은 성취기준 코드가 빠짐없이 있고 그 원 성취기준의 학습요소가 남았는지, 통합이 아니면 merged_with가 빈 배열인지. 핵심질문 후보가 사실 확인형인지. 학습 목표에 세 축이 다 있고 서술어가 통일됐는지. 재구성에 축제·일회용품 같은 맥락이 섞였는지.',
+  3: '모든 성취기준이 어느 차시엔가 배정됐는지(coverage). 퀴즈가 차시 핵심질문을 점검하고 정답이 맞는지(quiz). 서술형1·2·논술형이 각 1회, 논술형이 마지막 차시인지. 발문이 원장이 읽고 그대로 진행할 만큼 구체적이고 if_stuck이 정답을 그대로 말하지 않는지. 활동지 기본·표준·도전이 실제로 난이도 차이가 나는지(level). caution_notes에 오개념이 있는지. 시간 배분이 활동량과 맞는지.',
+  4: '수치 자료의 합계·비율이 맞는지. 자료가 답을 대신하지 않는지(문항이 요구할 정리·계산 결과나 결론 문장이 있으면 other). 찬반·비교 자료의 균형. 학년 어휘 수준. 표가 한 화면(25행·6열)인지. source가 자작인지.',
+  5: '문항마다 예시답안을 채점표로 실제로 채점해 적힌 요소별 점수·총점이 나오는지, 논술형 상/중/하 예시답안 총점에 assumed_short_points(그 예시가 전제한 서술형 두 문항 점수 합 0~6)를 더한 세트 총점이 등급표에서 각 밴드에 떨어지는지(rubric; 불일치면 어느 요소가 몇 점 차이인지 detail에 적는다). 서술형 예시답안의 assumed_short_points가 null인지. 문항 lesson_no가 3단계 unit_plan.assessment_plan.summative_placement의 차시와 같은지(coverage). 배점 합 22, 등급표 일치. 문두가 전제문+발문+[배점]이고 사고 순서 = 조건 순서인지. conditions가 학생 혼자 답안을 쓸 만큼 구체적인지(length가 셀 수 있는 분량인지, items에 행동 동사·부분배점이 있는지, "제한 없음" 같은 빈 조건이 없는지 — 있으면 other). 척도 descriptor가 관찰 가능한 표현인지, 인접 단계가 부사만 다른지(level). 논술형에 가치·태도 축 요소가 있으면 정당화 가능성 기준인지. 예시 은행 문장을 그대로 베끼지 않았는지(source). 성취기준 이탈 여부. 8문항 자가 점검(성취기준 부합·3범주 반영·상황맥락·고차 사고·채점기준 부합·변별·명료성·채점자 불변성).',
+  6: '비전공자가 따라 할 수 있는 구체성. merge_guide가 3단계 병합 표시와 같은지, per_lesson 수가 차시 수와 같은지. common_errors가 채점표 요소와 연결되는지.',
+  7: '문장이 활동명으로 시작하는지, 근거 없는 인성 평가가 없는지, 학부모가 읽어도 어색하지 않은지, 부정 서술어·비교·단독 평어가 없는지(notice). per_lesson 수가 차시 수와 같고 서·논술형이 있는 차시에만 criteria_phrases가 있는지. criteria_phrases의 요소명이 5단계 채점표와 같은지. home_study_suggestion이 혼자 실행 가능한 구체 행동인지.',
 }
-
-const REVIEWER = '당신은 이제 검토자다. 생성 결과가 규칙을 지켰는지 검사하고 pass/issues로만 답한다. 문제가 없으면 pass=true, issues=[].'
+const REVIEWER = '당신은 이제 검토자다. 생성 결과가 규칙을 지켰는지 검사하고 pass/issues로만 답한다. 문제가 없으면 pass=true, issues=[]. issues[].kind는 fidelity·grade_level·coverage·quiz·rubric·level·source·notice·other 중 하나.'
 
 export function buildReviewPrompt(stage: Stage, ctx: Ctx, output: unknown) {
   // 규칙은 첫 블록(캐시), 검토자 지시는 둘째 블록(캐시 없음) → 같은 과목의 생성·검토가 같은 캐시 항목을 공유한다
   const system: string[] = [rulesFor(ctx.subject), REVIEWER]
-  const user = `${header(ctx)}\n\n검토 초점: ${REVIEW_FOCUS[stage]}\n\n생성 결과:\n${JSON.stringify(output, null, 1)}`
+  const user = `${header(ctx)}${knowledgeBlocks(stage, ctx)}${priorBlock(ctx)}\n\n검토 초점: ${REVIEW_FOCUS[stage]}\n\n생성 결과:\n${JSON.stringify(output, null, 1)}`
   return { system, user, fixtureKey: fixtureKeyFor(stage, 'review', ctx) }
 }

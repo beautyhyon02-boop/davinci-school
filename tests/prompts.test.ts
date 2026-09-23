@@ -47,3 +47,33 @@ describe('prompts v2', () => {
     expect(u).toContain('참여 과목: 수학, 과학'); expect(u).not.toContain('과목: \n')
   })
 })
+
+describe('review focus v2', () => {
+  it('stage 5 review asks to actually grade the exemplars per item and to check level wording', () => {
+    const u = buildReviewPrompt(5, ctx, { items: [] }).user
+    expect(u).toMatch(/예시답안을 채점표로 실제로 채점/); expect(u).toMatch(/부사만/); expect(u).toMatch(/8문항/)
+  })
+  it('stage 3 review checks scripts, worksheet tiers and quiz answers; stage 7 checks notice rules', () => {
+    expect(buildReviewPrompt(3, ctx, {}).user).toMatch(/if_stuck/); expect(buildReviewPrompt(3, ctx, {}).user).toMatch(/기본·표준·도전/)
+    expect(buildReviewPrompt(7, ctx, {}).user).toMatch(/학부모/); expect(buildReviewPrompt(2, ctx, {}).user).toMatch(/C 문장/)
+  })
+  it('stage 2/5 review checks the Task 3 fields (merged_with, assumed_short_points, lesson_no)', () => {
+    expect(buildReviewPrompt(2, ctx, {}).user).toContain('merged_with')
+    const u5 = buildReviewPrompt(5, ctx, { items: [] }).user
+    expect(u5).toContain('assumed_short_points'); expect(u5).toContain('lesson_no'); expect(u5).toContain('summative_placement')
+  })
+  it('stage 7 focus is the real notice focus, not the Task 3 placeholder', () => {
+    const u = buildReviewPrompt(7, ctx, {}).user
+    expect(u).toMatch(/활동명으로 시작/); expect(u).toMatch(/home_study_suggestion/); expect(u).toMatch(/criteria_phrases/)
+  })
+  it('review prompt carries the accepted prior stages so cross-stage focus items can be checked', () => {
+    const u = buildReviewPrompt(6, { ...ctx, prior: { stage3: { lessons: [{ no: 1, mergeable_with: 2 }] } } }, {}).user
+    expect(u).toContain('지금까지 확정된 내용'); expect(u).toContain('mergeable_with')
+    expect(buildReviewPrompt(6, ctx, {}).user).not.toContain('지금까지 확정된 내용')
+  })
+  it('review prompt includes the level block (C 문장) for level stages and keeps the fixture key format', () => {
+    const r = buildReviewPrompt(2, ctx, {})
+    expect(r.user).toMatch(/\[9수04-02\] 성취수준\(도달점 = C/); expect(r.fixtureKey).toBe('stage2-review-수학')
+    expect(r.system).toEqual([rulesFor('수학'), expect.stringMatching(/kind는 fidelity·grade_level·coverage·quiz·rubric·level·source·notice·other/)])
+  })
+})
