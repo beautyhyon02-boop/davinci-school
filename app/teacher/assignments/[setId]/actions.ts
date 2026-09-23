@@ -4,9 +4,16 @@ import { createClient } from '@/lib/supabase/server'
 import { getSessionProfile } from '@/lib/auth/session'
 import { app } from '@/content/site'
 import type { Criterion } from '@/lib/classroom/types'
+import { loadAssignmentSnapshot } from '@/lib/classroom/snapshot'
+import { buildNoticeSkeleton, applyDraft, mergeEditable, noticeDataKey, todayKst, type NoticeGradingInput } from '@/lib/classroom/notice'
+import { Notice, NoticeDraftOut, type NoticeT } from '@/lib/classroom/notice-schema'
+import { buildNoticePrompt } from '@/lib/classroom/notice-prompt'
+import { lintNotice } from '@/lib/classroom/notice-lint'
+import { callStructured } from '@/lib/ai/claude'
 
 const errors = app.classroom.assign.errors
 const rev = app.classroom.review.errors
+const nt = app.classroom.notice.errors
 export type ActionResult = { ok: true } | { ok: false; error: string }
 
 async function assertTeacher() {
@@ -111,4 +118,112 @@ export async function overrideQuiz(assignmentId: string, lessonNo: number, quizN
     .eq('assignment_id', assignmentId).eq('lesson_no', lessonNo).eq('quiz_no', quizNo)
   if (error) return { ok: false, error: rev.saveFailed }
   revalidatePath('/teacher/assignments'); return { ok: true }
+}
+
+// ── 학생별 차시 안내장(v2 T8) ──────────────────────────────────────────
+export type NoticeResult = ActionResult & { issues?: string[] }
+type ServerClient = Awaited<ReturnType<typeof createClient>>
+const noticePath = (setId: string, assignmentId: string, lessonNo: number) => `/teacher/assignments/${setId}/notices/${assignmentId}/${lessonNo}`
+
+/**
+ * 안내장에 들어갈 데이터(원장 클라이언트 = RLS 로 자기 원만): 판 스냅샷, 이 차시 퀴즈 응답, 확정 채점(status='confirmed'·confirmed_at 있음),
+ * 학생 이름, 같은 원 다른 학생 이름(N-01 린트용). AI 는 부르지 않는다.
+ */
+async function loadNoticeData(supabase: ServerClient, assignmentId: string, lessonNo: number) {
+  if (!Number.isInteger(lessonNo) || lessonNo < 1 || lessonNo > 8) return { ok: false as const, error: nt.badLesson }
+  const { data: a } = await supabase.from('assignments')
+    .select('id, item_set_id, item_set_version, academy_id, students!assignments_student_id_fkey(profiles(name))')
+    .eq('id', assignmentId).maybeSingle()
+  if (!a) return { ok: false as const, error: nt.notFound }
+  const snapshot = await loadAssignmentSnapshot(supabase, a.item_set_id, a.item_set_version)
+  if (!snapshot) return { ok: false as const, error: nt.notFound }
+  if (!snapshot.notice_plan) return { ok: false as const, error: nt.noPlan }
+  if (!snapshot.lessons.some((l) => l.no === lessonNo)) return { ok: false as const, error: nt.badLesson }
+  const itemNo = (snapshot.assessment?.items.findIndex((it) => it.lesson_no === lessonNo) ?? -1) + 1
+  const [{ data: quiz }, { data: answers }, { data: others }] = await Promise.all([
+    supabase.from('quiz_responses').select('quiz_no, response, correct').eq('assignment_id', assignmentId).eq('lesson_no', lessonNo),
+    supabase.from('answers').select('id, attempt').eq('assignment_id', assignmentId).eq('item_no', itemNo),
+    supabase.from('students').select('profiles(name)').eq('academy_id', a.academy_id),
+  ])
+  const rows = (answers ?? []) as { id: string; attempt: number }[]
+  // N-03: 원장이 확정한 채점만. 다시 고치기(reopen) 중인 줄은 confirmed_at 이 남아 있어도 status 가 drafted 라 빠진다.
+  const { data: gr } = rows.length
+    ? await supabase.from('gradings').select('answer_id, final_score, final_criteria, confirmed_at').in('answer_id', rows.map((r) => r.id)).eq('status', 'confirmed').not('confirmed_at', 'is', null)
+    : { data: [] }
+  const gradings: NoticeGradingInput[] = ((gr ?? []) as { answer_id: string; final_score: number | null; final_criteria: Criterion[] | null; confirmed_at: string | null }[])
+    .map((g) => ({
+      attempt: rows.find((r) => r.id === g.answer_id)?.attempt === 2 ? 2 : 1,
+      final_score: g.final_score,
+      final_criteria: g.final_criteria?.map((c) => ({ name: c.name, points: c.points, max: c.max, evidence: c.evidence })) ?? null,
+      confirmed_at: g.confirmed_at,
+    }))
+  const studentName = (a.students as unknown as { profiles: { name: string } | null } | null)?.profiles?.name ?? ''
+  const otherNames = ((others ?? []) as unknown as { profiles: { name: string } | null }[]).map((o) => o.profiles?.name ?? '').filter((n) => n && n !== studentName)
+  const built = buildNoticeSkeleton({ snapshot, lessonNo, studentName, date: todayKst(), quiz: (quiz ?? []) as { quiz_no: number; response: string; correct: boolean }[], gradings })
+  return { ok: true as const, setId: a.item_set_id as string, academyId: a.academy_id as string, snapshot, otherNames, ...built }
+}
+
+/**
+ * 학생별 안내장 초안: 확정 채점·퀴즈·재도전 데이터 + (확정된 서·논술형 결과가 있으면) AI 호출 1회.
+ * 린트를 통과해야만 저장한다(status 'draft', confirmed_at 비움). 다시 만들 때도 원장이 쓴 참여 관찰·원장 한마디는 남긴다.
+ */
+export async function draftNotice(assignmentId: string, lessonNo: number): Promise<NoticeResult> {
+  const s = await assertTeacher()
+  const supabase = await createClient()
+  const d = await loadNoticeData(supabase, assignmentId, lessonNo)
+  if (!d.ok) return d
+  let body: NoticeT = d.skeleton
+  if (d.needsAi) {
+    const p = buildNoticePrompt({ snapshot: d.snapshot, lessonNo, skeleton: d.skeleton, evidence: d.evidence })
+    try {
+      const r = await callStructured({ stage: 10, role: 'grade', schema: NoticeDraftOut, system: p.system, user: p.user, effort: 'medium', fixtureKey: p.fixtureKey })
+      body = applyDraft(d.skeleton, r.data)
+    } catch {
+      return { ok: false, error: nt.aiFailed }
+    }
+  }
+  const { data: existing } = await supabase.from('lesson_notices').select('body').eq('assignment_id', assignmentId).eq('lesson_no', lessonNo).maybeSingle()
+  const prev = existing ? Notice.safeParse(existing.body) : null
+  if (prev?.success) body = { ...body, director_message: prev.data.director_message, participation: { ...body.participation, director_comment: prev.data.participation.director_comment } }
+  const parsed = Notice.safeParse(body)
+  if (!parsed.success) return { ok: false, error: nt.invalid }
+  const issues = lintNotice(parsed.data, d.otherNames)
+  if (issues.length) return { ok: false, error: nt.lint, issues }
+  const now = new Date().toISOString()
+  const { error } = await supabase.from('lesson_notices').upsert({
+    assignment_id: assignmentId, academy_id: d.academyId, lesson_no: lessonNo, body: parsed.data,
+    status: 'draft', drafted_by: s.userId, drafted_at: now, confirmed_at: null, updated_at: now,
+  }, { onConflict: 'assignment_id,lesson_no' })
+  if (error) return { ok: false, error: nt.saveFailed }
+  revalidatePath(noticePath(d.setId, assignmentId, lessonNo))
+  return { ok: true }
+}
+
+/**
+ * 원장 확정(HITL): 화면에서 고친 문장 칸만 저장된 초안에 덮고(점수·정오·이름은 초안 그대로), 지금의 확정 채점·퀴즈와 다시 대조한 뒤
+ * 린트를 통과하면 status 'confirmed' + confirmed_at. 린트 위반·데이터 변동이 있으면 저장하지 않는다.
+ */
+export async function confirmNotice(assignmentId: string, lessonNo: number, body: NoticeT): Promise<NoticeResult> {
+  await assertTeacher()
+  const supabase = await createClient()
+  const { data: row } = await supabase.from('lesson_notices').select('body').eq('assignment_id', assignmentId).eq('lesson_no', lessonNo).maybeSingle()
+  if (!row) return { ok: false, error: nt.noDraft }
+  const stored = Notice.safeParse(row.body)
+  const sent = Notice.safeParse(body)
+  if (!stored.success || !sent.success) return { ok: false, error: nt.invalid }
+  const merged = mergeEditable(stored.data, sent.data)
+  if (!merged) return { ok: false, error: nt.invalid }
+  const d = await loadNoticeData(supabase, assignmentId, lessonNo)
+  if (!d.ok) return d
+  if (noticeDataKey(merged) !== noticeDataKey(d.skeleton)) return { ok: false, error: nt.stale }
+  const parsed = Notice.safeParse(merged)
+  if (!parsed.success) return { ok: false, error: nt.invalid }
+  const issues = lintNotice(parsed.data, d.otherNames)
+  if (issues.length) return { ok: false, error: nt.lint, issues }
+  const now = new Date().toISOString()
+  const { error } = await supabase.from('lesson_notices').update({ body: parsed.data, status: 'confirmed', confirmed_at: now, updated_at: now })
+    .eq('assignment_id', assignmentId).eq('lesson_no', lessonNo)
+  if (error) return { ok: false, error: nt.saveFailed }
+  revalidatePath(noticePath(d.setId, assignmentId, lessonNo))
+  return { ok: true }
 }
