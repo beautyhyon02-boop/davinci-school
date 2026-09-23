@@ -1,0 +1,149 @@
+// PackageView(관리자 미리보기·원장 열람)를 mock fixture 로 조립한 v2 스냅샷으로 실제 렌더해 본다(서버 렌더 = 정적 마크업).
+// 스펙 §2.9 카드 순서와 차시·자료·문항 카드의 핵심 표시(분 단위 소단계·활동지 3단계·자료 라벨·조건 번호·[N점]·종이 답안)를 확인한다.
+import { describe, it, expect } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { createElement } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
+import { PackageView, MaterialsSection } from '@/components/studio/PackageView'
+import { buildSnapshot, upgradeSnapshot, type Snapshot } from '@/lib/studio/publish'
+import { app } from '@/content/site'
+
+const fx = (k: string) => JSON.parse(readFileSync(`data/studio-fixtures/${k}.json`, 'utf8'))
+const v1 = (k: string) => JSON.parse(readFileSync(`tests/fixtures/v1/${k}.json`, 'utf8'))
+const c = app.packageView
+
+function snapshotFor(subject: '수학' | '과학'): Snapshot {
+  const sfx = subject === '과학' ? '-과학' : ''
+  const s2 = fx(`stage2-generate${sfx}`); const s3 = fx(`stage3-generate${sfx}`)
+  return buildSnapshot({
+    theme: { title: '학교 축제, 일회용품을 줄이자', level: '중', grade: 1, intro: '대주제 소개 문장', materials: null },
+    itemSet: {
+      subject, level: '중', grade: 1, reconstruction: s2.reconstruction, reconstruction_detail: s2.standards, learning_goals: s2.learning_goals,
+      key_question: s2.key_question_candidates[0], unit_plan: s3.unit_plan, lessons: s3.lessons, materials: fx(`stage4-generate${sfx}`).materials,
+      assessment: fx(`stage5-generate${sfx}`), teacher_guide: fx(`stage6-generate${sfx}`), notice_plan: fx(`stage7-generate${sfx}`),
+      stage_status: { stage5: { state: 'accepted', attempt: 1, model: 'mock', updated_at: '' } },
+    },
+    standards: s2.standards.map((s: { code: string; original_text: string }) => ({ code: s.code, text: s.original_text })),
+    version: 1,
+  })
+}
+const render = (snapshot: Snapshot, mode: 'admin' | 'teacher') => renderToStaticMarkup(createElement(PackageView, { snapshot, mode, showAnswers: true }))
+// 마크업에서 태그를 걷어낸 글자만(렌더된 텍스트 비교용).
+const text = (html: string) => html.replace(/<[^>]+>/g, ' ').replace(/&quot;/g, '"').replace(/&#x27;/g, "'").replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/\s+/g, ' ')
+const norm = (s: string) => s.replace(/\s+/g, ' ')
+
+describe.each(['수학', '과학'] as const)('PackageView v2 (%s mock snapshot)', (subject) => {
+  const snap = snapshotFor(subject)
+  const html = render(snap, 'admin')
+  const t = text(html)
+
+  it('renders without undefined/NaN/[object Object] leaks', () => {
+    expect(t).not.toMatch(/undefined|NaN|\[object Object\]/)
+  })
+  it('shows every lesson with its time split and every main step with minutes', () => {
+    for (const l of snap.lessons) {
+      expect(t).toContain(norm(`${c.lessons.columns.no} ${l.no} · ${l.topic}`))
+      expect(t).toContain(norm(c.lessons.timeLabel(l.time_budget.intro_min, l.time_budget.main_min, l.time_budget.wrapup_min)))
+      for (const m of l.flow.main) expect(t).toContain(norm(c.lessons.stepLabel(m.step_label, m.minutes)))
+      for (const q of l.teacher_script.questions) expect(t).toContain(norm(q.prompt))
+      for (const n of l.caution_notes) expect(t).toContain(norm(n))
+    }
+  })
+  it('shows worksheet tasks for all three tiers 기본/표준/도전 with the level reference', () => {
+    for (const l of snap.lessons) for (const w of l.worksheet.tasks) {
+      expect(t).toContain(norm(c.lessons.worksheetTier(w.tier, w.level_ref)))
+      expect(t).toContain(norm(w.prompt))
+    }
+    for (const tier of ['기본', '표준', '도전']) expect(t).toContain(tier)
+  })
+  it('shows materials with the mint 자료 label, source and role badges', () => {
+    for (const m of snap.materials) {
+      expect(html).toContain(`>${c.materials.idLabel} ${m.id}</span>`)
+      expect(t).toContain(norm(m.title))
+    }
+    expect(html).toMatch(/bg-mint-500[^>]*>자료 [A-Z]</)
+    expect(t).toContain(c.materials.sourceLabel.자작)
+    expect(t).toContain(c.materials.roleLabel.raw)
+  })
+  it('shows each item card: stem ending [N점], numbered conditions, rubric criteria with max, notes, exemplars, A~E', () => {
+    for (const it of snap.assessment!.items) {
+      expect(t).toContain(norm(it.stem))
+      expect(it.stem.trim().endsWith(`[${it.points}점]`)).toBe(true)
+      for (const cd of it.conditions.items) expect(t).toContain(norm(`${c.assessment.conditions.itemNo(cd.no)} ${cd.text}`))
+      for (const cr of it.rubric.criteria) expect(t).toContain(norm(c.rubric.criterionLabel(cr.name, cr.max)))
+      for (const n of it.rubric.notes) expect(t).toContain(norm(n))
+      for (const e of it.exemplar_answers) expect(t).toContain(norm(e.text))
+      for (const lv of it.level_map) expect(t).toContain(`${lv.level} ${lv.min}~${lv.max}`)
+      for (const el of it.evaluation_elements) expect(t).toContain(norm(el))
+      if (it.situation) expect(t).toContain(norm(it.situation.product))
+      if (it.rubric.holistic) expect(t).toContain(norm(it.rubric.holistic.상))
+    }
+  })
+  it('marks exactly the paper-answer items', () => {
+    const papers = snap.assessment!.items.filter((i) => i.conditions.answer_mode === 'paper').length
+    expect(t.split(c.assessment.conditions.answerMode.paper).length - 1).toBe(papers)
+    if (subject === '수학') expect(papers).toBe(1)
+  })
+  it('shows the v2 cards in spec order (§2.9)', () => {
+    const order = [c.standardsHeading, c.reconstructionHeading, c.learningGoalsHeading, c.keyQuestionHeading, c.unitPlanHeading, c.lessonsHeading,
+      c.materialsHeading, c.assessmentHeading, c.gradeBoundariesHeading, c.feedbackTemplatesHeading, c.noticePlanHeading, c.generatedWithHeading]
+    const at = order.map((h) => html.indexOf(`<h2 class="text-lg font-bold">${h}</h2>`))
+    expect(at.every((x) => x >= 0)).toBe(true)
+    expect([...at].sort((a, b) => a - b)).toEqual(at)
+  })
+  it('shows the reconstruction table, unit plan placement, level_ref, teacher guide grading tips and notice plan', () => {
+    for (const r of snap.reconstruction_detail) expect(t).toContain(norm(r.reconstructed_text))
+    for (const p of snap.unit_plan!.assessment_plan.summative_placement) expect(t).toContain(norm(c.unitPlan.placement(p.kind, p.lesson_no)))
+    for (const b of snap.assessment!.grade_boundaries) expect(t).toContain(b.level_ref)
+    for (const tip of snap.teacher_guide!.grading_guide.review_tips) expect(t).toContain(norm(tip))
+    for (const p of snap.notice_plan!.per_lesson) expect(t).toContain(norm(p.topic_summary))
+    for (const g of snap.learning_goals) expect(t).toContain(g.axis)
+  })
+  it('teacher mode keeps answers folded (details without open); admin shows them open', () => {
+    const teacher = render(snap, 'teacher')
+    expect(teacher).toContain('<summary')
+    expect(teacher).not.toMatch(/<details open/)
+    expect(html).toMatch(/<details open/)
+    expect(teacher).not.toContain(`<h2 class="text-lg font-bold">${c.generatedWithHeading}</h2>`)
+    // 접혀 있어도 내용은 있다(펼치면 보임)
+    expect(text(teacher)).toContain(norm(snap.assessment!.items[0].exemplar_answers[0].text))
+  })
+})
+
+describe('PackageView on upgraded v1 data', () => {
+  it('renders an upgraded v1 published snapshot (≥2 main steps, 논술형 5+35)', () => {
+    const s = upgradeSnapshot({
+      cover: { title: 'v1 판', subject: '수학', level: '중', grade: 1, version: 1, published_at: '2026-09-20T00:00:00.000Z' },
+      standards: fx('standards-math'), intro: '', reconstruction: v1('stage2-generate').reconstruction, learning_goals: v1('stage2-generate').learning_goals,
+      key_question: '자료는 무엇을 말하는가?', lessons: v1('stage3-generate').lessons, materials: v1('stage4-generate').materials,
+      assessment: v1('stage5-generate'), teacher_guide: v1('stage6-generate'), generated_with: { models: ['mock'] },
+    })
+    const t = text(render(s, 'teacher'))
+    expect(t).not.toMatch(/undefined|NaN|\[object Object\]/)
+    for (const l of s.lessons) for (const m of l.flow.main) expect(t).toContain(norm(c.lessons.stepLabel(m.step_label, m.minutes)))
+    expect(t).toContain(c.lessons.stepLabel('논술형 작성', 35))
+  })
+  it('renders a v1-shaped draft through buildSnapshot (admin preview guard)', () => {
+    const s = buildSnapshot({
+      theme: { title: '초안', level: '중', grade: 1, intro: null, materials: [{ id: 'A', title: '공유', kind: 'text', body: 'b', table: null, source: '자작' }] as never },
+      itemSet: { subject: '수학', level: '중', grade: 1, reconstruction: 'r', reconstruction_detail: null, learning_goals: v1('stage2-generate').learning_goals, key_question: null, unit_plan: null,
+        lessons: v1('stage3-generate').lessons, materials: v1('stage4-generate').materials, assessment: v1('stage5-generate'), teacher_guide: v1('stage6-generate'), notice_plan: null, stage_status: {} } as never,
+      standards: [], version: 1,
+    })
+    expect(text(render(s, 'admin'))).not.toMatch(/undefined|NaN|\[object Object\]/)
+  })
+})
+
+describe('MaterialsSection (student lesson panel)', () => {
+  it('keeps the owner layout rules: centered tables ≤560px, two-column split over 12 rows, chart ≤480px', () => {
+    const snap = snapshotFor('수학')
+    const html = renderToStaticMarkup(createElement(MaterialsSection, { materials: snap.materials }))
+    expect(html).toContain('max-w-[560px]')
+    expect(html).toContain('grid-cols-2')          // 자료 A: 20행 2열 → 반으로 나눔
+    expect(html).toContain('text-center tabular-nums')
+    expect(html).toMatch(/max-w-\[480px\]/)        // 자동 그래프
+  })
+  it('renders nothing for an empty list', () => {
+    expect(renderToStaticMarkup(createElement(MaterialsSection, { materials: [] }))).toBe('')
+  })
+})
