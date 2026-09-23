@@ -34,6 +34,24 @@ describe('lintNotice', () => {
     expect(issues.some((i) => i.includes('잘한 점이 비어'))).toBe(true)
     expect(issues.some((i) => i.includes('다른 학생'))).toBe(false)
   })
+  it('N-01 matches other names only as whole tokens (a name that is an ordinary word does not block notices)', () => {
+    const ok = structuredClone(base); ok.director_message = '오늘 도수의 뜻을 이해하고 표를 완성했습니다.'
+    expect(lintNotice(ok, ['이해'])).toEqual([])
+    const bad = structuredClone(base); bad.director_message = '오늘은 이해가 짝 활동을 도왔습니다.'
+    expect(lintNotice(bad, ['이해']).some((i) => i.includes('다른 학생 이름(이해)'))).toBe(true)
+  })
+  it('N-01 ignores a classmate name that is part of the student own name (김민 vs 김민지)', () => {
+    const own = structuredClone(base); own.student_name = '김민지'; own.director_message = '김민지 학생은 표를 끝까지 완성했습니다.'
+    expect(lintNotice(own, ['김민', '박OO'])).toEqual([])
+  })
+  it('N-01 flags a classmate name followed by a particle', () => {
+    const bad = structuredClone(base); bad.director_message = '김민지가 더 잘했어요.'
+    expect(lintNotice(bad, ['김민지']).some((i) => i.includes('다른 학생 이름(김민지)'))).toBe(true)
+    for (const text of ['「김민지」와 비교해 봅시다', '김민지에게는 어려웠어요', '(김민지님) 참고']) {
+      const b = structuredClone(base); b.director_message = text
+      expect(lintNotice(b, ['김민지']).some((i) => i.includes('김민지')), text).toBe(true)
+    }
+  })
   it('does not flag the long negation inside a factual quiz note ("분해하지 못하기 때문")', () => {
     const ok = structuredClone(base); ok.participation.quiz.items[1].note = '미생물이 분해하지 못하기 때문이에요'
     expect(lintNotice(ok, [])).toEqual([])

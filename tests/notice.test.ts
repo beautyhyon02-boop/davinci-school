@@ -18,7 +18,7 @@ const critOf = (item: { rubric: { criteria: { name: string; max: number }[] } },
 
 describe('buildNoticeSkeleton', () => {
   it('copies lesson context and quiz results from data, uses plan phrases, and leaves essay null when nothing is confirmed', () => {
-    const { skeleton, needsAi } = buildNoticeSkeleton({ snapshot, lessonNo: essayLesson, studentName: '김OO', date: '2026-09-29', quiz, gradings: [{ attempt: 1, final_score: 2, final_criteria: [], confirmed_at: null }] })
+    const { skeleton, needsAi } = buildNoticeSkeleton({ snapshot, lessonNo: essayLesson, studentName: '김OO', date: '2026-09-29', quiz, gradings: [{ attempt: 1, final_score: 2, final_criteria: [], status: 'drafted', confirmed_at: null }] })
     expect(skeleton.lesson_context.key_question).toBe(s3.lessons.find((l: { no: number }) => l.no === essayLesson).key_question)
     expect(skeleton.participation.quiz).toMatchObject({ correct: 2, total: 3 })
     expect(skeleton.participation.quiz.items[1].note).toBe(s7.per_lesson.find((p: { lesson_no: number }) => p.lesson_no === essayLesson).quiz_notes[1].wrong_note)
@@ -28,7 +28,7 @@ describe('buildNoticeSkeleton', () => {
   it('fills essay_result from confirmed gradings only, band from the grade table, retry from attempt 2', () => {
     const crit = critOf(s5.items[0])
     const { skeleton, needsAi } = buildNoticeSkeleton({ snapshot, lessonNo: essayLesson, studentName: '김OO', date: '2026-09-29', quiz,
-      gradings: [{ attempt: 1, final_score: 2, final_criteria: crit, confirmed_at: '2026-09-29T00:00:00Z' }, { attempt: 2, final_score: 3, final_criteria: crit, confirmed_at: '2026-09-30T00:00:00Z' }] })
+      gradings: [{ attempt: 1, final_score: 2, final_criteria: crit, status: 'confirmed', confirmed_at: '2026-09-29T00:00:00Z' }, { attempt: 2, final_score: 3, final_criteria: crit, status: 'confirmed', confirmed_at: '2026-09-30T00:00:00Z' }] })
     expect(skeleton.essay_result?.confirmed_score).toBe(2); expect(skeleton.essay_result?.total_points).toBe(3)
     expect(skeleton.essay_result?.retry).toMatchObject({ attempted: true, before_score: 2, after_score: 3 })
     expect(skeleton.essay_result?.criteria_feedback.map((c) => c.criterion_name)).toEqual(crit.map((c: { name: string }) => c.name))
@@ -44,14 +44,23 @@ describe('buildNoticeSkeleton', () => {
   it('ignores an unconfirmed retry (attempt 2 without confirmed_at) and passes only confirmed evidence on', () => {
     const crit = critOf(s5.items[0])
     const r = buildNoticeSkeleton({ snapshot, lessonNo: essayLesson, studentName: '김OO', date: '2026-09-29', quiz,
-      gradings: [{ attempt: 1, final_score: 2, final_criteria: crit, confirmed_at: '2026-09-29T00:00:00Z' }, { attempt: 2, final_score: 3, final_criteria: [{ ...crit[0], evidence: 'AI 초안 근거' }], confirmed_at: null }] })
+      gradings: [{ attempt: 1, final_score: 2, final_criteria: crit, status: 'confirmed', confirmed_at: '2026-09-29T00:00:00Z' }, { attempt: 2, final_score: 3, final_criteria: [{ ...crit[0], evidence: 'AI 초안 근거' }], status: 'drafted', confirmed_at: null }] })
     expect(r.skeleton.essay_result?.retry).toBeNull()
     expect(r.evidence.map((e) => e.attempt)).toEqual([1])
     expect(JSON.stringify(r)).not.toContain('AI 초안 근거')
   })
+  it('a reopened grading (confirmed_at still set but status drafted) is not used — essay_result null (N-03)', () => {
+    const crit = critOf(s5.items[0])
+    const r = buildNoticeSkeleton({ snapshot, lessonNo: essayLesson, studentName: '김OO', date: '2026-09-29', quiz,
+      gradings: [{ attempt: 1, final_score: 2, final_criteria: crit, status: 'drafted', confirmed_at: '2026-09-29T00:00:00Z' }] })
+    expect(r.skeleton.essay_result).toBeNull(); expect(r.needsAi).toBe(false); expect(r.evidence).toEqual([])
+    const retry = buildNoticeSkeleton({ snapshot, lessonNo: essayLesson, studentName: '김OO', date: '2026-09-29', quiz,
+      gradings: [{ attempt: 1, final_score: 2, final_criteria: crit, status: 'confirmed', confirmed_at: '2026-09-29T00:00:00Z' }, { attempt: 2, final_score: 3, final_criteria: crit, status: 'drafted', confirmed_at: '2026-09-30T00:00:00Z' }] })
+    expect(retry.skeleton.essay_result?.retry).toBeNull()
+  })
   it('the essay lesson without a quiz (논술형) has an empty quiz and a 논술형 result', () => {
     const essay = s5.items[2]
-    const r = buildNoticeSkeleton({ snapshot, lessonNo: essay.lesson_no, studentName: '김OO', date: '2026-09-29', quiz: [], gradings: [{ attempt: 1, final_score: 12, final_criteria: critOf(essay), confirmed_at: '2026-09-29T00:00:00Z' }] })
+    const r = buildNoticeSkeleton({ snapshot, lessonNo: essay.lesson_no, studentName: '김OO', date: '2026-09-29', quiz: [], gradings: [{ attempt: 1, final_score: 12, final_criteria: critOf(essay), status: 'confirmed', confirmed_at: '2026-09-29T00:00:00Z' }] })
     expect(r.skeleton.participation.quiz).toMatchObject({ correct: 0, total: 0, items: [] })
     expect(r.skeleton.essay_result).toMatchObject({ kind: '논술형', confirmed_score: 12, total_points: 16 })
   })
@@ -70,7 +79,7 @@ describe('notice-draft fixture (mock AI)', () => {
       const lessonQuiz = a3.lessons.find((l: { no: number }) => l.no === item.lesson_no).formative_check.quiz.map((_: unknown, i: number) => ({ quiz_no: i + 1, response: 'x', correct: i !== 1 }))
       const crit = critOf(item)
       const { skeleton } = buildNoticeSkeleton({ snapshot: snap, lessonNo: item.lesson_no, studentName: '김OO', date: '2026-09-29', quiz: lessonQuiz,
-        gradings: [{ attempt: 1, final_score: crit.reduce((s, c) => s + c.points, 0), final_criteria: crit, confirmed_at: '2026-09-29T00:00:00Z' }, { attempt: 2, final_score: item.points, final_criteria: critOf(item, 0), confirmed_at: '2026-09-30T00:00:00Z' }] })
+        gradings: [{ attempt: 1, final_score: crit.reduce((s, c) => s + c.points, 0), final_criteria: crit, status: 'confirmed', confirmed_at: '2026-09-29T00:00:00Z' }, { attempt: 2, final_score: item.points, final_criteria: critOf(item, 0), status: 'confirmed', confirmed_at: '2026-09-30T00:00:00Z' }] })
       const done = applyDraft(skeleton, fixture)
       expect(Notice.safeParse(done).error?.issues ?? []).toEqual([])
       expect(done.essay_result?.criteria_feedback.every((c) => c.good_point.length > 0)).toBe(true)
@@ -95,7 +104,7 @@ describe('buildNoticePrompt', () => {
   it('puts the N- rules first, uses the notice-draft fixture and sends only confirmed data', () => {
     const crit = critOf(s5.items[0])
     const { skeleton, evidence } = buildNoticeSkeleton({ snapshot, lessonNo: essayLesson, studentName: '김OO', date: '2026-09-29', quiz,
-      gradings: [{ attempt: 1, final_score: 2, final_criteria: [{ ...crit[0], evidence: '확정 근거 문장' }], confirmed_at: '2026-09-29T00:00:00Z' }] })
+      gradings: [{ attempt: 1, final_score: 2, final_criteria: [{ ...crit[0], evidence: '확정 근거 문장' }], status: 'confirmed', confirmed_at: '2026-09-29T00:00:00Z' }] })
     const p = buildNoticePrompt({ snapshot, lessonNo: essayLesson, skeleton, evidence })
     expect(p.system[0]).toBe(NOTICE_PROMPT_RULES); expect(p.fixtureKey).toBe('notice-draft')
     expect(p.user).toContain('확정 근거 문장'); expect(p.user).toContain(crit[0].name)
@@ -106,7 +115,7 @@ describe('buildNoticePrompt', () => {
 describe('mergeEditable / noticeDataKey', () => {
   const crit = critOf(s5.items[0])
   const base = applyDraft(buildNoticeSkeleton({ snapshot, lessonNo: essayLesson, studentName: '김OO', date: '2026-09-29', quiz,
-    gradings: [{ attempt: 1, final_score: 2, final_criteria: crit, confirmed_at: '2026-09-29T00:00:00Z' }] }).skeleton,
+    gradings: [{ attempt: 1, final_score: 2, final_criteria: crit, status: 'confirmed', confirmed_at: '2026-09-29T00:00:00Z' }] }).skeleton,
     { quiz_notes: [], criteria_feedback: [{ criterion_name: crit[0].name, good_point: '표 완성 활동에서 계급을 정확하게 나눔', improve_point: null }], improvement_comment: null })
   it('takes only the editable text fields from the submitted body', () => {
     const sent: NoticeT = structuredClone(base)

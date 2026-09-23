@@ -71,10 +71,14 @@ export async function confirmGrading(gradingId: string, input: ConfirmInput): Pr
   revalidatePath('/teacher/assignments'); return { ok: true }
 }
 
+/**
+ * 다시 고치기: 확정을 풀어 검수 대기로. confirmed_at 도 비운다 — confirmed_at 만 보는 곳(안내장 등)이 다시 고치는 중인 점수를 쓰지 않게(N-03).
+ * 0009 gradings_guard 는 원장에게 confirmed_at 변경을 막지 않는다. 다시 확정하면 confirmGrading 이 새 시각을 찍는다.
+ */
 export async function reopenGrading(gradingId: string): Promise<ActionResult> {
   await assertTeacher()
   const supabase = await createClient()
-  const { error } = await supabase.from('gradings').update({ status: 'drafted', updated_at: new Date().toISOString() }).eq('id', gradingId).eq('status', 'confirmed')
+  const { error } = await supabase.from('gradings').update({ status: 'drafted', confirmed_at: null, updated_at: new Date().toISOString() }).eq('id', gradingId).eq('status', 'confirmed')
   if (error) return { ok: false, error: rev.saveFailed }
   revalidatePath('/teacher/assignments'); return { ok: true }
 }
@@ -146,15 +150,16 @@ async function loadNoticeData(supabase: ServerClient, assignmentId: string, less
     supabase.from('students').select('profiles(name)').eq('academy_id', a.academy_id),
   ])
   const rows = (answers ?? []) as { id: string; attempt: number }[]
-  // N-03: 원장이 확정한 채점만. 다시 고치기(reopen) 중인 줄은 confirmed_at 이 남아 있어도 status 가 drafted 라 빠진다.
+  // N-03: 원장이 확정한 채점만(SQL 필터). buildNoticeSkeleton 도 status·confirmed_at 을 다시 본다(이중 검사).
   const { data: gr } = rows.length
-    ? await supabase.from('gradings').select('answer_id, final_score, final_criteria, confirmed_at').in('answer_id', rows.map((r) => r.id)).eq('status', 'confirmed').not('confirmed_at', 'is', null)
+    ? await supabase.from('gradings').select('answer_id, status, final_score, final_criteria, confirmed_at').in('answer_id', rows.map((r) => r.id)).eq('status', 'confirmed').not('confirmed_at', 'is', null)
     : { data: [] }
-  const gradings: NoticeGradingInput[] = ((gr ?? []) as { answer_id: string; final_score: number | null; final_criteria: Criterion[] | null; confirmed_at: string | null }[])
+  const gradings: NoticeGradingInput[] = ((gr ?? []) as { answer_id: string; status: string; final_score: number | null; final_criteria: Criterion[] | null; confirmed_at: string | null }[])
     .map((g) => ({
       attempt: rows.find((r) => r.id === g.answer_id)?.attempt === 2 ? 2 : 1,
       final_score: g.final_score,
       final_criteria: g.final_criteria?.map((c) => ({ name: c.name, points: c.points, max: c.max, evidence: c.evidence })) ?? null,
+      status: g.status,
       confirmed_at: g.confirmed_at,
     }))
   const studentName = (a.students as unknown as { profiles: { name: string } | null } | null)?.profiles?.name ?? ''

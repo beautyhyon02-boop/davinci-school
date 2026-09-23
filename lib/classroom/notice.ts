@@ -8,6 +8,8 @@ export type NoticeGradingInput = {
   attempt: 1 | 2
   final_score: number | null
   final_criteria: { name: string; points: number; max: number; evidence: string }[] | null
+  /** gradings.status. 'confirmed' 이면서 confirmed_at 이 있어야만 쓴다(SQL 필터와 이중 검사, N-03). */
+  status: 'drafted' | 'confirmed' | (string & {})
   confirmed_at: string | null
 }
 export type NoticeInput = {
@@ -33,7 +35,7 @@ export function todayKst(now: Date = new Date()): string {
 
 /**
  * 학생별 안내장 뼈대(순수). data 필드는 스냅샷·퀴즈·확정 채점에서 복사하고, 틀(notice_plan) 문장을 기본값으로 넣는다.
- * 확정되지 않은 채점(confirmed_at 없음)은 무시한다 — 서·논술형 차시라도 확정 채점이 없으면 essay_result 는 null.
+ * 확정되지 않은 채점(status 가 confirmed 가 아니거나 confirmed_at 없음 — 다시 고치기 중 포함)은 무시한다 — 서·논술형 차시라도 확정 채점이 없으면 essay_result 는 null.
  * needsAi: 요소별 잘한 점·보완할 점을 AI가 채워야 하는가(확정된 서·논술형 결과가 있을 때만).
  */
 export function buildNoticeSkeleton(inp: NoticeInput): { skeleton: NoticeT; needsAi: boolean; evidence: NoticeEvidence[] } {
@@ -46,7 +48,7 @@ export function buildNoticeSkeleton(inp: NoticeInput): { skeleton: NoticeT; need
     return { q: q.q, is_correct, note: !is_correct && r ? plan?.quiz_notes.find((n) => n.quiz_no === i + 1)?.wrong_note ?? null : null }
   })
   const item = inp.snapshot.assessment?.items.find((it) => it.lesson_no === inp.lessonNo) ?? null
-  const confirmed = inp.gradings.filter((g) => g.confirmed_at && g.final_score !== null).sort((a, b) => a.attempt - b.attempt)
+  const confirmed = inp.gradings.filter((g) => g.status === 'confirmed' && g.confirmed_at && g.final_score !== null).sort((a, b) => a.attempt - b.attempt)
   const first = confirmed.find((g) => g.attempt === 1) ?? null
   const second = first ? confirmed.find((g) => g.attempt === 2) ?? null : null
   const essay_result: NoticeT['essay_result'] = item && first ? {
