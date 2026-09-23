@@ -1,0 +1,519 @@
+[
+  {
+    "id": "eng-seoulpractice-001",
+    "subject": "영어",
+    "school_level": "중",
+    "grade": null,
+    "unit": "도표 분석하기 (Ask Dr. Money) - 수행평가",
+    "standard_codes": [
+      "[9영04-02]",
+      "[9영04-03]"
+    ],
+    "kind": "수행",
+    "points": 6,
+    "time_min": null,
+    "context": "체육대회 음료 구매를 위한 설문 결과 그래프를 분석해 문장으로 쓰고(문항1), 도서관 구매 도서 장르 선호도 그래프에 근거해 의견을 제시하는(문항2) 수행평가. 형성평가 단계에서 체크리스트로 자기·동료평가를 거친 뒤 실시함.",
+    "materials": [
+      {
+        "type": "그림",
+        "summary": "체육대회 음료 선호도 설문 결과 막대그래프, 도서 장르별 대출 기록 그래프.",
+        "text": null
+      }
+    ],
+    "stem": "1. 체육대회를 앞두고 학생들의 선호도를 표본 조사하여 전교생이 마실 수 있는 음료수를 구입하고자 한다. 아래 그래프에 나타난 설문 결과를 한 문장으로 영작하시오.(6점)\n[조건] 그래프를 근거로 한다는 표현을 사용할 것 / 그래프 종류의 이름을 명시할 것 / 다음 단어들을 모두 포함할 것: while / majority / a few / the students\n2. 학교도서관에서 학생들이 가장 선호하는 2가지 장르의 책을 각각 20권씩 구매하고자 한다. 그래프에 근거하여 다음 질문에 답하시오. Which two genres of books should the library get?(6점) [조건] 그래프 근거 표현 사용 / 그래프 종류 명시 / 'the two most popular' 포함",
+    "conditions": [
+      "그래프를 근거로 한다는 표현 사용(예: According to the graph)",
+      "그래프 종류의 이름을 명시",
+      "지정된 단어/표현을 모두 포함"
+    ],
+    "answer_format": "그래프 해석 문장 1개(각 문항), 조건 반영 영작",
+    "language_focus": [
+      "그래프 근거 표현(According to/The graph shows)",
+      "while을 이용한 대조",
+      "최상급(the two most popular)"
+    ],
+    "rubric": {
+      "type": "조건-점수",
+      "criteria": [
+        {
+          "name": "조건 (문항1)",
+          "levels": [
+            {
+              "points": 1,
+              "desc": "조건1 충족(그래프 근거 표현 사용)"
+            },
+            {
+              "points": 0.5,
+              "desc": "조건2 충족(그래프 종류 명시)"
+            },
+            {
+              "points": 0.5,
+              "desc": "조건3 충족(주어진 단어 모두 사용)"
+            }
+          ]
+        },
+        {
+          "name": "내용 (문항1)",
+          "levels": [
+            {
+              "points": 1.5,
+              "desc": "다수의 의견을 바르게 서술"
+            },
+            {
+              "points": 1.5,
+              "desc": "소수의 의견을 바르게 서술"
+            }
+          ]
+        },
+        {
+          "name": "철자 및 언어형식",
+          "levels": [
+            {
+              "points": 1,
+              "desc": "오류 없음"
+            },
+            {
+              "points": 0.5,
+              "desc": "오류 1개"
+            },
+            {
+              "points": 0,
+              "desc": "오류 2개 이상"
+            }
+          ]
+        }
+      ],
+      "notes": "문항2는 조건(2점: 근거표현+그래프명, 종류명시, 구문사용 각 배점), 내용(3점: 선택 장르 + 타당한 이유), 철자/언어형식(1점) 배점 구조로 동일하게 채점."
+    },
+    "exemplar_answers": [
+      {
+        "level": "부분",
+        "text": "As the graph shows, 64.8% the majority of the students get a regular allowance. (64.8%와 majority를 중복 사용 — 어법 오류로 감점)"
+      },
+      {
+        "level": "부분",
+        "text": "Accoding to the pie graph, 74.7% of the students keep a spending diary. (철자 오류 'Accoding', 조건에 없는 수치 사용)"
+      }
+    ],
+    "feedback": "그래프 근거 표현과 majority 등 지정 어휘를 중복 없이 정확한 문법으로 사용하는지가 핵심. 질문에 대한 직접적 답(should ~ 등 의견 표현)을 빠뜨리지 않도록 지도.",
+    "cognitive": [
+      "과정·기능"
+    ],
+    "source": {
+      "file": "수업과 연계한 영어과 서·논술형 평가 실천하기.pdf",
+      "pages": [
+        44,
+        45
+      ]
+    }
+  },
+  {
+    "id": "eng-seoulpractice-002",
+    "subject": "영어",
+    "school_level": "중",
+    "grade": null,
+    "unit": "도표 분석하기 (Ask Dr. Money) - 지필평가 서술형",
+    "standard_codes": [
+      "[9영04-02]",
+      "[9영04-03]"
+    ],
+    "kind": "서술형",
+    "points": 10,
+    "time_min": null,
+    "context": "단원학습-형성평가-수행평가를 거쳐 최종적으로 새로운 맥락(설문조사)의 그래프를 분석해 영작하는 지필평가. Yes/No 어휘 사용을 제한하여 핵심 표현(while, majority 등) 사용을 유도.",
+    "materials": [
+      {
+        "type": "그림",
+        "summary": "영국인 500명 대상 세계문화축제 참가 설문조사 그래프, 도서 장르별 선호도 그래프.",
+        "text": null
+      }
+    ],
+    "stem": "【문항 1】 아래 그래프에 나타난 설문 결과를 한 문장으로 영작하시오.(4점) [조건] 그래프 근거 표현 사용 / 그래프 종류 명시 / while, the people, major, a few 모두 사용(형태 변형 가능) / yes, no 사용 금지\n【문항 2】 아래 그래프에 나타난 설문 결과를 바탕으로 한국문화 체험관을 열려고 한다. <질문>에 영어로 답하시오.(6점) [조건] 그래프 근거 표현 사용 / 그래프 종류 명시 / three, popular, most 모두 사용. <질문> Which three genres should we focus on?",
+    "conditions": [
+      "yes/no 어휘 사용 금지(문항1)",
+      "지정된 단어를 모두 포함, 필요시 형태 변형"
+    ],
+    "answer_format": "그래프 해석 및 의견 제시 문장(각 1개)",
+    "language_focus": [
+      "while을 이용한 대조 구문",
+      "최상급(the most popular)",
+      "그래프 근거 표현"
+    ],
+    "rubric": {
+      "type": "조건-점수",
+      "criteria": [
+        {
+          "name": "조건",
+          "levels": [
+            {
+              "points": 2,
+              "desc": "그래프 근거 표현·종류 명시·지정 단어 사용 등 조건을 모두 충족"
+            }
+          ]
+        },
+        {
+          "name": "내용",
+          "levels": [
+            {
+              "points": 3,
+              "desc": "그래프의 다수/소수 의견 또는 질문에 대한 답을 정확히 서술"
+            }
+          ]
+        },
+        {
+          "name": "철자 및 언어형식",
+          "levels": [
+            {
+              "points": 1,
+              "desc": "오류 없음"
+            },
+            {
+              "points": 0.5,
+              "desc": "오류 1개"
+            },
+            {
+              "points": 0,
+              "desc": "오류 2개 이상"
+            }
+          ]
+        }
+      ],
+      "notes": "수행평가 단계에서 Yes/No 그래프의 경우 'yes/no 어휘 사용 금지' 조건을 추가해야 함을 교사 팁으로 명시(응답 회피성 답안 방지)."
+    },
+    "exemplar_answers": [],
+    "feedback": "Yes/No 그래프에서 yes/no를 그대로 쓰면 핵심 표현(while, majority 등) 연습 효과가 사라지므로 이를 금지하는 조건이 필요함. 질문형 문항(문항2)은 반드시 명시적 제안 표현(should)을 포함해야 함.",
+    "cognitive": [
+      "과정·기능"
+    ],
+    "source": {
+      "file": "수업과 연계한 영어과 서·논술형 평가 실천하기.pdf",
+      "pages": [
+        48,
+        49
+      ]
+    }
+  },
+  {
+    "id": "eng-seoulpractice-003",
+    "subject": "영어",
+    "school_level": "고",
+    "grade": null,
+    "unit": "이메일 쓰기 - 지필평가 서술형(제품 교환·환불 요청)",
+    "standard_codes": [
+      "[10영04-03]",
+      "[10영04-05]"
+    ],
+    "kind": "서술형",
+    "points": 7,
+    "time_min": null,
+    "context": "수업 중 4가지 유형의 이메일 쓰기를 연습한 뒤, 제품 하자에 대한 교환/환불 요청 이메일을 상황과 조건에 맞게 완성하는 지필평가 문항.",
+    "materials": [
+      {
+        "type": "글",
+        "summary": "제품 하자 상황 설명(원격수업용 태블릿 PC 화면 꺼짐, 구매 한 달 경과, 보증기간 1년).",
+        "text": "김태우(Taewoo Kim)의 상황: 원격수업용으로 산 태블릿(tablet PC)이 수업 도중 화면이 꺼지는 현상이 발생했다. 이 태블릿은 한 달 전에 산 모델 T32이며, 제품의 보증 기간은 1년이다."
+      }
+    ],
+    "stem": "다음 글을 읽고 상황 (A)에 어울리는 이메일을 주어진 <조건>에 맞게 완성하시오. (단, 이메일의 형식에 맞게 인사말과 끝맺음을 포함시킬 것)(7점)",
+    "conditions": [
+      "제품 고장으로 인한 속상한 마음을 표현할 것",
+      "제품 교환 또는 환불을 요청할 것",
+      "본문 내용을 구체적으로 쓸 것(전체 5문장 이상)"
+    ],
+    "answer_format": "이메일(인사말+본문 5문장 이상+끝맺음)",
+    "language_focus": [
+      "이메일 형식(인사말/끝맺음)",
+      "불만·요청 표현(I am writing to ~, I would like to request ~)"
+    ],
+    "rubric": {
+      "type": "분석적",
+      "criteria": [
+        {
+          "name": "이메일 형식",
+          "levels": [
+            {
+              "points": 2,
+              "desc": "인사말과 끝맺음 형식이 정확하게 제시됨"
+            },
+            {
+              "points": 1,
+              "desc": "인사말과 끝맺음 중 일부만 제시됨"
+            },
+            {
+              "points": 0,
+              "desc": "인사말과 끝맺음이 제시되지 않음"
+            }
+          ]
+        },
+        {
+          "name": "이메일 내용",
+          "levels": [
+            {
+              "points": 3,
+              "desc": "조건을 3개 모두 충족함"
+            },
+            {
+              "points": 2,
+              "desc": "조건을 2개 충족함"
+            },
+            {
+              "points": 1,
+              "desc": "조건을 1개 충족함"
+            },
+            {
+              "points": 0,
+              "desc": "어떠한 조건도 충족하지 못함"
+            }
+          ]
+        },
+        {
+          "name": "철자 및 언어 형식",
+          "levels": [
+            {
+              "points": 2,
+              "desc": "오류 없음"
+            },
+            {
+              "points": 1,
+              "desc": "오류가 1~2개 있음"
+            },
+            {
+              "points": 0,
+              "desc": "오류가 3개 이상 있음"
+            }
+          ]
+        }
+      ],
+      "notes": "내용 점수를 받지 못한 경우 철자 및 언어 형식 점수는 부여하지 않음. 동일 단어의 반복 오류는 하나로 취급."
+    },
+    "exemplar_answers": [],
+    "feedback": "이메일 형식(인사말·끝맺음)을 갖추고, 속상한 심정 표현-교환/환불 요청-구체적 본문(5문장 이상)의 세 조건을 모두 충족해야 고득점. 채점 객관성을 위해 2차 교차채점을 권장.",
+    "cognitive": [
+      "과정·기능"
+    ],
+    "source": {
+      "file": "수업과 연계한 영어과 서·논술형 평가 실천하기.pdf",
+      "pages": [
+        76,
+        77
+      ]
+    }
+  },
+  {
+    "id": "eng-seoulpractice-004",
+    "subject": "영어",
+    "school_level": "고",
+    "grade": null,
+    "unit": "서평 쓰고 발표하기 - 수행평가(Book Review Writing)",
+    "standard_codes": [
+      "[12영Ⅰ04-02]",
+      "[12영Ⅰ04-03]"
+    ],
+    "kind": "수행",
+    "points": 10,
+    "time_min": 40,
+    "context": "1~2차시에서 연습한 서평 쓰기 표현을 활용해, 올해 읽은 책 중 기억에 남는 책을 소개하는 서평을 실제로 작성하는 수행평가(40분).",
+    "materials": [
+      {
+        "type": "글",
+        "summary": "서평 작성에 필요한 Book Review Writing 표현 목록과 예시글.",
+        "text": null
+      }
+    ],
+    "stem": "올해 읽은 책 중에서 기억에 남고 소개하고 싶은 책을 Book Review Writing 표현을 참고하여 영어로 작성하세요.(10점) - 작성시간: 40분(문장별로 번호를 달 것, 예시 글을 그대로 옮겨 쓰지 말 것)\n조건1. 어떤 사람에게 이 책을 추천하고 싶은지 추천 대상을 쓰세요(who 사용).\n조건2. 이 책을 추천하고 싶은 이유를 쓰세요.",
+    "conditions": [
+      "조건1: who를 사용하여 추천 대상 명시",
+      "조건2: 추천 이유 서술",
+      "예시 글을 그대로 옮겨 쓰지 않을 것"
+    ],
+    "answer_format": "서평(Book Review), 문장 번호 표기, 40분 작성",
+    "language_focus": [
+      "관계대명사 who를 이용한 추천 대상 서술",
+      "이유 접속사(because)",
+      "서평 관용 표현"
+    ],
+    "rubric": {
+      "type": "분석적",
+      "criteria": [
+        {
+          "name": "조건",
+          "levels": [
+            {
+              "points": 2,
+              "desc": "조건 2개를 충족함"
+            },
+            {
+              "points": 1,
+              "desc": "조건 1개를 충족함"
+            },
+            {
+              "points": 0,
+              "desc": "어떠한 조건도 충족하지 않음"
+            }
+          ]
+        },
+        {
+          "name": "내용",
+          "levels": [
+            {
+              "points": 6,
+              "desc": "서평의 내용 요소를 포함하며 다양하고 적절한 어휘로 12~15문장 작성함"
+            },
+            {
+              "points": 5,
+              "desc": "적절한 어휘로 9~11문장 작성함"
+            },
+            {
+              "points": 4,
+              "desc": "내용 요소를 부분적으로 포함하고 주어진 어휘·예시문을 참고해 5~9문장 작성함"
+            },
+            {
+              "points": 3,
+              "desc": "내용 요소를 부분적으로 포함하고 부분적으로 작성함(4문장 이하)"
+            }
+          ]
+        },
+        {
+          "name": "구성",
+          "levels": [
+            {
+              "points": 1,
+              "desc": "문장 간 논리적 연결 관계가 잘 드러남"
+            },
+            {
+              "points": 0,
+              "desc": "논리적 연결 관계가 잘 드러나지 않음"
+            }
+          ]
+        },
+        {
+          "name": "철자 및 언어 형식",
+          "levels": [
+            {
+              "points": 1,
+              "desc": "의미 전달에 지장을 주는 오류가 없음"
+            },
+            {
+              "points": 0,
+              "desc": "의미 전달에 지장을 주는 오류가 있음"
+            }
+          ]
+        }
+      ],
+      "notes": "조건은 target language(who 등) 활용 여부, 내용에 가장 큰 배점(6점)을 두어 어휘 사용 능력을 평가. 구성은 연결어·지시어 사용, 언어 형식은 반복적·이해 저해 오류 여부로 판단."
+    },
+    "exemplar_answers": [
+      {
+        "level": "만점",
+        "text": "예: '82년생 김지영'을 추천 대상(who)과 추천 이유를 포함하여 12문장 이상으로 작성한 학생 답안."
+      }
+    ],
+    "feedback": "문장 수 구간(12~15/9~11/5~9/4이하)이 내용 점수를 크게 좌우하므로 분량 확보가 중요. 예시 글을 그대로 베끼면 감점되므로 자신의 언어로 재구성하도록 지도.",
+    "cognitive": [
+      "과정·기능",
+      "가치·태도"
+    ],
+    "source": {
+      "file": "수업과 연계한 영어과 서·논술형 평가 실천하기.pdf",
+      "pages": [
+        102,
+        103,
+        104
+      ]
+    }
+  },
+  {
+    "id": "eng-seoulpractice-005",
+    "subject": "영어",
+    "school_level": "고",
+    "grade": null,
+    "unit": "서평 쓰고 발표하기 - 지필평가 논술형(책 추천 글쓰기)",
+    "standard_codes": [
+      "[12영Ⅰ04-03]"
+    ],
+    "kind": "논술형",
+    "points": 4,
+    "time_min": null,
+    "context": "수행평가로 서평을 작성해 본 뒤, 총괄평가(지필평가)에서 짧은 형식(2문장)으로 책 추천 글을 쓰는 논술형 문항. 정해진 예시 답안 없이 수업 활동에 근거해 채점.",
+    "materials": [
+      {
+        "type": "글",
+        "summary": "책 추천 글쓰기 예시(보기): The Witches를 추천하는 2문장 예시글.",
+        "text": "I would recommend The Witches to someone who has an interest in fantasy. I couldn't put the book down because the similes and metaphors are vivid."
+      }
+    ],
+    "stem": "다음 <보기>를 참고하여 자신이 선택한 책을 추천하는 글을 <조건>에 맞게 영어로 쓰시오.(4점)",
+    "conditions": [
+      "책 제목을 쓸 것(한글도 가능)",
+      "who를 사용하여 추천 대상을 쓸 것",
+      "주어와 동사를 갖춘 2문장으로 작성할 것"
+    ],
+    "answer_format": "책 추천 글(2문장, who 관계대명사 포함)",
+    "language_focus": [
+      "관계대명사 who",
+      "추천 표현(I would recommend ~ to someone who ~)"
+    ],
+    "rubric": {
+      "type": "분석적",
+      "criteria": [
+        {
+          "name": "조건",
+          "levels": [
+            {
+              "points": 1,
+              "desc": "조건 3개(제목/who/2문장)를 모두 충족함"
+            },
+            {
+              "points": 0,
+              "desc": "그 외의 경우"
+            }
+          ]
+        },
+        {
+          "name": "내용",
+          "levels": [
+            {
+              "points": 2,
+              "desc": "2문장 모두 적합한 내용임"
+            },
+            {
+              "points": 1,
+              "desc": "1문장만 적합한 내용임"
+            },
+            {
+              "points": 0,
+              "desc": "어떠한 문장도 적합하지 않은 내용임"
+            }
+          ]
+        },
+        {
+          "name": "언어 형식(철자 포함)",
+          "levels": [
+            {
+              "points": 1,
+              "desc": "오류가 0~1개 있음"
+            },
+            {
+              "points": 0,
+              "desc": "오류가 2개 이상 있음"
+            }
+          ]
+        }
+      ],
+      "notes": "<보기>를 그대로 베껴 쓴 경우 점수를 부여하지 않음. 조건 또는 내용 점수가 0점이면 언어 형식 점수도 부여하지 않음. 정해진 예시 답안 없이 수업 활동(피드백 반영 내용)을 근거로 채점하여 채점자 주관성을 최소화."
+    },
+    "exemplar_answers": [],
+    "feedback": "형식적으로는 짧지만(2문장) 제목·추천대상(who)·이유가 모두 자연스럽게 연결되어야 만점 가능. 보기 문장을 그대로 옮기지 않고 자신이 읽은 책으로 재구성하는 것이 핵심.",
+    "cognitive": [
+      "과정·기능",
+      "가치·태도"
+    ],
+    "source": {
+      "file": "수업과 연계한 영어과 서·논술형 평가 실천하기.pdf",
+      "pages": [
+        107,
+        108
+      ]
+    }
+  }
+]

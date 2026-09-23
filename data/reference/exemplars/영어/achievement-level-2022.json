@@ -1,0 +1,261 @@
+[
+  {
+    "id": "eng-achievement-001",
+    "subject": "영어",
+    "school_level": "중",
+    "grade": 2,
+    "unit": "글을 읽고 내용 요약하기 (실내·실외 운동 비교)",
+    "standard_codes": [
+      "[9영02-07]"
+    ],
+    "kind": "서술형",
+    "points": 10,
+    "time_min": null,
+    "context": "실내 운동과 비교한 실외 운동의 장점을 설명하는 글을 읽고, 조건에 맞춰 비교 문장으로 요약하는 지필평가 서논술형 문항. 중학교 2학년 성취수준 A를 고려하여 출제.",
+    "materials": [
+      {
+        "type": "글",
+        "summary": "실외 운동이 실내 운동보다 좋은 이유(공원 활동, 햇빛과 신선한 공기, 회원권 불필요 등)를 설명하는 영어 글.",
+        "text": "Where do you usually exercise? Indoors or outdoors? Exercising outdoors has a lot of good points. For example, playing in the park is more fun than going to the gym. You can also have fresh air and feel the warmth of the sun on your face outside... On the other hand, people can't have natural sunlight in the gym for their health. In addition, people may need memberships for exercising indoors."
+      }
+    ],
+    "stem": "다음 글을 읽고, 내용과 일치하도록 <조건>에 맞게 빈칸에 적절한 문장을 완성하시오.\n⇓ ______________________________ because it has a lot of good points.",
+    "conditions": [
+      "비교하는 문장으로 글의 내용을 요약하여 쓸 것",
+      "indoors, outdoors를 포함하여 9단어 이하로 쓸 것"
+    ],
+    "answer_format": "빈칸 채우기(비교 요약문, 9단어 이하)",
+    "language_focus": [
+      "비교급(better than)",
+      "요지 요약"
+    ],
+    "rubric": {
+      "type": "분석적",
+      "criteria": [
+        {
+          "name": "과제 완성",
+          "levels": [
+            {
+              "points": 2,
+              "desc": "주어진 조건 두 가지를 모두 만족함."
+            },
+            {
+              "points": 1,
+              "desc": "조건 중 한 가지를 만족함."
+            },
+            {
+              "points": 0,
+              "desc": "조건 중 어느 것도 만족하지 않음."
+            }
+          ]
+        },
+        {
+          "name": "내용",
+          "levels": [
+            {
+              "points": 5,
+              "desc": "실외 운동이 실내 운동보다 더 좋다는 내용으로 정확하게 요약함."
+            },
+            {
+              "points": 3,
+              "desc": "대략적으로 요약함."
+            },
+            {
+              "points": 1,
+              "desc": "제한적으로 요약함."
+            },
+            {
+              "points": 0,
+              "desc": "해당 내용이 포함되지 않음."
+            }
+          ]
+        },
+        {
+          "name": "언어 사용",
+          "levels": [
+            {
+              "points": 3,
+              "desc": "표현의 오류가 없으며 다양하고 적절한 어휘와 언어 형식을 활용하여 정확하게 표현함."
+            },
+            {
+              "points": 2,
+              "desc": "오류가 약간 있으나 적절한 어휘와 언어 형식으로 대략적으로 표현함."
+            },
+            {
+              "points": 1,
+              "desc": "오류가 많으며 주어진 어휘와 언어 형식을 활용하여 제한적으로 표현함."
+            }
+          ]
+        }
+      ],
+      "notes": "과제 완성(조건 충족), 내용(요지 정확성), 언어 사용(정확성)을 독립적으로 채점하는 분석적 루브릭. 배점 2/5/3점 구조."
+    },
+    "exemplar_answers": [
+      {
+        "level": "만점",
+        "text": "Exercising outdoors is better than exercising indoors because it has a lot of good points."
+      }
+    ],
+    "feedback": "글에 제시된 실외 운동의 장점(공원, 햇빛, 신선한 공기)과 실내 운동의 단점(회원권, 비용)을 근거로 비교급 문장을 완성해야 함. 9단어 이하 제한을 지키면서 indoors/outdoors를 모두 포함해야 함.",
+    "cognitive": [
+      "과정·기능"
+    ],
+    "source": {
+      "file": "(중등)2022 개정 교육과정에 따른 성취수준(영어).pdf",
+      "pages": [
+        37,
+        38,
+        39
+      ]
+    }
+  },
+  {
+    "id": "eng-achievement-002",
+    "subject": "영어",
+    "school_level": "중",
+    "grade": null,
+    "unit": "경험에 대한 후기(review) 작성 및 댓글 쓰기 (매체 활용·정보 윤리·배려)",
+    "standard_codes": [
+      "[9영02-03]",
+      "[9영02-09]",
+      "[9영02-11]"
+    ],
+    "kind": "수행",
+    "points": 100,
+    "time_min": null,
+    "context": "자신이 경험한 것(음식점·영화·게임 등) 중 좋았던 것을 선택해 마인드맵과 개요표를 작성한 뒤 후기(review)를 쓰고, 온라인에 게시하여 다른 사람의 후기에 배려하는 댓글을 쓰는 3차시 프로젝트형 수행평가.",
+    "materials": [
+      {
+        "type": "표",
+        "summary": "후기 작성을 위한 개요표(항목/정보/출처)와 이미지 자료 첨부 양식.",
+        "text": "나의 후기(review) 대상: Restaurant – Yunhee's Kitchen / 위치: 서울역 근처 / 음식 종류: 각종 수제 버거 및 음료 / Rating: ★★★★☆"
+      }
+    ],
+    "stem": "지난 시간에 작성한 개요표를 바탕으로 다음 <조건>에 맞게 후기(review)를 써 봅시다.\nReview of ________ ... I loved the ________ because _________________. I recommend this ________. My Rating ☆☆☆☆☆",
+    "conditions": [
+      "이름·설명 내용·이미지 자료로 구성할 것",
+      "설명 내용에 대상 정보 3가지, 이미지 설명, 추천하는 말을 모두 포함할 것",
+      "적절한 이미지 자료 2개를 첨부하고 각각 출처를 제시할 것"
+    ],
+    "answer_format": "후기(review) 글 + 이미지 2개(출처 포함) + 별점, 이후 타인 후기에 댓글 작성",
+    "language_focus": [
+      "이유 표현(I loved ~ because ~)",
+      "추천 표현(I recommend this ~)",
+      "배려하는 댓글 표현"
+    ],
+    "rubric": {
+      "type": "분석적",
+      "criteria": [
+        {
+          "name": "구성",
+          "levels": [
+            {
+              "points": 15,
+              "desc": "조건에서 제시한 후기의 구성 요소를 모두 포함하여 작성함."
+            },
+            {
+              "points": 10,
+              "desc": "구성 요소를 대체로 포함하여 작성함."
+            },
+            {
+              "points": 5,
+              "desc": "구성 요소를 거의 포함하지 않고 작성함."
+            }
+          ]
+        },
+        {
+          "name": "내용",
+          "levels": [
+            {
+              "points": 30,
+              "desc": "대상에 대한 설명 내용(정보 3가지·이미지 설명·추천 문구)을 모두 포함하며 적절함."
+            },
+            {
+              "points": 20,
+              "desc": "대체로 포함하며 적절함."
+            },
+            {
+              "points": 10,
+              "desc": "거의 포함하지 않았거나 적절하지 않음."
+            }
+          ]
+        },
+        {
+          "name": "언어 사용",
+          "levels": [
+            {
+              "points": 25,
+              "desc": "표현의 오류가 없으며 다양하고 적절한 어휘·언어 형식을 정확하게 사용함."
+            },
+            {
+              "points": 23,
+              "desc": "오류가 거의 없으며 비교적 정확하게 표현함."
+            },
+            {
+              "points": 21,
+              "desc": "오류가 약간 있으나 대략적으로 표현함."
+            },
+            {
+              "points": 19,
+              "desc": "오류가 있으나 부분적으로 표현함."
+            },
+            {
+              "points": 15,
+              "desc": "오류가 많으며 제한적으로 표현함."
+            }
+          ]
+        },
+        {
+          "name": "매체 활용 및 정보 윤리",
+          "levels": [
+            {
+              "points": 15,
+              "desc": "적절한 이미지 자료를 활용하고 출처를 명확하게 제시함."
+            },
+            {
+              "points": 10,
+              "desc": "적절한 이미지를 활용했으나 출처를 대략적으로 제시함."
+            },
+            {
+              "points": 5,
+              "desc": "이미지가 적절하지 않거나 출처를 제시하지 않음."
+            }
+          ]
+        },
+        {
+          "name": "태도(3차시 댓글)",
+          "levels": [
+            {
+              "points": 15,
+              "desc": "댓글에서 상대방을 배려하는 태도를 적극적으로 보임."
+            },
+            {
+              "points": 10,
+              "desc": "배려하는 태도를 보임."
+            },
+            {
+              "points": 5,
+              "desc": "배려하려고 노력하는 태도를 보임."
+            }
+          ]
+        }
+      ],
+      "notes": "대소문자·구두점 유무는 평가하지 않음. 댓글 채점 시 비방 표현 유무, 공감·감사 표현, 추가 제안 여부로 배려 태도를 판단."
+    },
+    "exemplar_answers": [],
+    "feedback": "정보 3가지·이미지 설명·추천 문구의 3요소를 빠짐없이 포함하고, 이미지 출처를 명확히 밝히는 것이 정보 윤리 점수의 핵심. 댓글 작성 시 비방 없이 공감·감사·제안을 담아야 태도 점수가 높아짐.",
+    "cognitive": [
+      "과정·기능",
+      "가치·태도"
+    ],
+    "source": {
+      "file": "(중등)2022 개정 교육과정에 따른 성취수준(영어).pdf",
+      "pages": [
+        44,
+        45,
+        46,
+        51
+      ]
+    }
+  }
+]

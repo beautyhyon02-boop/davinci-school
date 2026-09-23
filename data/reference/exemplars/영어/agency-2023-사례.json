@@ -1,0 +1,1696 @@
+[
+  {
+    "id": "eng-agency-001",
+    "subject": "영어",
+    "school_level": "고",
+    "grade": 1,
+    "unit": "공통영어1 - 이해/표현 (감상문 쓰기: Claude Monet 인상주의)",
+    "standard_codes": [
+      "[10공영1-01-01]",
+      "[10공영1-01-02]",
+      "[10공영1-02-05]",
+      "[10공영1-02-01]",
+      "[10공영1-02-07]",
+      "[10공영1-02-04]"
+    ],
+    "kind": "서술형",
+    "points": 4,
+    "time_min": null,
+    "context": "Claude Monet의 화풍을 설명하는 글의 첫 문단을 읽고 요지를 파악하여 빈칸을 채워 요약문을 완성한다.",
+    "materials": [
+      {
+        "type": "글",
+        "summary": "인상주의 화가 Claude Monet의 화풍(빛과 색에 대한 인식, 붓터치 기법)을 설명하는 3문단 영어 설명문. 작품 'The Woman in the Garden', 'Impression, Sunrise' 언급.",
+        "text": "Claude Monet led one of the 19th century's most visually distinctive movements, Impressionism. Unlike Realists, who focused on depicting detailed, realistic scenes, Monet and his fellow Impressionists concentrated on the artist's perception of light and color. In this style, light and color that created the impression became a primary focus, while human figures and grand narratives were less important. Their works did not seek to provoke political or social interpretations; instead, they returned to an emphasis on the artistic beauty of the work itself. Monet's innovative style was essential to the Impressionist movement... [총 약 1,500자 중 앞부분]"
+      }
+    ],
+    "stem": "1. 주어진 글의 첫 번째 문단의 내용에 맞게 빈 칸에 적절한 말을 넣어 요약문을 완성하시오.(4점)\nImpressionism, led by Claude Monet, emphasized two things: first, depicting ______________________, and second, returning to the artistic beauty of the work itself.",
+    "conditions": [
+      "첫 문단의 요지(화가의 빛과 색에 대한 인식)를 정확히 반영할 것"
+    ],
+    "answer_format": "빈칸 채우기(구 단위 영작)",
+    "language_focus": [
+      "요지 파악 후 명사구로 요약",
+      "지각동사·인식 표현(perception of)"
+    ],
+    "rubric": {
+      "type": "분석적",
+      "criteria": [
+        {
+          "name": "내용",
+          "levels": [
+            {
+              "points": 2,
+              "desc": "글의 요지를 정확하게 파악하여 핵심 내용을 제대로 요약하여 기술함. (예: perception of light and color)"
+            },
+            {
+              "points": 1,
+              "desc": "글의 요지를 부분적으로 파악하여 핵심 내용을 대체적으로 요약하여 기술함. (예: light and color, artist's perception)"
+            },
+            {
+              "points": 0,
+              "desc": "글의 요지를 제대로 파악하지 못하여 핵심 내용을 제대로 요약하여 기술하지 못함. (예: impression, light 또는 color만 쓴 경우)"
+            }
+          ]
+        },
+        {
+          "name": "언어 사용",
+          "levels": [
+            {
+              "points": 2,
+              "desc": "문법과 철자법에서 오류가 거의 없음. 단, 대소문자·관사 사용 오류는 감점하지 않음."
+            },
+            {
+              "points": 1,
+              "desc": "문법과 철자법에서 작은 오류들이 있지만 내용 파악에 큰 지장을 초래하지는 않는 수준임. (예: how artist perceived light and color)"
+            },
+            {
+              "points": 0,
+              "desc": "어순 등과 같이 내용을 이해하는 데 지장을 초래하는 심각한 오류가 있음. (예: light and color creation)"
+            }
+          ]
+        }
+      ],
+      "notes": "내용과 언어사용을 독립적으로 평가하는 분석적 채점. 관사·대소문자 오류는 감점하지 않음."
+    },
+    "exemplar_answers": [
+      {
+        "level": "만점",
+        "text": "the artist's perception of light and color"
+      },
+      {
+        "level": "부분",
+        "text": "light and color, artist's perception"
+      }
+    ],
+    "feedback": "요지 파악이 부정확하면 본문 표현을 그대로 옮기는 수준에 머무르기 쉬움. 문단을 반복해서 읽고 반복되는 핵심어를 찾아 배열하는 연습이 필요함. 소유격(artist's) 등 세부 문법 오류에 유의.",
+    "cognitive": [
+      "과정·기능"
+    ],
+    "source": {
+      "file": "서논술형 평가 도구 개발의 방법과 사례-영어.pdf",
+      "pages": [
+        22,
+        23,
+        24,
+        25
+      ]
+    }
+  },
+  {
+    "id": "eng-agency-002",
+    "subject": "영어",
+    "school_level": "고",
+    "grade": 1,
+    "unit": "공통영어1 - 이해/표현 (감상문 쓰기: Claude Monet 인상주의)",
+    "standard_codes": [
+      "[10공영1-01-01]",
+      "[10공영1-01-02]",
+      "[10공영1-02-05]",
+      "[10공영1-02-01]",
+      "[10공영1-02-07]",
+      "[10공영1-02-04]"
+    ],
+    "kind": "서술형",
+    "points": 3,
+    "time_min": null,
+    "context": "두 번째 문단(그림 묘사)의 내용에 맞게 그림 묘사 문장을 완성한다.",
+    "materials": [
+      {
+        "type": "글",
+        "summary": "인상주의 화가 Claude Monet의 화풍(빛과 색에 대한 인식, 붓터치 기법)을 설명하는 3문단 영어 설명문. 작품 'The Woman in the Garden', 'Impression, Sunrise' 언급.",
+        "text": "Claude Monet led one of the 19th century's most visually distinctive movements, Impressionism. Unlike Realists, who focused on depicting detailed, realistic scenes, Monet and his fellow Impressionists concentrated on the artist's perception of light and color. In this style, light and color that created the impression became a primary focus, while human figures and grand narratives were less important. Their works did not seek to provoke political or social interpretations; instead, they returned to an emphasis on the artistic beauty of the work itself. Monet's innovative style was essential to the Impressionist movement... [총 약 1,500자 중 앞부분]"
+      }
+    ],
+    "stem": "2. 글의 두 번째 문단에 들어갈 그림 묘사(picture description) 문장을 적절한 어휘를 사용하여 완성하시오. 단, 괄호 안에 주어진 두 개의 단어를 적절한 형태로 반드시 포함하시오.(3점)\nIn this painting, a woman ____________________, holding a white parasol, and looks at a colorful flower bed surrounded by grass and trees. (dress, garden)",
+    "conditions": [
+      "괄호 안 단어(dress, garden)를 형태를 바꾸어서라도 반드시 포함",
+      "그림 내용과 일치하는 묘사일 것"
+    ],
+    "answer_format": "빈칸 채우기(문장 완성, 그림 묘사)",
+    "language_focus": [
+      "분사구문/현재분사를 이용한 묘사",
+      "전치사구(in a dress, in the garden)",
+      "관사의 지시적 기능"
+    ],
+    "rubric": {
+      "type": "분석적",
+      "criteria": [
+        {
+          "name": "내용",
+          "levels": [
+            {
+              "points": 1,
+              "desc": "그림의 내용과 일치하도록 적절한 어휘를 포함하여 설명하는 글을 작성함."
+            },
+            {
+              "points": 0,
+              "desc": "그림의 내용에 적절하지 않은 어휘를 포함하여 설명하는 글을 작성함. (예: green dress, walk 등)"
+            }
+          ]
+        },
+        {
+          "name": "언어 사용",
+          "levels": [
+            {
+              "points": 2,
+              "desc": "문법과 철자법에서 오류가 거의 없음(대소문자 오류는 감점하지 않음, 관사 오류는 교사 판단)."
+            },
+            {
+              "points": 1,
+              "desc": "문법과 철자법에서 작은 오류들이 있지만 내용 파악에 큰 지장을 초래하지는 않는 수준임."
+            },
+            {
+              "points": 0,
+              "desc": "어순 등과 같이 내용을 이해하는 데 지장을 초래하는 심각한 오류가 있음. (예: garden white dress stand in garden dress white)"
+            }
+          ]
+        }
+      ],
+      "notes": "핵심 내용어가 주어졌으므로 내용보다 언어 형식에 비중을 둠. 그림 묘사 장르 특성상 관사의 지시적 기능을 강조할지는 교사 재량."
+    },
+    "exemplar_answers": [
+      {
+        "level": "만점",
+        "text": "in a (white) dress stands in the garden / dressed in white stands in the garden"
+      },
+      {
+        "level": "부분",
+        "text": "dress in white stand at the garden"
+      }
+    ],
+    "feedback": "‘흰 드레스를 입은 여인이 정원에 서있다’를 표현하려면 dress의 품사 처리, 주어 수 일치 동사 형태, 장소 전치사 선택이 관건. <전치사+명사> 구 이해 부족 시 어순 오류 발생.",
+    "cognitive": [
+      "과정·기능"
+    ],
+    "source": {
+      "file": "서논술형 평가 도구 개발의 방법과 사례-영어.pdf",
+      "pages": [
+        27,
+        28,
+        29,
+        30
+      ]
+    }
+  },
+  {
+    "id": "eng-agency-003",
+    "subject": "영어",
+    "school_level": "고",
+    "grade": 1,
+    "unit": "공통영어1 - 이해/표현 (감상문 쓰기: Claude Monet 인상주의)",
+    "standard_codes": [
+      "[10공영1-01-01]",
+      "[10공영1-01-02]",
+      "[10공영1-02-05]",
+      "[10공영1-02-01]",
+      "[10공영1-02-07]",
+      "[10공영1-02-04]"
+    ],
+    "kind": "서술형",
+    "points": 4,
+    "time_min": null,
+    "context": "세 번째 문단 내용을 바탕으로 미술 작품설명(art label)의 빈칸 두 곳을 완성한다.",
+    "materials": [
+      {
+        "type": "글",
+        "summary": "인상주의 화가 Claude Monet의 화풍(빛과 색에 대한 인식, 붓터치 기법)을 설명하는 3문단 영어 설명문. 작품 'The Woman in the Garden', 'Impression, Sunrise' 언급.",
+        "text": "Claude Monet led one of the 19th century's most visually distinctive movements, Impressionism. Unlike Realists, who focused on depicting detailed, realistic scenes, Monet and his fellow Impressionists concentrated on the artist's perception of light and color. In this style, light and color that created the impression became a primary focus, while human figures and grand narratives were less important. Their works did not seek to provoke political or social interpretations; instead, they returned to an emphasis on the artistic beauty of the work itself. Monet's innovative style was essential to the Impressionist movement... [총 약 1,500자 중 앞부분]"
+      }
+    ],
+    "stem": "3. 주어진 글의 세 번째 문단 내용에 근거하여, Claude Monet의 그림 \"Impression, Sunrise\"에 대한 작품설명(art label)의 빈 칸 (A)와 (B)에 들어갈 적절한 표현을 작성하시오.(4점)\nClaude Monet (1840-1926) / Impression, Sunrise (1872, Oil on canvas)\nMonet (A) to capture the sun's reflection on the sea. The contrast between the orange sun and the blurred surroundings (B) on the scene.",
+    "conditions": [
+      "세 번째 문단의 세부정보(빠른 붓터치, 햇빛의 효과)에 근거할 것"
+    ],
+    "answer_format": "빈칸 두 곳 채우기(작품 설명서 완성)",
+    "language_focus": [
+      "to부정사(목적)",
+      "3인칭 단수 동사 일치",
+      "세부정보 재진술"
+    ],
+    "rubric": {
+      "type": "분석적",
+      "criteria": [
+        {
+          "name": "내용",
+          "levels": [
+            {
+              "points": 2,
+              "desc": "글의 세부정보를 정확하게 파악하여 두 빈칸 모두에 적절한 내용을 넣어 작성함."
+            },
+            {
+              "points": 1,
+              "desc": "세부정보를 부분적으로 파악하여 한 빈칸에만, 또는 두 빈칸 모두에 대체적으로 적절한 내용을 작성함."
+            },
+            {
+              "points": 0,
+              "desc": "세부정보를 제대로 파악하지 못하여 두 빈칸 모두에 적절한 내용을 작성하지 못함."
+            }
+          ]
+        },
+        {
+          "name": "언어사용",
+          "levels": [
+            {
+              "points": 2,
+              "desc": "문법과 철자법에서 오류가 거의 없음(대소문자·관사 오류는 감점하지 않음)."
+            },
+            {
+              "points": 1,
+              "desc": "문법과 철자법에서 작은 오류들이 있지만 내용 파악에 큰 지장을 초래하지 않음."
+            },
+            {
+              "points": 0,
+              "desc": "어순 등 내용 이해에 지장을 초래하는 심각한 오류가 있음."
+            }
+          ]
+        }
+      ],
+      "notes": "내용·언어사용 분석적 채점, 배점 2+2."
+    },
+    "exemplar_answers": [
+      {
+        "level": "만점",
+        "text": "(A) uses/used rapid/quick/fast brush stroke(s) (B) emphasizes/shows the effect(s) of sunlight"
+      },
+      {
+        "level": "부분",
+        "text": "(A) used brushstroke (B) emphasize effect"
+      }
+    ],
+    "feedback": "‘붓터치의 사용’만으로는 부족하고 ‘빠른’이라는 수식이 필요함. 3인칭 단수 동사 형태(emphasizes) 처리에 유의. 글을 꼼꼼히 반복해서 읽어 세부사항 누락을 방지해야 함.",
+    "cognitive": [
+      "과정·기능"
+    ],
+    "source": {
+      "file": "서논술형 평가 도구 개발의 방법과 사례-영어.pdf",
+      "pages": [
+        31,
+        32,
+        33,
+        34
+      ]
+    }
+  },
+  {
+    "id": "eng-agency-004",
+    "subject": "영어",
+    "school_level": "고",
+    "grade": 1,
+    "unit": "공통영어1 - 이해/표현 (감상문 쓰기: Claude Monet 인상주의)",
+    "standard_codes": [
+      "[10공영1-01-01]",
+      "[10공영1-01-02]",
+      "[10공영1-02-05]",
+      "[10공영1-02-01]",
+      "[10공영1-02-07]",
+      "[10공영1-02-04]"
+    ],
+    "kind": "논술형",
+    "points": 8,
+    "time_min": null,
+    "context": "글 전체 내용을 바탕으로 Monet 작품 전시회 관람 소감을 담은 일기(daily journal)를 조건에 맞게 완성하는 논술형 마무리 과제.",
+    "materials": [
+      {
+        "type": "글",
+        "summary": "인상주의 화가 Claude Monet의 화풍(빛과 색에 대한 인식, 붓터치 기법)을 설명하는 3문단 영어 설명문. 작품 'The Woman in the Garden', 'Impression, Sunrise' 언급.",
+        "text": "Claude Monet led one of the 19th century's most visually distinctive movements, Impressionism. Unlike Realists, who focused on depicting detailed, realistic scenes, Monet and his fellow Impressionists concentrated on the artist's perception of light and color. In this style, light and color that created the impression became a primary focus, while human figures and grand narratives were less important. Their works did not seek to provoke political or social interpretations; instead, they returned to an emphasis on the artistic beauty of the work itself. Monet's innovative style was essential to the Impressionist movement... [총 약 1,500자 중 앞부분]"
+      }
+    ],
+    "stem": "4. 위 글의 내용을 바탕으로 다음에 제시된 Claude Monet 작품 전시회 관람 소감을 담은 일기(daily journal)를 완성하시오. 단, 주어진 조건에 따라 답안을 작성하시오.(8점)",
+    "conditions": [
+      "본문에 제시된 두 작품 중 자신이 더 선호하는 작품을 선택하여 제목과 주요 특징을 적을 것",
+      "해당 작품을 선택한 이유를 그림의 내용이나 본문의 설명과 연관지어 자신의 감상과 함께 구체적으로 설명할 것",
+      "총 25 단어 이상으로 작성할 것(단, 6단어 이상 본문 문구를 그대로 적을 경우 감점)"
+    ],
+    "answer_format": "일기(daily journal) 형식, 25단어 이상 영작",
+    "language_focus": [
+      "이유 표현(the reason ~ is that / because)",
+      "글의 응집성 연결어",
+      "인상·감상 표현"
+    ],
+    "rubric": {
+      "type": "분석적",
+      "criteria": [
+        {
+          "name": "과제완성",
+          "levels": [
+            {
+              "points": 3,
+              "desc": "주어진 세 가지 조건을 모두 만족하도록 기술함."
+            },
+            {
+              "points": 2,
+              "desc": "세 가지 조건 중 두 가지를 만족하도록 기술함."
+            },
+            {
+              "points": 1,
+              "desc": "세 가지 조건 중 한 가지를 만족하도록 기술함."
+            },
+            {
+              "points": 0,
+              "desc": "세 가지 조건 모두를 충족하지 못함(예: 관련 없는 내용)."
+            }
+          ]
+        },
+        {
+          "name": "구성",
+          "levels": [
+            {
+              "points": 2,
+              "desc": "글의 내용을 전반적으로 효과적이고 짜임새 있게 전개, 문장 흐름이 자연스럽고 응집성이 있음."
+            },
+            {
+              "points": 1,
+              "desc": "글의 짜임새가 불분명하고 문장의 흐름이 어색하며 응집성이 미흡함."
+            },
+            {
+              "points": 0,
+              "desc": "글의 짜임새가 매우 미흡하고 응집성이 거의 없음."
+            }
+          ]
+        },
+        {
+          "name": "언어 사용",
+          "levels": [
+            {
+              "points": 3,
+              "desc": "문법·철자·구두법 오류가 거의 없으며 적절한 어휘로 내용이 매우 명확하게 전달됨."
+            },
+            {
+              "points": 2,
+              "desc": "오류가 적은 편이고 어휘 사용이 전반적으로 정확하여 내용 전달에 무리가 없음."
+            },
+            {
+              "points": 1,
+              "desc": "오류가 많은 편이고 일부 어휘 선택이 부적절하여 내용 전달이 미흡함."
+            },
+            {
+              "points": 0,
+              "desc": "오류가 매우 많고 어휘 선택이 부적절하여 내용 전달이 거의 불가능함."
+            }
+          ]
+        }
+      ],
+      "notes": "분석적 채점이므로 한 영역 판단이 다른 영역 채점에 영향을 주지 않도록 유의. 특히 과제완성과 구성을 혼동하지 않도록 함."
+    },
+    "exemplar_answers": [
+      {
+        "level": "만점",
+        "text": "Today, I had the pleasure of visiting an exhibition of Claude Monet's works... My favorite painting was \"Impression, Sunrise\". It demonstrates Monet's fast brushstroke techniques. I like this painting because the blurred surroundings in the scene look so mysterious that I can enjoy imagining what they might be. I hope I have more chances to visit art exhibitions."
+      },
+      {
+        "level": "부분",
+        "text": "I like \"The Woman in the Garden\" most. It show Monet's great painting style. It has beautiful white woman and pretty garden. It is beautiful picture. (25 words)"
+      }
+    ],
+    "feedback": "조건 충족 여부(작품 선택·특징·이유 연결)를 우선 확인하고, 문장 나열이 아니라 'The reason why I like ~' 같은 연결 표현으로 응집성을 높이도록 지도. 3인칭 단수 동사, 관사, 형용사 어순(a beautiful woman in white) 오류에 유의.",
+    "cognitive": [
+      "과정·기능",
+      "가치·태도"
+    ],
+    "source": {
+      "file": "서논술형 평가 도구 개발의 방법과 사례-영어.pdf",
+      "pages": [
+        35,
+        36,
+        37,
+        38,
+        39,
+        40
+      ]
+    }
+  },
+  {
+    "id": "eng-agency-005",
+    "subject": "영어",
+    "school_level": "고",
+    "grade": 1,
+    "unit": "공통영어2 - 이해/표현 (제안하는 글쓰기: 기후 변화)",
+    "standard_codes": [
+      "[10공영2-01-02]",
+      "[10공영2-01-01]",
+      "[10공영2-02-05]",
+      "[10공영2-02-01]",
+      "[10공영2-02-04]",
+      "[10공영2-02-08]"
+    ],
+    "kind": "서술형",
+    "points": 5,
+    "time_min": null,
+    "context": "기후 변화 글의 대의를 파악하여 제시어를 활용한 요약문을 완성한다.",
+    "materials": [
+      {
+        "type": "글",
+        "summary": "기후 변화(지구온난화)의 원인과 영향, 개인·사회의 대응 방안을 설명하는 영어 설명문(4문단).",
+        "text": "Have you heard the term \"global boiling\"? It reflects the fact that \"global warming\" is no longer a strong enough term to describe our dangerously overheating planet. Global warming ... is caused by the buildup of greenhouse gases in the atmosphere ... If we do not take immediate action to reduce greenhouse gas emissions, it is predicted that Earth's temperature could rise by up to 5 degrees Celsius by 2100 ... Despite the alarming outlook on climate change, we still have time to avoid the worst-case scenario. Governments, businesses, and individuals can all play a part ... [출처: https://www.c2es.org/content/climate-basics-for-kids/, 총 약 1,600자 중 발췌]"
+      }
+    ],
+    "stem": "1. 윗 글의 내용에 맞게 빈칸에 적절한 말을 써 다음 요약문을 완성하시오. 단, 괄호 안의 단어들을 반드시 사용하고 필요시 형태를 바꾸시오.(5점)\nGlobal warming, driven by increased greenhouse gases, leads to destructive impacts like extreme weather, rising sea levels, and habitat loss; despite this, we can still prevent the worst outcomes, and each of us ______________________________________. (fight, role, climate change)",
+    "conditions": [
+      "제시어(fight, role, climate change)를 모두 사용",
+      "필요시 단어 형태 변형 가능"
+    ],
+    "answer_format": "빈칸 채우기(제시어 활용 요약문 완성)",
+    "language_focus": [
+      "조동사 should/can",
+      "play a role in ~ing 구문",
+      "요지 요약"
+    ],
+    "rubric": {
+      "type": "분석적",
+      "criteria": [
+        {
+          "name": "과제 완성",
+          "levels": [
+            {
+              "points": 1,
+              "desc": "주어진 어휘를 모두 사용하여 대략적 의미가 통하게 답안을 작성함(단순 나열 시 미부여)."
+            },
+            {
+              "points": 0,
+              "desc": "주어진 어휘를 사용하지 않았거나 일부만 사용함."
+            }
+          ]
+        },
+        {
+          "name": "내용",
+          "levels": [
+            {
+              "points": 2,
+              "desc": "문제가 요구하는 내용을 적절히 기술함. (예: should play a role in fighting climate change)"
+            },
+            {
+              "points": 1,
+              "desc": "관련 있는 내용을 기술하였으나 정확한 의미 전달이 되지 않음. (예: fight a climate change in our role)"
+            },
+            {
+              "points": 0,
+              "desc": "문제의 요구와 관련 있는 내용을 쓰지 않음. (예: fight role climate change)"
+            }
+          ]
+        },
+        {
+          "name": "언어 사용",
+          "levels": [
+            {
+              "points": 2,
+              "desc": "문법과 철자법에서 오류가 거의 없음."
+            },
+            {
+              "points": 1,
+              "desc": "작은 오류가 있지만 내용 이해와 문장 구성에 큰 지장이 없음."
+            },
+            {
+              "points": 0,
+              "desc": "형식을 판단할 수 없을 만큼 적거나 심각한 오류가 있음."
+            }
+          ]
+        }
+      ],
+      "notes": "내용에서 0점이면 언어 사용도 0점 처리(내용이 틀리면 형식은 평가하지 않음)."
+    },
+    "exemplar_answers": [
+      {
+        "level": "만점",
+        "text": "should play a role in fighting climate change / can fight climate change by playing a role in actions that reduce carbon emissions"
+      },
+      {
+        "level": "부분",
+        "text": "fight climate change"
+      }
+    ],
+    "feedback": "요지 파악 후 핵심어(fight, role, climate change)를 배열하는 것에서 나아가 should/can 등 조동사로 '해야 한다/할 수 있다'는 의미를 완성해야 함. 본문의 유사 표현(play a part)에 주목하면 더 나은 답을 쓸 수 있음.",
+    "cognitive": [
+      "과정·기능"
+    ],
+    "source": {
+      "file": "서논술형 평가 도구 개발의 방법과 사례-영어.pdf",
+      "pages": [
+        46,
+        47,
+        48
+      ]
+    }
+  },
+  {
+    "id": "eng-agency-006",
+    "subject": "영어",
+    "school_level": "고",
+    "grade": 1,
+    "unit": "공통영어2 - 이해/표현 (제안하는 글쓰기: 기후 변화)",
+    "standard_codes": [
+      "[10공영2-01-02]",
+      "[10공영2-01-01]",
+      "[10공영2-02-05]",
+      "[10공영2-02-01]",
+      "[10공영2-02-04]",
+      "[10공영2-02-08]"
+    ],
+    "kind": "서술형",
+    "points": 5,
+    "time_min": null,
+    "context": "기후 변화 영상 제작을 가정하여 세부 정보를 활용해 영상 썸네일 문구를 완성한다.",
+    "materials": [
+      {
+        "type": "글",
+        "summary": "기후 변화(지구온난화)의 원인과 영향, 개인·사회의 대응 방안을 설명하는 영어 설명문(4문단).",
+        "text": "Have you heard the term \"global boiling\"? It reflects the fact that \"global warming\" is no longer a strong enough term to describe our dangerously overheating planet. Global warming ... is caused by the buildup of greenhouse gases in the atmosphere ... If we do not take immediate action to reduce greenhouse gas emissions, it is predicted that Earth's temperature could rise by up to 5 degrees Celsius by 2100 ... Despite the alarming outlook on climate change, we still have time to avoid the worst-case scenario. Governments, businesses, and individuals can all play a part ... [출처: https://www.c2es.org/content/climate-basics-for-kids/, 총 약 1,600자 중 발췌]"
+      }
+    ],
+    "stem": "2. 기후 변화의 위험성에 대한 영상을 만들고자 한다. 윗글에 근거하여 빈칸에 적절한 내용을 써서 썸네일을 완성하시오.(5점)\nStop Climate Change / If we do nothing → Ⓐ___°C ⇧ / If we act now → Ⓑ___°C ⇧ / Even small temperature increase Ⓒ______________________________ (affect)",
+    "conditions": [
+      "제시어(affect)를 반드시 사용",
+      "Ⓐ,Ⓑ는 숫자로, Ⓒ는 제시어 포함 6-10 단어로 작성",
+      "필요시 단어 형태 변형"
+    ],
+    "answer_format": "빈칸 채우기(숫자+구 단위 영작, 영상 썸네일 형식)",
+    "language_focus": [
+      "동사 affect의 3인칭 단수 활용",
+      "세부정보 찾아쓰기(scanning)"
+    ],
+    "rubric": {
+      "type": "분석적",
+      "criteria": [
+        {
+          "name": "과제 완성",
+          "levels": [
+            {
+              "points": 1,
+              "desc": "주어진 어휘를 사용하여 글자수 기준(6-10단어)에 맞게 작성함."
+            },
+            {
+              "points": 0,
+              "desc": "제시어를 사용하지 않았거나 글자수 기준을 지키지 않음."
+            }
+          ]
+        },
+        {
+          "name": "내용",
+          "levels": [
+            {
+              "points": 2,
+              "desc": "문제가 요구하는 내용을 적절히 기술함. (예: affects humans and the environment significantly)"
+            },
+            {
+              "points": 1,
+              "desc": "관련 있는 내용이나 정확한 의미 전달이 되지 않음. (예: affect extreme weather events and habitats)"
+            },
+            {
+              "points": 0,
+              "desc": "관련 있는 내용을 쓰지 않음. (예: immediate action)"
+            }
+          ]
+        },
+        {
+          "name": "언어 사용",
+          "levels": [
+            {
+              "points": 2,
+              "desc": "문법과 철자법에서 오류가 거의 없음."
+            },
+            {
+              "points": 1,
+              "desc": "작은 오류가 있지만 내용 이해에 큰 지장이 없음."
+            },
+            {
+              "points": 0,
+              "desc": "형식을 판단할 수 없을 만큼 적거나 심각한 오류가 있음."
+            }
+          ]
+        }
+      ],
+      "notes": "Ⓐ,Ⓑ는 단답형으로 별도 채점 기준 없음. 내용에서 0점이면 언어 사용도 0점."
+    },
+    "exemplar_answers": [
+      {
+        "level": "만점",
+        "text": "Ⓐ 5 Ⓑ 2 Ⓒ affects humans and the environment significantly"
+      },
+      {
+        "level": "부분",
+        "text": "affect immediate action in our society"
+      }
+    ],
+    "feedback": "빈칸 앞 'Even small temperature increase'에 이어지는 세부사항을 찾아 활용해야 하며, 3인칭 단수 동사형(affects) 처리와 글자수 조건 준수에 유의해야 함.",
+    "cognitive": [
+      "과정·기능"
+    ],
+    "source": {
+      "file": "서논술형 평가 도구 개발의 방법과 사례-영어.pdf",
+      "pages": [
+        50,
+        51,
+        52
+      ]
+    }
+  },
+  {
+    "id": "eng-agency-007",
+    "subject": "영어",
+    "school_level": "고",
+    "grade": 1,
+    "unit": "공통영어2 - 이해/표현 (제안하는 글쓰기: 기후 변화)",
+    "standard_codes": [
+      "[10공영2-01-02]",
+      "[10공영2-01-01]",
+      "[10공영2-02-05]",
+      "[10공영2-02-01]",
+      "[10공영2-02-04]",
+      "[10공영2-02-08]"
+    ],
+    "kind": "서술형",
+    "points": 4,
+    "time_min": null,
+    "context": "3, 4번째 단락의 실천 사례를 활용해 대화문의 빈칸을 완성한다.",
+    "materials": [
+      {
+        "type": "글",
+        "summary": "기후 변화(지구온난화)의 원인과 영향, 개인·사회의 대응 방안을 설명하는 영어 설명문(4문단).",
+        "text": "Have you heard the term \"global boiling\"? It reflects the fact that \"global warming\" is no longer a strong enough term to describe our dangerously overheating planet. Global warming ... is caused by the buildup of greenhouse gases in the atmosphere ... If we do not take immediate action to reduce greenhouse gas emissions, it is predicted that Earth's temperature could rise by up to 5 degrees Celsius by 2100 ... Despite the alarming outlook on climate change, we still have time to avoid the worst-case scenario. Governments, businesses, and individuals can all play a part ... [출처: https://www.c2es.org/content/climate-basics-for-kids/, 총 약 1,600자 중 발췌]"
+      }
+    ],
+    "stem": "3. 윗 글의 세 번째, 네 번째 단락에 제시된 사례를 활용하여 다음 대화를 완성하시오. 필요시 단어의 형태를 적절히 변형하시오.(4점)\nA: The weather is so warm... B: I'm trying to do small things where I can, like recycling properly to save energy. A: Wow! That's awesome. Then I ______________________________________. B: Yes! I believe our efforts will make a difference.",
+    "conditions": [
+      "본문 3, 4문단의 실천 사례를 활용",
+      "다짐을 나타내는 의미(will 등)가 자연스러워야 함"
+    ],
+    "answer_format": "대화문 빈칸 완성(1문장)",
+    "language_focus": [
+      "의지의 조동사 will",
+      "실천/제안 표현"
+    ],
+    "rubric": {
+      "type": "분석적",
+      "criteria": [
+        {
+          "name": "내용",
+          "levels": [
+            {
+              "points": 2,
+              "desc": "문제가 요구하는 내용을 적절히 기술함. (예: will ride my bike to school everyday)"
+            },
+            {
+              "points": 1,
+              "desc": "관련 있는 내용이나 정확한 의미 전달이 되지 않음. (예: decrease use electricity machine)"
+            },
+            {
+              "points": 0,
+              "desc": "관련 있는 내용을 쓰지 않음. (예: saving the climate)"
+            }
+          ]
+        },
+        {
+          "name": "언어 형식",
+          "levels": [
+            {
+              "points": 2,
+              "desc": "문법과 철자법에서 오류가 거의 없음."
+            },
+            {
+              "points": 1,
+              "desc": "작은 오류가 있지만 내용 이해에 큰 지장이 없음."
+            },
+            {
+              "points": 0,
+              "desc": "형식을 판단할 수 없을 만큼 적거나 심각한 오류가 있음."
+            }
+          ]
+        }
+      ],
+      "notes": "내용에서 0점이면 언어 형식도 0점 처리."
+    },
+    "exemplar_answers": [
+      {
+        "level": "만점",
+        "text": "will ride my bike to school everyday / will make sure to turn off lights when I leave a room"
+      },
+      {
+        "level": "부분",
+        "text": "talk with my friends"
+      }
+    ],
+    "feedback": "다짐을 나타내는 맥락이므로 will 등 조동사가 필요함. 동사가 필요한 자리에 동명사를 쓰는 등 기본 어법 오류에 유의.",
+    "cognitive": [
+      "과정·기능"
+    ],
+    "source": {
+      "file": "서논술형 평가 도구 개발의 방법과 사례-영어.pdf",
+      "pages": [
+        54,
+        55,
+        56,
+        57
+      ]
+    }
+  },
+  {
+    "id": "eng-agency-008",
+    "subject": "영어",
+    "school_level": "고",
+    "grade": 1,
+    "unit": "공통영어2 - 이해/표현 (제안하는 글쓰기: 기후 변화)",
+    "standard_codes": [
+      "[10공영2-01-02]",
+      "[10공영2-01-01]",
+      "[10공영2-02-05]",
+      "[10공영2-02-01]",
+      "[10공영2-02-04]",
+      "[10공영2-02-08]"
+    ],
+    "kind": "논술형",
+    "points": 9,
+    "time_min": null,
+    "context": "온실가스 감축 실천을 제안하는 글을 조건에 맞게 완성하는 논술형 마무리 과제.",
+    "materials": [
+      {
+        "type": "글",
+        "summary": "기후 변화(지구온난화)의 원인과 영향, 개인·사회의 대응 방안을 설명하는 영어 설명문(4문단).",
+        "text": "Have you heard the term \"global boiling\"? It reflects the fact that \"global warming\" is no longer a strong enough term to describe our dangerously overheating planet. Global warming ... is caused by the buildup of greenhouse gases in the atmosphere ... If we do not take immediate action to reduce greenhouse gas emissions, it is predicted that Earth's temperature could rise by up to 5 degrees Celsius by 2100 ... Despite the alarming outlook on climate change, we still have time to avoid the worst-case scenario. Governments, businesses, and individuals can all play a part ... [출처: https://www.c2es.org/content/climate-basics-for-kids/, 총 약 1,600자 중 발췌]"
+      }
+    ],
+    "stem": "4. 온실가스 배출을 줄이기 위해 일상에서 할 수 있는 실천 방법을 제안하는 글을 쓰고자 한다. 빈칸에 구체적 실천 방법 세 가지를 써서 글을 완성하시오.(9점)\nTake Action: Simple Steps to Combat Global Warming ... First, we can ___________________________________. Through these simple actions, we can put the brakes on global warming.",
+    "conditions": [
+      "실천 방법 중 최소 한 가지는 본문과 문제3 대화에 나오지 않은 내용일 것",
+      "문장 간 논리적 연결 표현(next, also, finally 등) 사용"
+    ],
+    "answer_format": "빈칸 완성(3문장 이상, 제안하는 글)",
+    "language_focus": [
+      "연결어(also, finally 등)",
+      "제안 표현(we can ~)"
+    ],
+    "rubric": {
+      "type": "분석적",
+      "criteria": [
+        {
+          "name": "과제 완성",
+          "levels": [
+            {
+              "points": 1,
+              "desc": "실천 사항 한 가지 이상을 본문과 문제3에 나오지 않은 내용으로 작성함."
+            },
+            {
+              "points": 0,
+              "desc": "본문과 문제3에 나오지 않은 내용을 한 가지도 작성하지 않음."
+            }
+          ]
+        },
+        {
+          "name": "구성",
+          "levels": [
+            {
+              "points": 2,
+              "desc": "연결어를 적절히 사용함."
+            },
+            {
+              "points": 1,
+              "desc": "연결어를 일부 적절히 사용함."
+            },
+            {
+              "points": 0,
+              "desc": "연결어를 사용하지 않음."
+            }
+          ]
+        },
+        {
+          "name": "내용",
+          "levels": [
+            {
+              "points": 3,
+              "desc": "온실가스 배출을 줄이기 위한 실천 세 가지를 모두 적절히 기술함."
+            },
+            {
+              "points": 2,
+              "desc": "세 가지 중 두 가지를 적절히 기술함."
+            },
+            {
+              "points": 1,
+              "desc": "세 가지 중 한 가지를 적절히 기술함."
+            },
+            {
+              "points": 0,
+              "desc": "한 가지도 적절히 기술하지 않음."
+            }
+          ]
+        },
+        {
+          "name": "언어 형식",
+          "levels": [
+            {
+              "points": 3,
+              "desc": "문법과 철자법에서 오류가 거의 없음."
+            },
+            {
+              "points": 2,
+              "desc": "작은 오류가 있지만 내용 이해와 문장 구성에 큰 지장이 없음."
+            },
+            {
+              "points": 1,
+              "desc": "문법·철자·어휘 선택에서 반복적으로 상당한 오류가 있으나 내용 이해는 가능함."
+            },
+            {
+              "points": 0,
+              "desc": "형식을 판단할 수 없을 만큼 적거나 심각한 오류가 있음."
+            }
+          ]
+        }
+      ],
+      "notes": "내용에서 0점이면 언어 형식도 0점 처리."
+    },
+    "exemplar_answers": [
+      {
+        "level": "만점",
+        "text": "First we can unplug electronic devices when they are not in use. Also, we can try to walk as much as possible instead of using cars or elevators. Finally, we can share with friends and people around us what we are doing and why we are doing so to encourage them to take actions, too."
+      },
+      {
+        "level": "부분",
+        "text": "First, we can plug out electronic machines when we don't need them. We can walk a lot of distance instead of use cars. We can do recycle and save natural things."
+      }
+    ],
+    "feedback": "부적절한 어휘 선택(plug out→unplug, machines→devices)과 어법 오류(instead of use→instead of using)에 유의. 문장 사이 연결어 누락 시 구성 점수 감점.",
+    "cognitive": [
+      "과정·기능",
+      "가치·태도"
+    ],
+    "source": {
+      "file": "서논술형 평가 도구 개발의 방법과 사례-영어.pdf",
+      "pages": [
+        58,
+        59,
+        60,
+        61
+      ]
+    }
+  },
+  {
+    "id": "eng-agency-009",
+    "subject": "영어",
+    "school_level": "고",
+    "grade": 1,
+    "unit": "공통영어1/공통영어2 - 이해/표현 (사회 현상에 관한 글쓰기: herd behavior)",
+    "standard_codes": [
+      "[10공영1-01-01]",
+      "[10공영1-01-02]",
+      "[10공영1-01-05]",
+      "[10공영1-02-01]"
+    ],
+    "kind": "서술형",
+    "points": 4,
+    "time_min": null,
+    "context": "herd behavior의 개념을 제시어를 활용하여 영어로 정의한다.",
+    "materials": [
+      {
+        "type": "글",
+        "summary": "군집 행위(herd behavior)의 개념과 원인, 일상 속 사례를 설명하는 영어 설명문(4문단).",
+        "text": "The term \"herd behavior\" comes from the behavior of animals in herds, particularly when they are in a dangerous situation such as escaping a predator. All of the animals band closely together in a group and, in panic mode, move together as a unit... The term also applies to human behavior, and it usually describes large numbers of people acting the same way at the same time. It often has a connotation of irrationality, as people's actions are driven by emotion rather than by thinking through a situation... When herd behavior sets in, an individual person's judgment and opinion-forming process shut down as he or she automatically follows the group's movement and behavior... [출처: Herd Behavior by CommonLit, 총 약 1,300자 중 발췌]"
+      }
+    ],
+    "stem": "1. 윗글을 읽고 'herd behavior'의 의미를 아래의 제시어를 활용하여 영어로 쓰시오.(4점)\nHerd behavior is ______________________________________.\n<제시어> group, tendency, collectively, act",
+    "conditions": [
+      "제시어(group, tendency, collectively, act) 활용"
+    ],
+    "answer_format": "빈칸 채우기(정의문 영작)",
+    "language_focus": [
+      "명사구를 이용한 정의(the tendency of ~ to ...)",
+      "부사 collectively"
+    ],
+    "rubric": {
+      "type": "분석적",
+      "criteria": [
+        {
+          "name": "제시된 표현을 활용하여 글의 중심 내용 작성하기",
+          "levels": [
+            {
+              "points": 2,
+              "desc": "제시된 표현을 모두 활용하여 글의 중심 내용을 충실하게 작성함. (예: the tendency of people to act collectively as part of a group)"
+            },
+            {
+              "points": 1,
+              "desc": "제시된 표현을 일부 활용하여 중심 내용을 대략적으로 작성함. (예: the tendency of people to act collectively)"
+            },
+            {
+              "points": 0,
+              "desc": "제시된 표현을 제한적으로 활용하여 제한적으로 작성하거나 미작성. (예: group collectively)"
+            }
+          ]
+        },
+        {
+          "name": "언어 형식에 맞게 글의 중심 내용 작성하기",
+          "levels": [
+            {
+              "points": 2,
+              "desc": "언어 형식에 정확하게 맞추어 작성함."
+            },
+            {
+              "points": 1,
+              "desc": "언어 형식에 대략적으로 맞추어 작성함. (예: the tendency of people to collectively act as part of group)"
+            },
+            {
+              "points": 0,
+              "desc": "언어 형식에 제한적으로 맞추어 작성함. (예: peaple's tendency act collectively)"
+            }
+          ]
+        }
+      ],
+      "notes": "의미의 충실성과 언어 형식의 정확성을 독립적으로 채점하는 분석적 방식."
+    },
+    "exemplar_answers": [
+      {
+        "level": "만점",
+        "text": "the tendency of people to act collectively as part of a group"
+      }
+    ],
+    "feedback": "제시어를 단순 나열하지 않고 'the tendency of A to B' 구문으로 정의문을 구성하는 연습이 필요함. 영어 지문을 꾸준히 읽어 이해도를 높이는 것을 권장.",
+    "cognitive": [
+      "지식·이해"
+    ],
+    "source": {
+      "file": "서논술형 평가 도구 개발의 방법과 사례-영어.pdf",
+      "pages": [
+        67,
+        68,
+        69
+      ]
+    }
+  },
+  {
+    "id": "eng-agency-010",
+    "subject": "영어",
+    "school_level": "고",
+    "grade": 1,
+    "unit": "공통영어1/공통영어2 - 이해/표현 (사회 현상에 관한 글쓰기: herd behavior)",
+    "standard_codes": [
+      "[10공영1-01-01]",
+      "[10공영1-01-02]",
+      "[10공영1-01-05]",
+      "[10공영1-02-01]"
+    ],
+    "kind": "서술형",
+    "points": 4,
+    "time_min": null,
+    "context": "밑줄 친 부분의 이유(함축적 의미)를 추론하여 문장을 완성한다.",
+    "materials": [
+      {
+        "type": "글",
+        "summary": "군집 행위(herd behavior)의 개념과 원인, 일상 속 사례를 설명하는 영어 설명문(4문단).",
+        "text": "The term \"herd behavior\" comes from the behavior of animals in herds, particularly when they are in a dangerous situation such as escaping a predator. All of the animals band closely together in a group and, in panic mode, move together as a unit... The term also applies to human behavior, and it usually describes large numbers of people acting the same way at the same time. It often has a connotation of irrationality, as people's actions are driven by emotion rather than by thinking through a situation... When herd behavior sets in, an individual person's judgment and opinion-forming process shut down as he or she automatically follows the group's movement and behavior... [출처: Herd Behavior by CommonLit, 총 약 1,300자 중 발췌]"
+      }
+    ],
+    "stem": "2. 다음 문장은 윗글에서 밑줄 친 부분의 이유에 해당한다. 문장을 완성하기 위해 빈칸에 적절한 내용을 영어로 쓰시오.(4점)\nHerd behavior frequently carries an implication of unreasonableness because people's behaviors are influenced by ______________________.",
+    "conditions": [
+      "밑줄 친 표현의 함축적 의미를 맥락 정보로 추론"
+    ],
+    "answer_format": "빈칸 채우기(이유 추론 영작)",
+    "language_focus": [
+      "함축적 의미 추론",
+      "rather than 비교 구문"
+    ],
+    "rubric": {
+      "type": "분석적",
+      "criteria": [
+        {
+          "name": "글에 포함된 표현의 함축적 의미를 추론하여 글로 표현하기",
+          "levels": [
+            {
+              "points": 2,
+              "desc": "함축적 의미를 정확하게 추론하여 명확하게 작성함. (예: emotion rather than careful thinking)"
+            },
+            {
+              "points": 1,
+              "desc": "함축적 의미를 대략적으로 추론하여 대략적으로 작성함. (예: a crowd not an individual)"
+            },
+            {
+              "points": 0,
+              "desc": "함축적 의미를 제한적으로 추론하여 제한적으로 작성하거나 미작성. (예: simple way)"
+            }
+          ]
+        },
+        {
+          "name": "언어 형식에 맞게 글의 함축적 의미 작성하기",
+          "levels": [
+            {
+              "points": 2,
+              "desc": "언어 형식에 정확하게 맞추어 작성함."
+            },
+            {
+              "points": 1,
+              "desc": "언어 형식에 대략적으로 맞추어 작성함. (예: an emotion then logical thinking)"
+            },
+            {
+              "points": 0,
+              "desc": "언어 형식에 제한적으로 맞추어 작성함. (예: peple)"
+            }
+          ]
+        }
+      ],
+      "notes": "함축적 의미 추론의 정확성과 언어 형식을 독립적으로 평가."
+    },
+    "exemplar_answers": [
+      {
+        "level": "만점",
+        "text": "emotion rather than careful thought"
+      }
+    ],
+    "feedback": "다양한 종류의 글을 꾸준히 읽어 이해도를 높이고, 함축적 의미를 추론하는 연습과 이를 정확한 언어 형식으로 표현하는 연습을 함께 해야 함.",
+    "cognitive": [
+      "과정·기능"
+    ],
+    "source": {
+      "file": "서논술형 평가 도구 개발의 방법과 사례-영어.pdf",
+      "pages": [
+        71,
+        72,
+        73
+      ]
+    }
+  },
+  {
+    "id": "eng-agency-011",
+    "subject": "영어",
+    "school_level": "고",
+    "grade": 1,
+    "unit": "공통영어1/공통영어2 - 이해/표현 (사회 현상에 관한 글쓰기: herd behavior)",
+    "standard_codes": [
+      "[10공영1-01-01]",
+      "[10공영1-01-02]",
+      "[10공영1-01-05]",
+      "[10공영1-02-01]"
+    ],
+    "kind": "서술형",
+    "points": 4,
+    "time_min": null,
+    "context": "군집 행위가 시작될 때 개인에게 일어나는 현상(세부정보)을 설명하는 문장을 완성한다.",
+    "materials": [
+      {
+        "type": "글",
+        "summary": "군집 행위(herd behavior)의 개념과 원인, 일상 속 사례를 설명하는 영어 설명문(4문단).",
+        "text": "The term \"herd behavior\" comes from the behavior of animals in herds, particularly when they are in a dangerous situation such as escaping a predator. All of the animals band closely together in a group and, in panic mode, move together as a unit... The term also applies to human behavior, and it usually describes large numbers of people acting the same way at the same time. It often has a connotation of irrationality, as people's actions are driven by emotion rather than by thinking through a situation... When herd behavior sets in, an individual person's judgment and opinion-forming process shut down as he or she automatically follows the group's movement and behavior... [출처: Herd Behavior by CommonLit, 총 약 1,300자 중 발췌]"
+      }
+    ],
+    "stem": "3. 윗글을 읽고, 군집 행위가 시작될 때 개인에게 일어나는 현상을 설명하는 다음의 문장을 영어로 쓰시오.(4점)\nOnce herd behavior takes hold, ______________________________________________________________.",
+    "conditions": [
+      "글에 나타난 세부 정보(판단력 저하)를 정확히 반영"
+    ],
+    "answer_format": "빈칸 채우기(세부정보 재진술)",
+    "language_focus": [
+      "as/while 접속사를 이용한 동시상황 표현",
+      "diminish, follow 등 동사 활용"
+    ],
+    "rubric": {
+      "type": "분석적",
+      "criteria": [
+        {
+          "name": "글에 나타난 세부 정보를 파악하여 글로 표현하기",
+          "levels": [
+            {
+              "points": 2,
+              "desc": "세부 정보를 정확하게 파악하여 명확하게 작성함. (예: individual's ability judging and forming opinion diminish as they instinctively follow the group's actions and movements)"
+            },
+            {
+              "points": 1,
+              "desc": "세부 정보를 대략적으로 파악하여 대략적으로 작성함. (예: people's ability to think decrease)"
+            },
+            {
+              "points": 0,
+              "desc": "세부 정보를 제한적으로 파악하여 제한적으로 작성하거나 미작성. (예: follow)"
+            }
+          ]
+        },
+        {
+          "name": "언어 형식에 맞게 글의 사실적 정보나 지식 작성하기",
+          "levels": [
+            {
+              "points": 2,
+              "desc": "언어 형식에 정확하게 맞추어 작성함. (예: an individual's ability to judge diminishes as they follow the group's actions and movements)"
+            },
+            {
+              "points": 1,
+              "desc": "언어 형식에 대략적으로 맞추어 작성함. (예: judgments and opinion disappear)"
+            },
+            {
+              "points": 0,
+              "desc": "언어 형식에 제한적으로 맞추어 작성함. (예: think go noting)"
+            }
+          ]
+        }
+      ],
+      "notes": "세부정보 파악의 정확성과 언어 형식을 독립적으로 평가."
+    },
+    "exemplar_answers": [
+      {
+        "level": "만점",
+        "text": "an individual's ability to judge and form opinions diminishes as they instinctively follow the group's actions and movements"
+      }
+    ],
+    "feedback": "사실적 정보와 지식을 파악하는 정확도를 높이기 위해 다양한 글을 꾸준히 읽고, 이를 적절한 어휘와 언어 형식으로 표현하는 연습이 필요함.",
+    "cognitive": [
+      "과정·기능"
+    ],
+    "source": {
+      "file": "서논술형 평가 도구 개발의 방법과 사례-영어.pdf",
+      "pages": [
+        75,
+        76,
+        77
+      ]
+    }
+  },
+  {
+    "id": "eng-agency-012",
+    "subject": "영어",
+    "school_level": "고",
+    "grade": 1,
+    "unit": "공통영어1/공통영어2 - 이해/표현 (사회 현상에 관한 글쓰기: herd behavior)",
+    "standard_codes": [
+      "[10공영1-01-01]",
+      "[10공영1-01-02]",
+      "[10공영1-01-05]",
+      "[10공영1-02-01]"
+    ],
+    "kind": "논술형",
+    "points": 12,
+    "time_min": null,
+    "context": "군집 행위와 관련된 다양한 관점을 분석하여 일상생활 속 사례를 자신의 언어로 논술하는 마무리 과제.",
+    "materials": [
+      {
+        "type": "글",
+        "summary": "군집 행위(herd behavior)의 개념과 원인, 일상 속 사례를 설명하는 영어 설명문(4문단).",
+        "text": "The term \"herd behavior\" comes from the behavior of animals in herds, particularly when they are in a dangerous situation such as escaping a predator. All of the animals band closely together in a group and, in panic mode, move together as a unit... The term also applies to human behavior, and it usually describes large numbers of people acting the same way at the same time. It often has a connotation of irrationality, as people's actions are driven by emotion rather than by thinking through a situation... When herd behavior sets in, an individual person's judgment and opinion-forming process shut down as he or she automatically follows the group's movement and behavior... [출처: Herd Behavior by CommonLit, 총 약 1,300자 중 발췌]"
+      }
+    ],
+    "stem": "4. 일상생활에서 군집 행위가 일어날 수 있는 사례를 생각해 보고 이를 구체적인 예시를 들어 영어로 자세하게 쓰시오.(12점)\nHerd behavior can occur in situations where ______________________________________________________________.",
+    "conditions": [
+      "구체적인 예시를 들어 자세하게 작성"
+    ],
+    "answer_format": "빈칸 완성(여러 문장, 예시가 포함된 논술)",
+    "language_focus": [
+      "For example로 예시 제시",
+      "인과·결과 표현(This shows how ~)"
+    ],
+    "rubric": {
+      "type": "분석적",
+      "criteria": [
+        {
+          "name": "내용",
+          "levels": [
+            {
+              "points": 4,
+              "desc": "관련성 있고 타당한 내용을 매우 풍부하고 충실하게 기술함."
+            },
+            {
+              "points": 3,
+              "desc": "전반적으로 관련성 있고 타당한 내용을 대략적으로 풍부하고 충실하게 기술함."
+            },
+            {
+              "points": 2,
+              "desc": "관련성과 타당성이 부족하며 풍부성과 충실성이 미흡함."
+            },
+            {
+              "points": 1,
+              "desc": "관련성이 없으며 타당하지도 않고 풍부하거나 충실하지도 않음."
+            }
+          ]
+        },
+        {
+          "name": "구성",
+          "levels": [
+            {
+              "points": 4,
+              "desc": "매우 효과적이고 짜임새 있게 전개, 문장 흐름이 매우 자연스럽고 응집성이 강함."
+            },
+            {
+              "points": 3,
+              "desc": "전반적으로 효과적이고 짜임새 있게 전개, 응집성이 있음."
+            },
+            {
+              "points": 2,
+              "desc": "짜임새가 불분명하고 문장 흐름이 어색하며 응집성이 미흡함."
+            },
+            {
+              "points": 1,
+              "desc": "짜임새가 매우 미흡하고 응집성이 거의 없음."
+            }
+          ]
+        },
+        {
+          "name": "언어 사용",
+          "levels": [
+            {
+              "points": 4,
+              "desc": "문법·철자·구두법 오류가 거의 없으며 어휘 사용이 정확하여 내용이 매우 명확하게 전달됨."
+            },
+            {
+              "points": 3,
+              "desc": "오류가 적은 편이고 어휘 사용이 전반적으로 정확하여 전달에 무리가 없음."
+            },
+            {
+              "points": 2,
+              "desc": "오류가 많은 편이고 일부 어휘 선택이 부적절하여 전달이 미흡함."
+            },
+            {
+              "points": 1,
+              "desc": "오류가 매우 많고 어휘 선택이 부적절하여 전달이 거의 불가능함."
+            }
+          ]
+        }
+      ],
+      "notes": "총체적 채점(시간 절약)과 분석적 채점(정교한 피드백) 중 학교 여건에 맞게 선택 가능. 주제와 무관하거나 미작성 시 0점 처리."
+    },
+    "exemplar_answers": [
+      {
+        "level": "만점",
+        "text": "people decide where to go on vacation. For example, when a particular travel destination becomes popular on social media, many people may choose to visit that place without researching other options. This shows how individuals often follow the crowd's preferences, relying heavily on the recommendations and opinions of others instead of making personal or unique choices based on their own interests."
+      },
+      {
+        "level": "하",
+        "text": "Peaple go vocation places choosing it no think."
+      }
+    ],
+    "feedback": "예시(For example)를 구체적으로 들고, 마지막 문장에서 herd behavior와의 연결(This shows how ~)을 명시하면 구성 점수가 높아짐. 철자·어순 오류가 누적되면 언어 사용 점수가 크게 낮아짐.",
+    "cognitive": [
+      "과정·기능",
+      "가치·태도"
+    ],
+    "source": {
+      "file": "서논술형 평가 도구 개발의 방법과 사례-영어.pdf",
+      "pages": [
+        80,
+        81,
+        82,
+        83
+      ]
+    }
+  },
+  {
+    "id": "eng-agency-013",
+    "subject": "영어",
+    "school_level": "고",
+    "grade": 1,
+    "unit": "공통영어1 - 이해/표현 (정보를 구조화하여 전달하기: AI와 인간 전문성)",
+    "standard_codes": [
+      "[10공영1-01-01]",
+      "[10공영1-01-05]"
+    ],
+    "kind": "서술형",
+    "points": 6,
+    "time_min": null,
+    "context": "밑줄 친 표현 'artificial intelligence still has a framing problem'의 함축적 의미를 제시어를 활용해 한 문장으로 완성하는 통제 작문(controlled writing) 과제.",
+    "materials": [
+      {
+        "type": "글",
+        "summary": "AI의 한계(상황 판단의 어려움)와 인간 전문성의 필요성을 사례(로봇 점검, 조립 라인 설계)로 설명하는 영어 설명문.",
+        "text": "Despite all the remarkable advances in AI, artificial intelligence still has a framing problem. AI can get many things right, but it still doesn't know how to read situations and people well enough. Because of this, human judgment and execution will always be a key component to any reimagined process. For example, when one Dutch robot company sends its robots to monitor equipment and perform safety checks in its remote facility in Kazakhstan, it still requires the know-how of workers who are on the lookout for hazards... Similarly, human expertise also remains a vital component of reimagined processes at a large machinery manufacturer. When a new assembly line is being designed there, engineers are needed to \"walk\" through an AI-generated digital model of the line... [출처: Paul R. Daugherty(2018), Human + Machine: Reimagining Work in the Age of AI, HBR Press, 총 약 1,000자]"
+      }
+    ],
+    "stem": "1. 밑줄 친 artificial intelligence still has a framing problem이 윗글에서 의미하는 바를 한 문장으로 설명하고자 한다. <조건>에 맞게 빈칸을 채워 <답안>을 완성하시오.(6점)\n<제시어> assist / continuous / require\n<답안> While artificial intelligence shows great potential, it ______________________ to function properly in complex real-world situations.",
+    "conditions": [
+      "<제시어> 모두 포함",
+      "필요시 형태 변형 및 추가 단어 가능",
+      "어법에 맞는 완전한 문장일 것"
+    ],
+    "answer_format": "빈칸 채우기(제시어 활용 통제 작문)",
+    "language_focus": [
+      "require + 목적어 구문",
+      "형용사 continuous의 위치",
+      "주어-동사 수 일치"
+    ],
+    "rubric": {
+      "type": "분석적",
+      "criteria": [
+        {
+          "name": "제시된 표현을 활용하여 밑줄 친 부분의 함축적 의미를 설명하기(내용)",
+          "levels": [
+            {
+              "points": 3,
+              "desc": "보기의 단어를 모두 사용하여 예시 답안의 의미를 포함한 답을 작성한 경우. (예: requires continuous human assistance)"
+            },
+            {
+              "points": 2,
+              "desc": "사용하지 않은 단어가 있지만 예시 답안의 의미를 포함한 경우. (예: requires human assistance)"
+            },
+            {
+              "points": 1,
+              "desc": "사용하지 않은 단어가 있고 의미를 제한적으로 포함한 경우. (예: needs human)"
+            },
+            {
+              "points": 0,
+              "desc": "제시된 단어를 하나도 사용하지 않았거나 무관한 답을 작성, 또는 미작성. (예: AI technology requires enough funding)"
+            }
+          ]
+        },
+        {
+          "name": "제시된 표현을 활용하여 언어 형식에 맞게 작성하기",
+          "levels": [
+            {
+              "points": 3,
+              "desc": "철자와 어법상 오류 없이 빈칸을 채워 하나의 완전한 문장을 완성한 경우."
+            },
+            {
+              "points": 1,
+              "desc": "일부 어법이나 철자에 사소한 오류가 있는 경우."
+            },
+            {
+              "points": 0,
+              "desc": "무관하거나 어법 오류가 심각하여 문장이 성립하지 않는 경우."
+            }
+          ]
+        }
+      ],
+      "notes": "통제 작문(controlled writing) 과업으로, 보기에 제시되지 않은 다양한 정답 조합도 인정."
+    },
+    "exemplar_answers": [
+      {
+        "level": "만점",
+        "text": "requires continuous human assistance / continuously requires the human assistance / requires continuous assistance from humans"
+      }
+    ],
+    "feedback": "제시어를 모두 사용하되 형용사 continuous의 위치와 require 구문의 목적어 구성에 유의. 조건에 맞게 완결된 문장으로 마무리하는 습관이 필요함.",
+    "cognitive": [
+      "과정·기능"
+    ],
+    "source": {
+      "file": "서논술형 평가 도구 개발의 방법과 사례-영어.pdf",
+      "pages": [
+        92,
+        93,
+        94
+      ]
+    }
+  },
+  {
+    "id": "eng-agency-014",
+    "subject": "영어",
+    "school_level": "고",
+    "grade": 1,
+    "unit": "공통영어1 - 이해/표현 (정보를 구조화하여 전달하기: AI와 인간 전문성)",
+    "standard_codes": [
+      "[10공영1-01-01]",
+      "[10공영1-01-05]"
+    ],
+    "kind": "서술형",
+    "points": 5,
+    "time_min": null,
+    "context": "글 [A] 문단의 내용을 도식화(다이어그램)하여 빈칸 두 곳을 완성하는 유도 작문(guided writing) 과제.",
+    "materials": [
+      {
+        "type": "글",
+        "summary": "AI의 한계(상황 판단의 어려움)와 인간 전문성의 필요성을 사례(로봇 점검, 조립 라인 설계)로 설명하는 영어 설명문.",
+        "text": "Despite all the remarkable advances in AI, artificial intelligence still has a framing problem. AI can get many things right, but it still doesn't know how to read situations and people well enough. Because of this, human judgment and execution will always be a key component to any reimagined process. For example, when one Dutch robot company sends its robots to monitor equipment and perform safety checks in its remote facility in Kazakhstan, it still requires the know-how of workers who are on the lookout for hazards... Similarly, human expertise also remains a vital component of reimagined processes at a large machinery manufacturer. When a new assembly line is being designed there, engineers are needed to \"walk\" through an AI-generated digital model of the line... [출처: Paul R. Daugherty(2018), Human + Machine: Reimagining Work in the Age of AI, HBR Press, 총 약 1,000자]"
+      }
+    ],
+    "stem": "2. 윗글의 [A]의 내용을 다음과 같이 도식화하고자 한다. 괄호 안의 단어를 활용하여, 빈칸 (A), (B)에 적절한 말을 <조건>에 맞게 쓰시오.(5점)",
+    "conditions": [
+      "괄호 안 단어는 한 번만 사용(필요시 형태 변형 가능)",
+      "빈칸 (A), (B)가 어법상 올바른 문장이 되도록 완성"
+    ],
+    "answer_format": "빈칸 두 곳 채우기(도식/다이어그램 완성)",
+    "language_focus": [
+      "현재분사구(detecting hazards)",
+      "동사 manage + 명사구 목적어"
+    ],
+    "rubric": {
+      "type": "분석적",
+      "criteria": [
+        {
+          "name": "2-(A) 제시된 표현을 활용하여 언어 형식에 맞게 세부 내용 작성하기",
+          "levels": [
+            {
+              "points": 2,
+              "desc": "핵심 의미를 명확하게 전달하는 답안을 완성한 경우. (예: detecting hazards)"
+            },
+            {
+              "points": 1,
+              "desc": "핵심 의미를 전달하나 어법·철자 오류가 있는 경우. (예: detect hazards)"
+            },
+            {
+              "points": 0,
+              "desc": "조건 미충족·무관한 답 또는 미작성. (예: protecting environments)"
+            }
+          ]
+        },
+        {
+          "name": "2-(B) 제시된 표현을 활용하여 언어 형식에 맞게 세부 내용 작성하기",
+          "levels": [
+            {
+              "points": 3,
+              "desc": "핵심 의미를 명확히 전달하는 문장 완성. (예: human experts manage various uncertain problems)"
+            },
+            {
+              "points": 2,
+              "desc": "핵심 의미를 대략적으로 전달하나 문장 구성과 무관한 오류가 있는 경우. (예: human experts manage many problem)"
+            },
+            {
+              "points": 1,
+              "desc": "조건 미충족 또는 문장 구성 관련 주요 오류가 있는 경우. (예: experts to manage many things)"
+            },
+            {
+              "points": 0,
+              "desc": "무관한 답 또는 미작성. (예: humans talk about the problems)"
+            }
+          ]
+        }
+      ],
+      "notes": "유도 작문(guided writing) 과업. 도식화된 자료와 읽기 자료를 함께 활용하여 채점."
+    },
+    "exemplar_answers": [
+      {
+        "level": "만점",
+        "text": "(A) detecting hazards (B) human experts manage various uncertain problems"
+      }
+    ],
+    "feedback": "detecting/managing 등 동사의 형태(분사, 3인칭 수 일치)와 목적어 구성을 정확히 갖추어야 함. 유사 의미 명사(risks, dangers, challenges 등) 사용은 인정됨.",
+    "cognitive": [
+      "과정·기능"
+    ],
+    "source": {
+      "file": "서논술형 평가 도구 개발의 방법과 사례-영어.pdf",
+      "pages": [
+        97,
+        98,
+        99,
+        100
+      ]
+    }
+  },
+  {
+    "id": "eng-agency-015",
+    "subject": "영어",
+    "school_level": "고",
+    "grade": 1,
+    "unit": "공통영어1 - 이해/표현 (발표를 위한 글쓰기: 물 부족 문제, 발표문)",
+    "standard_codes": [
+      "[10공영1-01-01]",
+      "[10공영1-01-02]",
+      "[10공영1-02-05]"
+    ],
+    "kind": "서술형",
+    "points": 4,
+    "time_min": null,
+    "context": "소설 지문을 읽고 주인공 Nya의 활동을 요약하고 심정을 추론하여 발표문 빈칸을 완성하는 유도 작문 과제.",
+    "materials": [
+      {
+        "type": "글",
+        "summary": "남수단 소녀 Nya가 매일 왕복 하루가 걸리는 거리를 걸어 물을 길어오는 일상을 그린 문학 지문(소설 발췌).",
+        "text": "Nya's mother took the plastic container from her and emptied the water into three large jars. She handed Nya a bowl of boiled sorghum meal and poured a little milk over it. Nya sat outside in the shade of the house and ate... \"Take Akeer with you,\" her mother said... \"She needs to learn,\" her mother said... Home for just long enough to eat, Nya would now make her second trip to the pond. To the pond and back — to the pond and back — nearly a full day of walking altogether. This was Nya's daily routine for seven months of the year. Daily. Every single day. [출처: Linda Sue Park(2010), A Long Walk to Water: Based on a True Story, Clarion Books]"
+      }
+    ],
+    "stem": "1. 윗글에 관하여 발표하고자 한다. 빈칸 (A), (B)에 적절한 말을 <조건>에 맞게 쓰시오.(4점)\n<조건> 윗글의 내용을 토대로 빈칸 (A)에 알맞은 말을 넣어 어법에 적절한 하나의 문장을 완성할 것 / Nya가 느꼈을 심정을 그 이유와 함께 빈칸 (B)에 넣어 어법상 적절한 하나의 문장을 완성할 것",
+    "conditions": [
+      "(A) 지문 내용 기반 사실 요약 문장",
+      "(B) 심정 + 이유를 포함한 문장"
+    ],
+    "answer_format": "빈칸 두 곳 채우기(발표문 형식)",
+    "language_focus": [
+      "동명사구 주어/목적어(walking long distances)",
+      "형용사+이유절로 심정 표현"
+    ],
+    "rubric": {
+      "type": "분석적",
+      "criteria": [
+        {
+          "name": "1-(A) 내용",
+          "levels": [
+            {
+              "points": 2,
+              "desc": "핵심 개념(먼 길을 걷다, 물을 얻다)을 모두 포함하여 작성한 경우. (예: walking long distances to get water)"
+            },
+            {
+              "points": 1,
+              "desc": "핵심 개념 중 빠뜨린 내용이 있는 경우. (예: get water / travel far)"
+            },
+            {
+              "points": 0,
+              "desc": "핵심 개념을 모두 포함하지 않았거나 미작성. (예: family help / work)"
+            }
+          ]
+        },
+        {
+          "name": "1-(A) 언어 사용",
+          "levels": [
+            {
+              "points": 2,
+              "desc": "철자·어법 오류 없이 빈칸에 넣었을 때 올바른 문장이 되는 경우."
+            },
+            {
+              "points": 1,
+              "desc": "철자·어법 오류가 있거나 문장이 어법상 올바르지 않은 경우."
+            },
+            {
+              "points": 0,
+              "desc": "오류가 많아 내용 전달이 어렵거나 미작성."
+            }
+          ]
+        },
+        {
+          "name": "1-(B) 내용",
+          "levels": [
+            {
+              "points": 3,
+              "desc": "Nya의 심정(부담감, 좌절감 등)을 추론하고 지문에 제시된 이유를 모두 설명한 경우."
+            },
+            {
+              "points": 2,
+              "desc": "심정은 추론하였으나 이유 설명이 부족한 경우."
+            },
+            {
+              "points": 1,
+              "desc": "심정은 추론하였으나 이유 설명이 적절하지 않은 경우."
+            },
+            {
+              "points": 0,
+              "desc": "심정을 추론하지 않았거나 무관한 답, 또는 미작성. (예: happy because she likes her sister)"
+            }
+          ]
+        },
+        {
+          "name": "1-(B) 언어 사용",
+          "levels": [
+            {
+              "points": 2,
+              "desc": "철자·어법 오류 없이 완전한 문장을 작성한 경우."
+            },
+            {
+              "points": 1,
+              "desc": "문장 구조가 어색하거나 철자·어법 오류가 있는 경우."
+            },
+            {
+              "points": 0,
+              "desc": "문장을 구성하지 못했거나 심각한 오류, 또는 미작성."
+            }
+          ]
+        }
+      ],
+      "notes": "읽기 이해력, 내용 요약, 심정 추론 능력을 평가하는 유도 작문(guided writing). 내용과 언어 사용을 나누어 분석적으로 채점."
+    },
+    "exemplar_answers": [
+      {
+        "level": "만점",
+        "text": "(A) walking long distances to get water (B) burdened, thinking that her sister is only five years old, too small, and walks too slowly"
+      },
+      {
+        "level": "부분",
+        "text": "(A) get water (B) frustrated, feeling her sister slows her down"
+      }
+    ],
+    "feedback": "심정 어휘(burdened, frustrated 등)만 쓰지 말고 지문 근거(이유)를 함께 문장으로 연결해야 함. 관계대명사절/분사구문으로 이유를 자연스럽게 붙이는 연습 권장.",
+    "cognitive": [
+      "과정·기능"
+    ],
+    "source": {
+      "file": "서논술형 평가 도구 개발의 방법과 사례-영어.pdf",
+      "pages": [
+        109,
+        110,
+        111,
+        112
+      ]
+    }
+  },
+  {
+    "id": "eng-agency-016",
+    "subject": "영어",
+    "school_level": "고",
+    "grade": 1,
+    "unit": "공통영어1 - 읽기/쓰기 (발표를 위한 글쓰기: 물 부족 문제, 포스터 제작)",
+    "standard_codes": [
+      "[10공영1-01-01]",
+      "[10공영1-01-02]",
+      "[10공영1-02-05]"
+    ],
+    "kind": "서술형",
+    "points": 8,
+    "time_min": null,
+    "context": "같은 소설 지문과 인포그래픽 자료를 함께 활용해 물 부족 문제를 알리는 캠페인 포스터의 빈칸을 완성하는 과제.",
+    "materials": [
+      {
+        "type": "글",
+        "summary": "남수단 소녀 Nya가 매일 왕복 하루가 걸리는 거리를 걸어 물을 길어오는 일상을 그린 문학 지문(소설 발췌).",
+        "text": "Nya's mother took the plastic container from her and emptied the water into three large jars. She handed Nya a bowl of boiled sorghum meal and poured a little milk over it. Nya sat outside in the shade of the house and ate... \"Take Akeer with you,\" her mother said... \"She needs to learn,\" her mother said... Home for just long enough to eat, Nya would now make her second trip to the pond. To the pond and back — to the pond and back — nearly a full day of walking altogether. This was Nya's daily routine for seven months of the year. Daily. Every single day. [출처: Linda Sue Park(2010), A Long Walk to Water: Based on a True Story, Clarion Books]"
+      },
+      {
+        "type": "표",
+        "summary": "전 세계 식수 접근성 관련 통계 인포그래픽(자연재해·분쟁·비위생적 식수로 인한 사망자 수 비교, UN 자료 인용).",
+        "text": "Fewer people around the world lack access to basic drinking water services than when the data was last published in 2015... [출처: statista.com, World Water Day 관련 인포그래픽]"
+      }
+    ],
+    "stem": "2. 윗글에 관한 영어 포스터를 제작하고자 한다. <보기>의 인포그래픽을 활용하여, 빈칸에 적절한 말을 하나의 완결된 문장으로 작성하시오.(8점)\nHelp Nya and Millions like Her! / Did You Know? / Many people around the world lack access to clean water. / ______________________________________.",
+    "conditions": [
+      "비교 표현을 사용하여 한 문장으로 작성",
+      "세 가지 항목(natural disasters, conflicts, unsafe water)을 모두 언급"
+    ],
+    "answer_format": "빈칸 채우기(비교문 1문장, 캠페인 포스터 형식)",
+    "language_focus": [
+      "비교급/최상급 표현(much higher than)",
+      "인포그래픽 수치의 언어화"
+    ],
+    "rubric": {
+      "type": "분석적",
+      "criteria": [
+        {
+          "name": "내용",
+          "levels": [
+            {
+              "points": 4,
+              "desc": "비교 표현으로 세 항목을 모두 명확히 언급하고 관련성 있는 내용을 매우 충실하게 기술함. (예: In 2020, the number of deaths from unsafe water was much higher than those from conflicts and natural disasters.)"
+            },
+            {
+              "points": 3,
+              "desc": "세 항목을 모두 언급하였으나 일부 내용이 대략적이거나 덜 충실함."
+            },
+            {
+              "points": 2,
+              "desc": "비교 표현을 사용하였으나 세 항목 중 하나를 빠뜨리거나 관련성이 부족함. (예: More people died from unsafe water than from conflicts.)"
+            },
+            {
+              "points": 1,
+              "desc": "비교 표현을 사용하지 않았거나 두 개 이상의 항목을 빠뜨림. (예: Unsafe water caused more deaths.)"
+            }
+          ]
+        }
+      ],
+      "notes": "인포그래픽의 수치 정보를 비교 구문으로 언어화하는 능력을 중점 평가. 중하위권은 인포그래픽 특정 부분 강조 또는 구문 제시로 난이도 조절 가능."
+    },
+    "exemplar_answers": [
+      {
+        "level": "만점",
+        "text": "In 2020, the number of deaths from unsafe water was much higher than those from conflicts and natural disasters."
+      },
+      {
+        "level": "부분",
+        "text": "More people died from unsafe water than from conflicts or natural disasters."
+      }
+    ],
+    "feedback": "세 항목을 모두 언급하지 않으면 감점되므로, 인포그래픽의 범례를 먼저 확인하고 문장을 구성하도록 지도. 상위권 학생에게는 캠페인 문구 창작 등으로 확장 가능.",
+    "cognitive": [
+      "과정·기능"
+    ],
+    "source": {
+      "file": "서논술형 평가 도구 개발의 방법과 사례-영어.pdf",
+      "pages": [
+        116,
+        117,
+        118
+      ]
+    }
+  }
+]

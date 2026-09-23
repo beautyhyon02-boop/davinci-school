@@ -1,0 +1,711 @@
+[
+  {
+    "id": "eng-midperf-001",
+    "subject": "영어",
+    "school_level": "중",
+    "grade": 1,
+    "unit": "동화 속 등장인물 카드 만들기 (일반동사 3인칭 단수, 인물 묘사)",
+    "standard_codes": [],
+    "kind": "수행",
+    "points": null,
+    "time_min": 45,
+    "context": "모둠별로 창작 동화의 줄거리를 만든 후, 등장인물 2명을 골라 외모·역할·특징을 영어로 묘사하는 인물 카드를 만드는 2차시 프로젝트 수행평가. 일반동사 3인칭 단수 사용을 언어 형식 초점으로 함.",
+    "materials": [
+      {
+        "type": "표",
+        "summary": "모둠이 창작한 동화 줄거리(제목·주제·등장인물·배경·발단-전개-절정-결말)와 인물별 특징 정리표.",
+        "text": "제목: Mom, I like...  / 주제: 중학생 딸과 엄마와의 갈등과 화해 / 등장인물: 민아, Romeo, 민아 엄마"
+      }
+    ],
+    "stem": "지난 시간에 정리한 등장인물의 특징을 바탕으로 나만의 인물 카드를 만들어 봅시다.\n조건 1. 우리 모둠 창작 동화의 등장인물 중 2명을 선택해 각각 인물 카드를 만들기\n조건 2. '앞면-인물을 표현할 수 있는 간단한 그림, 뒷면-인물에 대한 자세한 소개'로 구성하기\n조건 3. 인물의 '외모, 역할, 특징' 정보를 영어로 표현하기\n조건 4. 일반동사의 3인칭 단수 형태를 3문장 이상 포함하여 작성하기",
+    "conditions": [
+      "등장인물 2명 선택",
+      "앞면 그림 + 뒷면 소개 구성",
+      "외모·역할·특징을 영어로 표현",
+      "일반동사 3인칭 단수형 3문장 이상 포함"
+    ],
+    "answer_format": "인물 카드(앞면 그림 + 뒷면 영어 소개 3문장 이상)",
+    "language_focus": [
+      "일반동사의 3인칭 단수 형태(-s/-es)",
+      "인물 묘사 어휘(외모·성격)"
+    ],
+    "rubric": {
+      "type": "분석적",
+      "criteria": [
+        {
+          "name": "표현력",
+          "levels": [
+            {
+              "points": 4,
+              "desc": "인물 카드의 형식 및 사용된 자료(그림 등)가 등장인물의 특징을 창작 동화의 줄거리와 부합하게 매우 잘 드러냄."
+            },
+            {
+              "points": 3,
+              "desc": "대체로 잘 드러냄."
+            },
+            {
+              "points": 2,
+              "desc": "드러내는 데 조금 미흡함."
+            },
+            {
+              "points": 1,
+              "desc": "드러내기에 매우 부족함."
+            }
+          ]
+        },
+        {
+          "name": "언어 사용",
+          "levels": [
+            {
+              "points": 4,
+              "desc": "일반동사의 3인칭 단수 형태를 적절히 활용하며 오류가 거의 없는 완전한 3문장 이상으로 설명함."
+            },
+            {
+              "points": 3,
+              "desc": "대체로 적절히 활용하나 다소 오류가 있고, 완전한 문장이 1~2개뿐임."
+            },
+            {
+              "points": 2,
+              "desc": "오류가 많으며 완전하지 않은 문장을 사용함."
+            },
+            {
+              "points": 1,
+              "desc": "오류가 매우 많아 의미 전달이 어려움."
+            }
+          ]
+        }
+      ],
+      "notes": "1차시(모둠 창작 동화 줄거리)는 내용·창의성·태도 3요소로, 2차시(인물 카드)는 표현력·언어사용으로 별도 채점. 자기평가·동료평가(3점 척도) 병행."
+    },
+    "exemplar_answers": [
+      {
+        "level": "만점",
+        "text": "Name: Min-a / Age: 14 / Positive, Kind, Shy / Characteristics: She likes Romeo but her mom doesn't like him. She feels happy because of Romeo. She feels sad because of her mom."
+      }
+    ],
+    "feedback": "일반동사 3인칭 단수형(likes, feels 등) 활용 정확도와 완전한 문장 개수(3문장 이상)가 핵심 채점 포인트. 동화 줄거리와의 부합성도 함께 확인.",
+    "cognitive": [
+      "과정·기능",
+      "가치·태도"
+    ],
+    "source": {
+      "file": "[중학교 영어] 수행평가 문항 자료집.pdf",
+      "pages": [
+        31,
+        32,
+        37,
+        38,
+        39,
+        40,
+        41
+      ]
+    }
+  },
+  {
+    "id": "eng-midperf-002",
+    "subject": "영어",
+    "school_level": "중",
+    "grade": 1,
+    "unit": "학교 행사 참가 소감문 쓰기 (과거시제, 감탄문)",
+    "standard_codes": [],
+    "kind": "수행",
+    "points": null,
+    "time_min": 45,
+    "context": "자신이 참가한 학교 행사 중 하나를 골라, 행사 소개-경험한 일과 느낌-감탄문 형식의 소감을 포함한 개인 소감문을 작성하는 논술형 수행평가.",
+    "materials": [
+      {
+        "type": "글",
+        "summary": "학교 행사명 어휘 목록(체육대회, 합창대회 등)과 소감문 작성 가이드 질문.",
+        "text": null
+      }
+    ],
+    "stem": "주어진 질문들을 참고하여 자신이 참가한 학교 행사 중 하나를 선택하여 학교 행사 참가 소감문을 쓰시오.\n1. What was the best or the worst school event in 2006? 2. What did you do at the event? 3. What did you feel at the event?(감탄문으로 표현하기) 4. You can add more sentences on your own.",
+    "conditions": [
+      "최소 6문장 이상으로 작성할 것",
+      "마지막 문장은 감탄문 형식으로 쓸 것"
+    ],
+    "answer_format": "개인 소감문(6문장 이상, 감탄문 포함)",
+    "language_focus": [
+      "동사의 과거시제",
+      "감탄문(What/How ~!)"
+    ],
+    "rubric": {
+      "type": "분석적",
+      "criteria": [
+        {
+          "name": "소감문 구성력",
+          "levels": [
+            {
+              "points": 4,
+              "desc": "제시된 소감문의 형식 3가지(행사 소개/경험과 느낌/감탄문 소감)를 완벽히 만족함."
+            },
+            {
+              "points": 3,
+              "desc": "3가지 중 2개를 만족함."
+            },
+            {
+              "points": 2,
+              "desc": "3가지 중 1개를 만족함."
+            },
+            {
+              "points": 1,
+              "desc": "3가지를 전혀 만족시키지 못함."
+            }
+          ]
+        },
+        {
+          "name": "언어 사용 및 문장 완성도",
+          "levels": [
+            {
+              "points": 4,
+              "desc": "감탄문과 과거시제 사용의 오류가 전혀 없으며 모든 문장이 완성형임."
+            },
+            {
+              "points": 3,
+              "desc": "오류가 다소 있으며 가끔 미완성 문장을 사용함."
+            },
+            {
+              "points": 2,
+              "desc": "오류가 여러 개 있으며 자주 미완성 문장을 사용함."
+            },
+            {
+              "points": 1,
+              "desc": "오류가 매우 많고 대부분 미완성 문장임."
+            }
+          ]
+        }
+      ],
+      "notes": "내용 및 구성, 표현의 우수성, 태도(모둠 활동 시) 요소도 4점 척도로 함께 채점(조별 활동 단계 포함 시)."
+    },
+    "exemplar_answers": [
+      {
+        "level": "만점",
+        "text": "The song contest was the best school event for me in 2016. It was on May 12th. I took part in the contest because I am good at singing. I practiced singing two hours every day for two weeks. I sang my favorite song, \"Sugar\", and the audience gave me a big hand. How exciting the contest was!"
+      }
+    ],
+    "feedback": "행사 소개-경험한 일-감탄문 소감의 3단 구성을 갖추고, 과거시제와 감탄문(How + 형용사 + 주어 + 동사!)을 정확히 사용하는지가 핵심 채점 요소.",
+    "cognitive": [
+      "과정·기능",
+      "가치·태도"
+    ],
+    "source": {
+      "file": "[중학교 영어] 수행평가 문항 자료집.pdf",
+      "pages": [
+        47,
+        55,
+        57,
+        58
+      ]
+    }
+  },
+  {
+    "id": "eng-midperf-003",
+    "subject": "영어",
+    "school_level": "중",
+    "grade": 1,
+    "unit": "우리 지역 must-visit 장소 소개 leaflet 제작 (최상급, to부정사)",
+    "standard_codes": [],
+    "kind": "수행",
+    "points": null,
+    "time_min": 90,
+    "context": "모둠별로 지역의 방문할 만한 장소를 선정하는 토의를 거쳐, 최상급과 목적을 나타내는 to부정사를 활용한 3쪽 분량의 영어 leaflet(안내문)을 제작하는 프로젝트 수행평가.",
+    "materials": [
+      {
+        "type": "글",
+        "summary": "leaflet 작성 가이드(1쪽 기본정보, 2쪽 즐길거리, 3쪽 주변시설), 활용 어휘 목록과 최상급·to부정사 예시문.",
+        "text": "It is the most beautiful place in our town. / Visitors go to this place to enjoy the beautiful scenery."
+      }
+    ],
+    "stem": "작성한 마인드맵과 안내문을 참고하여 우리 지역에서 꼭 방문해야 하는 장소 한 곳을 소개하는 영어 leaflet을 제작해 봅시다. (1쪽: 이름·연락처·위치, 2쪽: 즐길 거리, 3쪽: 주변 시설·추가 정보)",
+    "conditions": [
+      "최상급과 목적의 to부정사 표현을 포함할 것",
+      "주어진 어휘를 적절히 활용할 것",
+      "사진·그림을 포함하여 시각적으로 구성할 것"
+    ],
+    "answer_format": "3쪽 leaflet(안내문), 모둠 제작물",
+    "language_focus": [
+      "최상급(the most ~, one of the most ~)",
+      "목적을 나타내는 to부정사"
+    ],
+    "rubric": {
+      "type": "분석적",
+      "criteria": [
+        {
+          "name": "내용",
+          "levels": [
+            {
+              "points": 4,
+              "desc": "필요한 정보가 풍부하게 제시되어 읽는 사람에게 유용한 정보를 제공함."
+            },
+            {
+              "points": 3,
+              "desc": "기본적인 정보가 제시되어 도움을 줌."
+            },
+            {
+              "points": 2,
+              "desc": "상황과 다소 거리가 있으며 정보가 일부 부족함."
+            },
+            {
+              "points": 1,
+              "desc": "상황과 상당히 거리가 있으며 정보가 많이 부족함."
+            }
+          ]
+        },
+        {
+          "name": "언어 사용",
+          "levels": [
+            {
+              "points": 4,
+              "desc": "최상급과 to부정사를 풍부히 활용하고 오류가 거의 없음."
+            },
+            {
+              "points": 3,
+              "desc": "활용하였고 일부 오류가 있으나 대체로 이해하기 쉬움."
+            },
+            {
+              "points": 2,
+              "desc": "어느 정도 활용하였으나 오류가 다소 많음."
+            },
+            {
+              "points": 1,
+              "desc": "전혀 활용하지 않고 오류가 매우 많음."
+            }
+          ]
+        }
+      ],
+      "notes": "태도, 구성, 시각 자료의 주제 부합성·창의성도 각 4점 척도로 함께 채점하는 다요소 분석적 루브릭."
+    },
+    "exemplar_answers": [
+      {
+        "level": "만점",
+        "text": "Yongdusan Park - It is one of the most popular places in Busan. Many visitors go there and enjoy taking pictures in front of the flower clock. You can also go up to Busan Tower to enjoy the city view."
+      }
+    ],
+    "feedback": "최상급과 to부정사 구문을 자연스럽게 여러 번 사용하고, 장소 소개에 필요한 정보(이름·위치·즐길거리·주변시설)를 빠짐없이 포함하는지가 핵심.",
+    "cognitive": [
+      "과정·기능",
+      "가치·태도"
+    ],
+    "source": {
+      "file": "[중학교 영어] 수행평가 문항 자료집.pdf",
+      "pages": [
+        69,
+        76,
+        79,
+        80,
+        81
+      ]
+    }
+  },
+  {
+    "id": "eng-midperf-004",
+    "subject": "영어",
+    "school_level": "중",
+    "grade": 2,
+    "unit": "교내 방송 신청곡 사연 쓰기 (감정·분위기 어휘)",
+    "standard_codes": [],
+    "kind": "수행",
+    "points": null,
+    "time_min": 45,
+    "context": "짝과의 문답을 바탕으로 교내 방송에 보낼 신청곡과 사연을 편지 형식으로 쓰고, 짝의 피드백을 반영해 다시 쓰는 과정 중심 쓰기 수행평가.",
+    "materials": [
+      {
+        "type": "글",
+        "summary": "신청곡 선정 이유를 묻는 질문 3가지와 답변 예시.",
+        "text": "Which song do you want to request? / What do you like about the song? / Why do you want to request the song?"
+      }
+    ],
+    "stem": "위의 작성된 내용을 토대로 교내 방송에 신청할 노래와 사연을 작성해 봅시다.\nDear school broadcasting host, Hello. ... Would you please play my song request?",
+    "conditions": [
+      "신청곡명, 좋아하는 이유, 신청 이유를 모두 포함할 것",
+      "노래의 분위기나 자신의 감정을 나타내는 어휘를 사용할 것",
+      "5문장 이상으로 작성할 것"
+    ],
+    "answer_format": "편지 형식 글(5문장 이상), 짝 피드백 후 재작성",
+    "language_focus": [
+      "감정·분위기 형용사(cheerful, beautiful 등)",
+      "이유 표현(because, so)"
+    ],
+    "rubric": {
+      "type": "분석적",
+      "criteria": [
+        {
+          "name": "내용",
+          "levels": [
+            {
+              "points": 4,
+              "desc": "신청곡명·좋아하는 이유·신청 이유·분위기/감정 어휘 4가지 내용이 모두 포함됨."
+            },
+            {
+              "points": 3,
+              "desc": "4가지 중 3가지가 포함됨."
+            },
+            {
+              "points": 2,
+              "desc": "4가지 중 2가지가 포함됨."
+            },
+            {
+              "points": 1,
+              "desc": "4가지 중 1가지만 포함됨."
+            }
+          ]
+        },
+        {
+          "name": "과제 완성",
+          "levels": [
+            {
+              "points": 4,
+              "desc": "5문장 이상으로 작성함."
+            },
+            {
+              "points": 3,
+              "desc": "3~4문장으로 작성함."
+            },
+            {
+              "points": 2,
+              "desc": "2~3문장으로 작성함."
+            },
+            {
+              "points": 1,
+              "desc": "1~2문장으로 작성함."
+            }
+          ]
+        },
+        {
+          "name": "구성",
+          "levels": [
+            {
+              "points": 4,
+              "desc": "내용 전개가 매우 자연스럽고 논리적이며 응집성이 우수함."
+            },
+            {
+              "points": 1,
+              "desc": "내용의 연결성이 보이지 않고 논리적 짜임새가 전혀 없음."
+            }
+          ]
+        },
+        {
+          "name": "언어 사용",
+          "levels": [
+            {
+              "points": 4,
+              "desc": "오류가 거의 없으며 대부분 완성된 문장을 사용함."
+            },
+            {
+              "points": 1,
+              "desc": "오류가 매우 많으며 대부분 미완성 문장을 사용함."
+            }
+          ]
+        }
+      ],
+      "notes": "짝 피드백(동료 검토 체크리스트: 주제 부합, 내용 포함 여부, 언어 오류, 문장 수, 감정 어휘 포함 여부)을 반영해 다시 쓰는 과정 중심 평가."
+    },
+    "exemplar_answers": [
+      {
+        "level": "만점",
+        "text": "Dear school broadcasting host, Hello. I want to enjoy the song 'I Believe I Can Fly' by R. Kelly. The lyrics of the song are cheerful and beautiful. When I prepare for the school exam, this song makes me confident and helps me concentrate on studying. I hope my friends also feel the same as me about this song. So I am requesting this song. Would you please play my song request?"
+      }
+    ],
+    "feedback": "신청곡명·이유·감정 어휘 4요소를 모두 포함하고 5문장 이상 완성된 문장으로 자연스럽게 연결하는지가 핵심. 짝의 동료 피드백을 반영해 고쳐쓰는 과정을 평가에 포함함.",
+    "cognitive": [
+      "과정·기능",
+      "가치·태도"
+    ],
+    "source": {
+      "file": "[중학교 영어] 수행평가 문항 자료집.pdf",
+      "pages": [
+        105,
+        109,
+        111,
+        112
+      ]
+    }
+  },
+  {
+    "id": "eng-midperf-005",
+    "subject": "영어",
+    "school_level": "중",
+    "grade": 3,
+    "unit": "올바른 SNS 사용 캠페인 자료 제작 (의무 표현, 가주어·진주어)",
+    "standard_codes": [],
+    "kind": "수행",
+    "points": null,
+    "time_min": 90,
+    "context": "SNS의 장단점을 분석한 기사를 읽고 모둠 토의를 거쳐, 의무 표현(should/have to)과 가주어·진주어 구문을 활용한 올바른 SNS 사용 캠페인 자료를 제작하는 프로젝트 수행평가.",
+    "materials": [
+      {
+        "type": "글",
+        "summary": "SNS의 문제점(사이버 폭력 등)을 다룬 기사와 장단점 정리표, 의무 표현·가주어진주어 예시문.",
+        "text": "We have to respect others on SNS and leave positive comments. / It is necessary to think twice before you post something on SNS."
+      }
+    ],
+    "stem": "모둠 구성원들과 함께 올바른 SNS 사용 방법을 홍보하는 영어 캠페인 자료를 제작해 봅시다. 의무를 나타내는 표현(should/have to)과 가주어·진주어 구문을 활용할 것.",
+    "conditions": [
+      "의무 표현(should/have to)과 가주어·진주어 구문 활용",
+      "주어진 어휘를 적절히 활용",
+      "시각 자료(사진·그림) 포함"
+    ],
+    "answer_format": "캠페인 자료(포스터형), 모둠 제작물",
+    "language_focus": [
+      "should/have to 의무 표현",
+      "가주어(It) - 진주어(to부정사) 구문"
+    ],
+    "rubric": {
+      "type": "분석적",
+      "criteria": [
+        {
+          "name": "내용",
+          "levels": [
+            {
+              "points": 4,
+              "desc": "필요한 정보가 풍부하고 창의적으로 제시되어 보는 사람에게 많은 도움을 줌."
+            },
+            {
+              "points": 3,
+              "desc": "기본적인 정보가 제시되어 도움을 줌."
+            },
+            {
+              "points": 2,
+              "desc": "상황과 다소 거리가 있으며 정보가 일부 부족함."
+            },
+            {
+              "points": 1,
+              "desc": "상황과 상당히 거리가 있으며 정보가 많이 부족함."
+            }
+          ]
+        },
+        {
+          "name": "언어 사용",
+          "levels": [
+            {
+              "points": 4,
+              "desc": "의무 표현과 가주어·진주어 구문을 적절히 풍부하게 활용하고 오류가 거의 없음."
+            },
+            {
+              "points": 3,
+              "desc": "활용하였고 일부 오류가 있으나 대체로 이해하기 쉬움."
+            },
+            {
+              "points": 2,
+              "desc": "어느 정도 활용하였으나 오류가 다소 많음."
+            },
+            {
+              "points": 1,
+              "desc": "전혀 활용하지 않고 오류가 매우 많음."
+            }
+          ]
+        }
+      ],
+      "notes": "태도, 시각 자료의 주제 부합성·창의성 요소도 함께 4점 척도로 채점."
+    },
+    "exemplar_answers": [
+      {
+        "level": "만점",
+        "text": "It is important to promise not to use SNS too much and manage the amount of time using SNS. We have to respect others on SNS and leave positive comments. We should avoid putting personal things on SNS and be careful to protect personal information by changing passwords often."
+      }
+    ],
+    "feedback": "가주어·진주어 구문(It is important to ~)과 의무 표현(have to/should)을 자연스럽게 섞어 쓰고, SNS 문제(사이버 폭력, 개인정보 유출 등)에 대한 구체적 해결책을 제시하는지가 핵심.",
+    "cognitive": [
+      "과정·기능",
+      "가치·태도"
+    ],
+    "source": {
+      "file": "[중학교 영어] 수행평가 문항 자료집.pdf",
+      "pages": [
+        119,
+        128,
+        130,
+        131
+      ]
+    }
+  },
+  {
+    "id": "eng-midperf-006",
+    "subject": "영어",
+    "school_level": "중",
+    "grade": 3,
+    "unit": "가정법을 사용하는 팝송 패러디하기 (가정법 과거)",
+    "standard_codes": [],
+    "kind": "수행",
+    "points": null,
+    "time_min": 90,
+    "context": "가정법 과거(If I were ~, I would ~)를 활용해 자신의 희망을 표현하는 문장을 만들고, 이를 바탕으로 팝송 가사를 개사하여 스토리보드를 완성하는 모둠 프로젝트 수행평가.",
+    "materials": [
+      {
+        "type": "글",
+        "summary": "가정법 예시 문장과 Graphic Organizer(의미·형태·사용 맥락) 양식, 팝송 가사 개사용 스토리보드 양식.",
+        "text": "If I were a billionaire, I would travel the world."
+      }
+    ],
+    "stem": "조별로 제시된 질문에 답하여 스토리보드를 완성하시오. <조건> 팝송에서 'if' 또는 'would/'d'가 포함된 문장을 3개 이상 찾아 쓸 것 / 희망을 표현하는 주제에 맞게 개사한 문장을 3개 이상 포함할 것 / 내용에 적합한 그림을 포함할 것.",
+    "conditions": [
+      "원곡에서 if/would 문장 3개 이상 발췌",
+      "개사 문장 3개 이상(가정법 과거 형태)",
+      "장면에 어울리는 그림 포함",
+      "역할 분담(원가사/개사/그림) 명시"
+    ],
+    "answer_format": "스토리보드(5장면, 원가사+개사 가사+그림)",
+    "language_focus": [
+      "가정법 과거(If + 주어 + were/동사 과거형, 주어 + would + 동사원형)"
+    ],
+    "rubric": {
+      "type": "분석적",
+      "criteria": [
+        {
+          "name": "내용",
+          "levels": [
+            {
+              "points": 4,
+              "desc": "희망 사항을 주제로 적절하게 선정하였으며 개사 문장들이 주제에 매우 적합함."
+            },
+            {
+              "points": 3,
+              "desc": "대부분 적합함."
+            },
+            {
+              "points": 2,
+              "desc": "주제와의 관련성이 부족하거나 다소 적합하지 않음."
+            },
+            {
+              "points": 1,
+              "desc": "관련성이 부족하며 적합하지 않음."
+            }
+          ]
+        },
+        {
+          "name": "언어 사용 및 문장 완성도",
+          "levels": [
+            {
+              "points": 4,
+              "desc": "가정법 문장 형태의 오류가 거의 없으며 대부분 완성된 문장을 사용함."
+            },
+            {
+              "points": 3,
+              "desc": "오류가 다소 있으며 가끔 미완성 문장을 사용함."
+            },
+            {
+              "points": 2,
+              "desc": "오류가 여러 개 있으며 자주 미완성 문장을 사용함."
+            },
+            {
+              "points": 1,
+              "desc": "오류가 매우 많으며 대부분 미완성 문장을 사용함."
+            }
+          ]
+        }
+      ],
+      "notes": "1차시 Graphic Organizer(의미·형태·사용맥락 포함 여부)는 별도 4점 척도로 채점."
+    },
+    "exemplar_answers": [
+      {
+        "level": "만점",
+        "text": "If I were a billionaire, I would travel the world. / I would help poor people. / I would buy a nice boat."
+      }
+    ],
+    "feedback": "가정법 과거의 형태(were/동사 과거형 + would + 동사원형)를 정확히 갖추고, 개사 가사가 원곡의 리듬과 희망 주제에 자연스럽게 어울리는지가 핵심 채점 포인트.",
+    "cognitive": [
+      "과정·기능",
+      "가치·태도"
+    ],
+    "source": {
+      "file": "[중학교 영어] 수행평가 문항 자료집.pdf",
+      "pages": [
+        175,
+        179,
+        182,
+        183
+      ]
+    }
+  },
+  {
+    "id": "eng-midperf-007",
+    "subject": "영어",
+    "school_level": "중",
+    "grade": 3,
+    "unit": "미래 직업 일기 쓰기 (관계부사 when/where)",
+    "standard_codes": [],
+    "kind": "수행",
+    "points": null,
+    "time_min": 45,
+    "context": "20년 후 희망 직업의 하루 일과표를 작성한 뒤, 관계부사 when/where를 활용해 두 가지 사건을 시간 순서대로 설명하는 미래 일기를 쓰는 논술형 수행평가.",
+    "materials": [
+      {
+        "type": "표",
+        "summary": "희망 직업의 일과표(무엇을·누구와·어떻게·왜)와 사건별 시간·장소 설명표.",
+        "text": "A Doctor's Daily Life: 9:00AM, when the patients finish their breakfast, on the 5th floor, where my patients mostly are..."
+      }
+    ],
+    "stem": "주어진 조건에 맞게 20년 후 미래 희망 직업 일기를 쓰시오.\nDear Diary, Today was a (nice/busy/exciting) day at work. ______________________ Love, ________(name)",
+    "conditions": [
+      "일과표에서 선정한 두 가지 사건을 시간 순서대로, 사건별 3문장 이상 제시",
+      "두 사건이 일어나는 시간과 장소를 각각 포함",
+      "관계부사 when, where를 각 2개 이상 포함"
+    ],
+    "answer_format": "일기(관계부사 포함, 사건별 3문장 이상)",
+    "language_focus": [
+      "관계부사 when, where",
+      "시간 순서 접속 표현"
+    ],
+    "rubric": {
+      "type": "분석적",
+      "criteria": [
+        {
+          "name": "내용",
+          "levels": [
+            {
+              "points": 4,
+              "desc": "두 가지 사건을 상세히 설명하며 관련 장소·시간 묘사가 구체적임."
+            },
+            {
+              "points": 3,
+              "desc": "두 가지 사건을 적절히 설명하며 장소·시간이 적절히 묘사됨."
+            },
+            {
+              "points": 2,
+              "desc": "한 가지 사건만 설명하고 장소·시간 묘사가 다소 모호함."
+            },
+            {
+              "points": 1,
+              "desc": "사건 설명이 없고 장소·시간 묘사가 적절하지 않음."
+            }
+          ]
+        },
+        {
+          "name": "구성",
+          "levels": [
+            {
+              "points": 4,
+              "desc": "두 사건이 시간 순서대로 제시되고 주제에 매우 적합함."
+            },
+            {
+              "points": 3,
+              "desc": "시간 순서대로 제시되고 주제에 적합함."
+            }
+          ]
+        }
+      ],
+      "notes": "1차시(일과표 작성)는 내용·태도 요소로 별도 채점. 짝과의 상호 확인 활동(직업 맞추기)을 통해 내용의 구체성을 사전 점검."
+    },
+    "exemplar_answers": [
+      {
+        "level": "만점",
+        "text": "Today was a nice day at work. I had many patients to meet today, so I decided to start my day earlier. I called the nurse at 9AM, when the patients usually finish their breakfast. I arrived on the 5th floor, where many patients were relaxing... I talked about my new research at 4PM, when most doctors were free. I met them at the lecture hall, where I used the big screen to share the X-ray pictures."
+      }
+    ],
+    "feedback": "관계부사 when/where를 각각 2회 이상 자연스럽게 사용하고, 두 사건을 시간 순서대로 배치하며 사건별 3문장 이상의 구체적 서술을 갖추는 것이 핵심.",
+    "cognitive": [
+      "과정·기능",
+      "가치·태도"
+    ],
+    "source": {
+      "file": "[중학교 영어] 수행평가 문항 자료집.pdf",
+      "pages": [
+        191,
+        196,
+        197,
+        199,
+        200
+      ]
+    }
+  }
+]
