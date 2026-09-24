@@ -72,3 +72,28 @@ describe('rules v2', () => {
     expect(spec).toContain(`| C-32 | ${c32.text} |`)
   })
 })
+
+describe('학년 선택(대표 2026-09-26): 규칙은 학교급(학년군) 수준을 말한다', () => {
+  const all = [...COMMON_RULES, ...LESSON_RULES, ...Object.values(SUBJECT_RULES).flat()]
+  const spec = readFileSync('docs/superpowers/specs/2026-09-25-item-studio-v2-design.md', 'utf8')
+  it('C-24 says 교육과정 학교급(학년군) 수준 and S-영-07·S-국-01·S-수-05·S-수-06 no longer pin 중1; spec 부록 A rows are identical', () => {
+    const c24 = all.find((r) => r.id === 'C-24')!
+    expect(c24.text).toContain('교육과정 학교급(학년군) 수준')
+    expect(c24.text).not.toMatch(/교육과정 학년 수준/)
+    expect(c24.tags).toContain('v2-0926')
+    const e07 = all.find((r) => r.id === 'S-영-07')!
+    expect(e07.text).not.toMatch(/중1/); expect(e07.text).toMatch(/학년군/)
+    const pinned = ['S-국-01', 'S-수-05', 'S-수-06'].map((id) => all.find((r) => r.id === id)!)
+    expect(pinned[0].text).toContain('중학교는 각 200~400자'); expect(pinned[1].text).toContain('중학교는 선택')
+    expect(pinned[2].text).toContain('학년을 정하지 않았으면 성취기준 원문에')
+    for (const r of [c24, e07, ...pinned]) {
+      const row = spec.split('\n').find((line) => line.startsWith(`| ${r.id} |`))!
+      expect(row, r.id).toContain(`| ${r.id} | ${r.text} |`)
+    }
+  })
+  it('no generation rule pins a single grade (중1·N학년) — 학생 학년 어휘(채점 G-05)는 학생 학년이라 그대로', () => {
+    const text = all.map((r) => r.text).join('\n')
+    expect(text).not.toMatch(/중1은|중1 이하|중1 어휘|[1-6]학년 /)
+    expect(text).not.toMatch(/교육과정 학년 수준/)
+  })
+})

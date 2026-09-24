@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { buildPrompt, buildReviewPrompt } from '@/lib/studio/prompts/stages'
 import { rulesFor } from '@/lib/studio/prompts/rules/index'
+import { gradeLabel, standardCodePrefixes } from '@/lib/studio/level-map'
+import type { Stage } from '@/lib/studio/schemas'
 
 const ctx = { theme: { title: '학교 축제 일회용품 줄이기', level: '중', grade: 1, subjects: ['수학'] }, subject: '수학',
   standards: [{ code: '[9수04-02]', text: '자료를 줄기와 잎 그림, 도수분포표, 히스토그램, 도수분포다각형으로 나타내고 해석할 수 있다.' }, { code: '[9수04-03]', text: '상대도수를 구하고, 상대도수의 분포를 표나 그래프로 나타내고 해석할 수 있다.' }], prior: {} }
@@ -100,7 +102,7 @@ describe('prompts v2', () => {
   })
   it('stage 0 task keeps ideas as one-line sketches inside the grade range, with no materials/sources/grading', () => {
     const task = buildPrompt(0, { theme: { title: 't', level: '중', grade: 1, subjects: ['수학', '과학'] }, subject: '', standards: [], prior: {} }).user.split('과제: ')[1]
-    expect(task).toContain('아이디어는 한 줄 스케치이며 해당 학년 교과서 범위 안에서만 제안한다')
+    expect(task).toContain('아이디어는 한 줄 스케치이며 위 학교급·학년 수준(학년을 정하지 않았으면 그 학교급 학년군 전체)의 교육과정 범위 안에서만 제안한다')
     expect(task).toContain('자료·출처·채점은 여기서 다루지 않는다')
   })
   it('stage 0 prompts (before standards are chosen) do not print an empty 성취기준(원문) header', () => {
@@ -133,7 +135,7 @@ describe('review focus v2', () => {
   it('stage 0 review checks only grade level, subject grade range and spoilers — not standards/sources/materials/grading', () => {
     const c0 = { theme: { title: 't', level: '중', grade: 1, subjects: ['과학', '세계사'] }, subject: '', standards: [], prior: {} }
     const focus = buildReviewPrompt(0, c0, { intro: 'x', subject_ideas: [] }).user.split('검토 초점: ')[1].split('\n\n생성 결과')[0]
-    expect(focus).toMatch(/3~4문장/); expect(focus).toMatch(/해당 학년 교과 내용 범위/); expect(focus).toMatch(/좁힌 예/); expect(focus).toMatch(/결론이나 정답을 미리 말하지 않는지/)
+    expect(focus).toMatch(/3~4문장/); expect(focus).toMatch(/이 학교급 교육과정 범위/); expect(focus).not.toMatch(/예: 중1/); expect(focus).toMatch(/좁힌 예/); expect(focus).toMatch(/결론이나 정답을 미리 말하지 않는지/)
     expect(focus).toContain('성취기준 원문, 출처 표기 계획, 자료 계획, 채점 계획은 요구하지 않는다')
     expect(focus).toMatch(/반려하지 않는다/)
   })
@@ -226,5 +228,66 @@ describe('generate prior is scoped per stage (I2)', () => {
   it('stages 1~3 carry only the previous stage (+ intro); stage 0 carries nothing', () => {
     expectOnly(3, ['INTRO_MARK', 'RECON_MARK', 'ANCHOR_MARK']); expectOnly(2, ['INTRO_MARK', 'STAGE1_MARK']); expectOnly(1, ['INTRO_MARK']); expectOnly(0, [])
     expect(buildPrompt(0, { ...ctx, prior }).user).not.toContain('지금까지 확정된 내용')
+  })
+})
+
+describe('학년 선택(대표 2026-09-26): 학년이 없으면 학교급 학년군 수준으로 말한다', () => {
+  const noGrade = { ...ctx, theme: { ...ctx.theme, grade: null } }
+  const headerLine = (u: string) => u.split('\n').find((l) => l.startsWith('학교급·학년:'))!
+  it('gradeLabel: 학년이 있으면 지금 문구 그대로, 없으면 학년군', () => {
+    expect(gradeLabel('중', 1)).toBe('중학교 1학년')
+    expect(gradeLabel('중', null)).toBe('중학교(1~3학년군)')
+    expect(gradeLabel('초', null)).toBe('초등학교(3~6학년)')
+    expect(gradeLabel('초', undefined)).toBe('초등학교(3~6학년)')
+    expect(standardCodePrefixes('중', null)).toEqual(['[9'])
+    expect(standardCodePrefixes('초', null)).toEqual(['[4', '[6'])
+    expect(standardCodePrefixes('초', 2)).toEqual(['[2', '[4', '[6'])
+  })
+  it('header with a grade keeps today\'s wording', () => {
+    expect(headerLine(buildPrompt(2, ctx).user)).toBe('학교급·학년: 중학교 1학년 (모든 내용은 이 학년 수준)')
+  })
+  it('header with null grade says 중학교(1~3학년군) and never "1학년", in every stage (generate and review)', () => {
+    for (const stage of [0, 1, 2, 3, 4, 5, 6, 7] as Stage[]) {
+      const c = stage === 0 ? { ...noGrade, subject: '', standards: [] } : noGrade
+      for (const u of [buildPrompt(stage, c).user, buildReviewPrompt(stage, c, {}).user]) {
+        const h = headerLine(u)
+        expect(h, `stage ${stage}`).toContain('중학교(1~3학년군)')
+        expect(h).toContain('학년군 수준')
+        expect(u, `stage ${stage}`).not.toMatch(/1학년/)
+        expect(h).not.toMatch(/중1|1학년/)   // 참고 예시 카드 머리("수학 중1 서술형")는 출처 학년 표시라 머리말만 본다
+        expect(u).not.toContain('null학년')
+      }
+    }
+    const elem = buildPrompt(2, { ...noGrade, theme: { ...noGrade.theme, level: '초' } }).user
+    expect(headerLine(elem)).toContain('초등학교(3~6학년)')
+  })
+  it('stage 1 checks only the school level (code prefix) and the theme — never another grade\'s textbook', () => {
+    for (const c of [ctx, noGrade]) {
+      const task = buildPrompt(1, c).user.split('과제: ')[1]
+      const focus = buildReviewPrompt(1, c, {}).user.split('검토 초점: ')[1].split('\n\n생성 결과')[0]
+      for (const t of [task, focus]) {
+        expect(t).not.toMatch(/교과서/)
+        expect(t).not.toMatch(/다른 학년/)
+        expect(t).toMatch(/학교급/)
+        expect(t).toContain('이 대주제의 학교급 성취기준 코드: [9…]')
+        expect(t).toMatch(/몇 학년에 배우는 내용인지는 따지지 않/)
+      }
+      expect(task).toContain('중학교 [9…], 초등학교 [4…]·[6…]')
+      expect(focus).toMatch(/접두로 시작하지 않으면 grade_level/)
+    }
+  })
+  it('the reviewer reserves grade_level for a genuinely wrong school level', () => {
+    const sys = buildReviewPrompt(4, noGrade, {}).system[1]
+    expect(sys).toMatch(/grade_level은 학교급이 실제로 틀린 경우/)
+    expect(sys).toMatch(/같은 학년군 안의 학년 차이는 grade_level이 아니다/)
+    expect(buildReviewPrompt(4, noGrade, {}).user).toContain('학교급(학년군) 어휘 수준')
+  })
+  it('no stage task or review focus asks for a grade-specific textbook range', () => {
+    for (const stage of [0, 1, 2, 3, 4, 5, 6, 7] as Stage[]) {
+      const c = stage === 0 ? { ...noGrade, subject: '', standards: [] } : noGrade
+      const task = buildPrompt(stage, c).user.split('과제: ')[1]
+      const focus = buildReviewPrompt(stage, c, {}).user.split('검토 초점: ')[1].split('\n\n생성 결과')[0]
+      for (const t of [task, focus]) expect(t, `stage ${stage}`).not.toMatch(/해당 학년 교과|학년 교과서|학년 어휘 수준/)
+    }
   })
 })
