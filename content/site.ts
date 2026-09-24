@@ -157,6 +157,16 @@ export const app = {
     actions: { verify: '원문 확인', unverify: '해제' },
     empty: '조건에 맞는 성취기준이 없습니다.',
     pagination: { prev: '이전', next: '다음', pageOf: (page: number, total: number) => `${page} / ${total}` },
+    crosscheck: {
+      button: '원문 자동 대조',
+      submitting: '대조 중…',
+      result: (verifiedCount: number, mismatchedCount: number, unmatchedCount: number) =>
+        `검증됨 ${verifiedCount}건 · 불일치 ${mismatchedCount}건 · 대조 불가 ${unmatchedCount}건`,
+      mismatchHeading: '불일치 — 직접 확인 필요',
+      mismatchColumns: { code: '코드', dbText: 'DB 원문', levelText: '성취수준 원문' },
+      unmatchedNote: '성취수준 원문 자료가 없는 항목(고등학교 전 과목, 세계사 일부 등)은 자동 대조 대상이 아니며 미검증 상태로 남습니다.',
+      error: '대조 중 오류가 났습니다. 잠시 후 다시 시도해 주세요.',
+    },
   },
   studio: {
     errors: {

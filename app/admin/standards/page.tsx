@@ -5,6 +5,7 @@ import { app } from '@/content/site'
 import { SUBJECTS, LEVELS } from '@/lib/studio/schemas'
 import { buildSearchFilter } from '@/lib/standards/search'
 import { verifyStandard } from './actions'
+import { CrosscheckPanel } from './CrosscheckPanel'
 
 const copy = app.adminStandards
 const PAGE_SIZE = 100
@@ -63,6 +64,8 @@ export default async function StandardsPage({ searchParams }: { searchParams: Pr
   return (
     <>
       <h1 className="text-2xl font-bold">{copy.title}</h1>
+
+      <CrosscheckPanel />
 
       <form className="mt-4 flex flex-wrap items-end gap-3" action="/admin/standards">
         <label className="text-sm">

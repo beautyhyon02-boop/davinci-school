@@ -127,6 +127,17 @@ describe('site content', () => {
     expect(app.adminStandards.pagination.next).toBeTruthy()
     expect(app.adminStandards.pagination.pageOf(2, 5)).toContain('2')
   })
+  it('exposes admin standards crosscheck copy (button, running, result, mismatch table, unmatched note)', () => {
+    expect(app.adminStandards.crosscheck.button).toBeTruthy()
+    expect(app.adminStandards.crosscheck.submitting).toBeTruthy()
+    expect(app.adminStandards.crosscheck.result(3, 1, 2)).toBe('검증됨 3건 · 불일치 1건 · 대조 불가 2건')
+    expect(app.adminStandards.crosscheck.mismatchHeading).toBeTruthy()
+    expect(app.adminStandards.crosscheck.mismatchColumns.code).toBeTruthy()
+    expect(app.adminStandards.crosscheck.mismatchColumns.dbText).toBeTruthy()
+    expect(app.adminStandards.crosscheck.mismatchColumns.levelText).toBeTruthy()
+    expect(app.adminStandards.crosscheck.unmatchedNote).toBeTruthy()
+    expect(app.adminStandards.crosscheck.error).toBeTruthy()
+  })
 
   it('exposes studio copy (themes list, new theme form, theme detail intro/materials/sets/picker)', () => {
     expect(app.studio.themes.title).toBeTruthy()

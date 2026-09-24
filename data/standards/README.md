@@ -286,3 +286,42 @@ node --env-file=.env.local node_modules/tsx/dist/cli.mjs scripts/reclassify-hist
 update-db 모드에서 env(`NEXT_PUBLIC_SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY`)가
 없으면 DB를 건드리지 않고 `missing env: ...` 에러를 출력한 뒤 종료 코드
 1로 실패한다(파일 분리와 달리 조용히 건너뛰지 않는다).
+
+## 원문 대조 (2026-09-26)
+
+DB의 모든 성취기준이 `standards.verified_at`/`verified_by` 없이 "미검증"으로
+남아 있었다 — 별책 PDF에서 정규식으로 뽑아낸 뒤(위 "추출 방법"), 사람이 한
+줄씩 원문과 대조한 적이 없었기 때문이다. 별책 PDF와 별개로, 평가원이 배포한
+성취수준 PDF(`(초등학교/중학교)2022 개정 교육과정에 따른 성취수준(과목)`)를
+`scripts/parse_levels.py`가 독립적으로 파싱해 `data/reference/levels/*.json`에
+저장해 두었고(`lib/reference/levels.ts`가 읽는다), 각 레코드가 성취기준
+`code`와 그 원문 `text`를 그대로 담고 있다. 별책 추출과 성취수준 파싱은
+서로 다른 원본 PDF·다른 파서를 쓰므로, 같은 코드의 문장이 두 자료에서
+일치하면 별책 추출이 오타 없이 옳았다고 볼 수 있는 독립 교차검증이 된다.
+
+**방법** — `lib/standards/crosscheck.ts`의 `crosscheckStandards(dbRows, levelRecords)`:
+같은 `code`의 두 문장을 `normalizeStandardText()`(공백 축약, 가운뎃점
+계열 `·`/`ㆍ`/`⋅` 통일, 인용부호 통일, 후행 마침표 `.`/`。` 제거)로 정규화한
+뒤 글자 단위로 비교한다. 코드가 같고 정규화한 문장도 같으면 `verified`,
+코드는 같은데 문장이 다르면 `mismatched`(사람이 판단), 그 코드 자체가
+`data/reference/levels/*.json` 어디에도 없으면 `unmatched`(대조 자료가
+아예 없음 — 틀렸다는 뜻이 아니다). 성취수준 PDF·`levelFileFor()`가 아직
+커버하지 못하는 범위(고등학교 전 과목, 한국사·세계사 중 성취수준 PDF가
+없는 부분)는 항상 `unmatched`로 남는다.
+
+**오프라인 보고서** — `npx tsx scripts/crosscheck_standards.ts`가
+`data/standards/*.json` 전체(1,814행)를 `data/reference/levels/*.json`과
+대조해 `data/standards/crosscheck-2026-09-26.md`(과목별 검증됨/불일치/대조
+불가 집계 + 전체 불일치 표)를 쓰고 총계를 콘솔에 출력한다. DB는 건드리지
+않는다(파일 대 파일 대조). 2026-09-26 실행 결과: 검증됨 648 / 불일치 82 /
+대조 불가 1,084 (합계 1,814) — 표와 근거는 보고서 파일 참고.
+
+**관리자 화면 반영** — `/admin/standards`의 "원문 자동 대조" 버튼
+(`app/admin/standards/actions.ts`의 `runStandardsCrosscheck` 서버 액션,
+관리자만)이 같은 매처를 DB 전체 행에 대해 실행해, `verified` 판정을 받은
+행만 `verified_at = now()`/`verified_by = 현재 관리자`로 일괄 갱신한다
+(500개씩 나눠 `update ... where id in (...)`). `mismatched`는 DB를 건드리지
+않고 코드·DB 원문·성취수준 원문을 화면에 표로 보여줘 관리자가 직접 확인해
+`verifyStandard`(기존 행별 버튼)로 처리하게 한다. `unmatched`는 미검증
+상태 그대로 두고, 화면에 "성취수준 원문 자료가 없는 항목은 자동 대조
+대상이 아니다"라는 안내만 띄운다.
