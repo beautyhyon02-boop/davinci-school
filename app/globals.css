@@ -48,3 +48,21 @@ body { @apply antialiased; }
   main { padding: 0 !important; }
   @page { margin: 14mm; }
 }
+
+/* 문제지 인쇄(간단판, components/classroom/PrintButton sheet='questions'): <html class="print-questions"> 일 때만.
+ * PackageView 의 바로 아래 칸 중 data-print="keep"(표지·핵심질문·자료·문항)만 남기고, 그 안의 data-print="omit"(배지·채점 자료 등)은 숨긴다.
+ * data-print="sheet-only"(이름·날짜 줄, 답란)는 화면과 평소 인쇄에서는 보이지 않는다. */
+[data-print="sheet-only"] { display: none; }
+@media print {
+  html.print-questions [data-print="omit"],
+  html.print-questions [data-package-view] > :not([data-print="keep"]) { display: none !important; }
+  html.print-questions [data-print="sheet-only"] { display: block; }
+  html.print-questions [data-package-view] { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  html.print-questions [data-package-view] > [data-print="keep"] { box-shadow: none; padding: 0; }
+  html.print-questions [data-print="item"] { break-inside: avoid; }
+  html.print-questions [data-print="material"] { break-inside: avoid; }
+  .answer-line { height: 8mm; border-bottom: 1px solid #9ca3af; }
+  .answer-box { margin-top: 3mm; min-height: 70mm; border: 1.5px solid #6b7280; border-radius: 3mm; padding: 3mm; color: #6b7280; }
+  .student-line { display: flex; gap: 12mm; margin-top: 3mm; font-size: 11pt; }
+  .student-line span { display: inline-block; min-width: 40mm; border-bottom: 1px solid #1f2430; }
+}

@@ -318,6 +318,16 @@ describe('site content', () => {
     expect(app.classroom.student.errors.paperOnly).toBeTruthy()
   })
 
+  it('exposes packageView print copy (문제지 인쇄 button, paper answer box, 이름·날짜 line)', () => {
+    const p = app.packageView.print
+    expect(p.button).toBe('문제지 인쇄')
+    expect(p.paperBox).toContain('종이 답안')
+    // 자료·문항 카드의 종이 답안 배지(answerMode.paper)와 겹치지 않아야 기존 개수 검사가 유지된다
+    expect(p.paperBox).not.toContain(app.packageView.assessment.conditions.answerMode.paper)
+    expect(p.studentLine.name).toBe('이름')
+    expect(p.studentLine.date).toBe('날짜')
+  })
+
   it('exposes packageView v2 copy (unit plan, lessons v2, item card, rubric, notice plan, answers toggle)', () => {
     const c = app.packageView
     expect(c.unitPlan.placement('논술형', 5)).toContain('5')

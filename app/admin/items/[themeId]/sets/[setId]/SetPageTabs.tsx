@@ -11,7 +11,7 @@ export function SetPageTabs({ wizard, preview }: { wizard: ReactNode; preview: R
 
   return (
     <div>
-      <div className="flex gap-2">
+      <div data-print="omit" className="flex gap-2">
         <button
           onClick={() => setTab('wizard')}
           className={`rounded-full px-4 py-2 text-sm font-semibold transition ${tab === 'wizard' ? 'bg-ink-900 text-white' : 'bg-ink-100 text-ink-700 hover:bg-ink-200'}`}

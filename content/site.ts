@@ -501,6 +501,12 @@ export const app = {
     noticePlan: { lessonLabel: (n: number) => `${n}차시`, summary: '학습 요약', preview: '다음 차시', home: '가정 학습', quizNotes: '퀴즈 오답 코멘트', phrases: '요소별 문구', good: '잘한 점', improve: '보완' },
     generatedWithHeading: '생성 모델',
     empty: '아직 내용이 없습니다.',
+    // 문제지 인쇄(간단판): 표지·자료·문항·답란만 종이에 남긴다(app/globals.css 의 html.print-questions)
+    print: {
+      button: '문제지 인쇄',
+      paperBox: '종이 답안 — 이 칸에 직접 쓰거나 그리세요.',
+      studentLine: { name: '이름', date: '날짜' },
+    },
   },
   teacherItems: {
     title: '문항 찾기',

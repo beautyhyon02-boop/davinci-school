@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { PackageView } from '@/components/studio/PackageView'
 import { upgradeSnapshot, type Snapshot } from '@/lib/studio/publish'
 import { Button } from '@/components/ui/Button'
+import { PrintButton } from '@/components/classroom/PrintButton'
 import { app } from '@/content/site'
 
 const copy = app.teacherItems
@@ -26,8 +27,14 @@ export default async function TeacherItemDetailPage({ params }: { params: Promis
 
   return (
     <>
-      <Link href="/teacher/items" className="text-sm text-mint-700 underline">{copy.detail.backToList}</Link>
-      <div className="mt-3"><Button href={`/teacher/assignments/new?set=${setId}`}>{app.classroom.assign.button}</Button></div>
+      <div className="no-print">
+        <Link href="/teacher/items" className="text-sm text-mint-700 underline">{copy.detail.backToList}</Link>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <Button href={`/teacher/assignments/new?set=${setId}`}>{app.classroom.assign.button}</Button>
+          {/* 문제지 인쇄: 표지·자료·문항·답란만(app/globals.css html.print-questions) */}
+          <PrintButton label={app.packageView.print.button} sheet="questions" />
+        </div>
+      </div>
       <div className="mt-4">
         <PackageView snapshot={snapshot} mode="teacher" showAnswers />
       </div>

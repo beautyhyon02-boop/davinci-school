@@ -4,7 +4,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { PackageView, MaterialsSection } from '@/components/studio/PackageView'
+import { PackageView, MaterialsSection, ANSWER_LINES } from '@/components/studio/PackageView'
 import { buildSnapshot, upgradeSnapshot, type Snapshot } from '@/lib/studio/publish'
 import { app } from '@/content/site'
 
@@ -107,6 +107,71 @@ describe.each(['수학', '과학'] as const)('PackageView v2 (%s mock snapshot)'
     expect(teacher).not.toContain(`<h2 class="text-lg font-bold">${c.generatedWithHeading}</h2>`)
     // 접혀 있어도 내용은 있다(펼치면 보임)
     expect(text(teacher)).toContain(norm(snap.assessment!.items[0].exemplar_answers[0].text))
+  })
+})
+
+// 문제지 인쇄(간단판): html.print-questions 일 때 app/globals.css 가 data-package-view 바로 아래 칸 중 data-print="keep" 만 남긴다.
+describe.each(['수학', '과학'] as const)('PackageView 문제지 인쇄 표식 (%s)', (subject) => {
+  const snap = snapshotFor(subject)
+  const html = render(snap, 'teacher')
+  const items = snap.assessment!.items
+  const count = (s: string, needle: string) => s.split(needle).length - 1
+  // 문항 카드 i 의 마크업(다음 문항 카드 또는 등급표 제목 전까지)
+  const itemSegments = () => {
+    const starts: number[] = []
+    for (let at = html.indexOf('data-print="item"'); at >= 0; at = html.indexOf('data-print="item"', at + 1)) starts.push(at)
+    const stop = html.indexOf(`<h2 class="text-lg font-bold">${c.gradeBoundariesHeading}</h2>`)
+    return starts.map((s, i) => html.slice(s, starts[i + 1] ?? stop))
+  }
+
+  it('keeps exactly cover → key question → materials → items, in that order', () => {
+    expect(html.startsWith('<div data-package-view="true"')).toBe(true)
+    expect(count(html, 'data-print="keep"')).toBe(4)
+    const keeps: number[] = []
+    for (let at = html.indexOf('data-print="keep"'); at >= 0; at = html.indexOf('data-print="keep"', at + 1)) keeps.push(at)
+    const cover = html.indexOf(`>${snap.cover.title}</h1>`)
+    const kq = html.indexOf(`<h2 class="text-lg font-bold">${c.keyQuestionHeading}</h2>`)
+    const mats = html.indexOf(`<h2 class="text-lg font-bold">${c.materialsHeading}</h2>`)
+    const qs = html.indexOf(`<h2 class="text-lg font-bold">${c.assessmentHeading}</h2>`)
+    // 각 keep 칸 바로 안에 표지 제목·핵심질문·자료·문항 제목이 온다
+    expect([cover, kq, mats, qs].every((x, i) => x > keeps[i] && (keeps[i + 1] === undefined || x < keeps[i + 1]))).toBe(true)
+    expect(text(html)).toContain(norm(snap.key_question))
+  })
+  it('puts the 이름·날짜 line in the cover as sheet-only', () => {
+    const cover = html.slice(0, html.indexOf(`<h2 class="text-lg font-bold">${c.standardsHeading}</h2>`))
+    expect(cover).toMatch(/data-print="sheet-only"><p class="student-line">/)
+    expect(cover).toContain(c.print.studentLine.name)
+    expect(cover).toContain(c.print.studentLine.date)
+    expect(cover).toContain(`data-print="omit"`)   // 버전 배지·게시일
+  })
+  it('marks every material and every item card, and hides the grading material inside item cards', () => {
+    expect(count(html, 'data-print="material"')).toBe(snap.materials.length)
+    const segs = itemSegments()
+    expect(segs.length).toBe(items.length)
+    segs.forEach((seg, i) => {
+      expect(text(seg)).toContain(norm(items[i].stem))
+      for (const cd of items[i].conditions.items) expect(text(seg)).toContain(norm(`${c.assessment.conditions.itemNo(cd.no)} ${cd.text}`))
+      const details = seg.match(/<details[^>]*>/g) ?? []
+      expect(details.length).toBe(1)
+      expect(details.every((d) => d.includes('data-print="omit"'))).toBe(true)
+    })
+  })
+  it('gives each item a sheet-only answer space: 서술형 8 lines, 논술형 20 lines, paper items a boxed note', () => {
+    expect(ANSWER_LINES).toEqual({ 서술형: 8, 논술형: 20 })
+    itemSegments().forEach((seg, i) => {
+      const it = items[i]
+      expect(seg).toMatch(/data-print="sheet-only" data-answer-kind="[^"]+" class="answer-space/)
+      if (it.conditions.answer_mode === 'paper') {
+        expect(seg).toContain('data-answer-kind="paper"')
+        expect(seg).toContain(`<div class="answer-box">${c.print.paperBox}</div>`)
+        expect(count(seg, 'data-answer-line')).toBe(0)
+      } else {
+        expect(seg).toContain(`data-answer-kind="${it.kind}"`)
+        expect(count(seg, 'data-answer-line')).toBe(ANSWER_LINES[it.kind])
+      }
+    })
+    expect(items.some((i) => i.kind === '논술형')).toBe(true)
+    if (subject === '수학') expect(items.filter((i) => i.conditions.answer_mode === 'paper').length).toBe(1)
   })
 })
 

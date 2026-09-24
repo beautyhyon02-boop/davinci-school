@@ -6,6 +6,7 @@ import { StageWizard } from './StageWizard'
 import { SetPageTabs } from './SetPageTabs'
 import { PublishPanel } from './PublishPanel'
 import { PackageView } from '@/components/studio/PackageView'
+import { PrintButton } from '@/components/classroom/PrintButton'
 import { canPublish, buildSnapshot } from '@/lib/studio/publish'
 import type { StageStatus } from '@/lib/studio/stages'
 import { app } from '@/content/site'
@@ -71,14 +72,16 @@ export default async function SetWizardPage({ params }: { params: Promise<{ them
 
   return (
     <>
-      <Link href={`/admin/items/${themeId}`} className="text-sm text-mint-700 underline">{copy.backToTheme}</Link>
-      <div className="mt-2 flex flex-wrap items-center gap-2">
-        <h1 className="text-2xl font-bold">{theme.title}</h1>
-        <Badge tone="gray">{itemSet.subject}</Badge>
-        <Badge tone={STATUS_TONE[itemSet.status] ?? 'gray'}>{app.studio.sets.statusLabel[itemSet.status as keyof typeof app.studio.sets.statusLabel] ?? itemSet.status}</Badge>
-        <Badge tone="gray">{copy.versionLabel(itemSet.version ?? 1)}</Badge>
+      <div data-print="omit">
+        <Link href={`/admin/items/${themeId}`} className="text-sm text-mint-700 underline">{copy.backToTheme}</Link>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <h1 className="text-2xl font-bold">{theme.title}</h1>
+          <Badge tone="gray">{itemSet.subject}</Badge>
+          <Badge tone={STATUS_TONE[itemSet.status] ?? 'gray'}>{app.studio.sets.statusLabel[itemSet.status as keyof typeof app.studio.sets.statusLabel] ?? itemSet.status}</Badge>
+          <Badge tone="gray">{copy.versionLabel(itemSet.version ?? 1)}</Badge>
+        </div>
+        <p className="mt-1 text-sm text-ink-500">{app.studio.theme.meta(itemSet.level, itemSet.grade)}</p>
       </div>
-      <p className="mt-1 text-sm text-ink-500">{app.studio.theme.meta(itemSet.level, itemSet.grade)}</p>
 
       <div className="mt-6">
         <SetPageTabs
@@ -96,12 +99,15 @@ export default async function SetWizardPage({ params }: { params: Promise<{ them
           }
           preview={
             <div className="space-y-4">
-              <PublishPanel
-                setId={setId}
-                currentVersion={itemSet.version ?? 1}
-                nextVersion={nextVersion}
-                initialBlockers={blockers}
-              />
+              <div data-print="omit" className="space-y-4">
+                <PublishPanel
+                  setId={setId}
+                  currentVersion={itemSet.version ?? 1}
+                  nextVersion={nextVersion}
+                  initialBlockers={blockers}
+                />
+                <div className="no-print"><PrintButton label={app.packageView.print.button} sheet="questions" /></div>
+              </div>
               <PackageView snapshot={draftSnapshot} mode="admin" showAnswers />
             </div>
           }

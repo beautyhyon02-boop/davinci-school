@@ -34,7 +34,7 @@ function Label({ children }: { children: ReactNode }) {
 /** 채점 자료 접이식. open = 관리자 미리보기(펼침), 원장 열람은 접힘. */
 function Answers({ open, children }: { open: boolean; children: ReactNode }) {
   return (
-    <details open={open} className="mt-3 rounded-lg bg-lemon-100/40 p-3">
+    <details open={open} data-print="omit" className="mt-3 rounded-lg bg-lemon-100/40 p-3">
       <summary className="cursor-pointer text-sm font-semibold text-ink-500">{copy.answersToggle}</summary>
       <div className="mt-2 space-y-2">{children}</div>
     </details>
@@ -95,18 +95,18 @@ export function MaterialsSection({ materials }: { materials: Material[] }) {
   if (materials.length === 0) return null
   const c = copy.materials
   return (
-    <Card>
+    <Card print="keep">
       <SectionHeading>{copy.materialsHeading}</SectionHeading>
       <div className="mt-3 space-y-6">
         {materials.map((m) => (
-          <div key={m.id} className="rounded-xl border border-ink-100 bg-ink-100/30 p-4">
+          <div key={m.id} data-print="material" className="rounded-xl border border-ink-100 bg-ink-100/30 p-4">
             {/* 자료마다 큰 라벨(자료 A/B…)로 구분이 한눈에 보이게. 출처·역할 배지(스펙 §2.4). */}
             <div className="flex flex-wrap items-center gap-2">
               <span className="rounded-full bg-mint-500 px-3 py-1 text-sm font-bold text-white">{c.idLabel} {m.id}</span>
               <p className="text-base font-bold">{m.title}</p>
               <Badge tone="gray">{c.sourceLabel[m.source.kind]}{m.source.attribution ? ` · ${m.source.attribution}` : ''}</Badge>
-              <Badge tone="gray">{c.roleLabel[m.role]}</Badge>
-              {m.source.ai_assisted && <Badge tone="lemon">{c.aiBadge}</Badge>}
+              <span data-print="omit"><Badge tone="gray">{c.roleLabel[m.role]}</Badge></span>
+              {m.source.ai_assisted && <span data-print="omit"><Badge tone="lemon">{c.aiBadge}</Badge></span>}
             </div>
             {m.body && <p className="mt-1 whitespace-pre-wrap text-sm">{m.body}</p>}
             <MaterialTable material={m} />
@@ -373,21 +373,39 @@ function RubricView({ rubric }: { rubric: Rubric }) {
   )
 }
 
+// 문제지 인쇄 답란(data-print="sheet-only" → 화면·평소 인쇄에는 안 보임). 서술형 8줄, 논술형 20줄, 종이 답안 문항은 네모 칸.
+export const ANSWER_LINES = { 서술형: 8, 논술형: 20 } as const
+
+function AnswerSpace({ item }: { item: AssessmentItem }) {
+  if (item.conditions.answer_mode === 'paper') {
+    return <div data-print="sheet-only" data-answer-kind="paper" className="answer-space"><div className="answer-box">{copy.print.paperBox}</div></div>
+  }
+  return (
+    <div data-print="sheet-only" data-answer-kind={item.kind} className="answer-space mt-2">
+      {Array.from({ length: ANSWER_LINES[item.kind] }, (_, i) => <div key={i} data-answer-line className="answer-line" />)}
+    </div>
+  )
+}
+
 function AssessmentItemView({ item, no, showAnswers, open }: { item: AssessmentItem; no: number; showAnswers: boolean; open: boolean }) {
   const c = copy.assessment
   const cd = c.conditions
   return (
-    <div className="rounded-xl border border-ink-100 p-3 text-sm">
+    <div data-print="item" className="rounded-xl border border-ink-100 p-3 text-sm">
       <div className="flex flex-wrap items-center gap-2">
         <span className="font-semibold">{no}.</span>
-        <Badge tone="gray">{c.kindLabel[item.kind]}</Badge>
-        <Badge tone="gray">{c.lessonLabel(item.lesson_no)}</Badge>
-        <Badge tone="mint">{c.pointsLabel(item.points)}</Badge>
-        <Badge tone={item.conditions.answer_mode === 'paper' ? 'lemon' : 'gray'}>{cd.answerMode[item.conditions.answer_mode]}</Badge>
+        <span data-print="omit" className="flex flex-wrap items-center gap-2">
+          <Badge tone="gray">{c.kindLabel[item.kind]}</Badge>
+          <Badge tone="gray">{c.lessonLabel(item.lesson_no)}</Badge>
+          <Badge tone="mint">{c.pointsLabel(item.points)}</Badge>
+          <Badge tone={item.conditions.answer_mode === 'paper' ? 'lemon' : 'gray'}>{cd.answerMode[item.conditions.answer_mode]}</Badge>
+        </span>
       </div>
-      <p className="mt-2"><Label>{c.elementsLabel}:</Label> {item.evaluation_elements.join(' · ')}</p>
-      {item.situation && <p><Label>{c.situationLabel}:</Label> {c.situation(item.situation.role, item.situation.audience, item.situation.purpose, item.situation.product)}</p>}
-      <p><Label>{c.materialsLabel}:</Label> {item.materials_used.map((id) => `${copy.materials.idLabel} ${id}`).join(', ')}</p>
+      <div data-print="omit">
+        <p className="mt-2"><Label>{c.elementsLabel}:</Label> {item.evaluation_elements.join(' · ')}</p>
+        {item.situation && <p><Label>{c.situationLabel}:</Label> {c.situation(item.situation.role, item.situation.audience, item.situation.purpose, item.situation.product)}</p>}
+        <p><Label>{c.materialsLabel}:</Label> {item.materials_used.map((id) => `${copy.materials.idLabel} ${id}`).join(', ')}</p>
+      </div>
 
       <p className="mt-2 whitespace-pre-wrap text-base font-semibold">{item.stem}</p>
 
@@ -397,7 +415,7 @@ function AssessmentItemView({ item, no, showAnswers, open }: { item: AssessmentI
           {item.conditions.items.map((x) => (
             <li key={x.no}>
               <span className="font-semibold">{cd.itemNo(x.no)}</span> {x.text}{' '}
-              <Badge tone="gray">{x.category}</Badge>
+              <span data-print="omit"><Badge tone="gray">{x.category}</Badge></span>
               {x.points !== null && <> <Badge tone="gray">{cd.pointsLabel(x.points)}</Badge></>}
             </li>
           ))}
@@ -407,6 +425,8 @@ function AssessmentItemView({ item, no, showAnswers, open }: { item: AssessmentI
           {item.conditions.overflow_rule && ` · ${cd.overflowLabel}: ${item.conditions.overflow_rule}`}
         </p>
       </div>
+
+      <AnswerSpace item={item} />
 
       {showAnswers && (
         <Answers open={open}>
@@ -445,7 +465,7 @@ function AssessmentSection({ assessment, showAnswers, open }: { assessment: Snap
   const gb = copy.gradeBoundaries
   return (
     <>
-      <Card>
+      <Card print="keep">
         <SectionHeading>{copy.assessmentHeading}</SectionHeading>
         <div className="mt-3 space-y-3">
           {assessment.items.map((item, i) => <AssessmentItemView key={i} item={item} no={i + 1} showAnswers={showAnswers} open={open} />)}
@@ -577,14 +597,18 @@ export function PackageView({ snapshot, mode, showAnswers = false }: { snapshot:
   // 관리자 미리보기는 채점 자료를 펼친 채, 원장 열람은 접힌 채로 시작한다(스펙 §2.9).
   const open = mode === 'admin'
   return (
-    <div className="space-y-4">
-      <Card>
+    <div data-package-view className="space-y-4">
+      {/* 문제지 인쇄(html.print-questions)에서는 print="keep" 칸(표지·핵심질문·자료·문항)만 남는다 — app/globals.css */}
+      <Card print="keep">
         <div className="flex flex-wrap items-center gap-2">
           <h1 className="text-2xl font-bold">{snapshot.cover.title}</h1>
-          <Badge tone="mint">{c.cover.versionLabel(snapshot.cover.version)}</Badge>
+          <span data-print="omit"><Badge tone="mint">{c.cover.versionLabel(snapshot.cover.version)}</Badge></span>
         </div>
         <p className="mt-1 text-sm text-ink-500">{c.cover.meta(snapshot.cover.level, snapshot.cover.grade, snapshot.cover.subject)}</p>
-        <p className="mt-1 text-xs text-ink-500">{c.cover.publishedAtLabel}: {snapshot.cover.published_at}</p>
+        <p data-print="omit" className="mt-1 text-xs text-ink-500">{c.cover.publishedAtLabel}: {snapshot.cover.published_at}</p>
+        <div data-print="sheet-only">
+          <p className="student-line">{c.print.studentLine.name} <span /> {c.print.studentLine.date} <span /></p>
+        </div>
       </Card>
 
       {snapshot.intro.trim() !== '' && (
@@ -604,7 +628,7 @@ export function PackageView({ snapshot, mode, showAnswers = false }: { snapshot:
         </ul>
       </Card>
 
-      <Card>
+      <Card print="keep">
         <SectionHeading>{c.keyQuestionHeading}</SectionHeading>
         <p className="mt-2 text-sm">{snapshot.key_question}</p>
       </Card>
