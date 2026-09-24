@@ -1,16 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import { histogramBins, relativeFrequencies, detectChart } from '@/lib/studio/charts'
 import fixture from '@/data/studio-fixtures/stage4-generate.json'
+import type { z } from 'zod'
+import type { Material } from '@/lib/studio/schemas'
 
-const materials = (fixture as { materials: unknown[] }).materials as Array<{
-  id: string
-  title: string
-  kind: 'table' | 'text' | 'chart'
-  body: string | null
-  table: { columns: string[]; rows: (string | number)[][] } | null
-  source: '자작'
-  images: string[]
-}>
+// 차트 검출은 table 만 읽는다 — 자료 모양은 v2 Material 타입으로 본다(fixture 는 T6에서 v2로 재생성)
+const materials = (fixture as { materials: unknown[] }).materials as z.infer<typeof Material>[]
 
 const materialA = materials.find((m) => m.id === 'A')!
 const materialB = materials.find((m) => m.id === 'B')!
@@ -84,7 +79,8 @@ describe('detectChart', () => {
       kind: 'text' as const,
       body: '그냥 설명 문구입니다.',
       table: null,
-      source: '자작' as const,
+      source: { kind: '자작' as const, attribution: null, ai_assisted: false },
+      role: 'raw' as const,
       images: [] as string[],
     }
     expect(detectChart(textMaterial)).toBeNull()
@@ -100,7 +96,8 @@ describe('detectChart', () => {
         columns: Array.from({ length: 12 }, (_, i) => `값${i + 1}`),
         rows: [[18, 23, 27, 29, 31, 33, 35, 36, 38, 39, 41, 42]],
       },
-      source: '자작' as const,
+      source: { kind: '자작' as const, attribution: null, ai_assisted: false },
+      role: 'raw' as const,
       images: [] as string[],
     }
     const spec = detectChart(rowMaterial)
@@ -117,7 +114,8 @@ describe('detectChart', () => {
       kind: 'table' as const,
       body: null,
       table: { columns: ['a', 'b', 'c'], rows: [[1, 2, 3]] },
-      source: '자작' as const,
+      source: { kind: '자작' as const, attribution: null, ai_assisted: false },
+      role: 'raw' as const,
       images: [] as string[],
     }
     expect(detectChart(oddMaterial)).toBeNull()

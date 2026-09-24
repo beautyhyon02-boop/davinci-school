@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { getSessionProfile } from '@/lib/auth/session'
 import { loadAssignmentSnapshot } from '@/lib/classroom/snapshot'
-import { assessmentItemNoForLesson, ASSESSMENT_LABELS, materialIdsForLesson } from '@/lib/classroom/lessons'
+import { assessmentItemNoForLesson, ASSESSMENT_LABELS, materialIdsForLesson, studentConditions } from '@/lib/classroom/lessons'
 import { MaterialsSection } from '@/components/studio/PackageView'
 import { overallFor, gradeFor } from '@/lib/classroom/scoring'
 import { LessonTabs } from './LessonTabs'
@@ -51,6 +51,9 @@ export default async function StudentAssignmentPage({ params }: { params: Promis
     const itemNo = assessmentItemNoForLesson(snapshot, no)
     const item = itemNo ? snapshot.assessment?.items[itemNo - 1] : null
     const ans1 = itemNo ? answerRows.find((r) => r.item_no === itemNo && r.attempt === 1) : null
+    // 학생에게는 조건 문장·분량·형식·답안 방식만 넘긴다. 종이 답안 문항(answer_mode 'paper')은 AnswerEditor 가 입력칸 대신 안내를 보인다.
+    const conditions = item ? studentConditions(item) : null
+    const materialIds = materialIdsForLesson(lesson)
     panels[no] = (
       <div className="space-y-5">
         <section className="rounded-2xl bg-white p-5">
@@ -59,18 +62,18 @@ export default async function StudentAssignmentPage({ params }: { params: Promis
           <p className="mt-2">{lesson.goal}</p>
         </section>
         {/* 이 차시가 쓰는 자료(표·자동 그래프·설명글) — 결석생도 앱만 보고 풀 수 있어야 한다(스펙 §5.2). */}
-        <MaterialsSection materials={snapshot.materials.filter((m) => materialIdsForLesson(lesson).includes(m.id))} />
-        {lesson.quiz.length > 0 && (
+        <MaterialsSection materials={snapshot.materials.filter((m) => materialIds.includes(m.id))} />
+        {lesson.formative_check.quiz.length > 0 && (
           // 제출 전에는 정답·해설을 브라우저로 보내지 않는다(문제·유형·보기만). 제출한 뒤에야 결과 화면용으로 전체를 넘긴다.
           <QuizForm assignmentId={id} lessonNo={no}
-            quiz={done.length ? lesson.quiz : lesson.quiz.map(({ q, type, choices }) => ({ q, type, choices }))}
+            quiz={done.length ? lesson.formative_check.quiz : lesson.formative_check.quiz.map(({ q, type, choices }) => ({ q, type, choices }))}
             done={done.length ? done.map((d) => ({ response: d.response, correct: d.correct })) : null} />
         )}
-        {item && itemNo && (
+        {item && itemNo && conditions && (
           <AnswerEditor assignmentId={id} itemNo={itemNo} attempt={1} initialBody={ans1?.body ?? ''} submitted={!!ans1?.submitted_at}
-            label={ASSESSMENT_LABELS[itemNo - 1]} points={item.points} stem={item.stem} conditions={item.conditions} />
+            label={ASSESSMENT_LABELS[itemNo - 1]} points={item.points} stem={item.stem} conditions={conditions} />
         )}
-        {item && itemNo && (() => {
+        {item && itemNo && conditions && (() => {
           const r1 = resultOf(ans1)
           const ans2 = answerRows.find((r) => r.item_no === itemNo && r.attempt === 2) ?? null
           const r2 = resultOf(ans2)
@@ -80,7 +83,7 @@ export default async function StudentAssignmentPage({ params }: { params: Promis
               {r1 && assignment.allow_retry && !ans2 && <RetryButton assignmentId={id} itemNo={itemNo} />}
               {ans2 && (
                 <AnswerEditor assignmentId={id} itemNo={itemNo} attempt={2} initialBody={ans2.body} submitted={!!ans2.submitted_at}
-                  label={`${ASSESSMENT_LABELS[itemNo - 1]} · ${copy.result.attempt(2)}`} points={item.points} stem={item.stem} conditions={item.conditions} />
+                  label={`${ASSESSMENT_LABELS[itemNo - 1]} · ${copy.result.attempt(2)}`} points={item.points} stem={item.stem} conditions={conditions} />
               )}
               {r2 && <ResultView label={ASSESSMENT_LABELS[itemNo - 1]} points={item.points} attempt={2} grading={r2} />}
             </>

@@ -2,7 +2,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { getSessionProfile } from '@/lib/auth/session'
-import { STAGE_SCHEMAS, Materials, Lessons, type Stage } from '@/lib/studio/schemas'
+import { STAGE_SCHEMAS, Materials, LessonDesign, type Stage } from '@/lib/studio/schemas'
 import { isMaterialsPublicUrl } from '@/lib/studio/upload-rules'
 import { canPublish, buildSnapshot } from '@/lib/studio/publish'
 import { canEditStage, downstreamResets, keyQuestionAfterStage2 } from '@/lib/studio/edit-rules'
@@ -28,29 +28,34 @@ async function assertAdmin() {
 
 type ActionResult = { ok: true } | { ok: false; error: string }
 
-// stage별 item_sets 컬럼 매핑 — lib/studio/repo.ts saveOutput과 동일해야 한다(2단계는 reconstruction+learning_goals, 나머지는 단일 컬럼).
+// stage별 item_sets 컬럼 매핑 — lib/studio/repo.ts saveOutput과 동일해야 한다
+// (2단계는 reconstruction_detail+reconstruction+learning_goals, 3단계는 unit_plan+lessons, 나머지는 단일 컬럼).
 function stageColumns(stage: Stage, output: unknown): Record<string, unknown> {
   switch (stage) {
     case 2: {
-      const o = output as { reconstruction: string; learning_goals: string[] }
-      return { reconstruction: o.reconstruction, learning_goals: o.learning_goals }
+      const o = output as { standards: unknown; reconstruction: string; learning_goals: unknown }
+      return { reconstruction: o.reconstruction, reconstruction_detail: o.standards, learning_goals: o.learning_goals }
     }
-    case 3:
-      return { lessons: (output as { lessons: unknown }).lessons }
+    case 3: {
+      const o = output as { unit_plan: unknown; lessons: unknown }
+      return { unit_plan: o.unit_plan, lessons: o.lessons }
+    }
     case 4:
       return { materials: (output as { materials: unknown }).materials }
     case 5:
       return { assessment: output }
     case 6:
       return { teacher_guide: output }
+    case 7:
+      return { notice_plan: output }
     default:
       return {}
   }
 }
 
 /**
- * 2~6단계 출력을 관리자가 JSON으로 직접 수정해 저장한다. zod로 검증 후 저장하고 상태를 generated(model:'edited')로 되돌린다.
- * 생성과 같은 확정 게이트를 먼저 적용하고(canEditStage), 저장에 성공하면 이 단계를 근거로 삼은 하위 단계(n+1..6)를
+ * 2~7단계 출력을 관리자가 JSON으로 직접 수정해 저장한다. zod로 검증 후 저장하고 상태를 generated(model:'edited')로 되돌린다.
+ * 생성과 같은 확정 게이트를 먼저 적용하고(canEditStage), 저장에 성공하면 이 단계를 근거로 삼은 하위 단계(n+1..7)를
  * idle 로 되돌린다 — 그러지 않으면 낡은 근거 위의 출력이 accepted 로 남아 그대로 게시된다.
  */
 export async function saveStageEdit(setId: string, stage: Stage, json: string): Promise<ActionResult> {
@@ -170,7 +175,8 @@ async function applyImages(setId: string, target: string, mutate: (images: strin
   const supabase = await createClient()
   const { data: itemSet, error: fetchErr } = await supabase
     .from('item_sets')
-    .select(`theme_id, ${column}`)
+    // 차시 검증(LessonDesign)은 unit_plan 과 함께 해야 하므로(평가 계획 ↔ 차시 배치 대조) 차시일 때는 unit_plan 도 읽는다
+    .select(kind === 'material' ? 'theme_id, materials' : 'theme_id, lessons, unit_plan')
     .eq('id', setId)
     .single()
   if (fetchErr || !itemSet) return { ok: false, error: attachmentErrors.saveFailed }
@@ -185,9 +191,10 @@ async function applyImages(setId: string, target: string, mutate: (images: strin
   const currentImages = (items[idx].images as string[] | undefined) ?? []
   const nextItems = items.map((it, i) => (i === idx ? { ...it, images: mutate(currentImages) } : it))
 
-  const schema = kind === 'material' ? Materials : Lessons
-  const wrapped = kind === 'material' ? { materials: nextItems } : { lessons: nextItems }
-  if (!schema.safeParse(wrapped).success) return { ok: false, error: attachmentErrors.invalidShape }
+  const valid = kind === 'material'
+    ? Materials.safeParse({ materials: nextItems }).success
+    : LessonDesign.safeParse({ unit_plan: row.unit_plan, lessons: nextItems }).success
+  if (!valid) return { ok: false, error: attachmentErrors.invalidShape }
 
   const { error: updateErr } = await supabase.from('item_sets').update({ [column]: nextItems }).eq('id', setId)
   if (updateErr) return { ok: false, error: attachmentErrors.saveFailed }
@@ -231,7 +238,7 @@ export async function publishItemSet(setId: string): Promise<PublishResult> {
 
   const { data: itemSet, error: fetchErr } = await supabase
     .from('item_sets')
-    .select('id, theme_id, subject, level, grade, version, reconstruction, learning_goals, key_question, lessons, materials, assessment, teacher_guide, stage_status')
+    .select('id, theme_id, subject, level, grade, version, reconstruction, reconstruction_detail, learning_goals, key_question, unit_plan, lessons, materials, assessment, teacher_guide, notice_plan, stage_status')
     .eq('id', setId)
     .single()
   if (fetchErr || !itemSet) return { ok: false, blockers: ['saveFailed'] }

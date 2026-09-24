@@ -21,25 +21,27 @@ const STATE_TONE: Record<StageStatus['state'], 'gray' | 'lavender' | 'lemon' | '
   failed: 'gray',
 }
 
-type Stage2Output = { reconstruction: string; learning_goals: string[]; key_question_candidates: string[] }
+// 요약 렌더용 느슨한 모양. v2 출력(learning_goals 객체·formative_check.quiz)을 읽되, v2 이전에 저장된 출력(문자열 목표·최상위 quiz)도 깨지지 않게 둘 다 받는다.
+type Stage2Output = { reconstruction: string; learning_goals: (string | { text: string; axis: string })[]; key_question_candidates: string[] }
 type Lesson = {
   no: number
   standards: string[]
   key_question: string
-  quiz: unknown[]
+  formative_check?: { quiz: unknown[] }
+  quiz?: unknown[]
   assessment: string | null
   mergeable_with: number | null
 }
 type Stage3Output = { lessons: Lesson[] }
 type Material = { id: string; title: string; kind: 'table' | 'text' | 'chart'; table: { columns: string[]; rows: (string | number)[][] } | null }
 type Stage4Output = { materials: Material[] }
-type AssessmentItem = { kind: string; points: number; stem: string }
+type AssessmentItem = { kind: string; points: number; stem: string; exemplar_answers?: unknown[] }
 type Stage5Output = {
   items: AssessmentItem[]
   grade_boundaries: { grade: number; min: number; max: number; band: string }[]
-  exemplars: { level: string; grade: number }[]
 }
 type Stage6Output = { glossary: { term: string; explanation: string }[]; per_lesson: { no: number; notes: string[] }[] }
+type Stage7Output = { per_lesson?: { lesson_no: number; criteria_phrases: unknown[] | null }[] }
 
 function StageOutput({ stage, output }: { stage: WizardStage; output: unknown }) {
   if (output === undefined || output === null) return <p className="mt-3 text-sm text-ink-500">{copy.empty}</p>
@@ -55,7 +57,7 @@ function StageOutput({ stage, output }: { stage: WizardStage; output: unknown })
         <div>
           <p className="text-sm font-semibold text-ink-500">{copy.stage2.goalsLabel}</p>
           <ul className="mt-1 list-disc space-y-1 pl-5 text-sm">
-            {o.learning_goals?.map((g, i) => <li key={i}>{g}</li>)}
+            {o.learning_goals?.map((g, i) => <li key={i}>{typeof g === 'string' ? g : copy.stage2.goal(g.text, g.axis)}</li>)}
           </ul>
         </div>
         <div>
@@ -90,7 +92,7 @@ function StageOutput({ stage, output }: { stage: WizardStage; output: unknown })
                 <td className="py-1 pr-3">{l.no}</td>
                 <td className="py-1 pr-3">{l.standards?.join(', ')}</td>
                 <td className="py-1 pr-3">{l.key_question}</td>
-                <td className="py-1 pr-3">{l.quiz?.length ?? 0}</td>
+                <td className="py-1 pr-3">{(l.formative_check?.quiz ?? l.quiz)?.length ?? 0}</td>
                 <td className="py-1 pr-3">{l.assessment ?? copy.stage3.noAssessment}</td>
                 <td className="py-1 pr-3">{l.mergeable_with ?? copy.stage3.noAssessment}</td>
               </tr>
@@ -158,11 +160,16 @@ function StageOutput({ stage, output }: { stage: WizardStage; output: unknown })
         <div>
           <p className="text-sm font-semibold text-ink-500">{copy.stage5.exemplarsHeading}</p>
           <ul className="mt-1 space-y-1 text-sm">
-            {o.exemplars?.map((e, i) => <li key={i}>{copy.stage5.exemplar(e.level, e.grade)}</li>)}
+            {o.items?.map((it, i) => <li key={i}>{copy.stage5.exemplarCount(i + 1, it.exemplar_answers?.length ?? 0)}</li>)}
           </ul>
         </div>
       </div>
     )
+  }
+
+  if (stage === 7) {
+    const o = output as Stage7Output
+    return <p className="mt-3 text-sm">{copy.stage7.summary(o.per_lesson?.length ?? 0, o.per_lesson?.filter((p) => p.criteria_phrases).length ?? 0)}</p>
   }
 
   // stage 6
@@ -348,7 +355,7 @@ export function StageWizard({
     for (const s of WIZARD_STAGES) {
       if (effective[s]?.state !== 'accepted') return s
     }
-    return 6
+    return WIZARD_STAGES[WIZARD_STAGES.length - 1]
   }
 
   const activeStatus = effective[active]

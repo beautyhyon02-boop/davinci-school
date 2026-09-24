@@ -1,4 +1,5 @@
 import type { Snapshot } from '@/lib/studio/publish'
+type AssessmentItem = NonNullable<Snapshot['assessment']>['items'][number]
 
 /** 3단계 차시 스키마의 assessment 라벨. 순서 = 5단계 items 순서 = 문항 번호(1-based). */
 export const ASSESSMENT_LABELS = ['서술형1', '서술형2', '논술형'] as const
@@ -25,12 +26,18 @@ export function isLessonOpen(openLessons: number, lessonNo: number): boolean {
   return lessonNo >= 1 && lessonNo <= openLessons
 }
 
-/** 3단계 차시의 materials 목록("자료 A", "자료 B", "축제 삽화 3장"…)에서 공유/세트 자료 id(A~Z)만 뽑는다. */
-export function materialIdsForLesson(lesson: { materials: string[] }): string[] {
-  const ids = new Set<string>()
-  for (const s of lesson.materials) {
-    const m = s.match(/(?:^|[^A-Z])([A-Z])(?![A-Z])/)
-    if (m && /자료/.test(s)) ids.add(m[1])
-  }
-  return [...ids].sort()
+/** 차시가 쓰는 자료 ID(v2 materials_used, 중복 제거·오름차순). 준비물(materials_needed)은 자료가 아니다. */
+export function materialIdsForLesson(lesson: { materials_used: string[] }): string[] {
+  return [...new Set(lesson.materials_used)].sort()
+}
+
+/** 표·그래프를 종이에 직접 작성하는 문항(answer_mode 'paper')인지. 학생 화면은 입력칸 대신 종이 답안 안내를 보인다. */
+export function isPaperItem(snapshot: Snapshot, itemNo: number): boolean {
+  return snapshot.assessment?.items[itemNo - 1]?.conditions.answer_mode === 'paper'
+}
+
+/** 학생 답안 칸에 넘기는 조건(스펙 §2.9 학생 화면: 조건 문장·분량·형식만 + 답안 방식). 동사·배점·분류는 넘기지 않는다. */
+export function studentConditions(item: AssessmentItem): { length: string; format: string; answer_mode: 'screen' | 'paper'; items: { no: number; text: string }[] } {
+  const c = item.conditions
+  return { length: c.length, format: c.format, answer_mode: c.answer_mode, items: c.items.map((x) => ({ no: x.no, text: x.text })) }
 }

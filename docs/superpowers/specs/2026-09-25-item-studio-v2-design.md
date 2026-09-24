@@ -449,7 +449,9 @@ WP5 README 관찰과 wp4 §8·wp7 §7·wp1 §4에서 뽑았다. "규모"는 예�
 발표 뒤:
 - `standard_levels(code text, school_level text, scheme text, level text, statement text, merged_with text[], domain text, unit text, source_file text, pages int[], primary key (code, level))`와 `domain_levels(subject, school_level, domain, level, axis, statement, pages)`. 적재는 `scripts/import-levels.ts`가 `data/reference/levels/*.json`을 그대로 펼친다(966 성취기준 × 3~5 수준 ≈ 4,200행; `merged_levels`는 `merged_with`로). DB 대조는 `coverage.md`가 이미 코드 집합 일치를 확인했으므로 적재 후 행 수만 검사.
 - `exemplars` 표(레코드 JSON을 jsonb로, 색인 열 `subject, school_level, grade, kind, code_prefix[]`)와 `references` 표(세트 판 ↔ 예시 id).
-- `notices`(학생별 안내장, `assignment_id, lesson_no, body jsonb, status: draft|confirmed|sent, confirmed_by, sent_at, viewed_at`) — 발송·열람 로그(학부모 확인 대체, wp13 §2).
+- 학생별 안내장 발송·열람 로그(`sent` 상태, `sent_at`, `viewed_at` — 학부모 확인 대체, wp13 §2). 표 자체는 0011에 이미 있다(아래).
+
+**반영(2026-09-25, 0011)**: 학생별 안내장 표는 발표 전 범위로 당겨 `lesson_notices`로 만들었다(1주차 `notices`는 홈페이지 공지사항 표라 이름을 달리함). 열: `id, assignment_id, academy_id, lesson_no(1~8), body jsonb, status(draft|confirmed), drafted_by, drafted_at, confirmed_at, updated_at`, `unique(assignment_id, lesson_no)`. RLS: 관리자 전체, 원장 자기 원 배정만 읽기·쓰기, 학생 없음. `sent` 상태·`sent_at`·`viewed_at`(발송·열람)은 발표 뒤.
 
 ### 4.3 기존 데이터 처리
 
@@ -513,7 +515,7 @@ D1→D2·D3·D4는 병렬 가능(D2~D4는 D1의 타입만 있으면 됨). D5·D6
 | 항목 | 내용 | 추정 |
 |---|---|---|
 | DB 적재 | `standard_levels`·`domain_levels`·`exemplars`·`references` 표 + import 스크립트, 로더 교체 | 1일 |
-| 안내장 운영 | `notices` 표, 원장 확정·발송 UI, 학부모 열람 링크·로그, A5 인쇄 | 1.5일 |
+| 안내장 운영 | `lesson_notices` 발송·열람 열(표는 0011, §4.2), 원장 발송 UI, 학부모 열람 링크·로그, A5 인쇄 | 1.5일 |
 | 활동지 3판 | 기본/표준/도전을 세 장으로 자동 분화, 원장이 학생별 배부 | 0.5일 |
 | 학교급 분기 | 초등(A~C·B 도달점), 고등(최소 능력 필수·5단계·이수 40% 맥락) (wp1 §6·§7-16·17) | 1일 |
 | 역사 세트 | 사료 균형·인용 조건 템플릿, 역사 예시 은행 보강(미추출 사례) | 0.5일 |
@@ -602,6 +604,7 @@ D1→D2·D3·D4는 병렬 가능(D2~D4는 D1의 타입만 있으면 됨). D5·D6
 | C-28 | 척도 수와 성취수준 단계 수를 억지로 맞추지 않되, 문항마다 A~E 예상 점수 구간(`level_map`)을 적는다 | P+S | [WP1-11][WP4 §2] |
 | C-29 | 동사는 매번 창작하지 않고 교과×축×등급 동사 뱅크(과학 5범주, 사회 탐구기능, 역사 인지 위계, Bloom 한국어판)에서 고른다 | P(발표 뒤 파일화) | [WP1-14] |
 | C-30 | 문항 개발 후 8문항 자가 점검(성취기준 부합·3범주 반영·상황맥락·고차 사고·채점기준 부합·변별·명료성·채점자 불변성)을 검토 AI 초점으로 쓴다 | S | [WP13-9] |
+| C-31 | 세트 평가는 서술형 2개(각 3점) + 논술형 1개(16점) = 22점, 논술형 채점표는 4요소 × 0~4점, 등급표는 7등급(21~22, 18~20, 15~17, 11~14, 8~10, 5~7, 0~4; 상=6~7, 중=3~5, 하=1~2)에 level_ref(7=A, 6=B, 5=C, 4=D, 3=E, 2·1=E 미만)를 병기한다. 논술형 예시답안 상/중/하는 채점표로 실제 채점했을 때 그 밴드가 나와야 한다 | P+S | [대표][v1] |
 
 ### A.2 차시·재구성(L-)
 
@@ -628,7 +631,7 @@ D1→D2·D3·D4는 병렬 가능(D2~D4는 D1의 타입만 있으면 됨). D5·D6
 | S-국-02 | 조건 2~4개를 내용 조건/형식 조건으로 나누고 채점표도 그 구분을 따른다 | [WP5-국-2] |
 | S-국-03 | 논술형은 서론-본론-결론, 근거 2~3개, 인용 출처 "(가)에서" 표기, 분량 ±50자 | [WP4 §8][WP4-11] |
 | S-국-04 | 맞춤법·띄어쓰기는 오류 2개 이하 관용, 의미 전달되면 감점하지 않음 | [WP4 §8][C-16] |
-| S-국-05 | 두 자료 비교 문항의 비교 기준(관점·표현 방법 등)을 프롬프트 입력으로 먼저 정한다 | [WP4-운1] |
+| S-국-05 | 두 자료 비교 문항의 비교 기준(관점·표현 방법 등)을 문두 전제문에 먼저 밝힌다(v2: 모델이 전제문에 명시) | [WP4-운1] |
 | S-국-06 | "느낀 점"만 묻는 주관적 서술 금지, 발문이 단답형으로 축소되지 않게 | [WP4 §8] |
 | S-수-01 | 통계 단원에서 표를 새로 작성하게 하는 문항은 서술형 중 최대 1개, 나머지는 정리된 표를 읽고 계산·비교·판단 | [서울-1] |
 | S-수-02 | 저배점(3점) 서술형은 조건-점수 1점 단위 대응("무엇을 쓰면 몇 점"), 계산 정확성과 결론 문장을 별도 요소로 | [서울-4][WP5-수-2] |

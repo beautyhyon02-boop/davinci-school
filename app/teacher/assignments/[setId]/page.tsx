@@ -44,7 +44,7 @@ export default async function AssignmentSetPage({ params }: { params: Promise<{ 
   const quizRows = (quiz ?? []) as QuizResponseRow[]
   const gradingRows = (gradings ?? []) as GradingRow[]
   const items = snapshot.assessment?.items ?? []
-  const lessonsMeta = snapshot.lessons.map((l) => ({ no: l.no, quizCount: l.quiz.length, types: l.quiz.map((q) => q.type) }))
+  const lessonsMeta = snapshot.lessons.map((l) => ({ no: l.no, quizCount: l.formative_check.quiz.length, types: l.formative_check.quiz.map((q) => q.type) }))
   const students = rows.map((r) => ({ assignmentId: r.id, name: r.students?.profiles?.name ?? '' }))
 
   return (
@@ -72,6 +72,15 @@ export default async function AssignmentSetPage({ params }: { params: Promise<{ 
                 <h3 className="font-bold">{r.students?.profiles?.name}</h3>
                 <span className="text-sm text-ink-500">{grade ? app.classroom.review.overall(overall.total, overall.max, grade.grade, grade.band) : app.classroom.review.overallPending}</span>
               </div>
+              {/* 학생별 차시 안내장(v2): 열린 차시마다. 서·논술형이 없는 차시도 퀴즈 참여로 안내장을 만든다. 안내장 틀이 없는 v1 판은 링크 없음 */}
+              {snapshot.notice_plan && (
+                <div className="mt-1 flex flex-wrap items-center gap-2 text-sm">
+                  <span className="text-ink-500">{app.classroom.notice.cardHeading}</span>
+                  {snapshot.lessons.filter((l) => l.no <= r.open_lessons).map((l) => (
+                    <Link key={l.no} href={`/teacher/assignments/${setId}/notices/${r.id}/${l.no}`} className="text-mint-700 underline">{app.classroom.notice.cardLink(l.no)}</Link>
+                  ))}
+                </div>
+              )}
               <div className="mt-2 grid gap-3 lg:grid-cols-3">
                 {items.map((it, i) => {
                   const a = latest(i + 1)

@@ -177,6 +177,10 @@ describe('site content', () => {
     expect(app.studio.wizard.stageNames[4]).toBeTruthy()
     expect(app.studio.wizard.stageNames[5]).toBeTruthy()
     expect(app.studio.wizard.stageNames[6]).toBeTruthy()
+    expect(app.studio.wizard.stageNames[7]).toBe('안내장 틀')
+    expect(app.studio.wizard.stage7.summary(5, 2)).toBe('차시 5개 · 서·논술형 차시 문구 2개')
+    expect(app.studio.wizard.stage2.goal('상대도수를 구할 수 있다.', '과정·기능')).toContain('과정·기능')
+    expect(app.studio.publish.blockers.stageNotAccepted(7)).toContain('7단계')
     expect(app.studio.wizard.stateLabel.accepted).toBeTruthy()
     expect(app.studio.wizard.actions.generate).toBeTruthy()
     expect(app.studio.wizard.actions.review).toBeTruthy()
@@ -190,7 +194,7 @@ describe('site content', () => {
     expect(app.studio.wizard.stage4.previewHeading).toBeTruthy()
     expect(app.studio.wizard.stage5.pointsLabel(3)).toContain('3')
     expect(app.studio.wizard.stage5.boundary(4, 15, 18, '중')).toBe('4등급: 15~18 (중)')
-    expect(app.studio.wizard.stage5.exemplar('상', 7)).toBe('상 — 7등급')
+    expect(app.studio.wizard.stage5.exemplarCount(3, 4)).toBe('3번 문항 예시답안 4개')
     expect(app.studio.wizard.errors.tooManyFailures).toBeTruthy()
     expect(app.studio.wizard.stage6.termsCount(5)).toContain('5')
     expect(app.studio.wizard.errors.invalidJson).toBeTruthy()
@@ -306,6 +310,28 @@ describe('site content', () => {
     expect(app.packageView.feedbackLevels.중).toBeTruthy()
     expect(app.packageView.feedbackLevels.하).toBeTruthy()
     expect(app.packageView.generatedWithHeading).toBeTruthy()
+  })
+
+  it('exposes the v2 student answer copy (paper-answer notice, numbered condition label, paper-only error)', () => {
+    expect(app.classroom.student.paperAnswer).toContain('종이')
+    expect(app.classroom.student.conditionItem(2)).toContain('2')
+    expect(app.classroom.student.errors.paperOnly).toBeTruthy()
+  })
+
+  it('exposes packageView v2 copy (unit plan, lessons v2, item card, rubric, notice plan, answers toggle)', () => {
+    const c = app.packageView
+    expect(c.unitPlan.placement('논술형', 5)).toContain('5')
+    expect(c.lessons.timeLabel(10, 40, 10)).toContain('40')
+    expect(c.lessons.stepLabel('개념·활동', 20)).toContain('20')
+    expect(c.lessons.worksheetTier('기본', 'D~E')).toContain('D~E')
+    expect(c.assessment.conditions.itemNo(3)).toContain('3')
+    expect(c.assessment.conditions.answerMode.paper).toBeTruthy()
+    expect(c.assessment.conditions.answerMode.screen).toBeTruthy()
+    expect(c.rubric.criterionLabel('요소', 4)).toContain('4')
+    expect(c.materials.sourceLabel.공개).toBeTruthy()
+    expect(c.materials.roleLabel.context).toBeTruthy()
+    expect(c.noticePlanHeading).toBeTruthy()
+    expect(c.answersToggle).toBeTruthy()
   })
 
   it('exposes teacherItems copy (title, filters, card, empty, detail)', () => {

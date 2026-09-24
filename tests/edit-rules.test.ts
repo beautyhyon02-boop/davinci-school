@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { canEditStage, downstreamResets, keyQuestionAfterStage2 } from '@/lib/studio/edit-rules'
+import { canEditStage, downstreamResets, keyQuestionAfterStage2, EDITABLE_STAGES } from '@/lib/studio/edit-rules'
+import { WIZARD_STAGES } from '@/lib/studio/wizard-stages'
 import { STAGE_ERRORS, type StageStatus } from '@/lib/studio/stages'
 
 const NOW = '2026-09-20T00:00:00.000Z'
@@ -22,8 +23,8 @@ describe('canEditStage', () => {
   })
 
   it('allows editing stage n when stage n-1 is accepted', () => {
-    const statuses = { stage2: accepted(), stage3: accepted(), stage4: accepted(), stage5: accepted() }
-    for (const stage of [3, 4, 5, 6]) {
+    const statuses = { stage2: accepted(), stage3: accepted(), stage4: accepted(), stage5: accepted(), stage6: accepted() }
+    for (const stage of [3, 4, 5, 6, 7]) {
       expect(canEditStage({ stage, statuses, standardCount: 3 })).toEqual({ ok: true })
     }
   })
@@ -49,11 +50,12 @@ describe('downstreamResets', () => {
     stage4: accepted(),
     stage5: accepted(),
     stage6: accepted(),
+    stage7: accepted(),
   }
 
   it('resets every later stage to idle with output and review dropped', () => {
     const resets = downstreamResets(3, all, NOW)
-    expect(resets.map((r) => r.stage)).toEqual([4, 5, 6])
+    expect(resets.map((r) => r.stage)).toEqual([4, 5, 6, 7])
     for (const r of resets) {
       expect(r.status).toEqual({ state: 'idle', attempt: 0, updated_at: NOW })
       expect(r.status.output).toBeUndefined()
@@ -62,13 +64,21 @@ describe('downstreamResets', () => {
   })
 
   it('never touches the edited stage or earlier ones', () => {
-    expect(downstreamResets(2, all, NOW).map((r) => r.stage)).toEqual([3, 4, 5, 6])
-    expect(downstreamResets(6, all, NOW)).toEqual([])
+    expect(downstreamResets(2, all, NOW).map((r) => r.stage)).toEqual([3, 4, 5, 6, 7])
+    expect(downstreamResets(6, all, NOW).map((r) => r.stage)).toEqual([7])
+    expect(downstreamResets(7, all, NOW)).toEqual([])
   })
 
   it('skips stages that are already absent or idle (불필요한 set_stage_status 호출을 내지 않는다)', () => {
     const partial = { stage2: accepted(), stage3: accepted(), stage5: status('idle') }
     expect(downstreamResets(2, partial, NOW).map((r) => r.stage)).toEqual([3])
+  })
+})
+
+describe('wizard stage list', () => {
+  it('covers stages 2..7 (7 = 안내장 틀) and editing follows the same list', () => {
+    expect([...WIZARD_STAGES]).toEqual([2, 3, 4, 5, 6, 7])
+    expect([...EDITABLE_STAGES]).toEqual([...WIZARD_STAGES])
   })
 })
 

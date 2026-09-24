@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { assessmentItemNoForLesson, lessonNoForItem, isLessonOpen, ASSESSMENT_LABELS, materialIdsForLesson } from '@/lib/classroom/lessons'
+import { readFileSync } from 'node:fs'
+import { assessmentItemNoForLesson, lessonNoForItem, isLessonOpen, ASSESSMENT_LABELS, materialIdsForLesson, isPaperItem, studentConditions } from '@/lib/classroom/lessons'
 
 // 최소 스냅샷: lessons 의 assessment 라벨과 assessment.items 의 순서로 문항 번호(1-based)를 정한다
 const snapshot = {
@@ -32,9 +33,41 @@ describe('isLessonOpen', () => {
 })
 
 describe('materialIdsForLesson', () => {
-  it('extracts A~Z ids from "자료 X" entries and ignores other items', () => {
-    expect(materialIdsForLesson({ materials: ['축제 삽화 3장', '자료 A', '자료 B'] })).toEqual(['A', 'B'])
-    expect(materialIdsForLesson({ materials: ['자료 B', '자료 A'] })).toEqual(['A', 'B'])
-    expect(materialIdsForLesson({ materials: [] })).toEqual([])
+  it('returns the ids from materials_used sorted, ignoring preparation items', () => {
+    expect(materialIdsForLesson({ materials_used: ['B', 'A'], materials_needed: ['축제 삽화 3장'] } as never)).toEqual(['A', 'B'])
+    expect(materialIdsForLesson({ materials_used: ['A', 'A'] })).toEqual(['A'])
+    expect(materialIdsForLesson({ materials_used: [] } as never)).toEqual([])
+  })
+})
+
+describe('isPaperItem', () => {
+  it('is true only for an item whose conditions.answer_mode is paper', () => {
+    const s = { assessment: { items: [{ conditions: { answer_mode: 'paper' } }, { conditions: { answer_mode: 'screen' } }] } } as never
+    expect(isPaperItem(s, 1)).toBe(true)
+    expect(isPaperItem(s, 2)).toBe(false)
+    expect(isPaperItem(s, 3)).toBe(false)
+    expect(isPaperItem({ assessment: null } as never, 1)).toBe(false)
+  })
+})
+
+describe('studentConditions', () => {
+  it('keeps only what the student sees: numbered texts, length, format and answer mode', () => {
+    const item = { conditions: { items: [{ no: 1, text: '조건 문장', verb: '쓰다', points: 1, category: '내용' }], length: '두 문장', format: '문장', answer_mode: 'paper', overflow_rule: '앞의 것만' } } as never
+    expect(studentConditions(item)).toEqual({ length: '두 문장', format: '문장', answer_mode: 'paper', items: [{ no: 1, text: '조건 문장' }] })
+  })
+})
+
+describe('isPaperItem on the 수학 fixture (server-side paper guard in student actions)', () => {
+  const assessment = JSON.parse(readFileSync('data/studio-fixtures/stage5-generate.json', 'utf8'))
+  const snap = { assessment } as never
+  it('is true only for the one paper item and false for the others and unknown numbers', () => {
+    const modes = assessment.items.map((i: { conditions: { answer_mode: string } }) => i.conditions.answer_mode)
+    expect(modes.filter((m: string) => m === 'paper')).toHaveLength(1)
+    assessment.items.forEach((it: { conditions: { answer_mode: string } }, i: number) => expect(isPaperItem(snap, i + 1)).toBe(it.conditions.answer_mode === 'paper'))
+    expect(isPaperItem(snap, 1)).toBe(true)
+    expect(isPaperItem(snap, 2)).toBe(false)
+    expect(isPaperItem(snap, 3)).toBe(false)
+    expect(isPaperItem(snap, 0)).toBe(false)
+    expect(isPaperItem(snap, 4)).toBe(false)
   })
 })

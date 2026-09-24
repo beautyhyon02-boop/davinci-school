@@ -1,28 +1,44 @@
 import type { z } from 'zod'
+import type { ReactNode } from 'react'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Histogram } from './Histogram'
 import { RelativeFreqBars } from './RelativeFreqBars'
 import { detectChart } from '@/lib/studio/charts'
 import type { Snapshot } from '@/lib/studio/publish'
-import type { Lesson as LessonSchema, QuizItem as QuizItemSchema, Material as MaterialSchema, AssessmentItem as AssessmentItemSchema, ShortRubric as ShortRubricSchema, ExtendedRubric as ExtendedRubricSchema } from '@/lib/studio/schemas'
+import type { Lesson as LessonSchema, QuizItem as QuizItemSchema, Material as MaterialSchema, AssessmentItem as AssessmentItemSchema, Rubric as RubricSchema } from '@/lib/studio/schemas'
+import { getLevels } from '@/lib/reference/levels'
 import { app } from '@/content/site'
 
+// v2 패키지 화면(스펙 §2.9). 카드 순서 = 표지 → 소개 → 성취기준(+A~E 접이식) → 재구조화 표 → 학습 목표(축 배지) → 핵심질문 →
+// 평가 계획 → 차시 카드(시간·소단계·발문 대본·준비물·유의점·활동지·퀴즈) → 자료(출처 배지) → 문항 카드 3장 → 등급표(level_ref) →
+// 피드백 틀 → 교사용 지침서 → 안내장 틀 → 참고한 공개 자료 → 생성 모델(관리자만).
+// 정답·예시답안 같은 채점 자료는 <details> 로 묶는다 — 관리자 미리보기는 펼친 채, 원장 열람(mode='teacher')은 접힌 채로 시작한다.
+// getLevels 가 node:fs 를 쓰므로 서버 컴포넌트에서만 렌더한다(사용처: 관리자 세트 page, 원장 문항 page, 학생 page 의 MaterialsSection).
 type Lesson = z.infer<typeof LessonSchema>
 type QuizItem = z.infer<typeof QuizItemSchema>
 type Material = z.infer<typeof MaterialSchema>
 type AssessmentItem = z.infer<typeof AssessmentItemSchema>
-type ShortRubric = z.infer<typeof ShortRubricSchema>
-type ExtendedRubric = z.infer<typeof ExtendedRubricSchema>
+type Rubric = z.infer<typeof RubricSchema>
 
 const copy = app.packageView
 
-function isShortRubric(rubric: ShortRubric | ExtendedRubric): rubric is ShortRubric {
-  return 'levels' in rubric
+function SectionHeading({ children }: { children: ReactNode }) {
+  return <h2 className="text-lg font-bold">{children}</h2>
 }
 
-function SectionHeading({ children }: { children: React.ReactNode }) {
-  return <h2 className="text-lg font-bold">{children}</h2>
+function Label({ children }: { children: ReactNode }) {
+  return <span className="font-semibold text-ink-500">{children}</span>
+}
+
+/** 채점 자료 접이식. open = 관리자 미리보기(펼침), 원장 열람은 접힘. */
+function Answers({ open, children }: { open: boolean; children: ReactNode }) {
+  return (
+    <details open={open} className="mt-3 rounded-lg bg-lemon-100/40 p-3">
+      <summary className="cursor-pointer text-sm font-semibold text-ink-500">{copy.answersToggle}</summary>
+      <div className="mt-2 space-y-2">{children}</div>
+    </details>
+  )
 }
 
 const SPLIT_ROWS_OVER = 12
@@ -77,30 +93,116 @@ function MaterialChart({ material }: { material: Material }) {
 
 export function MaterialsSection({ materials }: { materials: Material[] }) {
   if (materials.length === 0) return null
+  const c = copy.materials
   return (
     <Card>
       <SectionHeading>{copy.materialsHeading}</SectionHeading>
       <div className="mt-3 space-y-6">
         {materials.map((m) => (
           <div key={m.id} className="rounded-xl border border-ink-100 bg-ink-100/30 p-4">
-            {/* 자료마다 큰 라벨(자료 A/B…)로 구분이 한눈에 보이게 */}
+            {/* 자료마다 큰 라벨(자료 A/B…)로 구분이 한눈에 보이게. 출처·역할 배지(스펙 §2.4). */}
             <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full bg-mint-500 px-3 py-1 text-sm font-bold text-white">{copy.materials.idLabel} {m.id}</span>
+              <span className="rounded-full bg-mint-500 px-3 py-1 text-sm font-bold text-white">{c.idLabel} {m.id}</span>
               <p className="text-base font-bold">{m.title}</p>
+              <Badge tone="gray">{c.sourceLabel[m.source.kind]}{m.source.attribution ? ` · ${m.source.attribution}` : ''}</Badge>
+              <Badge tone="gray">{c.roleLabel[m.role]}</Badge>
+              {m.source.ai_assisted && <Badge tone="lemon">{c.aiBadge}</Badge>}
             </div>
             {m.body && <p className="mt-1 whitespace-pre-wrap text-sm">{m.body}</p>}
             <MaterialTable material={m} />
             <MaterialChart material={m} />
-            {(m.images ?? []).length > 0 && (
+            {m.images.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-2">
-                {(m.images ?? []).map((src, i) => (
+                {m.images.map((src, i) => (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img key={src} src={src} alt={copy.materials.imagesAlt(m.title, i + 1)} className="h-24 w-24 rounded-lg object-cover" />
+                  <img key={src} src={src} alt={c.imagesAlt(m.title, i + 1)} className="h-24 w-24 rounded-lg object-cover" />
                 ))}
               </div>
             )}
           </div>
         ))}
+      </div>
+    </Card>
+  )
+}
+
+function StandardsSection({ standards }: { standards: Snapshot['standards'] }) {
+  return (
+    <Card>
+      <SectionHeading>{copy.standardsHeading}</SectionHeading>
+      <ul className="mt-2 space-y-2 text-sm">
+        {standards.map((s) => {
+          const lv = getLevels(s.code)
+          return (
+            <li key={s.code}>
+              <span className="font-semibold">{s.code}</span> {s.text}
+              {lv && (
+                <details className="mt-1 rounded-lg bg-ink-100/40 p-2">
+                  <summary className="cursor-pointer text-ink-500">{copy.levelsToggle}</summary>
+                  <ul className="mt-1 space-y-0.5">
+                    {Object.entries(lv.levels).map(([k, v]) => <li key={k}><span className="font-semibold">{k}</span> {v}</li>)}
+                  </ul>
+                </details>
+              )}
+            </li>
+          )
+        })}
+      </ul>
+    </Card>
+  )
+}
+
+function ReconstructionSection({ snapshot }: { snapshot: Snapshot }) {
+  const c = copy.reconstructionTable.columns
+  return (
+    <Card>
+      <SectionHeading>{copy.reconstructionHeading}</SectionHeading>
+      <p className="mt-2 whitespace-pre-wrap text-sm">{snapshot.reconstruction}</p>
+      {snapshot.reconstruction_detail.length > 0 && (
+        <div className="mt-3 overflow-x-auto">
+          <table className="w-full min-w-[720px] text-left text-sm">
+            <thead>
+              <tr className="border-b border-ink-100 text-ink-500">
+                <th className="py-1 pr-3">{c.code}</th><th className="py-1 pr-3">{c.original}</th><th className="py-1 pr-3">{c.type}</th>
+                <th className="py-1 pr-3">{c.reconstructed}</th><th className="py-1 pr-3">{c.reason}</th><th className="py-1 pr-3">{c.elements}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {snapshot.reconstruction_detail.map((r) => (
+                <tr key={r.code} className="border-b border-ink-50 align-top">
+                  <td className="py-1 pr-3 font-semibold">{r.code}</td>
+                  <td className="py-1 pr-3">{r.original_text}</td>
+                  <td className="py-1 pr-3"><Badge tone="gray">{r.reconstruction_type}</Badge></td>
+                  <td className="py-1 pr-3">{r.reconstructed_text}</td>
+                  <td className="py-1 pr-3">{r.reason.join(', ')}</td>
+                  <td className="py-1 pr-3">{r.learning_elements.join(', ')}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Card>
+  )
+}
+
+function UnitPlanSection({ plan }: { plan: Snapshot['unit_plan'] }) {
+  if (!plan) return null
+  const c = copy.unitPlan
+  const p = plan.assessment_plan
+  return (
+    <Card>
+      <SectionHeading>{copy.unitPlanHeading}</SectionHeading>
+      <div className="mt-2 space-y-1 text-sm">
+        <p><Label>{c.lessonMapLabel}:</Label> {plan.lesson_map.map((l) => c.lessonMapItem(l.lesson_no, l.topic)).join(' · ')}</p>
+        <p><Label>{c.formativeLabel}:</Label> {p.formative}</p>
+        <p><Label>{c.placementLabel}:</Label> {p.summative_placement.map((x) => c.placement(x.kind, x.lesson_no)).join(' · ')}</p>
+        <div>
+          <Label>{c.rubricNoteLabel}:</Label>
+          <ul className="list-disc pl-5">
+            {(['상', '중', '하'] as const).map((lv) => <li key={lv}><span className="font-semibold">{copy.feedbackLevels[lv]}</span> {p.rubric_note[lv]}</li>)}
+          </ul>
+        </div>
       </div>
     </Card>
   )
@@ -111,92 +213,280 @@ function QuizView({ quiz, showAnswers }: { quiz: QuizItem[]; showAnswers: boolea
   const c = copy.lessons.quiz
   return (
     <div className="mt-3">
-      <p className="text-sm font-semibold text-ink-500">{copy.lessons.quizHeading}</p>
-      <ol className="mt-1 list-decimal space-y-2 pl-5 text-sm">
+      <p className="font-semibold text-ink-500">{copy.lessons.quizHeading}</p>
+      <ol className="mt-1 list-decimal space-y-2 pl-5">
         {quiz.map((q, i) => (
           <li key={i}>
             <p>{q.q} <Badge tone="gray">{c.typeLabel[q.type]}</Badge></p>
-            {q.choices && (
-              <ul className="mt-1 list-disc pl-5">
-                {q.choices.map((choice, j) => <li key={j}>{choice}</li>)}
-              </ul>
-            )}
-            {showAnswers ? (
-              <p className="mt-1 text-mint-700">{c.answerLabel}: {q.answer} · {c.explanationLabel}: {q.explanation}</p>
-            ) : (
-              <p className="mt-1 text-ink-500">{c.answersHidden}</p>
-            )}
+            {q.choices && <ul className="mt-1 list-disc pl-5">{q.choices.map((ch, j) => <li key={j}>{ch}</li>)}</ul>}
           </li>
         ))}
       </ol>
+      {!showAnswers && <p className="mt-1 text-ink-500">{c.answersHidden}</p>}
     </div>
   )
 }
 
-function LessonsSection({ lessons, showAnswers }: { lessons: Lesson[]; showAnswers: boolean }) {
-  if (lessons.length === 0) return null
-  const c = copy.lessons.columns
+function LessonCard({ l, showAnswers, open }: { l: Lesson; showAnswers: boolean; open: boolean }) {
+  const c = copy.lessons
+  const t = l.time_budget
+  const materials = l.materials_used.map((id) => `${copy.materials.idLabel} ${id}`).join(', ')
   return (
-    <Card>
-      <SectionHeading>{copy.lessonsHeading}</SectionHeading>
-      <div className="mt-3 overflow-x-auto">
-        <table className="w-full min-w-[640px] text-left text-sm">
-          <thead>
-            <tr className="border-b border-ink-100 text-ink-500">
-              <th className="py-1 pr-3">{c.no}</th>
-              <th className="py-1 pr-3">{c.standards}</th>
-              <th className="py-1 pr-3">{c.keyQuestion}</th>
-              <th className="py-1 pr-3">{c.goal}</th>
-              <th className="py-1 pr-3">{c.assessment}</th>
-              <th className="py-1 pr-3">{c.mergeable}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {lessons.map((l) => (
-              <tr key={l.no} className="border-b border-ink-50">
-                <td className="py-1 pr-3">{l.no}</td>
-                <td className="py-1 pr-3">{l.standards.join(', ')}</td>
-                <td className="py-1 pr-3">{l.key_question}</td>
-                <td className="py-1 pr-3">{l.goal}</td>
-                <td className="py-1 pr-3">{l.assessment ?? copy.lessons.noAssessment}</td>
-                <td className="py-1 pr-3">{l.mergeable_with ?? copy.lessons.noAssessment}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+    <div className="rounded-xl border border-ink-100 p-3 text-sm">
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="text-base font-semibold">{c.columns.no} {l.no} · {l.topic}</p>
+        <Badge tone="gray">{l.standards.join(', ')}</Badge>
+        {l.assessment && <Badge tone="mint">{l.assessment}</Badge>}
+        {l.mergeable_with !== null && <Badge tone="gray">{c.mergeableLabel(l.mergeable_with)}</Badge>}
+        <Badge tone="gray">{c.timeLabel(t.intro_min, t.main_min, t.wrapup_min)}</Badge>
+      </div>
+      <p className="mt-2"><Label>{c.columns.keyQuestion}:</Label> {l.key_question}</p>
+      <p><Label>{c.columns.goal}:</Label> {l.goal}</p>
+
+      <div className="mt-2 grid gap-3 sm:grid-cols-3">
+        <div>
+          <p className="font-semibold text-ink-500">{c.flow.intro} ({t.intro_min}′)</p>
+          <ul className="list-disc pl-5">{l.flow.intro.map((x, i) => <li key={i}>{x}</li>)}</ul>
+        </div>
+        <div>
+          <p className="font-semibold text-ink-500">{c.flow.main} ({t.main_min}′)</p>
+          {l.flow.main.map((m, i) => (
+            <div key={i} className="mt-1">
+              <p className="font-semibold">{c.stepLabel(m.step_label, m.minutes)}</p>
+              <ul className="list-disc pl-5">{m.activities.map((x, j) => <li key={j}>{x}</li>)}</ul>
+            </div>
+          ))}
+        </div>
+        <div>
+          <p className="font-semibold text-ink-500">{c.flow.wrapup} ({t.wrapup_min}′)</p>
+          <ul className="list-disc pl-5">{l.flow.wrapup.map((x, i) => <li key={i}>{x}</li>)}</ul>
+        </div>
       </div>
 
-      <div className="mt-4 space-y-4">
-        {lessons.map((l) => (
-          <div key={l.no} className="rounded-xl border border-ink-100 p-3">
-            <p className="text-sm font-semibold">{c.no} {l.no}</p>
-            <div className="mt-2 grid gap-2 text-sm sm:grid-cols-3">
-              <p><span className="font-semibold text-ink-500">{copy.lessons.flow.intro}</span> {l.flow.intro}</p>
-              <p><span className="font-semibold text-ink-500">{copy.lessons.flow.main}</span> {l.flow.main}</p>
-              <p><span className="font-semibold text-ink-500">{copy.lessons.flow.wrapup}</span> {l.flow.wrapup}</p>
-            </div>
-            {l.materials.length > 0 && (
-              <p className="mt-2 text-sm"><span className="font-semibold text-ink-500">{copy.lessons.materialsLabel}:</span> {l.materials.join(', ')}</p>
-            )}
-            {(l.images ?? []).length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-2">
-                {(l.images ?? []).map((src, i) => (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img key={src} src={src} alt={copy.lessons.imagesAlt(l.no, i + 1)} className="h-24 w-24 rounded-lg object-cover" />
+      {(l.materials_used.length > 0 || l.materials_needed.length > 0) && (
+        <p className="mt-2">
+          {l.materials_used.length > 0 && <><Label>{c.materialsLabel}:</Label> {materials}</>}
+          {l.materials_used.length > 0 && l.materials_needed.length > 0 && ' · '}
+          {l.materials_needed.length > 0 && <><Label>{c.needsLabel}:</Label> {l.materials_needed.join(', ')}</>}
+        </p>
+      )}
+
+      {l.caution_notes.length > 0 && (
+        <div className="mt-2">
+          <p className="font-semibold text-ink-500">{c.cautionHeading}</p>
+          <ul className="list-disc pl-5">{l.caution_notes.map((x, i) => <li key={i}>{x}</li>)}</ul>
+        </div>
+      )}
+      {l.merge_note && <p className="mt-1 text-ink-500">{c.mergeNoteLabel}: {l.merge_note}</p>}
+
+      {l.worksheet.tasks.length > 0 && (
+        <div className="mt-2">
+          <p className="font-semibold text-ink-500">{c.worksheetHeading}</p>
+          <ol className="list-decimal space-y-0.5 pl-5">
+            {l.worksheet.tasks.map((w) => <li key={w.no}><Badge tone="gray">{c.worksheetTier(w.tier, w.level_ref)}</Badge> {w.prompt}</li>)}
+          </ol>
+          {l.worksheet.self_check.length > 0 && <p className="mt-1 text-ink-500">{c.selfCheckHeading}: {l.worksheet.self_check.join(' / ')}</p>}
+        </div>
+      )}
+
+      {l.images.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-2">
+          {l.images.map((src, i) => (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img key={src} src={src} alt={c.imagesAlt(l.no, i + 1)} className="h-24 w-24 rounded-lg object-cover" />
+          ))}
+        </div>
+      )}
+
+      <QuizView quiz={l.formative_check.quiz} showAnswers={showAnswers} />
+
+      {showAnswers && (l.teacher_script.questions.length > 0 || l.worksheet.tasks.length > 0 || l.formative_check.quiz.length > 0) && (
+        <Answers open={open}>
+          {l.teacher_script.questions.length > 0 && (
+            <div>
+              <p className="font-semibold text-ink-500">{c.scriptHeading}</p>
+              <ol className="list-decimal pl-5">
+                {l.teacher_script.questions.map((q, i) => (
+                  <li key={i}>{q.prompt} <span className="text-ink-500">— {c.scriptExpected}: {q.expected_answer} · {c.scriptStuck}: {q.if_stuck}</span></li>
                 ))}
-              </div>
-            )}
-            <QuizView quiz={l.quiz} showAnswers={showAnswers} />
-          </div>
-        ))}
+              </ol>
+            </div>
+          )}
+          {l.worksheet.tasks.length > 0 && (
+            <div>
+              <p className="font-semibold text-ink-500">{c.worksheetHeading} · {c.worksheetExpected}</p>
+              <ol className="list-decimal pl-5">{l.worksheet.tasks.map((w) => <li key={w.no}>{w.expected}</li>)}</ol>
+            </div>
+          )}
+          {l.formative_check.quiz.length > 0 && (
+            <div>
+              <p className="font-semibold text-ink-500">{c.quizHeading}</p>
+              <ol className="list-decimal pl-5">
+                {l.formative_check.quiz.map((q, i) => <li key={i} className="text-mint-700">{c.quiz.answerLabel}: {q.answer} · {c.quiz.explanationLabel}: {q.explanation}</li>)}
+              </ol>
+            </div>
+          )}
+        </Answers>
+      )}
+    </div>
+  )
+}
+
+// v2 채점표: 요소마다 0..max 척도(서술형 1~3요소 합 3점, 논술형 4요소 × 0~4). 요소마다 점수·기대 수행·예 표 하나.
+function RubricView({ rubric }: { rubric: Rubric }) {
+  const c = copy.rubric
+  const s = copy.shortRubric
+  return (
+    <div className="space-y-3">
+      {rubric.criteria.map((cr, i) => (
+        <div key={i} className="overflow-x-auto">
+          <p className="flex flex-wrap items-center gap-2 font-semibold">
+            {c.criterionLabel(cr.name, cr.max)} <Badge tone="gray">{cr.axis}</Badge> <span className="font-normal text-ink-500">{c.conditionsLabel(cr.condition_nos)}</span>
+          </p>
+          <table className="mt-1 w-full min-w-[420px] text-left">
+            <thead>
+              <tr className="border-b border-ink-100 text-ink-500">
+                <th className="w-16 py-1 pr-3">{s.pointsLabel}</th><th className="py-1 pr-3">{s.expectationLabel}</th><th className="py-1 pr-3">{s.exampleLabel}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[...cr.scale].sort((a, b) => b.points - a.points).map((step) => (
+                <tr key={step.points} className="border-b border-ink-50 align-top">
+                  <td className="py-1 pr-3">{c.pointLabel(step.points)}</td>
+                  <td className="py-1 pr-3">{step.descriptor}</td>
+                  <td className="py-1 pr-3 text-ink-500">{step.example ?? '-'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ))}
+      {rubric.holistic && (
+        <div>
+          <p className="font-semibold text-ink-500">{c.holisticHeading}</p>
+          <ul className="list-disc pl-5">
+            {(['상', '중', '하'] as const).map((lv) => <li key={lv}><span className="font-semibold">{copy.feedbackLevels[lv]}</span> {rubric.holistic![lv]}</li>)}
+          </ul>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function AssessmentItemView({ item, no, showAnswers, open }: { item: AssessmentItem; no: number; showAnswers: boolean; open: boolean }) {
+  const c = copy.assessment
+  const cd = c.conditions
+  return (
+    <div className="rounded-xl border border-ink-100 p-3 text-sm">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="font-semibold">{no}.</span>
+        <Badge tone="gray">{c.kindLabel[item.kind]}</Badge>
+        <Badge tone="gray">{c.lessonLabel(item.lesson_no)}</Badge>
+        <Badge tone="mint">{c.pointsLabel(item.points)}</Badge>
+        <Badge tone={item.conditions.answer_mode === 'paper' ? 'lemon' : 'gray'}>{cd.answerMode[item.conditions.answer_mode]}</Badge>
       </div>
-    </Card>
+      <p className="mt-2"><Label>{c.elementsLabel}:</Label> {item.evaluation_elements.join(' · ')}</p>
+      {item.situation && <p><Label>{c.situationLabel}:</Label> {c.situation(item.situation.role, item.situation.audience, item.situation.purpose, item.situation.product)}</p>}
+      <p><Label>{c.materialsLabel}:</Label> {item.materials_used.map((id) => `${copy.materials.idLabel} ${id}`).join(', ')}</p>
+
+      <p className="mt-2 whitespace-pre-wrap text-base font-semibold">{item.stem}</p>
+
+      <div className="mt-2 rounded-lg bg-ink-100/40 p-2">
+        <p className="font-semibold text-ink-500">{cd.heading}</p>
+        <ul className="space-y-0.5">
+          {item.conditions.items.map((x) => (
+            <li key={x.no}>
+              <span className="font-semibold">{cd.itemNo(x.no)}</span> {x.text}{' '}
+              <Badge tone="gray">{x.category}</Badge>
+              {x.points !== null && <> <Badge tone="gray">{cd.pointsLabel(x.points)}</Badge></>}
+            </li>
+          ))}
+        </ul>
+        <p className="mt-1 text-ink-500">
+          {cd.lengthLabel}: {item.conditions.length} · {cd.formatLabel}: {item.conditions.format}
+          {item.conditions.overflow_rule && ` · ${cd.overflowLabel}: ${item.conditions.overflow_rule}`}
+        </p>
+      </div>
+
+      {showAnswers && (
+        <Answers open={open}>
+          <p className="font-semibold text-ink-500">{copy.rubricHeading}</p>
+          <RubricView rubric={item.rubric} />
+          <div>
+            <p className="font-semibold text-ink-500">{c.notesHeading}</p>
+            <ul className="list-disc pl-5">{item.rubric.notes.map((n, i) => <li key={i}>{n}</li>)}</ul>
+          </div>
+          <div>
+            <p className="font-semibold text-ink-500">{c.exemplarsHeading}</p>
+            <div className="space-y-2">
+              {item.exemplar_answers.map((e, i) => (
+                <div key={i} className="rounded-lg bg-white p-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge tone="mint">{c.exemplarLabel(e.level, e.points)}</Badge>
+                    <span className="text-ink-500">{c.exemplarScores(e.scores)}</span>
+                  </div>
+                  <p className="mt-1 whitespace-pre-wrap">{e.text}</p>
+                  <p className="mt-1 text-ink-500">{c.rationaleLabel}: {e.rationale}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+          <p><Label>{c.levelMapHeading}:</Label> {item.level_map.map((l) => `${l.level} ${l.min}~${l.max}`).join(' / ')}</p>
+          <ul className="list-disc pl-5 text-ink-500">{item.level_map.map((l) => <li key={l.level}>{l.level}: {l.trait}</li>)}</ul>
+          {item.min_competency && <p><Label>{c.minCompetencyLabel}:</Label> {item.min_competency}</p>}
+        </Answers>
+      )}
+    </div>
+  )
+}
+
+function AssessmentSection({ assessment, showAnswers, open }: { assessment: Snapshot['assessment']; showAnswers: boolean; open: boolean }) {
+  if (!assessment) return null
+  const gb = copy.gradeBoundaries
+  return (
+    <>
+      <Card>
+        <SectionHeading>{copy.assessmentHeading}</SectionHeading>
+        <div className="mt-3 space-y-3">
+          {assessment.items.map((item, i) => <AssessmentItemView key={i} item={item} no={i + 1} showAnswers={showAnswers} open={open} />)}
+        </div>
+      </Card>
+
+      <Card>
+        <SectionHeading>{copy.gradeBoundariesHeading}</SectionHeading>
+        <div className="mt-3 overflow-x-auto">
+          <table className="w-full min-w-[420px] text-left text-sm">
+            <thead>
+              <tr className="border-b border-ink-100 text-ink-500">
+                <th className="py-1 pr-3">{gb.gradeLabel}</th><th className="py-1 pr-3">{gb.rangeLabel}</th><th className="py-1 pr-3">{gb.bandLabel}</th><th className="py-1 pr-3">{gb.levelRefLabel}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {assessment.grade_boundaries.map((b) => (
+                <tr key={b.grade} className="border-b border-ink-50">
+                  <td className="py-1 pr-3">{b.grade}</td><td className="py-1 pr-3">{b.min}~{b.max}</td><td className="py-1 pr-3">{b.band}</td><td className="py-1 pr-3">{b.level_ref}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      <Card>
+        <SectionHeading>{copy.feedbackTemplatesHeading}</SectionHeading>
+        <div className="mt-3 space-y-2 text-sm">
+          {(['상', '중', '하'] as const).map((lv) => <p key={lv}><span className="font-semibold">{copy.feedbackLevels[lv]}</span>: {assessment.feedback_templates[lv]}</p>)}
+        </div>
+      </Card>
+    </>
   )
 }
 
 function TeacherGuideSection({ guide }: { guide: Snapshot['teacher_guide'] }) {
   if (!guide) return null
   const c = copy.teacherGuide
+  const g = guide.grading_guide
+  const perLesson = guide.per_lesson.filter((l) => l.notes.length > 0)
   return (
     <Card>
       <SectionHeading>{copy.teacherGuideHeading}</SectionHeading>
@@ -209,170 +499,83 @@ function TeacherGuideSection({ guide }: { guide: Snapshot['teacher_guide'] }) {
         </div>
         <div>
           <p className="font-semibold text-ink-500">{c.glossaryHeading}</p>
-          <ul className="mt-1 list-disc space-y-1 pl-5">
-            {guide.glossary.map((g, i) => <li key={i}>{g.term} — {g.explanation}</li>)}
-          </ul>
+          <ul className="mt-1 list-disc space-y-1 pl-5">{guide.glossary.map((x, i) => <li key={i}>{x.term} — {x.explanation}</li>)}</ul>
         </div>
+        {guide.merge_guide.length > 0 && (
+          <div>
+            <p className="font-semibold text-ink-500">{c.mergeHeading}</p>
+            <ul className="mt-1 list-disc space-y-1 pl-5">
+              {guide.merge_guide.map((m, i) => (
+                <li key={i}>
+                  <span className="font-semibold">{c.mergeLabel(m.lessons[0], m.lessons[1])}</span> — {c.mergeSkip}: {m.skip_activities.join(', ')}
+                  <span className="text-ink-500"> ({c.mergeTime(m.time_budget_120.intro_min, m.time_budget_120.main_min, m.time_budget_120.wrapup_min)})</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         <div>
-          <p className="font-semibold text-ink-500">{c.perLessonHeading}</p>
-          <ul className="mt-1 space-y-2">
-            {guide.per_lesson.map((l) => (
-              <li key={l.no}>
-                <p className="font-semibold">{c.lessonLabel(l.no)}</p>
-                <ul className="list-disc space-y-0.5 pl-5">
-                  {l.notes.map((n, i) => <li key={i}>{n}</li>)}
-                </ul>
-              </li>
-            ))}
-          </ul>
+          <p className="font-semibold text-ink-500">{c.gradingHeading}</p>
+          <p className="mt-1 font-semibold">{c.commonErrors}</p>
+          <ul className="list-disc pl-5">{g.common_errors.map((e, i) => <li key={i}><span className="font-semibold">{c.commonErrorItem(e.item_no)}</span> {e.error} → {e.how_to_read}</li>)}</ul>
+          <p className="mt-1 font-semibold">{c.reviewTips}</p>
+          <ul className="list-disc pl-5">{g.review_tips.map((x, i) => <li key={i}>{x}</li>)}</ul>
+          <p className="mt-1"><Label>{c.retryLabel}:</Label> {g.retry_guidance}</p>
         </div>
+        {perLesson.length > 0 && (
+          <div>
+            <p className="font-semibold text-ink-500">{c.perLessonHeading}</p>
+            <ul className="mt-1 space-y-2">
+              {perLesson.map((l) => (
+                <li key={l.no}>
+                  <p className="font-semibold">{c.lessonLabel(l.no)}</p>
+                  <ul className="list-disc space-y-0.5 pl-5">{l.notes.map((n, i) => <li key={i}>{n}</li>)}</ul>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
     </Card>
   )
 }
 
-function RubricView({ rubric }: { rubric: ShortRubric | ExtendedRubric }) {
-  const c = copy
-  if (isShortRubric(rubric)) {
-    return (
-      <table className="mt-2 w-full min-w-[420px] text-left text-sm">
-        <thead>
-          <tr className="border-b border-ink-100 text-ink-500">
-            <th className="py-1 pr-3">{c.shortRubric.pointsLabel}</th>
-            <th className="py-1 pr-3">{c.shortRubric.expectationLabel}</th>
-            <th className="py-1 pr-3">{c.shortRubric.exampleLabel}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rubric.levels.map((lv, i) => (
-            <tr key={i} className="border-b border-ink-50">
-              <td className="py-1 pr-3">{lv.points}</td>
-              <td className="py-1 pr-3">{lv.expectation}</td>
-              <td className="py-1 pr-3">{lv.example ?? '-'}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    )
-  }
-  const bandKeys = ['4', '3', '2', '1', '0'] as const
+function NoticePlanSection({ plan }: { plan: Snapshot['notice_plan'] }) {
+  if (!plan) return null
+  const c = copy.noticePlan
   return (
-    <table className="mt-2 w-full min-w-[640px] text-left text-sm">
-      <thead>
-        <tr className="border-b border-ink-100 text-ink-500">
-          <th className="py-1 pr-3">{c.extendedRubric.criteriaLabel}</th>
-          {bandKeys.map((k) => <th key={k} className="py-1 pr-3">{c.extendedRubric.bandLabel(Number(k))}</th>)}
-        </tr>
-      </thead>
-      <tbody>
-        {rubric.criteria.map((criterion, i) => (
-          <tr key={i} className="border-b border-ink-50">
-            <td className="py-1 pr-3 font-semibold">{criterion.name}</td>
-            {bandKeys.map((k) => <td key={k} className="py-1 pr-3">{criterion.bands[k]}</td>)}
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  )
-}
-
-function AssessmentItemView({ item }: { item: AssessmentItem }) {
-  const c = copy.assessment
-  return (
-    <div className="rounded-xl border border-ink-100 p-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge tone="gray">{c.kindLabel[item.kind]}</Badge>
-        <Badge tone="gray">{c.lessonLabel(item.lesson_no)}</Badge>
-        <Badge tone="mint">{c.pointsLabel(item.points)}</Badge>
-      </div>
-      <p className="mt-2 whitespace-pre-wrap text-sm">{item.stem}</p>
-      <ul className="mt-2 space-y-0.5 text-sm text-ink-500">
-        <li>{c.conditions.lengthLabel}: {item.conditions.length}</li>
-        <li>{c.conditions.requiredLabel}: {item.conditions.required.join(', ')}</li>
-        <li>{c.conditions.formatLabel}: {item.conditions.format}</li>
-      </ul>
-      <div>
-        <p className="mt-3 text-sm font-semibold text-ink-500">{copy.rubricHeading}</p>
-        <RubricView rubric={item.rubric} />
-      </div>
-    </div>
-  )
-}
-
-function AssessmentSection({ assessment }: { assessment: Snapshot['assessment'] }) {
-  if (!assessment) return null
-  const c = copy.gradeBoundaries
-  const e = copy.exemplars
-  return (
-    <>
-      <Card>
-        <SectionHeading>{copy.assessmentHeading}</SectionHeading>
-        <div className="mt-3 space-y-3">
-          {assessment.items.map((item, i) => <AssessmentItemView key={i} item={item} />)}
-        </div>
-      </Card>
-
-      <Card>
-        <SectionHeading>{copy.gradeBoundariesHeading}</SectionHeading>
-        <table className="mt-3 w-full min-w-[420px] text-left text-sm">
-          <thead>
-            <tr className="border-b border-ink-100 text-ink-500">
-              <th className="py-1 pr-3">{c.gradeLabel}</th>
-              <th className="py-1 pr-3">{c.rangeLabel}</th>
-              <th className="py-1 pr-3">{c.bandLabel}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {assessment.grade_boundaries.map((b, i) => (
-              <tr key={i} className="border-b border-ink-50">
-                <td className="py-1 pr-3">{b.grade}</td>
-                <td className="py-1 pr-3">{b.min}~{b.max}</td>
-                <td className="py-1 pr-3">{b.band}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </Card>
-
-      <Card>
-        <SectionHeading>{copy.exemplarsHeading}</SectionHeading>
-        <div className="mt-3 space-y-3">
-          {assessment.exemplars.map((ex, i) => (
-            <div key={i} className="rounded-xl border border-ink-100 p-3 text-sm">
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge tone="gray">{e.levelLabel[ex.level]}</Badge>
-                <Badge tone="gray">{e.gradeLabel(ex.grade)}</Badge>
-                <Badge tone="gray">{e.totalLabel(ex.total)}</Badge>
+    <Card>
+      <SectionHeading>{copy.noticePlanHeading}</SectionHeading>
+      <div className="mt-3 space-y-2 text-sm">
+        {plan.per_lesson.map((p) => (
+          <div key={p.lesson_no} className="rounded-xl border border-ink-100 p-3">
+            <p className="font-semibold">{c.lessonLabel(p.lesson_no)}</p>
+            <p><Label>{c.summary}:</Label> {p.topic_summary}</p>
+            <p><Label>{c.preview}:</Label> {p.preview}</p>
+            <p><Label>{c.home}:</Label> {p.home_study_suggestion}</p>
+            {p.quiz_notes.length > 0 && <p className="text-ink-500">{c.quizNotes}: {p.quiz_notes.map((q) => `${q.quiz_no}) ${q.wrong_note}`).join(' / ')}</p>}
+            {p.criteria_phrases && (
+              <div className="mt-1">
+                <p className="font-semibold text-ink-500">{c.phrases}</p>
+                <ul className="list-disc pl-5">
+                  {p.criteria_phrases.map((cp) => (
+                    <li key={cp.criterion_name}><span className="font-semibold">{cp.criterion_name}</span> — {c.good}: {cp.good.join(' / ')} · {c.improve}: {cp.improve.join(' / ')}</li>
+                  ))}
+                </ul>
               </div>
-              <p className="mt-2 whitespace-pre-wrap">{ex.text}</p>
-              <p className="mt-1 text-ink-500">{e.scoresLabel}: {ex.scores.join(', ')}</p>
-            </div>
-          ))}
-        </div>
-      </Card>
-
-      <Card>
-        <SectionHeading>{copy.feedbackTemplatesHeading}</SectionHeading>
-        <div className="mt-3 space-y-2 text-sm">
-          {(['상', '중', '하'] as const).map((level) => (
-            <p key={level}><span className="font-semibold">{copy.feedbackLevels[level]}</span>: {assessment.feedback_templates[level]}</p>
-          ))}
-        </div>
-      </Card>
-    </>
+            )}
+          </div>
+        ))}
+        <p className="text-ink-500">{plan.footer_disclaimer}</p>
+      </div>
+    </Card>
   )
 }
 
-export function PackageView({
-  snapshot,
-  mode,
-  showAnswers = false,
-}: {
-  snapshot: Snapshot
-  mode: 'admin' | 'teacher'
-  showAnswers?: boolean
-}) {
+export function PackageView({ snapshot, mode, showAnswers = false }: { snapshot: Snapshot; mode: 'admin' | 'teacher'; showAnswers?: boolean }) {
   const c = copy
+  // 관리자 미리보기는 채점 자료를 펼친 채, 원장 열람은 접힌 채로 시작한다(스펙 §2.9).
+  const open = mode === 'admin'
   return (
     <div className="space-y-4">
       <Card>
@@ -391,22 +594,13 @@ export function PackageView({
         </Card>
       )}
 
-      <Card>
-        <SectionHeading>{c.standardsHeading}</SectionHeading>
-        <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
-          {snapshot.standards.map((s) => <li key={s.code}><span className="font-semibold">{s.code}</span> {s.text}</li>)}
-        </ul>
-      </Card>
-
-      <Card>
-        <SectionHeading>{c.reconstructionHeading}</SectionHeading>
-        <p className="mt-2 whitespace-pre-wrap text-sm">{snapshot.reconstruction}</p>
-      </Card>
+      <StandardsSection standards={snapshot.standards} />
+      <ReconstructionSection snapshot={snapshot} />
 
       <Card>
         <SectionHeading>{c.learningGoalsHeading}</SectionHeading>
-        <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
-          {snapshot.learning_goals.map((g, i) => <li key={i}>{g}</li>)}
+        <ul className="mt-2 space-y-1 text-sm">
+          {snapshot.learning_goals.map((g, i) => <li key={i}><Badge tone="lavender">{c.learningGoals.axisLabel(g.axis)}</Badge> {g.text}</li>)}
         </ul>
       </Card>
 
@@ -415,10 +609,26 @@ export function PackageView({
         <p className="mt-2 text-sm">{snapshot.key_question}</p>
       </Card>
 
-      <LessonsSection lessons={snapshot.lessons} showAnswers={showAnswers} />
-      <TeacherGuideSection guide={snapshot.teacher_guide} />
+      <UnitPlanSection plan={snapshot.unit_plan} />
+
+      {snapshot.lessons.length > 0 && (
+        <Card>
+          <SectionHeading>{c.lessonsHeading}</SectionHeading>
+          <div className="mt-3 space-y-4">{snapshot.lessons.map((l) => <LessonCard key={l.no} l={l} showAnswers={showAnswers} open={open} />)}</div>
+        </Card>
+      )}
+
       <MaterialsSection materials={snapshot.materials} />
-      <AssessmentSection assessment={snapshot.assessment} />
+      <AssessmentSection assessment={snapshot.assessment} showAnswers={showAnswers} open={open} />
+      <TeacherGuideSection guide={snapshot.teacher_guide} />
+      <NoticePlanSection plan={snapshot.notice_plan} />
+
+      {snapshot.references.length > 0 && (
+        <Card>
+          <SectionHeading>{c.assessment.referencesHeading}</SectionHeading>
+          <ul className="mt-2 list-disc pl-5 text-sm">{snapshot.references.map((r) => <li key={r.id}>{r.id} — {r.source}</li>)}</ul>
+        </Card>
+      )}
 
       {mode === 'admin' && (
         <Card>

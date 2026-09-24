@@ -163,6 +163,13 @@ describe('parseSharedMaterialsInput / sharedMaterialsJson', () => {
     expect(r.ok).toBe(true)
     expect(r.ok && r.materials.map((m) => m.id)).toEqual(['A'])
     expect(r.ok && r.materials[0].images).toEqual([])
+    // DB 에 저장된 v1 자료(source: '자작')는 v2 source 객체로 올라간다
+    expect(r.ok && r.materials[0].source).toEqual({ kind: '자작', attribution: null, ai_assisted: false })
+    expect(r.ok && r.materials[0].role).toBe('raw')
+  })
+
+  it('rejects a v1 string source that is not 자작 (공개 needs an attribution)', () => {
+    expect(parseSharedMaterialsInput(JSON.stringify([{ ...materialA, source: '공개' }])).ok).toBe(false)
   })
 
   it('accepts a bare array — what themes.materials actually stores', () => {

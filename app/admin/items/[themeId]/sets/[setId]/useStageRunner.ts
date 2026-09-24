@@ -29,7 +29,7 @@ async function postAction(setId: string, stage: number, action: WizardActionKind
   return data.status as StageStatus
 }
 
-/** 세트 마법사(2~6단계) 훅: 상태 로드, 개별 실행, 기본값(첫 미확정 단계부터 자동) 진행. */
+/** 세트 마법사(2~7단계) 훅: 상태 로드, 개별 실행, 기본값(첫 미확정 단계부터 자동) 진행. */
 export function useStageRunner(setId: string) {
   const [statuses, setStatuses] = useState<Partial<Record<WizardStage, StageStatus>>>({})
   const [loaded, setLoaded] = useState(false)
