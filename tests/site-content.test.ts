@@ -147,6 +147,7 @@ describe('site content', () => {
     expect(app.studio.theme.addSubjects.heading).toBeTruthy()
     expect(app.studio.theme.addSubjects.help).toBeTruthy()
     expect(app.studio.theme.addSubjects.submit).toBeTruthy()
+    expect(app.studio.theme.addSubjects.submitting).toBeTruthy()
     expect(app.studio.theme.addSubjects.saved).toBeTruthy()
     expect(app.studio.theme.addSubjects.nothingToAdd).toBeTruthy()
     expect(app.studio.intro.heading).toBeTruthy()
