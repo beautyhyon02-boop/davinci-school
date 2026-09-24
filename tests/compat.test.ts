@@ -187,11 +187,9 @@ describe('compat v1 업그레이드 흔적 없애기 (fix wave I3)', () => {
 })
 
 describe('topicFromGoal (v1 차시 목표 문장 → 짧은 주제, 원장 헤딩·안내장에 그대로 보임)', () => {
-  it('대표님이 실제로 본 목표 문장: 48자 이하라 "다." 만 떼고 문장 전체를 쓴다(중간에 자르지 않는다)', () => {
+  it('대표님이 실제로 본 목표 문장: 마침표를 떼고 "~한다"를 "~하기"로 바꾼다("정한" 같은 관형사형으로 남기지 않는다)', () => {
     const goal = '축제 쓰레기 문제에서 통계적 탐구 문제를 세우고, 조사 항목·대상·방법을 정한다.'
-    const stripped = goal.replace(/다\.$/, '')
-    expect(stripped.length).toBeLessThanOrEqual(48) // 이 어서션이 깨지면(문장이 48자를 넘으면) 아래 기대값을 "세우고," 뒤에서 끊는 값으로 바꿔야 한다
-    expect(topicFromGoal(goal)).toBe('축제 쓰레기 문제에서 통계적 탐구 문제를 세우고, 조사 항목·대상·방법을 정한')
+    expect(topicFromGoal(goal)).toBe('축제 쓰레기 문제에서 통계적 탐구 문제를 세우고, 조사 항목·대상·방법을 정하기')
   })
   it('48자를 넘는 목표: 경계에서 잘라 "…"를 붙이고, 조사 하나만 남는 조각으로 끝나지 않는다', () => {
     const goal = '학생들은 지역 사회에서 발생하는 여러 환경 문제 가운데 하나를 스스로 선택해 원인과 현황을 조사하고, 조사한 자료를 근거로 해결 방안을 제안하는 보고서를 작성한다.'
@@ -202,9 +200,16 @@ describe('topicFromGoal (v1 차시 목표 문장 → 짧은 주제, 원장 헤�
     expect(goal.startsWith(topic.replace(/…$/u, ''))).toBe(true) // 잘린 부분은 원문의 앞부분 그대로다(단어 중간 변형 없음)
     expect(goal[topic.replace(/…$/u, '').length]).toMatch(/[\s·,]/u) // 잘린 지점 바로 다음 글자가 경계문자다(어절 중간이 아니다)
   })
-  it('짧은 목표: 그대로 쓰되 문장 끝의 "다."/"다"/"." 만 뗀다', () => {
-    expect(topicFromGoal('정삼각형의 뜻을 안다.')).toBe('정삼각형의 뜻을 안')
-    expect(topicFromGoal('둘레의 길이를 구한다')).toBe('둘레의 길이를 구한')
-    expect(topicFromGoal('그래프를 그린다.')).toBe('그래프를 그린')
+  it('"~한다"(하다 동사)는 "~하기"로, "~는다"(받침 있는 동사)는 "~기"로 바꾼다', () => {
+    expect(topicFromGoal('둘레의 길이를 구한다')).toBe('둘레의 길이를 구하기') // 하다 동사: 구한다 → 구하기 (마침표 없어도 동작)
+    expect(topicFromGoal('자료를 읽는다.')).toBe('자료를 읽기') // 받침 있는 동사: 읽는다 → 읽기
+  })
+  it('ㄹ 탈락 어간은 예외로만 되돌린다(만든다 → 만들기)', () => {
+    expect(topicFromGoal('도수분포표를 만든다.')).toBe('도수분포표를 만들기')
+  })
+  it('그 밖의 "~다"로 끝나는 문장은 관형사형으로 자르지 않고 문장을 통째로 둔다(세운다·안다·그린다는 규칙으로 되돌릴 수 없다)', () => {
+    expect(topicFromGoal('정삼각형의 뜻을 안다.')).toBe('정삼각형의 뜻을 안다')
+    expect(topicFromGoal('그래프를 그린다.')).toBe('그래프를 그린다')
+    expect(topicFromGoal('조사 항목·대상·방법을 세운다.')).toBe('조사 항목·대상·방법을 세운다')
   })
 })

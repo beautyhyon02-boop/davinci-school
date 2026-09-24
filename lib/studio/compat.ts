@@ -97,17 +97,23 @@ const TOPIC_LIMIT = 48
 // 이 조사로 끝나면 목 잘린 문장처럼 읽힌다("…방법을" 처럼) — 뒤 경계까지 통째로 물러난다. "에서"가 "에"보다 먼저 와야
 // endsWith 로 검사할 때 더 긴 쪽부터 걸린다(예: "…학교에서" 는 "에서" 로 먼저 잡혀야지 "에" 로 잘못 잡히지 않는다).
 const TRAILING_PARTICLES = ['에서', '을', '를', '이', '가', '은', '는', '와', '과', '의', '에']
+// ㄹ 탈락 어간의 "-ㄴ다" 현재형은 규칙(어간 + 는다/한다)으로 되돌릴 수 없다 — 필요해지면 여기에 보탠다.
+const L_STEM_PRESENT: [string, string][] = [['만든다', '만들기']]
 /**
- * v1 차시 목표 문장 → 짧은 차시 주제(제목처럼 쓰인다, PackageView 헤딩·안내장 lesson_map). 문장 끝의 "다."/"다"/"." 를
- * 떼고, 48자 이하면 그대로 쓴다. 넘으면 공백·"·"·"," 경계에서 잘라 "…" 를 붙이되, 단어 중간을 자르지 않고 잘린 끝이
+ * v1 차시 목표 문장 → 짧은 차시 주제(제목처럼 쓰인다, PackageView 헤딩·안내장 lesson_map). 문장 끝의 마침표만 떼고,
+ * "~한다"(하다 동사)는 "~하기"로, "~는다"(받침 있는 동사 현재형)는 "~기"로 바꿔 명사형 제목처럼 읽히게 한다
+ * (정한다→정하기, 읽는다→읽기). ㄹ 탈락 어간은 L_STEM_PRESENT 의 예외로만 되돌린다(만든다→만들기). 그 밖의 "~다"
+ * 로 끝나는 문장(세운다, 그린다 …)은 어간을 안전하게 되돌릴 규칙이 없으므로 손대지 않고 문장을 그대로 둔다 —
+ * 관형사형("정한")처럼 읽히는 어중간한 말을 만드느니 온전한 문장을 쓰는 편이 낫다.
+ * 48자 이하면 그대로 쓴다. 넘으면 공백·"·"·"," 경계에서 잘라 "…" 를 붙이되, 단어 중간을 자르지 않고 잘린 끝이
  * 조사 하나만 남는 조각(TRAILING_PARTICLES)이면 그 앞 경계까지 통째로 물러난다(원래 버그가 바로 이 모양이었다).
  */
 export function topicFromGoal(goal: string): string {
-  let s = goal.trim()
-  if (s.endsWith('다.')) s = s.slice(0, -2)
-  else if (s.endsWith('다')) s = s.slice(0, -1)
-  else if (s.endsWith('.')) s = s.slice(0, -1)
-  s = s.trim()
+  let s = goal.trim().replace(/\.$/u, '').trim()
+  const lStem = L_STEM_PRESENT.find(([from]) => s.endsWith(from))
+  if (lStem) s = s.slice(0, -lStem[0].length) + lStem[1]
+  else if (s.endsWith('한다')) s = s.slice(0, -2) + '하기'
+  else if (s.endsWith('는다')) s = s.slice(0, -2) + '기'
   if (s.length <= TOPIC_LIMIT) return s
   const prefix = s.slice(0, TOPIC_LIMIT)
   let cut = -1
