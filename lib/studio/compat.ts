@@ -1,6 +1,7 @@
 import type { z } from 'zod'
 import { Lesson, Material, Assessment, TeacherGuide, AssessmentItem, type ReconstructedStandard, type LearningGoal, type UnitPlan, type NoticePlan, type Reconstruction, type AXES } from './schemas'
 import { levelMapFor, levelRefFor } from './level-map'
+import { lessonAssessments, kindFamily, isAssessmentSession, SET_ORDER, type ItemKind } from './assessment-structure'
 
 type LessonT = z.infer<typeof Lesson>
 type MaterialT = z.infer<typeof Material>
@@ -139,6 +140,44 @@ function hintFor(q: QuizV1): string {
     : '질문의 핵심 낱말에 밑줄을 긋고, 자료나 배운 뜻에서 같은 낱말이 나오는 곳을 찾아보게 한다.'
 }
 
+/** 옛 차시 라벨('서술형1'·'서술형2'·'논술형' 문자열 하나, null) → 배열(대표 2026-09-26 구조의 라벨: '서술형'·'논술형'). */
+export function assessmentKindsV1(a: unknown): ItemKind[] {
+  return lessonAssessments({ assessment: a }).map(kindFamily)
+}
+
+/**
+ * v2 초기 판·초안(2026-09-26 이전)의 차시 모양을 맞춘다: assessment 문자열·null → 배열, kind 가 없으면 논술형을 보고 퀴즈가 없는
+ * 차시는 'assessment'(옛 논술형 차시), 나머지는 'teaching'. 문항·배점·차시 번호는 건드리지 않는다(옛 구조 그대로 — 스펙 §4.3).
+ * 고칠 것이 없으면 같은 객체를 돌려준다.
+ */
+export function normalizeLessonV2(l: LessonT): LessonT {
+  const raw = l as unknown as { assessment?: unknown; kind?: unknown }
+  const kindsOk = Array.isArray(raw.assessment) && raw.assessment.every((k) => k === '서술형' || k === '논술형')
+  const kindOk = raw.kind === 'teaching' || raw.kind === 'assessment'
+  if (kindsOk && kindOk) return l
+  const assessment = kindsOk ? l.assessment : assessmentKindsV1(raw.assessment)
+  const kind = kindOk ? l.kind : assessment.includes('논술형') && (l.formative_check?.quiz ?? []).length === 0 ? 'assessment' as const : 'teaching' as const
+  return { ...l, assessment, kind }
+}
+
+/** 차시 목록에 normalizeLessonV2 를 입힌다. 하나도 바뀌지 않으면 같은 배열. */
+export function normalizeLessonsV2(lessons: LessonT[]): LessonT[] {
+  const out = lessons.map(normalizeLessonV2)
+  return out.every((l, i) => l === lessons[i]) ? lessons : out
+}
+
+/** v2 판을 읽을 때의 모양 맞추기(차시 라벨·kind, 평가 계획 라벨). 고칠 것이 없으면 같은 객체(스펙 §4.3). */
+export function normalizeSnapshotV2(s: SnapshotV2): SnapshotV2 {
+  const lessons = normalizeLessonsV2(s.lessons ?? [])
+  const plan = s.unit_plan?.assessment_plan?.summative_placement
+  const planFix = Array.isArray(plan) && plan.some((p) => p.kind !== '서술형' && p.kind !== '논술형')
+  if (lessons === s.lessons && !planFix) return s
+  const unit_plan = planFix && s.unit_plan
+    ? { ...s.unit_plan, assessment_plan: { ...s.unit_plan.assessment_plan, summative_placement: plan!.map((p) => ({ ...p, kind: kindFamily(p.kind) })) } }
+    : s.unit_plan
+  return { ...s, lessons, unit_plan }
+}
+
 /**
  * v1 차시 → v2. cautionNotes 는 v1 지침서 per_lesson.notes(있으면). 발문·활동지는 퀴즈·핵심질문에서 결정적으로 만든다.
  * v1 에는 도전 과제·논술형 차시 발문의 예상 답이 없다 — 차시 목표 문장이나 흐름 문장("도입 10분 — …")을 옮기면 정답처럼 읽히므로
@@ -178,7 +217,9 @@ export function upgradeLessonV1(l: LessonV1, cautionNotes: string[]): LessonT {
     caution_notes: cautionNotes.length ? cautionNotes.slice(0, 4) : [l.goal],
     worksheet: { tasks, self_check: ['오늘 핵심질문에 내 말로 답할 수 있다.'] },
     formative_check: { quiz: l.quiz },
-    assessment: l.assessment, mergeable_with: l.mergeable_with, merge_note: null, images: l.images ?? [],
+    // 옛 판은 구조를 그대로 둔다(스펙 §4.3): 교수 차시 안의 서술형은 그 차시에, 논술형 차시(퀴즈 0·작성 35분)는 kind 'assessment'
+    kind: isEssay ? 'assessment' : 'teaching',
+    assessment: assessmentKindsV1(l.assessment), mergeable_with: l.mergeable_with, merge_note: null, images: l.images ?? [],
   }
 }
 
@@ -266,10 +307,16 @@ export function upgradeTeacherGuideV1(g: GuideV1, lessons: LessonT[], assessment
     const other = lessons.find((x) => x.no === l.mergeable_with)
     return { lessons: [l.no, l.mergeable_with!] as [number, number], skip_activities: other ? other.flow.intro : l.flow.wrapup, time_budget_120: { intro_min: 10, main_min: 90, wrapup_min: 20 } }
   })
-  const common_errors = (assessment?.items ?? []).map((it, i) => {
-    const c = it.rubric.criteria[0]
-    return { item_no: i + 1, error: c.scale[1]?.descriptor ?? c.scale[0].descriptor, how_to_read: c.scale[c.max].descriptor }
-  })
+  // 문항마다 첫 요소의 1점·만점 서술 → 3개가 안 되면(문항 2개인 지금 구조) 문항들의 둘째·셋째 요소에서 차례로 더 뽑는다(채점표 문장만 쓴다)
+  const items = assessment?.items ?? []
+  const errorOf = (it: AssessmentT['items'][number], i: number, k: number) => {
+    const c = it.rubric.criteria[k]
+    return { item_no: i + 1, error: c.scale.find((x) => x.points === 1)?.descriptor ?? c.scale[0].descriptor, how_to_read: c.scale.find((x) => x.points === c.max)?.descriptor ?? c.scale[c.scale.length - 1].descriptor }
+  }
+  const common_errors = items.map((it, i) => errorOf(it, i, 0))
+  for (let k = 1; common_errors.length < 3 && items.some((it) => it.rubric.criteria.length > k); k++) {
+    for (const [i, it] of items.entries()) if (common_errors.length < 3 && it.rubric.criteria[k]) common_errors.push(errorOf(it, i, k))
+  }
   return {
     general: g.general, glossary: g.glossary, merge_guide,
     grading_guide: {
@@ -290,8 +337,10 @@ export function unitPlanFrom(title: string, keyQuestion: string, lessons: Lesson
     set_title: title, set_key_question: keyQuestion || lessons[0]?.key_question || title,
     lesson_map: lessons.map((l) => ({ lesson_no: l.no, standards: l.standards, topic: l.topic })),
     assessment_plan: {
-      formative: '차시별 마무리 퀴즈 3문항(논술형 차시는 0문항)',
-      summative_placement: lessons.filter((l) => l.assessment).map((l) => ({ lesson_no: l.no, kind: l.assessment! })),
+      formative: lessons.some((l) => isAssessmentSession(l) && lessonAssessments(l).join(',') === SET_ORDER.join(','))
+        ? '교수 차시마다 마무리 퀴즈 3문항(단원 평가 차시는 0문항)'
+        : '차시별 마무리 퀴즈 3문항(논술형 차시는 0문항)',
+      summative_placement: lessons.flatMap((l) => lessonAssessments(l).map((kind) => ({ lesson_no: l.no, kind: kindFamily(kind) }))),
       rubric_note: a?.feedback_templates ?? { 상: '요구한 요소를 모두 충족', 중: '핵심 요소를 충족하나 설명이 부분적', 하: '일부 요소만 충족' },
     },
   }
@@ -316,7 +365,7 @@ export function upgradeSnapshot(raw: unknown): SnapshotV2 {
   // 빈 값·객체 아님·cover 없음은 스냅샷이 아니다 — TypeError 대신 분명한 오류로 멈춘다
   const cover = raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as { cover?: unknown }).cover : undefined
   if (!cover || typeof cover !== 'object') throw new Error('snapshot has no cover')
-  if (!isV1Snapshot(raw)) return raw as SnapshotV2
+  if (!isV1Snapshot(raw)) return normalizeSnapshotV2(raw as SnapshotV2)
   const s = raw as { cover: SnapshotV2['cover']; standards: SnapshotV2['standards']; intro: string; reconstruction: string; learning_goals: (string | LearningGoalT)[]; key_question: string; lessons: LessonV1[]; materials: MaterialV1[]; assessment: AssessmentV1 | null; teacher_guide: GuideV1 | null; generated_with: { models: string[] } }
   const notesFor = (no: number) => s.teacher_guide?.per_lesson.find((p) => p.no === no)?.notes ?? []
   const lessons = (s.lessons ?? []).map((l) => upgradeLessonV1(l, notesFor(l.no)))

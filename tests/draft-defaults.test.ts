@@ -4,7 +4,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { withMaterialDefaults, upgradeDraftColumns } from '@/lib/studio/draft-defaults'
 import { buildSnapshot } from '@/lib/studio/publish'
-import { Lesson, Assessment, TeacherGuide, Material } from '@/lib/studio/schemas'
+import { Lesson, PublishedAssessment, TeacherGuide, Material } from '@/lib/studio/schemas'
 
 const v1 = (f: string) => JSON.parse(readFileSync(`tests/fixtures/v1/${f}`, 'utf8'))
 const v2 = (f: string) => JSON.parse(readFileSync(`data/studio-fixtures/${f}`, 'utf8'))
@@ -33,7 +33,8 @@ describe('upgradeDraftColumns', () => {
       expect(Array.isArray(l.formative_check.quiz)).toBe(true)
       expect(Array.isArray(l.worksheet.tasks)).toBe(true)
     }
-    expect(Assessment.safeParse(c.assessment).success).toBe(true)
+    // v1 초안은 옛 구조(서술형 2 + 논술형) 그대로 올린다 — 게시 판 읽기 스키마로 확인, 새 5단계로는 다시 만든다
+    expect(PublishedAssessment.safeParse(c.assessment).success).toBe(true)
     expect(c.assessment!.items[0].conditions.items.length).toBeGreaterThan(0)
     expect(c.teacher_guide!.grading_guide.review_tips.length).toBeGreaterThanOrEqual(2)
     expect(c.materials.every((m) => typeof m.source === 'object')).toBe(true)

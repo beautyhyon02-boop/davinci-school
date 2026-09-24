@@ -1,6 +1,6 @@
 import type { z } from 'zod'
 import type { Material, Lesson, Assessment, TeacherGuide, LearningGoal } from './schemas'
-import { upgradeLessonV1, upgradeAssessmentV1, upgradeTeacherGuideV1 } from './compat'
+import { upgradeLessonV1, upgradeAssessmentV1, upgradeTeacherGuideV1, normalizeLessonsV2 } from './compat'
 
 type MaterialT = z.infer<typeof Material>
 type LessonT = z.infer<typeof Lesson>
@@ -57,7 +57,7 @@ export function upgradeDraftColumns(c: DraftColumns): {
   const lessonsRaw = Array.isArray(c.lessons) ? c.lessons : []
   const lessons = lessonsRaw.some(isV1Lesson)
     ? lessonsRaw.map((l) => (isV1Lesson(l) ? upgradeLessonV1(l as never, notesFor((l as { no: number }).no)) : (l as LessonT)))
-    : (lessonsRaw as LessonT[])
+    : normalizeLessonsV2(lessonsRaw as LessonT[])   // 2026-09-26 이전 v2 초안의 차시 라벨(문자열)·kind 없음 → 배열·kind(같으면 같은 배열)
 
   const assessment = c.assessment == null ? null : isV1Assessment(c.assessment) ? upgradeAssessmentV1(c.assessment as never) : (c.assessment as AssessmentT)
   const teacher_guide = guideRaw == null ? null : isV1Guide(guideRaw) ? upgradeTeacherGuideV1(guideRaw as never, lessons, assessment) : (guideRaw as GuideT)

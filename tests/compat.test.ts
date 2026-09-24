@@ -1,9 +1,10 @@
 // tests/compat.test.ts
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { upgradeSnapshot, isV1Snapshot, upgradeLessonV1, upgradeAssessmentV1, splitMainV1, axisOf, buildReconstructionV2, upgradeTeacherGuideV1, splitMaterialsV1, evaluationElement, topicFromGoal } from '@/lib/studio/compat'
+import { upgradeSnapshot, isV1Snapshot, upgradeLessonV1, upgradeAssessmentV1, splitMainV1, axisOf, buildReconstructionV2, upgradeTeacherGuideV1, splitMaterialsV1, evaluationElement, topicFromGoal, normalizeSnapshotV2, unitPlanFrom } from '@/lib/studio/compat'
 import { Reconstruction } from '@/lib/studio/schemas'
-import { Lesson, Assessment, LessonDesign, Materials, TeacherGuide } from '@/lib/studio/schemas'
+import { Lesson, Assessment, PublishedAssessment, PublishedLessonDesign, Materials, TeacherGuide } from '@/lib/studio/schemas'
+import { structureOf } from '@/lib/studio/assessment-structure'
 
 const fx = (k: string) => JSON.parse(readFileSync(`data/studio-fixtures/${k}.json`, 'utf8'))
 // v1 fixture 는 T6 에서 v2 로 바뀌므로, 이 테스트는 git 에 남는 v1 사본(tests/fixtures/v1/*.json, Step 8에서 복사)을 읽는다
@@ -22,10 +23,17 @@ describe('upgradeSnapshot (v1 → v2)', () => {
     const s = upgradeSnapshot(snapshotV1)
     expect(s.schema_version).toBe(2)
     expect(isV1Snapshot(s)).toBe(false)
-    expect(LessonDesign.safeParse({ unit_plan: s.unit_plan, lessons: s.lessons }).error?.issues ?? []).toEqual([])
+    // 옛 판은 옛 구조 그대로 읽는다(스펙 §4.3): 게시 판 읽기 스키마는 통과하고, 새 세트 스키마(2문항)는 통과하지 않는다
+    expect(PublishedLessonDesign.safeParse({ unit_plan: s.unit_plan, lessons: s.lessons }).error?.issues ?? []).toEqual([])
     expect(Materials.safeParse({ materials: s.materials }).success).toBe(true)
-    expect(Assessment.safeParse(s.assessment).error?.issues ?? []).toEqual([])
+    expect(PublishedAssessment.safeParse(s.assessment).error?.issues ?? []).toEqual([])
+    expect(Assessment.safeParse(s.assessment).success).toBe(false)
+    expect(structureOf(s.assessment!.items)).toBe('legacy')
     expect(TeacherGuide.safeParse(s.teacher_guide).error?.issues ?? []).toEqual([])
+    // 문항 번호·차시·배점은 그대로(학생 답안 item_no 1~3과 열린 차시가 그대로 맞는다), 차시 라벨만 배열로
+    expect(s.assessment!.items.map((i) => [i.kind, i.lesson_no, i.points])).toEqual([['서술형', 2, 3], ['서술형', 4, 3], ['논술형', 5, 16]])
+    expect(s.lessons.map((l) => [l.no, l.kind, l.assessment])).toEqual([[1, 'teaching', []], [2, 'teaching', ['서술형']], [3, 'teaching', []], [4, 'teaching', ['서술형']], [5, 'assessment', ['논술형']]])
+    expect(s.unit_plan!.assessment_plan.summative_placement).toEqual([{ lesson_no: 2, kind: '서술형' }, { lesson_no: 4, kind: '서술형' }, { lesson_no: 5, kind: '논술형' }])
     expect(s.learning_goals[0]).toEqual({ text: v1('stage2-generate').learning_goals[0], axis: '과정·기능' })
     expect(s.reconstruction_detail.map((r) => r.code)).toEqual(['[9수04-02]', '[9수04-03]', '[9수04-04]'])
     expect(s.notice_plan).toBeNull(); expect(s.references).toEqual([])
@@ -70,13 +78,48 @@ describe('upgradeSnapshot (v1 → v2)', () => {
       standards: fx('standards-science'), intro: '소개', reconstruction: k(2).reconstruction, learning_goals: k(2).learning_goals, key_question: k(2).key_question_candidates[0],
       lessons: k(3).lessons, materials: k(4).materials, assessment: k(5), teacher_guide: k(6), generated_with: { models: ['mock'] },
     })
-    expect(LessonDesign.safeParse({ unit_plan: s.unit_plan, lessons: s.lessons }).error?.issues ?? []).toEqual([])
+    expect(PublishedLessonDesign.safeParse({ unit_plan: s.unit_plan, lessons: s.lessons }).error?.issues ?? []).toEqual([])
     expect(Materials.safeParse({ materials: s.materials }).success).toBe(true)
-    expect(Assessment.safeParse(s.assessment).error?.issues ?? []).toEqual([])
+    expect(PublishedAssessment.safeParse(s.assessment).error?.issues ?? []).toEqual([])
+    expect(structureOf(s.assessment!.items)).toBe('legacy')
     expect(TeacherGuide.safeParse(s.teacher_guide).error?.issues ?? []).toEqual([])
     // JSON 왕복(DB 저장 후 다시 읽은 v2 판)도 그대로 둔다
     const again = upgradeSnapshot(JSON.parse(JSON.stringify(s)))
     expect(again).toEqual(s)
+  })
+})
+
+describe('옛 v2 판(2026-09-26 이전)의 모양 맞추기', () => {
+  // 구조 변경 전 v2 로 게시된 판: 차시 assessment 가 문자열('서술형1'·'서술형2'·'논술형')·null 이고 kind 가 없다
+  const early = () => {
+    const lessons = v1('stage3-generate').lessons.map((l: Parameters<typeof upgradeLessonV1>[0]) => {
+      const up = upgradeLessonV1(l, []) as unknown as Record<string, unknown>
+      delete up.kind
+      return { ...up, assessment: l.assessment }
+    })
+    return {
+      schema_version: 2 as const, cover: { title: 't', subject: '수학', level: '중', grade: 1, version: 1, published_at: '' }, standards: [], intro: '', reconstruction: '', reconstruction_detail: [], learning_goals: [], key_question: '',
+      unit_plan: { set_title: 't', set_key_question: '자료는 무엇을 말하는가?', lesson_map: [], assessment_plan: { formative: '차시별 퀴즈', summative_placement: [{ lesson_no: 2, kind: '서술형1' }, { lesson_no: 4, kind: '서술형2' }, { lesson_no: 5, kind: '논술형' }], rubric_note: { 상: '', 중: '', 하: '' } } },
+      lessons, materials: [], assessment: upgradeAssessmentV1(v1('stage5-generate')), teacher_guide: null, notice_plan: null, references: [], generated_with: { models: [] },
+    }
+  }
+  it('labels become arrays, the old 논술형 lesson becomes kind "assessment", nothing else moves', () => {
+    const s = upgradeSnapshot(early())
+    expect(s.lessons.map((l) => [l.kind, l.assessment])).toEqual([['teaching', []], ['teaching', ['서술형']], ['teaching', []], ['teaching', ['서술형']], ['assessment', ['논술형']]])
+    expect(s.unit_plan!.assessment_plan.summative_placement.map((p) => p.kind)).toEqual(['서술형', '서술형', '논술형'])
+    expect(s.assessment!.items).toHaveLength(3)
+    expect(PublishedLessonDesign.safeParse({ unit_plan: { ...s.unit_plan!, lesson_map: s.lessons.map((l) => ({ lesson_no: l.no, standards: l.standards, topic: l.topic })) }, lessons: s.lessons }).error?.issues ?? []).toEqual([])
+  })
+  it('a snapshot that is already in shape is returned as the same object', () => {
+    const s = upgradeSnapshot(early())
+    expect(normalizeSnapshotV2(s)).toBe(s); expect(upgradeSnapshot(s)).toBe(s)
+  })
+  it('unitPlanFrom writes one placement per assessed kind (단원 평가 차시 = two placements on one lesson)', () => {
+    const lessons = v1('stage3-generate').lessons.map((l: Parameters<typeof upgradeLessonV1>[0]) => upgradeLessonV1(l, []))
+    const session = { ...lessons[4], no: 6, kind: 'assessment' as const, assessment: ['서술형' as const, '논술형' as const] }
+    const plan = unitPlanFrom('t', 'q', [...lessons.slice(0, 4).map((l: typeof lessons[number]) => ({ ...l, assessment: [] })), { ...lessons[4], kind: 'teaching' as const, assessment: [] }, session], null)
+    expect(plan.assessment_plan.summative_placement).toEqual([{ lesson_no: 6, kind: '서술형' }, { lesson_no: 6, kind: '논술형' }])
+    expect(plan.assessment_plan.formative).toMatch(/교수 차시마다/)
   })
 })
 
@@ -173,7 +216,7 @@ describe('compat v1 업그레이드 흔적 없애기 (fix wave I3)', () => {
     for (const sfx of ['', '-과학']) {
       const src = v1(`stage5-generate${sfx}`)
       const a = upgradeAssessmentV1(src)
-      expect(Assessment.safeParse(a).error?.issues ?? []).toEqual([])
+      expect(PublishedAssessment.safeParse(a).error?.issues ?? []).toEqual([])
       for (const [i, it] of a.items.entries()) {
         for (const e of it.exemplar_answers) expect(e.text, `${sfx} 문항 ${i + 1} ${e.points}점`).not.toContain(' — ')
         const levels = (src.items[i].rubric as { levels?: { points: number; expectation: string; example: string | null }[] }).levels
