@@ -185,6 +185,53 @@ function conditionIssues(it: AssessmentT['items'][number], i: number, materials:
   return issues
 }
 
+/**
+ * 과제 상황(situation)의 인물 검사(대표 2026-09-25: 영어 세트 audience "…우리 학교 학생과 교환학생" — 대주제·자료에 없는 인물).
+ * role·audience 에서 사람 낱말(끝이 사람 꼬리말인 낱말)을 찾아, 대주제 제목·소개·과목 아이디어·자료(제목·본문·표)에 없으면 적는다.
+ * 학교 안 사람(학생·교사·선생님·학부모·학생회·동아리·부원 …)은 어느 학교 상황에나 있으므로 늘 허용한다 — 단 '학생'은 앞말이 붙으면
+ * (교환학생·유학생) 따로 본다. 참고용 자문(other)일 뿐이다. 대주제도 자료도 없으면(문맥 없음) 건너뛴다.
+ */
+const SCHOOL_ACTOR_TAILS = ['학생회', '동아리', '부원', '부장', '위원회', '위원', '임원', '회원', '회장', '반장', '교사', '선생님', '교장', '교감', '담임', '학부모', '부모님', '부모', '친구', '가족', '사람', '후배', '선배', '학생']
+const OUTSIDE_ACTOR_TAILS = ['강사', '관광객', '방문객', '관람객', '손님', '주민', '시민', '기자', '독자', '전문가', '상인', '봉사자', '참가자', '소비자', '의원', '사장님', '사장', '운영자', '관계자', '어르신', '주최자', '판매자', '구매자', '장관', '구청장', '시장님', '공무원', '직원', '담당자', '어린이', '청소년', '외국인', '이웃', '원어민', '업체', '기업']
+const ACTOR_TAILS = [...SCHOOL_ACTOR_TAILS, ...OUTSIDE_ACTOR_TAILS].sort((a, b) => b.length - a.length)
+const STUDENT_PREFIXES = new Set(['', '중', '중학', '고', '고등', '초등', '재학', '전교'])
+const ACTOR_PARTICLES = ['에게서', '에게', '께서', '께', '한테', '으로', '로', '과', '와', '을', '를', '은', '는', '이', '가', '의', '도', '만', '들']
+
+/** 낱말 하나가 사람 낱말이면 조사를 뗀 꼴과 꼬리말, 아니면 null. 꼬리말을 먼저 보고(어린이의 '이'를 조사로 떼지 않게) 없을 때만 조사를 뗀다. */
+function actorOf(word: string): { word: string; tail: string } | null {
+  let w = word
+  for (let k = 0; k < 4; k++) {
+    const tail = ACTOR_TAILS.find((t) => w.endsWith(t))
+    if (tail) return { word: w, tail }
+    const p = ACTOR_PARTICLES.find((x) => w.length - x.length >= 2 && w.endsWith(x))
+    if (!p) return null
+    w = w.slice(0, -p.length)
+  }
+  return null
+}
+
+/** role·audience 문장에서 대주제·자료(corpus, 띄어쓰기 없앤 글)에 없는 인물 낱말. corpus 가 비면 검사하지 않는다. */
+export function inventedActors(texts: string[], corpus: string): string[] {
+  if (!corpus) return []
+  const out: string[] = []
+  for (const raw of texts.join(' ').split(/[\s,·、/()]+/)) {
+    const a = raw && actorOf(raw)
+    if (!a) continue
+    const prefix = a.word.slice(0, -a.tail.length)
+    const schoolOk = a.tail === '학생' ? STUDENT_PREFIXES.has(prefix) : SCHOOL_ACTOR_TAILS.includes(a.tail)
+    if (!schoolOk && !corpus.includes(a.word) && !out.includes(a.word)) out.push(a.word)
+  }
+  return out
+}
+
+/** 대주제 제목·소개(0단계)·과목 아이디어·자료(제목·본문·표 머리글·칸)를 띄어쓰기 없이 이은 글. */
+function scenarioCorpus(ctx: CheckCtx, materials: MaterialsT['materials']): string {
+  const intro = ctx.prior.stage0 as { intro?: unknown; subject_ideas?: { idea?: unknown }[] } | undefined
+  const parts: unknown[] = [ctx.theme?.title, intro?.intro, ...(Array.isArray(intro?.subject_ideas) ? intro.subject_ideas.map((s) => s?.idea) : [])]
+  for (const m of materials) parts.push(m.title, m.body, ...(m.table?.columns ?? []), ...(m.table?.rows ?? []).flat())
+  return parts.filter((p) => typeof p === 'string' || typeof p === 'number').map(String).join('').replace(/\s+/g, '')
+}
+
 function assessmentIssues(o: AssessmentT, ctx: CheckCtx): Issue[] {
   const issues: Issue[] = []
   // 세트 구조(대표 2026-09-26): zod 가 생성 때 거르지만, 검토는 저장된 출력(옛 판·손으로 고친 판)에도 돌므로 다시 본다
@@ -217,6 +264,10 @@ function assessmentIssues(o: AssessmentT, ctx: CheckCtx): Issue[] {
       if (missing.length) issues.push({ kind: 'rubric', detail: `문항 ${i + 1}: 부분점수 예시답안이 없음(${missing.join('·')}점 단계) — 1~${it.points}점 단계마다 하나씩 필요` })
     }
     if (it.kind === '논술형' && !it.situation) issues.push({ kind: 'other', detail: '논술형에 과제 상황(역할·청중·목적·결과물)이 없음' })
+    if (it.situation) {
+      const missing = inventedActors([it.situation.role, it.situation.audience], scenarioCorpus(ctx, materials))
+      if (missing.length) issues.push({ kind: 'other', detail: `문항 ${i + 1}(${it.kind}): 상황의 인물이 자료·대주제에 없음(${missing.join(', ')}) — role·audience는 대주제·자료에 나오는 사람만 쓴다` })
+    }
     if (it.kind === '논술형' && !it.rubric.criteria.some((c) => c.axis === '가치·태도')) issues.push({ kind: 'level', detail: '논술형 4요소 중 가치·태도 축이 없음(정당화 가능성 기준으로 서술)' })
   }
   issues.push(...placementIssues(o, ctx))
