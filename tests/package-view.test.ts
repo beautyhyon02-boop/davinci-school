@@ -213,10 +213,27 @@ describe('PackageView on upgraded v1 data', () => {
       key_question: '자료는 무엇을 말하는가?', lessons: v1('stage3-generate').lessons, materials: v1('stage4-generate').materials,
       assessment: v1('stage5-generate'), teacher_guide: v1('stage6-generate'), generated_with: { models: ['mock'] },
     })
-    const t = text(render(s, 'teacher'))
+    const html = render(s, 'teacher')
+    const t = text(html)
     expect(t).not.toMatch(/undefined|NaN|\[object Object\]/)
     for (const l of s.lessons) for (const m of l.flow.main) expect(t).toContain(norm(c.lessons.stepLabel(m.step_label, m.minutes)))
     expect(t).toContain(c.lessons.stepLabel('논술형 작성', 35))
+    // 옛 판 정리(C-32, fix wave): 서술형 카드엔 "조건" 헤딩이 없고(빈 조건), 논술형 카드는 정리된 조건만 보인다
+    const segs = html.split('data-print="item"').slice(1)
+    expect(segs).toHaveLength(s.assessment!.items.length)
+    for (const [i, item] of s.assessment!.items.entries()) {
+      if (item.kind === '서술형') {
+        expect(item.conditions.items).toEqual([])
+        expect(text(segs[i])).not.toContain(c.assessment.conditions.heading)
+      } else {
+        expect(item.conditions.items.length).toBeGreaterThan(0)
+        expect(text(segs[i])).toContain(c.assessment.conditions.heading)
+        for (const cd of item.conditions.items) expect(text(segs[i])).toContain(norm(`${c.assessment.conditions.itemNo(cd.no)} ${cd.text}`))
+        // 정리된 개수만큼만 "조건 N." 이 보인다 — 풀이 힌트 때문에 지워진 조건(v1 원문 "감축 목표를 …정하고")은 조건 목록에 없다
+        expect(text(segs[i])).not.toContain(c.assessment.conditions.itemNo(item.conditions.items.length + 1))
+        expect(text(segs[i])).not.toContain('감축 목표를 개수 또는 비율로 정하고')
+      }
+    }
   })
   it('renders a v1-shaped draft through buildSnapshot (admin preview guard)', () => {
     const s = buildSnapshot({

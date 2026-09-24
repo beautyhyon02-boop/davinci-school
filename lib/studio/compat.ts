@@ -2,6 +2,7 @@ import type { z } from 'zod'
 import { Lesson, Material, Assessment, TeacherGuide, AssessmentItem, type ReconstructedStandard, type LearningGoal, type UnitPlan, type NoticePlan, type Reconstruction, type AXES } from './schemas'
 import { levelMapFor, levelRefFor } from './level-map'
 import { lessonAssessments, kindFamily, isUnitAssessmentSession, type ItemKind } from './assessment-structure'
+import { conditionHints, materialNumbers } from './checks'
 
 type LessonT = z.infer<typeof Lesson>
 type MaterialT = z.infer<typeof Material>
@@ -166,16 +167,20 @@ export function normalizeLessonsV2(lessons: LessonT[]): LessonT[] {
   return out.every((l, i) => l === lessons[i]) ? lessons : out
 }
 
-/** v2 판을 읽을 때의 모양 맞추기(차시 라벨·kind, 평가 계획 라벨). 고칠 것이 없으면 같은 객체(스펙 §4.3). */
+/**
+ * v2 판을 읽을 때의 모양 맞추기(차시 라벨·kind, 평가 계획 라벨, 조건의 풀이 힌트 — C-32). 고칠 것이 없으면 같은 객체(스펙 §4.3).
+ * 조건 정리(cleanAssessmentConditions)는 2026-09-26 이전에 v2 로 이미 저장된 판(문항 schema_version 은 2지만 조건은 옛 규칙 이전)까지 다시 본다.
+ */
 export function normalizeSnapshotV2(s: SnapshotV2): SnapshotV2 {
   const lessons = normalizeLessonsV2(s.lessons ?? [])
   const plan = s.unit_plan?.assessment_plan?.summative_placement
   const planFix = Array.isArray(plan) && plan.some((p) => p.kind !== '서술형' && p.kind !== '논술형')
-  if (lessons === s.lessons && !planFix) return s
+  const assessment = cleanAssessmentConditions(s.assessment, s.materials ?? [])
+  if (lessons === s.lessons && !planFix && assessment === s.assessment) return s
   const unit_plan = planFix && s.unit_plan
     ? { ...s.unit_plan, assessment_plan: { ...s.unit_plan.assessment_plan, summative_placement: plan!.map((p) => ({ ...p, kind: kindFamily(p.kind) })) } }
     : s.unit_plan
-  return { ...s, lessons, unit_plan }
+  return { ...s, lessons, unit_plan, assessment }
 }
 
 /**
@@ -257,10 +262,42 @@ function fillScale(levels: { points: number; expectation: string; example: strin
   return scale
 }
 
-export function upgradeItemV1(it: ItemV1, exemplars: AssessmentV1['exemplars']): ItemT {
+type ConditionT = ItemT['conditions']['items'][number]
+
+const LEADING_MARK = /^[①②③④⑤⑥⑦⑧]\s*/u
+const PARAGRAPH_PREFIX = /^(첫|둘째|셋째|넷째|다섯째)\s*문단(?:\([^)]*\))?\s*[:：]\s*/u
+/** 옛 조건 문장 앞의 목록 표식(①②③…)과 "첫 문단:" 같은 문단 이름표를 뗀다(정리할 때만 — 지금 만드는 조건은 애초에 붙이지 않는다). */
+export function stripConditionMarkers(text: string): string {
+  return text.replace(LEADING_MARK, '').replace(PARAGRAPH_PREFIX, '').trim()
+}
+
+/**
+ * 조건 문장을 표식 없이 다듬고, 풀이 힌트(conditionHints, checks.ts — C-32)가 남은 것을 지운 뒤 1..n 으로 다시 번호 매긴다.
+ * 카테고리·배점은 (남은 조건에 한해) 손대지 않는다 — 위치로 새로 정하지 않고 원래 값을 그대로 옮긴다.
+ */
+function filterEssayConditions(items: ConditionT[], materialNums: Set<string>): ConditionT[] {
+  return items
+    .map((c) => ({ ...c, text: stripConditionMarkers(c.text) }))
+    .filter((c) => conditionHints(c.text, materialNums).length === 0)
+    .map((c, i) => ({ ...c, no: i + 1, verb: verbOf(c.text) }))
+}
+
+/**
+ * v1 논술형 조건(required[]) → v2 조건 배열. 옛 카테고리 규칙(마지막 하나가 4개 이상일 때만 '형식')을 원래 개수·자리에
+ * 대고 먼저 매긴 뒤 풀이 힌트를 지운다 — 지운 다음 자리로 다시 매기지 않는다(정리 전 규칙 그대로).
+ */
+function buildLegacyConditionItems(required: string[], materials: MaterialT[]): ConditionT[] {
+  const raw: ConditionT[] = required.map((text, i) => ({ no: i + 1, text, verb: verbOf(text), points: null, category: i === required.length - 1 && required.length >= 4 ? '형식' as const : '내용' as const }))
+  return filterEssayConditions(raw, materialNumbers(materials))
+}
+
+export function upgradeItemV1(it: ItemV1, exemplars: AssessmentV1['exemplars'], materials: MaterialT[] = []): ItemT {
   const paper = PAPER_PREFIX.test(it.conditions.format)
+  const { used } = splitMaterialsV1(it.conditions.required.concat(it.stem))
+  const usedMaterials = materials.filter((m) => used.includes(m.id))
   const conditions = {
-    items: it.conditions.required.map((text, i) => ({ no: i + 1, text, verb: verbOf(text), points: null, category: i === it.conditions.required.length - 1 && it.conditions.required.length >= 4 ? '형식' as const : '내용' as const })),
+    // C-32(2026-09-26 이후 옛 판 읽기 정리): 서술형은 조건 없음, 논술형은 풀이 힌트를 지운 지침만 남긴다
+    items: it.kind === '서술형' ? [] : buildLegacyConditionItems(it.conditions.required, usedMaterials),
     length: it.conditions.length, format: it.conditions.format.replace(PAPER_PREFIX, ''), answer_mode: paper ? 'paper' as const : 'screen' as const, overflow_rule: null,
   }
   const allNos = conditions.items.map((c) => c.no)
@@ -284,7 +321,6 @@ export function upgradeItemV1(it: ItemV1, exemplars: AssessmentV1['exemplars']):
       return { level: e.level, points: sum, scores: e.scores, assumed_short_points: Math.max(0, Math.min(6, e.total - sum)), text: e.text, rationale: `채점표로 채점한 요소별 점수 ${e.scores.join('·')} = ${sum}점(서술형 ${Math.max(0, Math.min(6, e.total - sum))}점 가정 시 ${e.total}점)` }
     })
   }
-  const { used } = splitMaterialsV1(it.conditions.required.concat(it.stem))
   return {
     kind: it.kind, lesson_no: it.lesson_no, points: it.points, evaluation_elements: [evaluationElement(it.stem)], situation: null,
     materials_used: used.length ? used : ['A'], stem: stemV2(it.stem, it.points), conditions, rubric, exemplar_answers,
@@ -292,11 +328,39 @@ export function upgradeItemV1(it: ItemV1, exemplars: AssessmentV1['exemplars']):
   }
 }
 
-export function upgradeAssessmentV1(a: AssessmentV1): AssessmentT {
+export function upgradeAssessmentV1(a: AssessmentV1, materials: MaterialT[] = []): AssessmentT {
   return {
-    items: a.items.map((it) => upgradeItemV1(it, a.exemplars)),
+    items: a.items.map((it) => upgradeItemV1(it, a.exemplars, materials)),
     grade_boundaries: a.grade_boundaries.map((b) => ({ ...b, level_ref: levelRefFor(b.grade) })),
     feedback_templates: a.feedback_templates,
+  }
+}
+
+/** 문항 하나에 남은 조건 중 서술형인데 조건이 있거나, 논술형인데 풀이 힌트가 남은 것이 있는지(둘 다 정리 대상). */
+function itemNeedsConditionCleanup(it: ItemT, materialNums: Set<string>): boolean {
+  const items = it.conditions?.items ?? []
+  return it.kind === '서술형' ? items.length > 0 : items.some((c) => conditionHints(c.text, materialNums).length > 0)
+}
+
+/**
+ * 2026-09-26 이전에 v2 로 이미 게시·저장된 판(또는 초안)에 남아 있는 풀이 힌트 조건을 정리한다(C-32) — DB 는 고치지 않고
+ * 읽을 때마다 다시 정리하므로 멱등이어야 한다: 고칠 것이 없으면 같은 배열(→ 같은 객체)을 그대로 돌려준다.
+ * 문항 조각이 스키마 전체를 갖추지 않았어도(테스트용 부분 fixture 등) materials_used·conditions 없이 조용히 넘어간다.
+ */
+export function cleanAssessmentConditions(a: AssessmentT | null, materials: MaterialT[]): AssessmentT | null {
+  if (!a) return a
+  const byId = new Map(materials.map((m) => [m.id, m]))
+  const numsFor = (usedIds: string[] | undefined) => materialNumbers((usedIds ?? []).map((id) => byId.get(id)).filter((m): m is MaterialT => !!m))
+  if (!a.items.some((it) => itemNeedsConditionCleanup(it, numsFor(it.materials_used)))) return a
+  return {
+    ...a,
+    items: a.items.map((it) => {
+      const materialNums = numsFor(it.materials_used)
+      if (!itemNeedsConditionCleanup(it, materialNums)) return it
+      const items = it.kind === '서술형' ? [] : filterEssayConditions(it.conditions.items, materialNums)
+      const allNos = items.map((c) => c.no)
+      return { ...it, conditions: { ...it.conditions, items }, rubric: { ...it.rubric, criteria: it.rubric.criteria.map((c) => ({ ...c, condition_nos: allNos })) } }
+    }),
   }
 }
 
@@ -369,14 +433,15 @@ export function upgradeSnapshot(raw: unknown): SnapshotV2 {
   const s = raw as { cover: SnapshotV2['cover']; standards: SnapshotV2['standards']; intro: string; reconstruction: string; learning_goals: (string | LearningGoalT)[]; key_question: string; lessons: LessonV1[]; materials: MaterialV1[]; assessment: AssessmentV1 | null; teacher_guide: GuideV1 | null; generated_with: { models: string[] } }
   const notesFor = (no: number) => s.teacher_guide?.per_lesson.find((p) => p.no === no)?.notes ?? []
   const lessons = (s.lessons ?? []).map((l) => upgradeLessonV1(l, notesFor(l.no)))
-  const assessment = s.assessment ? upgradeAssessmentV1(s.assessment) : null
+  const materials = (s.materials ?? []).map(upgradeMaterialV1)
+  const assessment = s.assessment ? upgradeAssessmentV1(s.assessment, materials) : null
   return {
     schema_version: 2, cover: s.cover, standards: s.standards, intro: s.intro,
     reconstruction: s.reconstruction, reconstruction_detail: upgradeReconstructionV1(s.standards),
     learning_goals: (s.learning_goals ?? []).map((g) => (typeof g === 'string' ? { text: g, axis: '과정·기능' as const } : g)),
     key_question: s.key_question,
     unit_plan: unitPlanFrom(s.cover.title, s.key_question, lessons, assessment),
-    lessons, materials: (s.materials ?? []).map(upgradeMaterialV1), assessment,
+    lessons, materials, assessment,
     teacher_guide: s.teacher_guide ? upgradeTeacherGuideV1(s.teacher_guide, lessons, assessment) : null,
     notice_plan: null, references: [], generated_with: s.generated_with,
   }

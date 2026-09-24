@@ -35,7 +35,10 @@ describe('upgradeDraftColumns', () => {
     }
     // v1 초안은 옛 구조(서술형 2 + 논술형) 그대로 올린다 — 게시 판 읽기 스키마로 확인, 새 5단계로는 다시 만든다
     expect(PublishedAssessment.safeParse(c.assessment).success).toBe(true)
-    expect(c.assessment!.items[0].conditions.items.length).toBeGreaterThan(0)
+    // 옛 판 정리(C-32): 서술형은 조건 없음, 논술형은 풀이 힌트를 지운 지침만 1~4개 남는다
+    expect(c.assessment!.items[0].kind).toBe('서술형'); expect(c.assessment!.items[0].conditions.items.length).toBe(0)
+    const essay = c.assessment!.items.find((it) => it.kind === '논술형')!
+    expect(essay.conditions.items.length).toBeGreaterThan(0); expect(essay.conditions.items.length).toBeLessThanOrEqual(4)
     expect(c.teacher_guide!.grading_guide.review_tips.length).toBeGreaterThanOrEqual(2)
     expect(c.materials.every((m) => typeof m.source === 'object')).toBe(true)
   })

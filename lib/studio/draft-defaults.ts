@@ -1,6 +1,6 @@
 import type { z } from 'zod'
 import type { Material, Lesson, Assessment, TeacherGuide, LearningGoal } from './schemas'
-import { upgradeLessonV1, upgradeAssessmentV1, upgradeTeacherGuideV1, normalizeLessonsV2 } from './compat'
+import { upgradeLessonV1, upgradeAssessmentV1, upgradeTeacherGuideV1, normalizeLessonsV2, cleanAssessmentConditions } from './compat'
 
 type MaterialT = z.infer<typeof Material>
 type LessonT = z.infer<typeof Lesson>
@@ -59,8 +59,10 @@ export function upgradeDraftColumns(c: DraftColumns): {
     ? lessonsRaw.map((l) => (isV1Lesson(l) ? upgradeLessonV1(l as never, notesFor((l as { no: number }).no)) : (l as LessonT)))
     : normalizeLessonsV2(lessonsRaw as LessonT[])   // 2026-09-26 이전 v2 초안의 차시 라벨(문자열)·kind 없음 → 배열·kind(같으면 같은 배열)
 
-  const assessment = c.assessment == null ? null : isV1Assessment(c.assessment) ? upgradeAssessmentV1(c.assessment as never) : (c.assessment as AssessmentT)
-  const teacher_guide = guideRaw == null ? null : isV1Guide(guideRaw) ? upgradeTeacherGuideV1(guideRaw as never, lessons, assessment) : (guideRaw as GuideT)
   const materials = (Array.isArray(c.materials) ? c.materials : []).map(withMaterialDefaults)
+  const assessmentRaw = c.assessment == null ? null : isV1Assessment(c.assessment) ? upgradeAssessmentV1(c.assessment as never, materials) : (c.assessment as AssessmentT)
+  // v1 은 upgradeAssessmentV1 이 이미 조건을 정리한다 — v2 초안(2026-09-26 이전에 저장돼 풀이 힌트가 남았을 수 있음)은 여기서 한 번 더 본다(C-32)
+  const assessment = cleanAssessmentConditions(assessmentRaw, materials)
+  const teacher_guide = guideRaw == null ? null : isV1Guide(guideRaw) ? upgradeTeacherGuideV1(guideRaw as never, lessons, assessment) : (guideRaw as GuideT)
   return { learning_goals, lessons, materials, assessment, teacher_guide }
 }

@@ -5,6 +5,7 @@ import { upgradeSnapshot, isV1Snapshot, upgradeLessonV1, upgradeAssessmentV1, sp
 import { Reconstruction } from '@/lib/studio/schemas'
 import { Lesson, Assessment, PublishedAssessment, PublishedLessonDesign, Materials, TeacherGuide } from '@/lib/studio/schemas'
 import { structureOf } from '@/lib/studio/assessment-structure'
+import { conditionHints, materialNumbers } from '@/lib/studio/checks'
 
 const fx = (k: string) => JSON.parse(readFileSync(`data/studio-fixtures/${k}.json`, 'utf8'))
 // v1 fixture 는 T6 에서 v2 로 바뀌므로, 이 테스트는 git 에 남는 v1 사본(tests/fixtures/v1/*.json, Step 8에서 복사)을 읽는다
@@ -254,5 +255,81 @@ describe('topicFromGoal (v1 차시 목표 문장 → 짧은 주제, 원장 헤�
     expect(topicFromGoal('정삼각형의 뜻을 안다.')).toBe('정삼각형의 뜻을 안다')
     expect(topicFromGoal('그래프를 그린다.')).toBe('그래프를 그린다')
     expect(topicFromGoal('조사 항목·대상·방법을 세운다.')).toBe('조사 항목·대상·방법을 세운다')
+  })
+})
+
+// 옛 판을 읽을 때 조건에서 풀이 힌트를 지운다(C-32, 2026-09-26 owner rule; fix wave): 서술형은 조건 없음,
+// 논술형은 지침만 남긴다(풀이 절차·공식·수치·순서어가 없고, 참조 자료의 수치를 새로 흘리지 않는다).
+describe('옛 판 조건 정리 — 풀이 힌트 제거(C-32)', () => {
+  const buildV1 = (subject: '수학' | '과학') => {
+    const sfx = subject === '과학' ? '-과학' : ''
+    const k = (stage: number) => v1(`stage${stage}-generate${sfx}`)
+    return {
+      cover: { title: 't', subject, level: '중', grade: 1, version: 1, published_at: '2026-09-20T00:00:00.000Z' },
+      standards: subject === '과학' ? fx('standards-science') : fx('standards-math'),
+      intro: '소개', reconstruction: k(2).reconstruction, learning_goals: k(2).learning_goals, key_question: k(2).key_question_candidates[0],
+      lessons: k(3).lessons, materials: k(4).materials, assessment: k(5), teacher_guide: k(6), generated_with: { models: ['mock'] },
+    }
+  }
+
+  it.each(['수학', '과학'] as const)('%s: 서술형은 조건 0개, 논술형 조건은 풀이 힌트가 없고 자료 수치를 새로 흘리지 않는다', (subject) => {
+    const s = upgradeSnapshot(buildV1(subject))
+    const materials = s.materials
+    let sawEssay = false
+    for (const it of s.assessment!.items) {
+      if (it.kind === '서술형') { expect(it.conditions.items).toEqual([]); continue }
+      sawEssay = true
+      const used = materials.filter((m) => it.materials_used.includes(m.id))
+      const nums = materialNumbers(used)
+      for (const c of it.conditions.items) {
+        expect(conditionHints(c.text, nums), `${subject} ${it.lesson_no}차시 조건 ${c.no}: ${c.text}`).toEqual([])
+        const numsInText = (c.text.match(/\d+(?:[.,]\d+)*/g) ?? []).map((n) => n.replace(/,/g, '')).filter((n) => n.includes('.') || n.length >= 2)
+        for (const n of numsInText) expect(nums.has(n), `${subject} ${it.lesson_no}차시 조건 ${c.no}: 자료 수치 ${n}가 남음`).toBe(false)
+      }
+    }
+    expect(sawEssay).toBe(true)
+  })
+
+  it('idempotent: 이미 정리된 판을 다시 올려도 조건이 더 바뀌지 않는다', () => {
+    const s = upgradeSnapshot(buildV1('수학'))
+    const again = upgradeSnapshot(JSON.parse(JSON.stringify(s)))
+    expect(again.assessment).toEqual(s.assessment)
+    expect(upgradeSnapshot(s)).toBe(s)   // 같은 객체(고칠 것이 없으면 새로 만들지 않는다)
+  })
+
+  it('2026-09-26 이전에 v2로 저장된 판(schema_version 2)에 남은 풀이 힌트 조건도 읽을 때 지운다', () => {
+    const s = upgradeSnapshot(buildV1('수학'))
+    const dirty = structuredClone(s)
+    const essay = dirty.assessment!.items.find((it) => it.kind === '논술형')!
+    const originalCount = essay.conditions.items.length
+    const hinted = { no: originalCount + 1, text: '자료 A의 수치 290 ÷ 1200 을 계산해 적을 것', verb: '계산하다', points: null, category: '내용' as const }
+    essay.conditions.items = [...essay.conditions.items, hinted]
+    for (const cr of essay.rubric.criteria) cr.condition_nos = essay.conditions.items.map((x) => x.no)
+
+    const cleaned = upgradeSnapshot(dirty)
+    const cleanedEssay = cleaned.assessment!.items.find((it) => it.kind === '논술형')!
+    expect(cleanedEssay.conditions.items.some((c) => c.text.includes('290'))).toBe(false)
+    expect(cleanedEssay.conditions.items).toHaveLength(originalCount)
+    expect(cleanedEssay.conditions.items.map((c) => c.no)).toEqual(cleanedEssay.conditions.items.map((_, i) => i + 1))
+    for (const cr of cleanedEssay.rubric.criteria) expect(cr.condition_nos).toEqual(cleanedEssay.conditions.items.map((c) => c.no))
+    // 서술형에 조건이 남아 있는 v2 판도 같은 자리에서 지워진다
+    const dirtyShort = structuredClone(s)
+    const short = dirtyShort.assessment!.items.find((it) => it.kind === '서술형')!
+    short.conditions.items = [{ no: 1, text: '아무 조건', verb: '쓰다', points: null, category: '내용' as const }]
+    for (const cr of short.rubric.criteria) cr.condition_nos = [1]
+    const cleanedShort = upgradeSnapshot(dirtyShort).assessment!.items.find((it) => it.kind === '서술형')!
+    expect(cleanedShort.conditions.items).toEqual([])
+    for (const cr of cleanedShort.rubric.criteria) expect(cr.condition_nos).toEqual([])
+  })
+
+  it('math 논술형: v1 조건 4개 중 풀이 힌트 없는 3개만 남는다(순서 유지, 자리 다시 매김)', () => {
+    const s = upgradeSnapshot(buildV1('수학'))
+    const essay = s.assessment!.items.find((it) => it.kind === '논술형')!
+    expect(essay.conditions.items.map((c) => c.text)).toEqual([
+      '자료 A(도수분포표 또는 히스토그램)와 자료 B(상대도수)에서 수치를 두 개 이상 인용해 가장 먼저 줄일 일회용품 한 가지를 고른다',
+      '예상되는 반대 의견 한 가지와 그에 대한 답',
+      '계급·도수·상대도수 용어를 바르게 쓴다',
+    ])
+    expect(essay.conditions.items.map((c) => c.no)).toEqual([1, 2, 3])
   })
 })
