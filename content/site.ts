@@ -484,7 +484,7 @@ export const app = {
       criteriaLabel: '평가 요소',
       criterionLabel: (name: string, max: number) => `${name} (0~${max}점)`,
       axisLabel: '축',
-      conditionsLabel: (nos: number[]) => `조건 ${nos.join('·')}`,
+      conditionsLabel: (nos: number[]) => (nos.length ? `조건 ${nos.join('·')}` : ''),
       pointLabel: (n: number) => `${n}점`,
       exampleLabel: '예',
       holisticHeading: '총체적 기준',

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { loadFixture } from '@/lib/ai/mock'
 import { STAGE_SCHEMAS, Review } from '@/lib/studio/schemas'
-import { staticIssues } from '@/lib/studio/checks'
+import { staticIssues, conditionHints, materialNumbers } from '@/lib/studio/checks'
 import { checkReconstructionFidelity } from '@/lib/studio/fidelity'
 import { runStage, type Repo, type StageStatus } from '@/lib/studio/stages'
 import { buildPrompt, buildReviewPrompt } from '@/lib/studio/prompts/stages'
@@ -110,6 +110,28 @@ for (const set of SETS) describe(`${set.subject} fixtures (v2)`, () => {
         expect(goals, `${l.no}차시 발문`).not.toContain(q.expected_answer.trim())
         expect(q.if_stuck, `${l.no}차시 발문 힌트`).not.toMatch(/\d+\s*분\s*—/)
         if (q.expected_answer.length >= 4) expect(q.if_stuck, `${l.no}차시 힌트가 예상 답을 그대로 말함`).not.toContain(q.expected_answer)
+      }
+    }
+  })
+  it('conditions are guidelines only (C-32): 서술형 none, 논술형 2~4, no solving hint, no material value', () => {
+    type Mat = { id: string; body: string | null; table: { columns: string[]; rows: (string | number)[][] } | null }
+    const { materials } = loadFixture(`stage4-generate${set.suffix}`) as { materials: Mat[] }
+    const a = loadFixture(`stage5-generate${set.suffix}`) as { items: { kind: string; materials_used: string[]; conditions: { items: { no: number; text: string }[] }; rubric: { criteria: { condition_nos: number[] }[] } }[] }
+    for (const [i, it] of a.items.entries()) {
+      const where = `${set.subject} 문항 ${i + 1}`
+      if (it.kind === '서술형') {
+        expect(it.conditions.items, where).toEqual([])
+        for (const c of it.rubric.criteria) expect(c.condition_nos, where).toEqual([])
+        continue
+      }
+      expect(it.conditions.items.length, where).toBeGreaterThanOrEqual(2); expect(it.conditions.items.length, where).toBeLessThanOrEqual(4)
+      const used = materials.filter((m) => it.materials_used.includes(m.id))
+      const numbers = materialNumbers(used)
+      // 표의 숫자 칸(부스 번호 1~20 같은 한 자리 수 포함) — 조건에는 이 수치가 한 번도 나오지 않는다
+      const cells = new Set(used.flatMap((m) => (m.table?.rows ?? []).flat()).map((v) => String(v).replace(/,/g, '')).filter((v) => /^\d+(\.\d+)?$/.test(v)))
+      for (const c of it.conditions.items) {
+        expect(conditionHints(c.text, numbers), `${where} 조건 ${c.no}: ${c.text}`).toEqual([])
+        for (const d of c.text.match(/\d+(?:[.,]\d+)*/g) ?? []) expect(cells.has(d.replace(/,/g, '')), `${where} 조건 ${c.no}의 "${d}"가 자료 표에 있음`).toBe(false)
       }
     }
   })

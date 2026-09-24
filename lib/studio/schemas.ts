@@ -128,7 +128,7 @@ export const Condition = z.object({
   points: z.number().int().min(0).nullable(), category: z.enum(['내용', '형식']),
 })
 export const Conditions = z.object({
-  items: z.array(Condition).min(1).max(5),
+  items: z.array(Condition).min(0).max(4),   // C-32: 서술형 0개(조건 없음), 논술형 2~4개 — 종류별 개수는 [TS] 검사(checks.ts)가 본다
   length: z.string().min(2),
   format: z.string().min(2),
   answer_mode: z.enum(['screen', 'paper']),
@@ -136,7 +136,7 @@ export const Conditions = z.object({
 })
 export const ScaleStep = z.object({ points: z.number().int().min(0), descriptor: z.string().min(5), example: z.string().nullable() })
 export const Criterion = z.object({
-  name: z.string().min(2), axis: z.enum(AXES), condition_nos: z.array(z.number().int()).min(1),
+  name: z.string().min(2), axis: z.enum(AXES), condition_nos: z.array(z.number().int()),   // 조건을 가리키지 않는 요소(서술형 전부 포함)는 빈 배열
   max: z.number().int().min(1).max(4), scale: z.array(ScaleStep).min(2),
 }).superRefine((c, ctx) => {
   const pts = [...c.scale].map((s) => s.points).sort((a, b) => a - b)

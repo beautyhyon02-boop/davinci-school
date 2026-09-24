@@ -28,6 +28,14 @@ describe('prompts v2', () => {
     expect(u).toMatch(/summative_placement/)
     expect(u).toMatch(/\[3점\]/); expect(u).toMatch(/\[16점\]/); expect(u).toMatch(/그대로 옮기지 않는다/); expect(u).toMatch(/E: /)
   })
+  it('stage 5 conditions are guidelines only (C-32, 대표 2026-09-26): 서술형 none, 논술형 2~4, no solving hints', () => {
+    const task = buildPrompt(5, ctx).user.split('과제: ')[1]
+    expect(task).toMatch(/서술형은 conditions\.items를 빈 배열/); expect(task).toMatch(/논술형은 items 2~4개/)
+    expect(task).toMatch(/지침만/); expect(task).toMatch(/풀이 힌트 금지/)
+    for (const s of ['계산식', '반올림', '풀이 순서', '자료 수치', '결론']) expect(task, s).toContain(s)
+    expect(task).toMatch(/셀 수 있는 분량/)
+    expect(task).not.toMatch(/items 1~5개/); expect(task).not.toMatch(/행동 동사 원형/)
+  })
   it('stage 7 asks for per-lesson notice plan for essay lessons only (owner default) and the fixed footer', () => {
     const u = buildPrompt(7, ctx).user
     expect(u).toMatch(/criteria_phrases/); expect(u).toMatch(/서·논술형이 있는 차시/); expect(u).toContain('본 안내장은 학교생활기록부가 아니며')
@@ -52,6 +60,13 @@ describe('review focus v2', () => {
   it('stage 5 review asks to actually grade the exemplars per item and to check level wording', () => {
     const u = buildReviewPrompt(5, ctx, { items: [] }).user
     expect(u).toMatch(/예시답안을 채점표로 실제로 채점/); expect(u).toMatch(/부사만/); expect(u).toMatch(/8문항/)
+  })
+  it('stage 5 review flags solving hints in conditions and 서술형 conditions, and still checks countable length', () => {
+    const u = buildReviewPrompt(5, ctx, { items: [] }).user
+    expect(u).toContain('조건이 풀이 과정·공식·수치·순서를 담고 있으면 other(조건은 지침만)')
+    expect(u).toMatch(/서술형에 조건\(items\)이 있으면 other/)
+    expect(u).toMatch(/셀 수 있는 분량/)
+    expect(u).not.toMatch(/학생 혼자 답안을 쓸 만큼/); expect(u).not.toMatch(/행동 동사·부분배점/)
   })
   it('stage 3 review checks scripts, worksheet tiers and quiz answers; stage 7 checks notice rules', () => {
     expect(buildReviewPrompt(3, ctx, {}).user).toMatch(/if_stuck/); expect(buildReviewPrompt(3, ctx, {}).user).toMatch(/기본·표준·도전/)

@@ -78,6 +78,58 @@ function materialIssues(o: MaterialsT): Issue[] {
   return issues
 }
 
+/**
+ * C-32(대표 2026-09-26): 조건은 지침이지 풀이 힌트가 아니다. 조건 문장에서 풀이 절차의 흔적을 찾는다 —
+ * 숫자 사이 연산 기호, 계산 동사·공식·소수 자리 지시, 단계 순서어(먼저/다음에/그다음/마지막으로 + 동사; "가장 먼저"는 주제라 뺀다),
+ * 소수, 참조 자료에 있는 두 자리 이상 수치. 근거·문장·단어·글자 수와 배점("2개 이상", "200자", "(2점)")은 허용한다.
+ */
+const ARITHMETIC = /\d\s*[÷×*/=+\-−]\s*\d/
+const SOLVING_WORDS = /계산해|계산하여|구해|구하여|나누어|나눠|곱해|곱하여|더해|더하여|빼서|공식|소수.{0,6}자리/
+const STEP_ORDER = /(?<!가장\s?)(먼저|다음에|그다음|마지막으로)\s*\S[\s\S]*?(고|다|것)(?=[\s,.)]|$)/
+const ALLOWED_COUNTS = /\d+\s*(점|자|글자|단어|문장|문단|줄|가지)|(근거|이유|자료|수치|방안|예|사례|문장|단어)\S{0,3}\s*\d+\s*개/g
+const NUMBER = /\d+(?:[.,]\d+)*/g
+const normNum = (s: string) => s.replace(/,/g, '')
+
+/** 자료(표 칸·열 이름·본문)에 있는 두 자리 이상 정수와 소수. 조건에 이 수치가 나오면 답이 되는 자료 값을 흘린 것이다. */
+export function materialNumbers(materials: { body: string | null; table: { columns: string[]; rows: (string | number)[][] } | null }[]): Set<string> {
+  const out = new Set<string>()
+  for (const m of materials) {
+    const texts = [m.body ?? '', ...(m.table?.columns ?? []), ...(m.table?.rows ?? []).flat().map(String)]
+    for (const t of texts) for (const n of t.match(NUMBER) ?? []) { const v = normNum(n); if (v.includes('.') || v.length >= 2) out.add(v) }
+  }
+  return out
+}
+
+/** 조건 문장 하나의 풀이 힌트 사유(빈 배열이면 지침만 담은 조건). */
+export function conditionHints(text: string, materialNums: Set<string>): string[] {
+  const reasons: string[] = []
+  if (ARITHMETIC.test(text)) reasons.push('계산식')
+  const word = text.match(SOLVING_WORDS)?.[0]
+  if (word) reasons.push(`풀이 동사·지시 "${word}"`)
+  if (STEP_ORDER.test(text)) reasons.push('풀이 순서')
+  const rest = text.replace(ALLOWED_COUNTS, ' ')
+  const nums = (rest.match(NUMBER) ?? []).map(normNum)
+  const decimals = nums.filter((n) => n.includes('.'))
+  if (decimals.length) reasons.push(`소수 값 ${decimals.join('·')}`)
+  const leaked = nums.filter((n) => !n.includes('.') && n.length >= 2 && materialNums.has(n))
+  if (leaked.length) reasons.push(`자료 수치 ${leaked.join('·')}`)
+  return reasons
+}
+
+function conditionIssues(it: AssessmentT['items'][number], i: number, materials: MaterialsT['materials']): Issue[] {
+  const issues: Issue[] = []
+  const n = it.conditions.items.length
+  if (it.kind === '서술형' && n > 0) issues.push({ kind: 'other', detail: `문항 ${i + 1}(서술형): 조건 ${n}개 — 서술형에는 조건을 두지 않는다(분량·형식만, C-32)` })
+  if (it.kind === '논술형' && (n < 2 || n > 4)) issues.push({ kind: 'other', detail: `문항 ${i + 1}(논술형): 조건 ${n}개 — 논술형 조건은 2~4개(C-32)` })
+  else if (n > 4) issues.push({ kind: 'other', detail: `문항 ${i + 1}: 조건 ${n}개 — 0~4개(C-32)` })
+  const nums = materialNumbers(materials.filter((m) => it.materials_used.includes(m.id)))
+  for (const c of it.conditions.items) {
+    const reasons = conditionHints(c.text, nums)
+    if (reasons.length) issues.push({ kind: 'other', detail: `문항 ${i + 1} 조건 ${c.no}: 풀이 힌트(${reasons.join(', ')}) — 조건은 지침만(C-32)` })
+  }
+  return issues
+}
+
 function assessmentIssues(o: AssessmentT, ctx: CheckCtx): Issue[] {
   const issues: Issue[] = []
   for (const b of o.grade_boundaries) {
@@ -89,6 +141,7 @@ function assessmentIssues(o: AssessmentT, ctx: CheckCtx): Issue[] {
   for (const [i, it] of o.items.entries()) {
     for (const id of it.materials_used) if (materials.length && !byId.has(id)) issues.push({ kind: 'other', detail: `문항 ${i + 1}: 없는 자료 ${id}` })
     if (materials.length && !it.materials_used.some((id) => byId.get(id)?.role === 'raw')) issues.push({ kind: 'other', detail: `문항 ${i + 1}: 원자료(raw)를 하나도 참조하지 않음` })
+    issues.push(...conditionIssues(it, i, materials))
     for (const c of it.rubric.criteria) {
       const sorted = [...c.scale].sort((a, b) => a.points - b.points)
       for (let k = 1; k < sorted.length; k++) if (adverbOnlyDiff(sorted[k - 1].descriptor, sorted[k].descriptor)) issues.push({ kind: 'level', detail: `문항 ${i + 1} ${c.name}: ${sorted[k - 1].points}→${sorted[k].points}점이 부사만 다름` })

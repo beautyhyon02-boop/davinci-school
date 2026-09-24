@@ -18,6 +18,9 @@ describe('buildGradingPrompt v2', () => {
     expect(p.user).toContain(assessment.items[0].exemplar_answers[0].text.slice(0, 20))
     expect(p.user).not.toContain(assessment.items[2].exemplar_answers[0].text.slice(0, 20))
     expect(p.user).toMatch(/max=\d/); expect(p.user).toMatch(/A~E 예상 구간/); expect(p.fixtureKey).toBe('grading-서술형-수학')
+    // C-32: 서술형은 조건이 없다 — 빈 condition_nos 가 "조건 )"처럼 빈 꼬리를 남기지 않는다
+    expect(assessment.items[0].conditions.items).toEqual([])
+    expect(p.user).not.toMatch(/조건 \)/); expect(p.user).toMatch(/조건:\n없음/)
   })
   it('논술형 lists 4 criteria names with max=4 and the holistic bands', () => {
     const p = buildGradingPrompt({ snapshot, itemNo: 3, studentGrade: 1, answer: 'x'.repeat(60) })

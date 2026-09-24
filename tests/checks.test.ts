@@ -73,6 +73,43 @@ describe('staticIssues', () => {
     const doubled = structuredClone(assessmentV2); doubled.items[1].lesson_no = 2
     expect(lessonNoIssues(placement(2, 4, 5), doubled).some((i) => i.detail.includes('서술형2(4차시)'))).toBe(true)
   })
+  describe('stage 5: conditions are guidelines, not solving hints (C-32, 대표 2026-09-26)', () => {
+    const matB = { ...materials[0], id: 'B', table: { columns: ['품목', '작년 (부스 16곳)', '올해 (부스 20곳)'], rows: [['플라스틱컵', 290, 405], ['합계', 1200, 1350]] } }
+    const prior = { stage4: { materials: [...materials, matB] }, stage3: { lessons: [] } }
+    const withEssayCondition = (text: string) => {
+      const a = structuredClone(assessmentV2); a.items[2].materials_used = ['A', 'B']
+      a.items[2].conditions.items[0].text = text
+      return a
+    }
+    const hintIssues = (a: unknown) => staticIssues(5, a, { standards, prior }).filter((i) => i.detail.includes('C-32'))
+    it.each([
+      ['arithmetic with numbers + rounding', '290 ÷ 1200을 소수 둘째 자리까지 구해 적는다'],
+      ['step order', '먼저 도수분포표를 만들고 다음에 최빈 계급을 찾는다'],
+      ['procedure words', '각 품목의 개수를 합계로 나누어 비율을 구한다'],
+      ['a value from the referenced material', '플라스틱컵 405개를 기준으로 줄일 개수를 밝힌다'],
+    ])('flags %s', (_why, text) => {
+      const issues = hintIssues(withEssayCondition(text))
+      expect(issues).toHaveLength(1); expect(issues[0].kind).toBe('other'); expect(issues[0].detail).toContain('문항 3 조건 1')
+    })
+    it.each([
+      ['a material to cite', '자료 B의 수치를 근거로 든다'],
+      ['counts of 근거, length and points', '근거를 2개 이상 들고 200자 내외로 쓴다 (2점)'],
+      ['"가장 먼저" as the topic, not a step', '가장 먼저 줄일 일회용품 한 가지를 정한다'],
+    ])('passes %s', (_why, text) => {
+      expect(hintIssues(withEssayCondition(text))).toEqual([])
+    })
+    it('서술형 carries no conditions; 논술형 carries 2~4', () => {
+      expect(hintIssues(assessmentV2)).toEqual([])
+      const short = structuredClone(assessmentV2)
+      short.items[0].conditions.items = [{ no: 1, text: '이유를 한 문장으로 쓸 것', verb: '쓰다', points: null, category: '형식' }]
+      expect(hintIssues(short).map((i) => i.detail)).toEqual([expect.stringMatching(/문항 1\(서술형\): 조건 1개/)])
+      const one = structuredClone(assessmentV2); one.items[2].conditions.items.splice(1, 1)
+      expect(hintIssues(one).map((i) => i.detail)).toEqual([expect.stringMatching(/문항 3\(논술형\): 조건 1개/)])
+      const five = structuredClone(assessmentV2)
+      five.items[2].conditions.items = [1, 2, 3, 4, 5].map((no) => ({ no, text: `요건 ${no}을 지킬 것`, verb: '지키다', points: null, category: '내용' }))
+      expect(hintIssues(five).map((i) => i.detail)).toEqual([expect.stringMatching(/문항 3\(논술형\): 조건 5개/)])
+    })
+  })
   it('stage 3: a 논술형 lesson needs a 논술형 writing step of 35+ minutes', () => {
     const plan = { set_title: 't', set_key_question: 'q?', lesson_map: [], assessment_plan: { formative: 'f', summative_placement: [], rubric_note: { 상: 'a', 중: 'b', 하: 'c' } } }
     const lessons = (main: typeof lessonV2.flow.main) => [1, 2, 3, 4].map((no) => ({ ...lessonV2, no, assessment: no === 4 ? '논술형' : null, flow: no === 4 ? { ...lessonV2.flow, main } : lessonV2.flow }))

@@ -18,7 +18,7 @@ export function buildGradingPrompt({ snapshot, itemNo, studentGrade, answer }: G
   if (!item) throw new Error(`item ${itemNo} not found`)
   const { criteria, holistic, notes } = item.rubric
   const rubric = criteria
-    .map((c) => `- ${c.name}(max=${c.max}, ${c.axis}, 조건 ${c.condition_nos.join('·')}): ${[...c.scale].sort((x, y) => y.points - x.points).map((s) => `${s.points}=${s.descriptor}${s.example ? ` (예: ${s.example})` : ''}`).join(' / ')}`)
+    .map((c) => `- ${c.name}(max=${c.max}, ${c.axis}${c.condition_nos.length ? `, 조건 ${c.condition_nos.join('·')}` : ''}): ${[...c.scale].sort((x, y) => y.points - x.points).map((s) => `${s.points}=${s.descriptor}${s.example ? ` (예: ${s.example})` : ''}`).join(' / ')}`)
     .join('\n')
   const exemplars = item.exemplar_answers
     .map((e) => `[${e.level ?? `${e.points}점`}] 요소별 ${e.scores.join('·')} = ${e.points}점 — ${e.rationale}\n${e.text}`)
@@ -28,7 +28,7 @@ export function buildGradingPrompt({ snapshot, itemNo, studentGrade, answer }: G
   const user = [
     `학생 학년: ${snapshot.cover.level} ${studentGrade}학년 · 과목: ${snapshot.cover.subject}`,
     `문항(${item.kind}, ${item.points}점):\n${item.stem}`,
-    `조건:\n${conditions}\n분량 ${item.conditions.length} / 형식 ${item.conditions.format}${item.conditions.overflow_rule ? ` / ${item.conditions.overflow_rule}` : ''}`,
+    `조건:\n${conditions || '없음(서술형은 조건 없이 분량·형식만 — C-32)'}\n분량 ${item.conditions.length} / 형식 ${item.conditions.format}${item.conditions.overflow_rule ? ` / ${item.conditions.overflow_rule}` : ''}`,
     `채점표(요소 ${criteria.length}개, 요소 이름과 max를 그대로 쓴다):\n${rubric}`,
     holistic ? `총체적 기준: 상=${holistic.상} / 중=${holistic.중} / 하=${holistic.하}` : '',
     `채점 시 유의점:\n${notes.map((n) => `- ${n}`).join('\n')}`,
