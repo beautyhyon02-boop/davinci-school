@@ -308,6 +308,8 @@ export const app = {
       empty: '아직 생성된 결과가 없습니다. [생성]을 눌러 시작하세요.',
       reviewIssuesHeading: '검토 결과 — 통과하지 못했습니다',
       errorPrefix: '오류: ',
+      // 검토 반복 한도에 닿았을 때의 안내(잠금 아님) — 빨간 오류 대신 이 문구를 보여 준다
+      exhausted: '검토를 여러 번 통과하지 못했습니다. [생성]을 눌러 다시 만들어 보거나, [JSON 편집]으로 고쳐 저장한 뒤 [검토]를 통과하면 확정할 수 있습니다.',
       prevStageHint: '이전 단계를 먼저 확정해야 진행할 수 있습니다.',
       keyQuestion: {
         heading: '핵심질문 선택',

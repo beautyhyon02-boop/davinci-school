@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest'
-import { runStage, StageError, STAGE_ERRORS, type Repo, type StageStatus, type LogRow } from '@/lib/studio/stages'
+import { runStage, StageError, STAGE_ERRORS, EXHAUSTED_ERROR, MAX_ATTEMPTS, type Repo, type StageStatus, type LogRow } from '@/lib/studio/stages'
 import { readFileSync } from 'node:fs'
 
 beforeAll(() => { process.env.AI_MOCK = '1'; delete process.env.ANTHROPIC_API_KEY })
@@ -60,6 +60,32 @@ describe('runStage', () => {
     const reviewLog = repo.logs.find(l => l.role === 'review')
     expect(reviewLog?.model).toBe('static')
     expect((reviewLog?.issues as { pass: boolean }).pass).toBe(false)
+  })
+  it('stage 2 [TS] 반려 사유가 대주제 상황(제목 낱말)을 짚는다 — runStage 가 대주제 제목을 검사에 넘긴다', async () => {
+    const repo = fakeRepo({ acceptedUpTo: 2 })
+    await runStage({ itemSetId: 'x', stage: 2, action: 'generate', repo })
+    ;(repo.outputs[2] as { reconstruction: string }).reconstruction = '학생은 학교 축제의 일회용품 자료를 가지고 상대도수를 구할 수 있다.'
+    const r = await runStage({ itemSetId: 'x', stage: 2, action: 'review', repo })
+    const detail = r.status.review?.issues.find((i) => i.detail.includes('통합 문장'))?.detail
+    expect(detail).toMatch(/^대주제 상황\(학교, 축제의, 일회용품\)을 재구성 문장에 넣었음 — 학습 목표·차시에만 쓴다: 통합 문장: /)
+  })
+  it('검토 한도에 닿은 뒤에도 생성이 진행되고 시도 횟수가 늘며 한도 표지가 지워진다(잠금 아님)', async () => {
+    const repo = fakeRepo({ acceptedUpTo: 2 })
+    const max = MAX_ATTEMPTS[2] ?? 1
+    await runStage({ itemSetId: 'x', stage: 2, action: 'generate', repo })
+    repo.statuses[2] = { state: 'reviewed', attempt: max, output: repo.outputs[2], review: { pass: false, issues: [{ kind: 'fidelity', detail: 'x' }] }, error: EXHAUSTED_ERROR, updated_at: '' }
+    const g = await runStage({ itemSetId: 'x', stage: 2, action: 'generate', repo })
+    expect(g.status.state).toBe('generated'); expect(g.status.attempt).toBe(max + 1); expect(g.status.error).toBeUndefined()
+    // 한도를 넘은 판도 검토를 통과하면 확정할 수 있다
+    const r = await runStage({ itemSetId: 'x', stage: 2, action: 'review', repo })
+    expect(r.status.attempt).toBe(max + 1); expect(r.status.review?.pass).toBe(true); expect(r.status.error).toBeUndefined()
+    expect((await runStage({ itemSetId: 'x', stage: 2, action: 'accept', repo })).status.state).toBe('accepted')
+  })
+  it('검토 한도 뒤라도 통과한 검토 없이는 확정할 수 없다', async () => {
+    const repo = fakeRepo({ acceptedUpTo: 2 })
+    await runStage({ itemSetId: 'x', stage: 2, action: 'generate', repo })
+    repo.statuses[2] = { state: 'reviewed', attempt: 5, output: repo.outputs[2], review: { pass: false, issues: [] }, error: EXHAUSTED_ERROR, updated_at: '' }
+    await expectStageError(runStage({ itemSetId: 'x', stage: 2, action: 'accept', repo }), STAGE_ERRORS.ACCEPT_REQUIRES_REVIEW)
   })
   it('refuses to accept before review passes', async () => {
     const repo = fakeRepo({ acceptedUpTo: 3 })

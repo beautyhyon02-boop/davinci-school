@@ -4,9 +4,9 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { app } from '@/content/site'
-import { nextAction } from '@/lib/studio/next-action'
+import { canGenerate as canGenerateStage, nextAction } from '@/lib/studio/next-action'
 import type { StageStatus } from '@/lib/studio/stages'
-import { MAX_ATTEMPTS } from '@/lib/studio/max-attempts'
+import { MAX_ATTEMPTS, EXHAUSTED_ERROR } from '@/lib/studio/max-attempts'
 import { lessonAssessments } from '@/lib/studio/assessment-structure'
 import { chooseKeyQuestion, saveStageEdit } from './actions'
 import { WIZARD_STAGES, useStageRunner, type WizardStage } from './useStageRunner'
@@ -248,7 +248,9 @@ function StagePanel({
   const max = MAX_ATTEMPTS[stage] ?? 1
   const action = nextAction(status, max)
 
-  const canGenerate = prevAccepted && (action === 'generate')
+  // 검토 한도에 닿은 뒤에도 [생성]은 누를 수 있다(한도는 안내, 잠금 아님) — 확정은 여전히 통과한 검토가 있어야 한다
+  const canGenerate = prevAccepted && canGenerateStage(status, max)
+  const exhausted = status?.error === EXHAUSTED_ERROR
   const canReview = action === 'review'
   const canAccept = action === 'accept'
 
@@ -311,7 +313,11 @@ function StagePanel({
         </div>
       )}
 
-      {status?.error && <p className="mt-3 text-sm text-red-600">{copy.errorPrefix}{status.error}</p>}
+      {exhausted ? (
+        <p className="mt-3 rounded-xl bg-lemon-50 p-3 text-sm">{copy.exhausted}</p>
+      ) : (
+        status?.error && <p className="mt-3 text-sm text-red-600">{copy.errorPrefix}{status.error}</p>
+      )}
 
       {!editing && (
         <div className="mt-4 flex flex-wrap gap-2">

@@ -202,6 +202,8 @@ describe('site content', () => {
 
   it('exposes studio wizard copy (stage names, state/action labels, JSON edit, key question, error texts)', () => {
     expect(app.studio.wizard.backToTheme).toBeTruthy()
+    expect(app.studio.wizard.exhausted).toContain('[생성]')
+    expect(app.studio.wizard.exhausted).toContain('[JSON 편집]')
     expect(app.studio.wizard.versionLabel(2)).toContain('2')
     expect(app.studio.wizard.stageNames[2]).toBeTruthy()
     expect(app.studio.wizard.stageNames[3]).toBeTruthy()
