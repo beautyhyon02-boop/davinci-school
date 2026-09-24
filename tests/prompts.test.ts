@@ -16,6 +16,9 @@ describe('prompts v2', () => {
     expect(u).toMatch(/\[9수04-02\] 성취수준\(도달점 = C/); expect(u).toContain('주어진 자료')
     expect(u).toMatch(/통합\/재조정\/유지/); expect(u).toMatch(/지식·이해\/과정·기능\/가치·태도/)
     expect(u).toContain('merged_with'); expect(u).toMatch(/original_text와 merged_with 성취기준 원문에 있는 어휘만/)
+    // 유지여도 reconstructed_text는 원문을 그대로 옮기지 않고 틀 문장으로 쓴다(zod 형식 검사와의 충돌 해소, 2026-09-24)
+    expect(u).toMatch(/유지를 포함해 셋 다.*틀 문장으로 쓴다/)
+    expect(u).toMatch(/유지여도 original_text를 그대로 옮기지 않는다/)
   })
   it('stage 3 asks for unit_plan + lessons with 60-minute budgets, scripts, worksheet tiers, and includes exemplars', () => {
     const u = buildPrompt(3, ctx).user

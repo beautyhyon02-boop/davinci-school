@@ -46,7 +46,8 @@ export const Reconstruction = z.object({
   key_question_candidates: z.array(z.string().min(5)).min(2).max(3),
 }).superRefine((r, ctx) => {
   for (const axis of AXES) if (!r.learning_goals.some((g) => g.axis === axis)) issue(ctx, `학습 목표에 ${axis} 축이 없음`)
-  for (const s of r.standards) if (s.reconstruction_type === '유지' && s.reconstructed_text !== s.original_text) issue(ctx, `${s.code}: 유지는 원문과 같아야 함`)
+  // 유지여도 reconstructed_text는 틀 문장(TASKS[2])이어야 하므로 원문과 같으라는 요구는 두지 않는다 —
+  // 어휘가 원문(과 merged_with 원문)에서만 왔는지는 [TS] 원문 대조(checks.ts checkReconstructionFidelity)가 본다.
 })
 
 // ── 3단계 ──────────────────────────────────────────────────────────────

@@ -14,6 +14,21 @@ import { Attachments } from './Attachments'
 
 const copy = app.studio.wizard
 
+/** AI 출력 형식 검사 실패(lib/ai/claude.ts의 최종 에러 문구)인지 — 맞으면 안내 문구를 앞에 두고 원문은 작게 보여 준다. */
+const isParseError = (message: string) => /^AI output could not be parsed after \d+ attempts/.test(message)
+
+function StageErrorMessage({ message }: { message: string }) {
+  if (isParseError(message)) {
+    return (
+      <div className="mt-3">
+        <p className="text-sm text-red-600">{copy.parseErrorHeading}</p>
+        <p className="mt-1 text-xs text-ink-400">{message}</p>
+      </div>
+    )
+  }
+  return <p className="mt-3 text-sm text-red-600">{copy.errorPrefix}{message}</p>
+}
+
 const STATE_TONE: Record<StageStatus['state'], 'gray' | 'lavender' | 'lemon' | 'mint'> = {
   idle: 'gray',
   generated: 'lavender',
@@ -316,7 +331,7 @@ function StagePanel({
       {exhausted ? (
         <p className="mt-3 rounded-xl bg-lemon-50 p-3 text-sm">{copy.exhausted}</p>
       ) : (
-        status?.error && <p className="mt-3 text-sm text-red-600">{copy.errorPrefix}{status.error}</p>
+        status?.error && <StageErrorMessage message={status.error} />
       )}
 
       {!editing && (

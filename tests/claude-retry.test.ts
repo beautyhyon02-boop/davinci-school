@@ -78,18 +78,29 @@ describe('callStructured (real path, fake client)', () => {
     expect(r.model).toBe('claude-opus-5')
     expect(r.usage).toEqual({ input: 10, output: 5, cacheRead: 3 })
     expect(calls).toHaveLength(2)
-    expect(logs.map(l => [l.ok, l.error])).toEqual([[false, 'unparsable (attempt 1)'], [true, undefined]])
+    expect(logs.map(l => [l.ok, l.error])).toEqual([[false, 'unparsable (attempt 1): Failed to parse structured output: boom'], [true, undefined]])
   })
-  it('unparsable twice → throws after exactly 2 attempts', async () => {
+  it('unparsable twice → throws after exactly 2 attempts, with the last underlying message', async () => {
     const { client, calls } = fakeClient([
       { reject: new Anthropic.AnthropicError('Failed to parse structured output: 1') },
       { reject: new Anthropic.AnthropicError('Failed to parse structured output: 2') },
       { resolve: { parsed_output: { answer: 4 } } },
     ])
     setClientForTests(client)
-    await expect(callStructured(base)).rejects.toThrow(/2 attempts/)
+    await expect(callStructured(base)).rejects.toThrow(/2 attempts: Failed to parse structured output: 2/)
     expect(calls).toHaveLength(2)
-    expect(logs.map(l => l.error)).toEqual(['unparsable (attempt 1)', 'unparsable (attempt 2)'])
+    expect(logs.map(l => l.error)).toEqual(['unparsable (attempt 1): Failed to parse structured output: 1', 'unparsable (attempt 2): Failed to parse structured output: 2'])
+  })
+  it('unparsable via missing parsed_output (no exception) → logs stop_reason and content size, not just "unparsable"', async () => {
+    const { client, calls } = fakeClient([
+      { resolve: { parsed_output: null, stop_reason: 'end_turn', content: [{ type: 'text', text: 'not json enough' } as unknown as Anthropic.ContentBlock] } },
+      { resolve: { parsed_output: { answer: 4 } } },
+    ])
+    setClientForTests(client)
+    const r = await callStructured(base)
+    expect(r.data).toEqual({ answer: 4 })
+    expect(calls).toHaveLength(2)
+    expect(logs[0].error).toBe('unparsable (attempt 1): no parsed_output; stop_reason=end_turn; content blocks=1, text chars=15')
   })
   it('refusal → throws without retry', async () => {
     const { client, calls } = fakeClient([{ resolve: { stop_reason: 'refusal' } }, { resolve: { parsed_output: { answer: 4 } } }])

@@ -67,17 +67,22 @@ const legacyShort = (lesson_no: number) => ({ ...short(lesson_no), points: 3, st
 export const legacyAssessment = { ...assessmentV2, items: [legacyShort(2), legacyShort(4), essay] }
 
 describe('schemas v2', () => {
-  it('reconstruction needs all three axes and 유지 keeps the original text', () => {
+  it('reconstruction needs all three axes; 유지 also writes the template sentence (not the original verbatim) and still parses', () => {
     const base = { standards: [
-      { code: '[9수04-02]', original_text: '자료를 나타내고 해석할 수 있다.', reconstruction_type: '유지', reconstructed_text: '자료를 나타내고 해석할 수 있다.', reason: ['4~6차시 압축'], learning_elements: ['도수분포표'] },
+      // 유지여도 reconstructed_text는 틀 문장이다(TASKS[2]) — original_text만 원문 그대로.
+      { code: '[9수04-02]', original_text: '자료를 나타내고 해석할 수 있다.', reconstruction_type: '유지', reconstructed_text: '학생은 자료를 가지고 나타내고 해석하는 것을 해서 해석 결과를 할 수 있다.', reason: ['4~6차시 압축'], learning_elements: ['도수분포표'] },
       { code: '[9수04-03]', original_text: '상대도수를 구할 수 있다.', reconstruction_type: '재조정', reconstructed_text: '학생은 자료를 가지고 상대도수를 구해 비교할 수 있다.', reason: ['학원 60분 최적화'], learning_elements: ['상대도수'] } ],
       reconstruction: '자료를 정리하고 상대도수로 비교할 수 있다.',
       learning_goals: [{ text: '도수분포표의 뜻을 설명할 수 있다.', axis: '지식·이해' }, { text: '상대도수를 구할 수 있다.', axis: '과정·기능' }, { text: '통계의 유용성을 인식한다.', axis: '가치·태도' }],
       key_question_candidates: ['자료는 무엇을 먼저 줄이라고 말하는가?', '왜 비율로 비교하는가?'] }
     expect(Reconstruction.safeParse(base).success).toBe(true)
     expect(Reconstruction.parse(base).level_anchor).toEqual([])
+    // 유지의 reconstructed_text가 original_text와 글자 그대로 같아도(옛 판 모양) 여전히 통과한다 — 같으라는 요구도, 달라야 한다는 요구도 없다
+    expect(Reconstruction.safeParse({ ...base, standards: [{ ...base.standards[0], reconstructed_text: base.standards[0].original_text.padEnd(12, ' 것') }, base.standards[1]] }).success).toBe(true)
     expect(Reconstruction.safeParse({ ...base, learning_goals: base.learning_goals.slice(0, 2).concat({ text: 'x가 있다.', axis: '지식·이해' }) }).success).toBe(false)
-    expect(Reconstruction.safeParse({ ...base, standards: [{ ...base.standards[0], reconstructed_text: '다른 문장이다.' }, base.standards[1]] }).success).toBe(false)
+    // 세트 핵심질문 후보는 2~3개
+    expect(Reconstruction.safeParse({ ...base, key_question_candidates: ['한 개뿐인 후보'] }).success).toBe(false)
+    expect(Reconstruction.safeParse({ ...base, key_question_candidates: [...base.key_question_candidates, '세 번째 후보는 무엇인가?'] }).success).toBe(true)
     expect(AXES).toEqual(['지식·이해', '과정·기능', '가치·태도'])
   })
   it('lesson: 60-minute budget, main minutes add up, three tiers, quiz 3/0', () => {

@@ -46,6 +46,11 @@ function getClient(): StructuredClient { return (client ??= new Anthropic()) }
 /** 테스트 전용. 가짜 클라이언트를 주입한다(null이면 다음 호출부터 실제 Anthropic 클라이언트로 복귀). 운영 코드에서 호출 금지. */
 export function setClientForTests(fake: StructuredClient | null) { client = fake }
 
+/** 로그·에러 메시지에 붙일 원인 요약. 요청 본문·키는 절대 포함하지 않는다. */
+function briefMessage(e: unknown): string {
+  return String((e as { message?: unknown } | undefined)?.message ?? e ?? '').replace(/\s+/g, ' ').trim().slice(0, 400)
+}
+
 const MAX_ATTEMPTS = 2
 const MAX_TOKENS = 48000 // adaptive thinking 토큰이 max_tokens에 포함되므로 5단계(xhigh)를 감안해 넉넉히 잡는다
 const RETRY_DELAY_MS = process.env.NODE_ENV === 'test' ? 0 : 1000
@@ -73,6 +78,7 @@ export async function callStructured<T>(inp: CallInput<T>): Promise<CallResult<T
       : { type: 'text' as const, text })),
     messages: [{ role: 'user' as const, content: inp.user }],
   }
+  let lastDetail = ''
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     const stream = getClient().messages.stream(request)
     // 파싱 실패로 finalMessage()가 reject 되어도 stop_reason·usage를 알 수 있도록 마지막 스냅샷을 잡아 둔다
@@ -93,7 +99,8 @@ export async function callStructured<T>(inp: CallInput<T>): Promise<CallResult<T
       }
       // 파싱/검증 실패(AnthropicError이되 APIError가 아님) → 한 번 더 시도. API 오류는 SDK가 이미 429/5xx 재시도를 했으므로 그대로 던진다.
       if (e instanceof Anthropic.AnthropicError && !(e instanceof Anthropic.APIError)) {
-        await inp.log?.({ model, ...usage, ok: false, error: `unparsable (attempt ${attempt})` })
+        lastDetail = briefMessage(e)
+        await inp.log?.({ model, ...usage, ok: false, error: `unparsable (attempt ${attempt}): ${lastDetail}` })
         if (attempt < MAX_ATTEMPTS && RETRY_DELAY_MS > 0) await new Promise(r => setTimeout(r, RETRY_DELAY_MS))
         continue
       }
@@ -112,7 +119,10 @@ export async function callStructured<T>(inp: CallInput<T>): Promise<CallResult<T
       await inp.log?.({ model, ...usage, ok: true })
       return { data: res.parsed_output as T, usage, model }
     }
-    await inp.log?.({ model, ...usage, ok: false, error: `unparsable (attempt ${attempt})` })
+    // parsed_output이 없는데 예외도 안 남(SDK가 JSON은 얻었지만 못 채웠거나 형식이 비어 있음) — 텍스트 길이로 "JSON 없음"과 "스키마 불일치"를 가른다
+    const textLen = Array.isArray(res.content) ? res.content.reduce((s, b) => s + (b.type === 'text' ? b.text.length : 0), 0) : 0
+    lastDetail = `no parsed_output; stop_reason=${res.stop_reason ?? 'unknown'}; content blocks=${Array.isArray(res.content) ? res.content.length : 0}, text chars=${textLen}`
+    await inp.log?.({ model, ...usage, ok: false, error: `unparsable (attempt ${attempt}): ${lastDetail}` })
   }
-  throw new Error(`AI output could not be parsed after ${MAX_ATTEMPTS} attempts`)
+  throw new Error(`AI output could not be parsed after ${MAX_ATTEMPTS} attempts: ${lastDetail}`)
 }
