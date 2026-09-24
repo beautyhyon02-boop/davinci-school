@@ -18,13 +18,15 @@
 
 ## 지금 들어 있는 것
 
+**세트 구조(대표님 2026-09-26)**: 두 세트 모두 교수 차시 1~5(퀴즈 3문항씩) + 6차시 단원 평가(서술형 6점 + 논술형 16점). v1에서 서술형 둘 중 하나를 뺐다 — 수학은 상대도수 서술형을 남기고 종이 답안 도수분포표 서술형을 뺐고, 과학은 재활용이 어려운 이유 서술형을 남기고 개인 방안 서술형을 뺐다(이유는 `scripts/upgrade-fixtures-v2.ts` PATCHES). 그래서 fixture에 종이 답안 문항이 없다.
+
 | 파일 | 흉내 내는 세트 |
 |---|---|
 | `stage0~7-{generate,review}.json` | 중1 **수학**, 성취기준 `9수04-02·03·04` (기본값 = 과목 fixture가 없을 때 쓰인다). 7단계는 `stage7-generate.json`/`stage7-review.json`(안내장 틀) |
 | `stage2~7-{generate,review}-과학.json` | 중1 **과학**, 성취기준 `9과01-01·9과01-03`(1단계는 과학 전용 파일이 없어 기본(수학) fixture로 폴백한다) |
 | `standards-math.json`, `standards-science.json` | 위 두 세트의 성취기준 원문(`data/standards/*.json`에서 그대로 복사). 2단계 재구성 원문 이탈 검사(`lib/studio/fidelity.ts`, `lib/studio/checks.ts`) 테스트용 |
-| `grading-서술형.json`, `grading-논술형.json` | 채점 호출(`lib/classroom/grading-prompt.ts`)이 흉내 내는 AI 채점 초안. 문항 카드 채점표에 있는 요소 이름·최댓값을 그대로 따라야 `alignCriteria`(`lib/classroom/grade.ts`)가 받아들인다 |
-| `notice-draft.json` | 학생별 차시 안내장 초안 호출(`lib/classroom/notice-prompt.ts`)이 흉내 내는 응답. 수학(서술형 채점표 + 논술형 4요소)과 과학(논술형 4요소) 요소명을 모두 담아, 어느 과목 mock 세트로 안내장을 만들어도 린트를 통과한다 |
+| `grading-서술형.json`, `grading-서술형-과학.json`, `grading-논술형.json`, `grading-논술형-과학.json` | 채점 호출(`lib/classroom/grading-prompt.ts`)이 흉내 내는 AI 채점 초안(서술형은 2026-09-26부터 6점 3요소라 과목마다 요소 이름이 달라 과학 파일이 따로 있다). 문항 카드 채점표에 있는 요소 이름·최댓값을 그대로 따라야 `alignCriteria`(`lib/classroom/grade.ts`)가 받아들인다 |
+| `notice-draft.json` | 학생별 차시 안내장 초안 호출(`lib/classroom/notice-prompt.ts`)이 흉내 내는 응답. 수학·과학의 서술형 3요소 + 논술형 4요소 요소명을 모두 담아, 어느 과목 mock 세트로 안내장을 만들어도 린트를 통과한다 |
 
 **과학 4단계(자료) fixture는 공유 자료 B·D 사본을 들고 있다.** 실제 대주제는 공유 자료(A~D)를 과목들이 함께 참조하지만, mock 모드에는 대주제 공유 자료가 없으므로(`prior.shared_materials`가 비어 있음) 과학 세트가 자료 B·D를 "없는 자료"로 [TS] 검사에 걸리는 것을 막기 위해 과학 fixture 자체에 사본을 넣어 두었다. 실제 생성에서는 이 문제가 없다(대주제 공유 자료가 항상 `prior`에 들어간다).
 
