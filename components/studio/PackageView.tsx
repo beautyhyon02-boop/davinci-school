@@ -8,10 +8,12 @@ import { detectChart } from '@/lib/studio/charts'
 import type { Snapshot } from '@/lib/studio/publish'
 import type { Lesson as LessonSchema, QuizItem as QuizItemSchema, Material as MaterialSchema, AssessmentItem as AssessmentItemSchema, Rubric as RubricSchema } from '@/lib/studio/schemas'
 import { getLevels } from '@/lib/reference/levels'
+import { lessonAssessments, isAssessmentSession } from '@/lib/studio/assessment-structure'
 import { app } from '@/content/site'
 
 // v2 패키지 화면(스펙 §2.9). 카드 순서 = 표지 → 소개 → 성취기준(+A~E 접이식) → 재구조화 표 → 학습 목표(축 배지) → 핵심질문 →
-// 평가 계획 → 차시 카드(시간·소단계·발문 대본·준비물·유의점·활동지·퀴즈) → 자료(출처 배지) → 문항 카드 3장 → 등급표(level_ref) →
+// 평가 계획 → 차시 카드(시간·소단계·발문 대본·준비물·유의점·활동지·퀴즈; 마지막 교수 차시 뒤 단원 평가 차시는 레몬 테두리 카드) →
+// 자료(출처 배지) → 문항 카드 2장(서술형·논술형, 옛 판 3장) → 등급표(level_ref) →
 // 피드백 틀 → 교사용 지침서 → 안내장 틀 → 참고한 공개 자료 → 생성 모델(관리자만).
 // 정답·예시답안 같은 채점 자료는 <details> 로 묶는다 — 관리자 미리보기는 펼친 채, 원장 열람(mode='teacher')은 접힌 채로 시작한다.
 // getLevels 가 node:fs 를 쓰므로 서버 컴포넌트에서만 렌더한다(사용처: 관리자 세트 page, 원장 문항 page, 학생 page 의 MaterialsSection).
@@ -231,15 +233,20 @@ function LessonCard({ l, showAnswers, open }: { l: Lesson; showAnswers: boolean;
   const c = copy.lessons
   const t = l.time_budget
   const materials = l.materials_used.map((id) => `${copy.materials.idLabel} ${id}`).join(', ')
+  const kinds = lessonAssessments(l)
+  // 단원 평가 차시(대표 2026-09-26: 마지막 교수 차시 뒤, 서술형 15분 + 논술형 35분)는 가르치는 차시와 구별되게 레몬 테두리와 안내 한 줄
+  const session = isAssessmentSession(l) && kinds.length === 2
   return (
-    <div className="rounded-xl border border-ink-100 p-3 text-sm">
+    <div data-lesson-kind={isAssessmentSession(l) ? 'assessment' : 'teaching'} className={`rounded-xl border p-3 text-sm ${session ? 'border-lemon-300 bg-lemon-100/30' : 'border-ink-100'}`}>
       <div className="flex flex-wrap items-center gap-2">
         <p className="text-base font-semibold">{c.columns.no} {l.no} · {l.topic}</p>
+        {session && <Badge tone="lemon">{c.assessmentSessionBadge}</Badge>}
         <Badge tone="gray">{l.standards.join(', ')}</Badge>
-        {l.assessment && <Badge tone="mint">{l.assessment}</Badge>}
+        {kinds.length > 0 && <Badge tone="mint">{kinds.join(' + ')}</Badge>}
         {l.mergeable_with !== null && <Badge tone="gray">{c.mergeableLabel(l.mergeable_with)}</Badge>}
         <Badge tone="gray">{c.timeLabel(t.intro_min, t.main_min, t.wrapup_min)}</Badge>
       </div>
+      {session && <p className="mt-2 text-ink-700">{c.assessmentSessionNote}</p>}
       <p className="mt-2"><Label>{c.columns.keyQuestion}:</Label> {l.key_question}</p>
       <p><Label>{c.columns.goal}:</Label> {l.goal}</p>
 
@@ -332,7 +339,8 @@ function LessonCard({ l, showAnswers, open }: { l: Lesson; showAnswers: boolean;
   )
 }
 
-// v2 채점표: 요소마다 0..max 척도(서술형 1~3요소 합 3점, 논술형 4요소 × 0~4). 요소마다 점수·기대 수행·예 표 하나.
+// v2 채점표: 요소마다 0..max 척도(서술형 2~3요소 합 6점 — 옛 판 1~3요소 합 3점, 논술형 4요소 × 0~4). 요소마다 점수·기대 수행·예 표 하나.
+// 총체적 상/중/하는 두 문항 모두(C-15, 대표 2026-09-26) — 옛 판 서술형은 없을 수 있다.
 function RubricView({ rubric }: { rubric: Rubric }) {
   const c = copy.rubric
   const s = copy.shortRubric
@@ -373,8 +381,8 @@ function RubricView({ rubric }: { rubric: Rubric }) {
   )
 }
 
-// 문제지 인쇄 답란(data-print="sheet-only" → 화면·평소 인쇄에는 안 보임). 서술형 8줄, 논술형 20줄, 종이 답안 문항은 네모 칸.
-export const ANSWER_LINES = { 서술형: 8, 논술형: 20 } as const
+// 문제지 인쇄 답란(data-print="sheet-only" → 화면·평소 인쇄에는 안 보임). 서술형 10줄(6점 = 값·문장 서너 개), 논술형 20줄, 종이 답안 문항은 네모 칸.
+export const ANSWER_LINES = { 서술형: 10, 논술형: 20 } as const
 
 function AnswerSpace({ item }: { item: AssessmentItem }) {
   if (item.conditions.answer_mode === 'paper') {
@@ -410,17 +418,22 @@ function AssessmentItemView({ item, no, showAnswers, open }: { item: AssessmentI
       <p className="mt-2 whitespace-pre-wrap text-base font-semibold">{item.stem}</p>
 
       <div className="mt-2 rounded-lg bg-ink-100/40 p-2">
-        <p className="font-semibold text-ink-500">{cd.heading}</p>
-        <ul className="space-y-0.5">
-          {item.conditions.items.map((x) => (
-            <li key={x.no}>
-              <span className="font-semibold">{cd.itemNo(x.no)}</span> {x.text}{' '}
-              <span data-print="omit"><Badge tone="gray">{x.category}</Badge></span>
-              {x.points !== null && <> <Badge tone="gray">{cd.pointsLabel(x.points)}</Badge></>}
-            </li>
-          ))}
-        </ul>
-        <p className="mt-1 text-ink-500">
+        {/* 조건 문장이 없는 문항(서술형, C-32)은 "조건" 머리글·빈 목록 없이 분량·형식 줄만(화면·문제지 인쇄 모두) */}
+        {item.conditions.items.length > 0 && (
+          <>
+            <p className="font-semibold text-ink-500">{cd.heading}</p>
+            <ul className="space-y-0.5">
+              {item.conditions.items.map((x) => (
+                <li key={x.no}>
+                  <span className="font-semibold">{cd.itemNo(x.no)}</span> {x.text}{' '}
+                  <span data-print="omit"><Badge tone="gray">{x.category}</Badge></span>
+                  {x.points !== null && <> <Badge tone="gray">{cd.pointsLabel(x.points)}</Badge></>}
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+        <p className={`${item.conditions.items.length > 0 ? 'mt-1 ' : ''}text-ink-500`}>
           {cd.lengthLabel}: {item.conditions.length} · {cd.formatLabel}: {item.conditions.format}
           {item.conditions.overflow_rule && ` · ${cd.overflowLabel}: ${item.conditions.overflow_rule}`}
         </p>

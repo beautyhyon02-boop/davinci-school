@@ -69,6 +69,12 @@ describe('staticIssues', () => {
     const noHolistic = structuredClone(assessmentV2); noHolistic.items[0].rubric.holistic = null
     expect(staticIssues(5, noHolistic, { standards, prior }).some((i) => i.detail.includes('총체적'))).toBe(true)
   })
+  it('stage 5: criterion names must differ across the two items (the 단원 평가 차시 notice splits them by name)', () => {
+    const prior = { stage4: { materials }, stage3: { lessons: [] } }
+    const dup = structuredClone(assessmentV2); dup.items[0].rubric.criteria[0].name = dup.items[1].rubric.criteria[0].name
+    expect(staticIssues(5, dup, { standards, prior }).filter((i) => i.detail.includes('겹침')).map((i) => i.kind)).toEqual(['rubric'])
+    expect(staticIssues(5, assessmentV2, { standards, prior }).filter((i) => i.detail.includes('겹침'))).toEqual([])
+  })
   it('stage 5: grade_boundaries level_ref must follow the 7등급↔수준 table', () => {
     const prior = { stage4: { materials }, stage3: { lessons: [] } }
     const wrongRef = structuredClone(assessmentV2); wrongRef.grade_boundaries[0].level_ref = 'B'

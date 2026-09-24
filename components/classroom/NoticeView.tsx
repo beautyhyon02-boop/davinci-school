@@ -2,7 +2,7 @@ import { app } from '@/content/site'
 import type { NoticeT } from '@/lib/classroom/notice-schema'
 
 const copy = app.classroom.notice
-const MARKS = ['①', '②', '③', '④', '⑤']
+const MARKS = ['①', '②', '③', '④', '⑤', '⑥']
 
 function Section({ no, title, children }: { no: string; title: string; children: React.ReactNode }) {
   return (
@@ -15,11 +15,11 @@ function Section({ no, title, children }: { no: string; title: string; children:
 
 /**
  * 학생별 차시 안내장 한 장(학부모·학생 공동 수신). 상태·훅이 없는 순수 표시 컴포넌트 — 화면과 인쇄에 같이 쓴다.
- * 5개 섹션(스펙 §2.7, notice.json): ① 학습 내용 ② 참여·퀴즈 ③ 서·논술형(없으면 생략) ④ 다음 차시·가정 학습 ⑤ 원장 한마디(비면 생략) + 고정 고지.
+ * 섹션(스펙 §2.7, notice.json): ① 학습 내용 ② 참여·퀴즈 ③ 서·논술형(확정된 문항마다 — 단원 평가 차시는 서술형·논술형 두 칸, 없으면 생략)
+ * ④ 다음 차시·가정 학습 ⑤ 원장 한마디(비면 생략) + 고정 고지.
  */
 export function NoticeView({ notice }: { notice: NoticeT }) {
   const q = notice.participation.quiz
-  const e = notice.essay_result
   const showParticipation = q.total > 0 || !!notice.participation.director_comment
   // 빠진 섹션이 있어도 번호가 이어지게, 그리는 순서대로 매긴다
   let k = 0
@@ -69,8 +69,8 @@ export function NoticeView({ notice }: { notice: NoticeT }) {
         </Section>
       )}
 
-      {e && (
-        <Section no={mark()} title={`${copy.sections.essay} (${e.kind})`}>
+      {notice.essay_results.map((e) => (
+        <Section key={e.kind} no={mark()} title={`${copy.sections.essay} (${e.kind})`}>
           <p className="font-semibold">{copy.score(e.confirmed_score, e.total_points, e.band)}</p>
           <table className="mt-1 w-full border-collapse text-left text-sm">
             <thead>
@@ -96,7 +96,7 @@ export function NoticeView({ notice }: { notice: NoticeT }) {
             <p className="mt-2"><span className="font-semibold">{copy.retry(e.retry.before_score, e.retry.after_score)}</span>{e.retry.improvement_comment ? ` · ${e.retry.improvement_comment}` : ''}</p>
           )}
         </Section>
-      )}
+      ))}
 
       <Section no={mark()} title={copy.sections.next}>
         {notice.next_lesson.preview && <p><span className="font-semibold">{copy.preview}</span> · {notice.next_lesson.preview}</p>}

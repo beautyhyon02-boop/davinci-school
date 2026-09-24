@@ -1,27 +1,41 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { assessmentItemNoForLesson, lessonNoForItem, isLessonOpen, ASSESSMENT_LABELS, materialIdsForLesson, isPaperItem, studentConditions } from '@/lib/classroom/lessons'
+import { itemNosForLesson, lessonNoForItem, itemLabel, isLessonOpen, materialIdsForLesson, isPaperItem, studentConditions } from '@/lib/classroom/lessons'
 
-// 최소 스냅샷: lessons 의 assessment 라벨과 assessment.items 의 순서로 문항 번호(1-based)를 정한다
+// 지금 구조(대표 2026-09-26): 교수 차시 1~5 + 단원 평가 차시 6에 서술형(1)·논술형(2)
 const snapshot = {
+  lessons: [1, 2, 3, 4, 5].map((no) => ({ no, kind: 'teaching', assessment: [] })).concat({ no: 6, kind: 'assessment', assessment: ['서술형', '논술형'] } as never),
+  assessment: { items: [{ kind: '서술형', lesson_no: 6 }, { kind: '논술형', lesson_no: 6 }] },
+} as never
+// 옛 판(서술형 2 + 논술형, compat 이 라벨을 배열로 올린 모양)
+const legacy = {
   lessons: [
-    { no: 1, assessment: null }, { no: 2, assessment: null }, { no: 3, assessment: '서술형1' },
-    { no: 4, assessment: '서술형2' }, { no: 5, assessment: '논술형' },
+    { no: 1, assessment: [] }, { no: 2, assessment: [] }, { no: 3, assessment: ['서술형'] },
+    { no: 4, assessment: ['서술형'] }, { no: 5, kind: 'assessment', assessment: ['논술형'] },
   ],
   assessment: { items: [{ kind: '서술형', lesson_no: 3 }, { kind: '서술형', lesson_no: 4 }, { kind: '논술형', lesson_no: 5 }] },
 } as never
 
 describe('lesson ↔ item mapping', () => {
-  it('finds the item number placed in a lesson', () => {
-    expect(assessmentItemNoForLesson(snapshot, 3)).toBe(1)
-    expect(assessmentItemNoForLesson(snapshot, 5)).toBe(3)
-    expect(assessmentItemNoForLesson(snapshot, 1)).toBeNull()
+  it('the 단원 평가 차시 carries both items; teaching lessons carry none', () => {
+    expect(itemNosForLesson(snapshot, 6)).toEqual([1, 2])
+    expect(itemNosForLesson(snapshot, 5)).toEqual([])
+    expect(lessonNoForItem(snapshot, 2)).toBe(6)
   })
-  it('finds the lesson of an item', () => {
-    expect(lessonNoForItem(snapshot, 2)).toBe(4)
+  it('an old 판 keeps one item per lesson and its numbering', () => {
+    expect(itemNosForLesson(legacy, 3)).toEqual([1])
+    expect(itemNosForLesson(legacy, 5)).toEqual([3])
+    expect(itemNosForLesson(legacy, 1)).toEqual([])
+    expect(lessonNoForItem(legacy, 2)).toBe(4)
   })
-  it('labels follow the lesson schema', () => {
-    expect(ASSESSMENT_LABELS).toEqual(['서술형1', '서술형2', '논술형'])
+  it('labels: 서술형·논술형 now, 서술형1·서술형2·논술형 on an old 판', () => {
+    expect([1, 2].map((n) => itemLabel(snapshot, n))).toEqual(['서술형', '논술형'])
+    expect([1, 2, 3].map((n) => itemLabel(legacy, n))).toEqual(['서술형1', '서술형2', '논술형'])
+    expect(itemLabel(snapshot, 3)).toBe('')
+  })
+  it('falls back to the lesson labels when items have no lesson_no', () => {
+    const noLessonNo = { lessons: [{ no: 6, kind: 'assessment', assessment: ['서술형', '논술형'] }], assessment: { items: [{ kind: '서술형' }, { kind: '논술형' }] } } as never
+    expect(itemNosForLesson(noLessonNo, 6)).toEqual([1, 2])
   })
 })
 
@@ -37,6 +51,11 @@ describe('materialIdsForLesson', () => {
     expect(materialIdsForLesson({ materials_used: ['B', 'A'], materials_needed: ['축제 삽화 3장'] } as never)).toEqual(['A', 'B'])
     expect(materialIdsForLesson({ materials_used: ['A', 'A'] })).toEqual(['A'])
     expect(materialIdsForLesson({ materials_used: [] } as never)).toEqual([])
+  })
+  it('the 단원 평가 차시 also shows every material its items use (a teaching lesson does not take item materials)', () => {
+    const items = [{ materials_used: ['B'] }, { materials_used: ['A', 'D'] }]
+    expect(materialIdsForLesson({ kind: 'assessment', materials_used: ['A'] }, items)).toEqual(['A', 'B', 'D'])
+    expect(materialIdsForLesson({ kind: 'teaching', materials_used: ['C'] }, items)).toEqual(['C'])
   })
 })
 
@@ -57,17 +76,13 @@ describe('studentConditions', () => {
   })
 })
 
-describe('isPaperItem on the 수학 fixture (server-side paper guard in student actions)', () => {
-  const assessment = JSON.parse(readFileSync('data/studio-fixtures/stage5-generate.json', 'utf8'))
-  const snap = { assessment } as never
-  it('is true only for the one paper item and false for the others and unknown numbers', () => {
-    const modes = assessment.items.map((i: { conditions: { answer_mode: string } }) => i.conditions.answer_mode)
-    expect(modes.filter((m: string) => m === 'paper')).toHaveLength(1)
-    assessment.items.forEach((it: { conditions: { answer_mode: string } }, i: number) => expect(isPaperItem(snap, i + 1)).toBe(it.conditions.answer_mode === 'paper'))
-    expect(isPaperItem(snap, 1)).toBe(true)
-    expect(isPaperItem(snap, 2)).toBe(false)
-    expect(isPaperItem(snap, 3)).toBe(false)
-    expect(isPaperItem(snap, 0)).toBe(false)
-    expect(isPaperItem(snap, 4)).toBe(false)
+describe('isPaperItem on the demo fixtures (server-side paper guard in student actions)', () => {
+  // 대표 2026-09-26: 수학 서술형 1(종이 답안 도수분포표)을 빼서 시연 세트에는 종이 답안 문항이 없다 — 가드는 합성 판으로 본다
+  for (const sfx of ['', '-과학']) it(`stage5${sfx}: no paper item; a synthetic paper 서술형 is caught and nothing else`, () => {
+    const assessment = JSON.parse(readFileSync(`data/studio-fixtures/stage5-generate${sfx}.json`, 'utf8'))
+    expect([1, 2].map((n) => isPaperItem({ assessment } as never, n))).toEqual([false, false])
+    const paper = structuredClone(assessment); paper.items[0].conditions.answer_mode = 'paper'
+    const snap = { assessment: paper } as never
+    expect([0, 1, 2, 3].map((n) => isPaperItem(snap, n))).toEqual([false, true, false, false])
   })
 })

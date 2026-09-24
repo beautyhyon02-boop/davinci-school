@@ -39,6 +39,18 @@ describe('AnswerEditor', () => {
     expect(html).toContain(`>${copy.answer.submit}</button>`)
     expect(t).not.toContain(copy.paperAnswer)
   })
+  it('a 서술형 without conditions (C-32): no "작성 조건" heading and no numbered 조건 lines — only 분량·형식', () => {
+    const html = renderToStaticMarkup(createElement(AnswerEditor, { ...base, label: '서술형', points: 6, conditions: { ...conditions('screen'), items: [] } }))
+    const t = text(html)
+    expect(t).not.toContain(copy.answer.conditions)
+    expect(t).not.toContain(copy.conditionItem(1))
+    expect(t).toContain(copy.answer.lengthFormat)
+    expect(t).toContain('표 1개와 문장 1개'); expect(t).toContain('표 + 문장')
+    expect(html).toContain('<textarea')
+  })
+  it('an item with conditions keeps the "작성 조건" heading', () => {
+    expect(text(renderToStaticMarkup(createElement(AnswerEditor, { ...base, conditions: conditions('screen') })))).toContain(copy.answer.conditions)
+  })
   it('submitted screen item: read-only textarea with the saved body and no submit button', () => {
     const html = renderToStaticMarkup(createElement(AnswerEditor, { ...base, initialBody: '제출한 답안', submitted: true, conditions: conditions('screen') }))
     expect(html).toMatch(/<textarea[^>]*readOnly=""/i)

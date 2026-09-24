@@ -7,6 +7,7 @@ import { app } from '@/content/site'
 import { nextAction } from '@/lib/studio/next-action'
 import type { StageStatus } from '@/lib/studio/stages'
 import { MAX_ATTEMPTS } from '@/lib/studio/max-attempts'
+import { lessonAssessments } from '@/lib/studio/assessment-structure'
 import { chooseKeyQuestion, saveStageEdit } from './actions'
 import { WIZARD_STAGES, useStageRunner, type WizardStage } from './useStageRunner'
 import { Attachments } from './Attachments'
@@ -29,7 +30,7 @@ type Lesson = {
   key_question: string
   formative_check?: { quiz: unknown[] }
   quiz?: unknown[]
-  assessment: string | null
+  assessment: string[] | string | null   // v2 는 배열(단원 평가 차시 ['서술형', '논술형']), 옛 초안은 문자열·null
   mergeable_with: number | null
 }
 type Stage3Output = { lessons: Lesson[] }
@@ -93,7 +94,7 @@ function StageOutput({ stage, output }: { stage: WizardStage; output: unknown })
                 <td className="py-1 pr-3">{l.standards?.join(', ')}</td>
                 <td className="py-1 pr-3">{l.key_question}</td>
                 <td className="py-1 pr-3">{(l.formative_check?.quiz ?? l.quiz)?.length ?? 0}</td>
-                <td className="py-1 pr-3">{l.assessment ?? copy.stage3.noAssessment}</td>
+                <td className="py-1 pr-3">{lessonAssessments(l).join(' + ') || copy.stage3.noAssessment}</td>
                 <td className="py-1 pr-3">{l.mergeable_with ?? copy.stage3.noAssessment}</td>
               </tr>
             ))}

@@ -28,9 +28,10 @@ export function NoticeEditForm({ assignmentId, lessonNo, notice, confirmed }: { 
   const [pending, start] = useTransition()
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const [issues, setIssues] = useState<string[]>([])
-  const e = n.essay_result
   const setQuizNote = (i: number, v: string) => setN({ ...n, participation: { ...n.participation, quiz: { ...n.participation.quiz, items: n.participation.quiz.items.map((it, j) => (j === i ? { ...it, note: v } : it)) } } })
-  const setCriterion = (i: number, key: 'good_point' | 'improve_point', v: string) => e && setN({ ...n, essay_result: { ...e, criteria_feedback: e.criteria_feedback.map((c, j) => (j === i ? { ...c, [key]: v } : c)) } })
+  // 단원 평가 차시는 서술형·논술형 결과가 둘 — k 번째 결과의 i 번째 요소만 바꾼다
+  const setResult = (k: number, patch: (r: NoticeT['essay_results'][number]) => NoticeT['essay_results'][number]) => setN({ ...n, essay_results: n.essay_results.map((r, j) => (j === k ? patch(r) : r)) })
+  const setCriterion = (k: number, i: number, key: 'good_point' | 'improve_point', v: string) => setResult(k, (r) => ({ ...r, criteria_feedback: r.criteria_feedback.map((c, j) => (j === i ? { ...c, [key]: v } : c)) }))
   const submit = () => start(async () => {
     const r = await confirmNotice(assignmentId, lessonNo, n)
     setIssues(r.issues ?? [])
@@ -47,15 +48,19 @@ export function NoticeEditForm({ assignmentId, lessonNo, notice, confirmed }: { 
         <Field key={`q${i}`} label={ed.quizNote(i + 1)} value={it.note ?? ''} max={40} onChange={(v) => setQuizNote(i, v)} />
       )))}
       <Field label={ed.directorComment} value={n.participation.director_comment ?? ''} max={80} onChange={(v) => setN({ ...n, participation: { ...n.participation, director_comment: v } })} />
-      {e?.criteria_feedback.map((c, i) => (
-        <div key={`c${i}`} className="grid gap-2 rounded-xl bg-ink-100/40 p-3">
-          <Field label={ed.good(c.criterion_name)} value={c.good_point} max={60} onChange={(v) => setCriterion(i, 'good_point', v)} />
-          <Field label={ed.improve(c.criterion_name)} value={c.improve_point ?? ''} max={60} onChange={(v) => setCriterion(i, 'improve_point', v)} />
+      {n.essay_results.map((e, k) => (
+        <div key={e.kind} className="grid gap-2">
+          {e.criteria_feedback.map((c, i) => (
+            <div key={`c${i}`} className="grid gap-2 rounded-xl bg-ink-100/40 p-3">
+              <Field label={ed.good(c.criterion_name)} value={c.good_point} max={60} onChange={(v) => setCriterion(k, i, 'good_point', v)} />
+              <Field label={ed.improve(c.criterion_name)} value={c.improve_point ?? ''} max={60} onChange={(v) => setCriterion(k, i, 'improve_point', v)} />
+            </div>
+          ))}
+          {e.retry && (
+            <Field label={ed.improvementFor(e.kind)} value={e.retry.improvement_comment ?? ''} max={70} onChange={(v) => setResult(k, (r) => ({ ...r, retry: r.retry ? { ...r.retry, improvement_comment: v } : null }))} />
+          )}
         </div>
       ))}
-      {e?.retry && (
-        <Field label={ed.improvement} value={e.retry.improvement_comment ?? ''} max={70} onChange={(v) => setN({ ...n, essay_result: { ...e, retry: { ...e.retry!, improvement_comment: v } } })} />
-      )}
       <Field label={ed.preview} value={n.next_lesson.preview} max={50} onChange={(v) => setN({ ...n, next_lesson: { ...n.next_lesson, preview: v } })} />
       <Field label={ed.homeStudy} value={n.next_lesson.home_study_suggestion} max={60} onChange={(v) => setN({ ...n, next_lesson: { ...n.next_lesson, home_study_suggestion: v } })} />
       <Field label={ed.directorMessage} value={n.director_message ?? ''} max={100} rows={3} onChange={(v) => setN({ ...n, director_message: v })} />

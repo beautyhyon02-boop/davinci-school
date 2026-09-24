@@ -24,7 +24,8 @@ function Prompt({ label, points, stem, conditions }: Pick<Props, 'label' | 'poin
       <p className="mt-2 text-sm font-semibold text-ink-500">{copy.stem}</p>
       <p className="mt-1 whitespace-pre-wrap text-lg font-semibold">{stem}</p>
       <div className="mt-2 rounded-xl bg-ink-100/60 p-3 text-sm">
-        <p className="font-semibold">{copy.conditions}</p>
+        {/* 조건 문장이 없는 문항(서술형, C-32)에는 "작성 조건" 머리글을 달지 않는다 — 분량·형식만 보인다 */}
+        <p className="font-semibold">{conditions.items.length > 0 ? copy.conditions : copy.lengthFormat}</p>
         <ul className="list-disc pl-5">
           {conditions.items.map((c) => <li key={c.no}><span className="text-ink-500">{studentCopy.conditionItem(c.no)}</span> {c.text}</li>)}
           <li><span className="text-ink-500">{copy.conditionLength}</span> {conditions.length}</li>

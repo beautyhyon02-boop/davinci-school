@@ -5,6 +5,7 @@ import { getSessionProfile } from '@/lib/auth/session'
 import { app } from '@/content/site'
 import type { Criterion } from '@/lib/classroom/types'
 import { loadAssignmentSnapshot } from '@/lib/classroom/snapshot'
+import { itemNosForLesson } from '@/lib/classroom/lessons'
 import { buildNoticeSkeleton, applyDraft, mergeEditable, noticeDataKey, todayKst, type NoticeGradingInput } from '@/lib/classroom/notice'
 import { Notice, NoticeDraftOut, type NoticeT } from '@/lib/classroom/notice-schema'
 import { buildNoticePrompt } from '@/lib/classroom/notice-prompt'
@@ -143,19 +144,21 @@ async function loadNoticeData(supabase: ServerClient, assignmentId: string, less
   if (!snapshot) return { ok: false as const, error: nt.notFound }
   if (!snapshot.notice_plan) return { ok: false as const, error: nt.noPlan }
   if (!snapshot.lessons.some((l) => l.no === lessonNo)) return { ok: false as const, error: nt.badLesson }
-  const itemNo = (snapshot.assessment?.items.findIndex((it) => it.lesson_no === lessonNo) ?? -1) + 1
+  // 이 차시의 문항들(단원 평가 차시 = 서술형·논술형 둘, 교수 차시 = 없음, 옛 판 차시 = 하나)
+  const itemNos = itemNosForLesson(snapshot, lessonNo)
   const [{ data: quiz }, { data: answers }, { data: others }] = await Promise.all([
     supabase.from('quiz_responses').select('quiz_no, response, correct').eq('assignment_id', assignmentId).eq('lesson_no', lessonNo),
-    supabase.from('answers').select('id, attempt').eq('assignment_id', assignmentId).eq('item_no', itemNo),
+    itemNos.length ? supabase.from('answers').select('id, attempt, item_no').eq('assignment_id', assignmentId).in('item_no', itemNos) : Promise.resolve({ data: [] }),
     supabase.from('students').select('profiles(name)').eq('academy_id', a.academy_id),
   ])
-  const rows = (answers ?? []) as { id: string; attempt: number }[]
+  const rows = (answers ?? []) as { id: string; attempt: number; item_no: number }[]
   // N-03: 원장이 확정한 채점만(SQL 필터). buildNoticeSkeleton 도 status·confirmed_at 을 다시 본다(이중 검사).
   const { data: gr } = rows.length
     ? await supabase.from('gradings').select('answer_id, status, final_score, final_criteria, confirmed_at').in('answer_id', rows.map((r) => r.id)).eq('status', 'confirmed').not('confirmed_at', 'is', null)
     : { data: [] }
   const gradings: NoticeGradingInput[] = ((gr ?? []) as { answer_id: string; status: string; final_score: number | null; final_criteria: Criterion[] | null; confirmed_at: string | null }[])
     .map((g) => ({
+      item_no: rows.find((r) => r.id === g.answer_id)?.item_no ?? 0,
       attempt: rows.find((r) => r.id === g.answer_id)?.attempt === 2 ? 2 : 1,
       final_score: g.final_score,
       final_criteria: g.final_criteria?.map((c) => ({ name: c.name, points: c.points, max: c.max, evidence: c.evidence })) ?? null,

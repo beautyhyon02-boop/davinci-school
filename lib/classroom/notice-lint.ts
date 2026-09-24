@@ -34,8 +34,8 @@ export function lintNotice(n: NoticeT, otherStudentNames: string[]): string[] {
     ['학습 요약', n.lesson_context.topic_summary], ['다음 차시', n.next_lesson.preview], ['가정 학습', n.next_lesson.home_study_suggestion],
     ['원장 한마디', n.director_message], ['참여 관찰', n.participation.director_comment],
     ...n.participation.quiz.items.map((it, i): [string, string | null] => [`퀴즈 ${i + 1}`, it.note]),
-    ...(n.essay_result?.criteria_feedback.flatMap((c): [string, string | null][] => [[`${c.criterion_name} 잘한 점`, c.good_point], [`${c.criterion_name} 보완`, c.improve_point]]) ?? []),
-    ['재도전', n.essay_result?.retry?.improvement_comment ?? null],
+    ...n.essay_results.flatMap((e) => e.criteria_feedback.flatMap((c): [string, string | null][] => [[`${c.criterion_name} 잘한 점`, c.good_point], [`${c.criterion_name} 보완`, c.improve_point]])),
+    ...n.essay_results.map((e): [string, string | null] => [`${e.kind} 재도전`, e.retry?.improvement_comment ?? null]),
   ]
   for (const [where, text] of texts) {
     if (!text) continue
@@ -43,11 +43,10 @@ export function lintNotice(n: NoticeT, otherStudentNames: string[]): string[] {
     for (const name of others) if (mentionsName(text, name)) issues.push(`${where}: 다른 학생 이름(${name}) 언급`)
   }
   if (!SUGGEST_ENDINGS.test(n.next_lesson.home_study_suggestion.trim())) issues.push('가정 학습 제안이 청유형으로 끝나지 않음')
-  for (const c of n.essay_result?.criteria_feedback ?? []) {
+  for (const c of n.essay_results.flatMap((e) => e.criteria_feedback)) {
     if (c.good_point.trim()) continue
     issues.push(c.improve_point ? `${c.criterion_name}: 잘한 점 없이 보완만 있음` : `${c.criterion_name}: 잘한 점이 비어 있음`)
   }
-  const e = n.essay_result
-  if (e && (e.confirmed_score > e.total_points || (e.retry && e.retry.after_score > e.total_points))) issues.push('확정 점수가 만점을 넘음')
+  for (const e of n.essay_results) if (e.confirmed_score > e.total_points || (e.retry && e.retry.after_score > e.total_points)) issues.push(`${e.kind}: 확정 점수가 만점을 넘음`)
   return issues
 }

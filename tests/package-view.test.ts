@@ -79,10 +79,32 @@ describe.each(['수학', '과학'] as const)('PackageView v2 (%s mock snapshot)'
       if (it.rubric.holistic) expect(t).toContain(norm(it.rubric.holistic.상))
     }
   })
-  it('marks exactly the paper-answer items', () => {
+  it('marks exactly the paper-answer items (none in the demo sets since 2026-09-26; a synthetic paper 서술형 shows one)', () => {
     const papers = snap.assessment!.items.filter((i) => i.conditions.answer_mode === 'paper').length
-    expect(t.split(c.assessment.conditions.answerMode.paper).length - 1).toBe(papers)
-    if (subject === '수학') expect(papers).toBe(1)
+    expect(papers).toBe(0)
+    expect(t.split(c.assessment.conditions.answerMode.paper).length - 1).toBe(0)
+    const paper = structuredClone(snap); paper.assessment!.items[0].conditions.answer_mode = 'paper'
+    expect(text(render(paper, 'admin')).split(c.assessment.conditions.answerMode.paper).length - 1).toBe(1)
+  })
+  it('the 단원 평가 차시 (after the last teaching lesson) renders as its own card: lemon badge + note, 서술형 + 논술형, no quiz/worksheet', () => {
+    const cards = html.split('data-lesson-kind=').slice(1)
+    expect(cards.map((x) => x.slice(1, x.indexOf('"', 1)))).toEqual(['teaching', 'teaching', 'teaching', 'teaching', 'teaching', 'assessment'])
+    const session = cards[5].slice(0, cards[5].indexOf(`<h2 class="text-lg font-bold">`))
+    expect(text(session)).toContain(c.lessons.assessmentSessionBadge); expect(text(session)).toContain(norm(c.lessons.assessmentSessionNote))
+    expect(text(session)).toContain('서술형 + 논술형')
+    expect(text(session)).toContain(norm(c.lessons.stepLabel('서술형 작성', 15))); expect(text(session)).toContain(norm(c.lessons.stepLabel('논술형 작성', 35)))
+    expect(session).not.toContain(`>${c.lessons.worksheetHeading}</p>`); expect(session).not.toContain(`>${c.lessons.quizHeading}</p>`)
+    // 교수 차시에는 빈 평가 배지가 없다(assessment = [])
+    expect(html.split(`text-lemon-600">${c.lessons.assessmentSessionBadge}</span>`).length - 1).toBe(1)
+    for (const card of cards.slice(0, 5)) expect(card.slice(0, 600)).not.toMatch(/bg-mint-100[^>]*>\s*<\/span>/)
+  })
+  it('the 서술형 card has no "조건" heading (no conditions, C-32) but shows 분량·형식; the 논술형 card keeps its numbered conditions', () => {
+    const segs = html.split('data-print="item"').slice(1)
+    const [short, essay] = segs
+    expect(text(short)).not.toContain(c.assessment.conditions.heading)
+    expect(text(short)).toContain(norm(`${c.assessment.conditions.lengthLabel}: ${snap.assessment!.items[0].conditions.length}`))
+    expect(text(essay)).toContain(c.assessment.conditions.heading)
+    expect(text(essay)).toContain(norm(`${c.assessment.conditions.itemNo(1)} ${snap.assessment!.items[1].conditions.items[0].text}`))
   })
   it('shows the v2 cards in spec order (§2.9)', () => {
     const order = [c.standardsHeading, c.reconstructionHeading, c.learningGoalsHeading, c.keyQuestionHeading, c.unitPlanHeading, c.lessonsHeading,
@@ -156,8 +178,8 @@ describe.each(['수학', '과학'] as const)('PackageView 문제지 인쇄 표�
       expect(details.every((d) => d.includes('data-print="omit"'))).toBe(true)
     })
   })
-  it('gives each item a sheet-only answer space: 서술형 8 lines, 논술형 20 lines, paper items a boxed note', () => {
-    expect(ANSWER_LINES).toEqual({ 서술형: 8, 논술형: 20 })
+  it('gives each item a sheet-only answer space: 서술형 10 lines (6점), 논술형 20 lines, paper items a boxed note', () => {
+    expect(ANSWER_LINES).toEqual({ 서술형: 10, 논술형: 20 })
     itemSegments().forEach((seg, i) => {
       const it = items[i]
       expect(seg).toMatch(/data-print="sheet-only" data-answer-kind="[^"]+" class="answer-space/)
@@ -170,8 +192,13 @@ describe.each(['수학', '과학'] as const)('PackageView 문제지 인쇄 표�
         expect(count(seg, 'data-answer-line')).toBe(ANSWER_LINES[it.kind])
       }
     })
-    expect(items.some((i) => i.kind === '논술형')).toBe(true)
-    if (subject === '수학') expect(items.filter((i) => i.conditions.answer_mode === 'paper').length).toBe(1)
+    expect(items.map((i) => i.kind)).toEqual(['서술형', '논술형'])
+  })
+  it('a synthetic paper item gets the boxed note instead of lines (no paper item in the demo sets)', () => {
+    const paper = structuredClone(snap); paper.assessment!.items[0].conditions.answer_mode = 'paper'
+    const seg = render(paper, 'teacher').split('data-print="item"')[1]
+    expect(seg).toContain('data-answer-kind="paper"'); expect(seg).toContain(`<div class="answer-box">${c.print.paperBox}</div>`)
+    expect(count(seg, 'data-answer-line')).toBe(0)
   })
 })
 

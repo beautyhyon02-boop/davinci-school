@@ -7,7 +7,7 @@ import { QuizMatrix } from './QuizMatrix'
 import { ReviewCard } from './ReviewCard'
 import { Badge } from '@/components/ui/Badge'
 import { overallFor, gradeFor } from '@/lib/classroom/scoring'
-import { ASSESSMENT_LABELS } from '@/lib/classroom/lessons'
+import { itemLabels } from '@/lib/studio/assessment-structure'
 import { app } from '@/content/site'
 import type { AssignmentRow, AnswerRow, GradingRow, QuizResponseRow } from '@/lib/classroom/types'
 
@@ -81,7 +81,7 @@ export default async function AssignmentSetPage({ params }: { params: Promise<{ 
                   ))}
                 </div>
               )}
-              <div className="mt-2 grid gap-3 lg:grid-cols-3">
+              <div className="mt-2 grid gap-3 lg:grid-cols-2">
                 {items.map((it, i) => {
                   const a = latest(i + 1)
                   const first = own.find((x) => x.item_no === i + 1 && x.attempt === 1) ?? null
@@ -89,7 +89,7 @@ export default async function AssignmentSetPage({ params }: { params: Promise<{ 
                   const grading = gradingOf(a)
                   // 채점 실행기·확정·다시 고치기는 모두 updated_at 을 새로 찍는다 — key 가 바뀌면 카드를 새로 마운트한다(ReviewCard 의 useEffect 와 이중 안전장치).
                   const cardKey = `${i}-${grading?.id ?? 'none'}-${grading?.updated_at ?? ''}-${grading?.status ?? ''}-${grading?.model ?? ''}`
-                  return <ReviewCard key={cardKey} item={{ itemNo: i + 1, label: ASSESSMENT_LABELS[i], points: it.points, answer: a, grading, prev }} />
+                  return <ReviewCard key={cardKey} item={{ itemNo: i + 1, label: itemLabels(items)[i], points: it.points, answer: a, grading, prev }} />
                 })}
               </div>
             </section>
