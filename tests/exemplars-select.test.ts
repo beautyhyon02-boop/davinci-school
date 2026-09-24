@@ -61,3 +61,13 @@ describe('exemplar selection', () => {
     expect(card.startsWith(`[예시 ${huge.id}]`)).toBe(true)
   })
 })
+
+describe('학년 선택(대표 2026-09-26): 학년 없는 질의', () => {
+  it('ignores grade when the query has none (null or missing) — no grade bonus, same pick otherwise', () => {
+    const { grade: _g, ...noGradeQ } = q
+    void _g
+    expect(scoreExemplar(rec({}), { ...q, grade: null })).toBe(4 + 3 + 2 + 3 + 1 + 1)
+    expect(scoreExemplar(rec({}), noGradeQ)).toBe(4 + 3 + 2 + 3 + 1 + 1)
+    expect(scoreExemplar(rec({ grade: 3 }), { ...q, grade: null })).toBe(scoreExemplar(rec({ grade: 1 }), { ...q, grade: null }))
+  })
+})

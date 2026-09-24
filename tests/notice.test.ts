@@ -172,3 +172,13 @@ describe('mergeEditable / noticeDataKey', () => {
     expect(todayKst(new Date('2026-09-29T02:00:00Z'))).toBe('2026-09-29')
   })
 })
+
+describe('학년 선택(대표 2026-09-26): 안내장 프롬프트의 학년 줄', () => {
+  it('says "중 1학년" for an old snapshot and "중학교(1~3학년군)" when the set has no grade', () => {
+    const { skeleton } = buildNoticeSkeleton({ snapshot, lessonNo: 4, studentName: '김OO', date: '2026-09-29', quiz: [], gradings: [] })
+    expect(buildNoticePrompt({ snapshot, lessonNo: 4, skeleton }).user).toContain('학생: 김OO · 중 1학년 · 수학 4차시')
+    const noGrade = { ...snapshot, cover: { ...snapshot.cover, grade: null } }
+    const u = buildNoticePrompt({ snapshot: noGrade, lessonNo: 4, skeleton }).user
+    expect(u).toContain('학생: 김OO · 중학교(1~3학년군) · 수학 4차시'); expect(u).not.toMatch(/null학년/)
+  })
+})

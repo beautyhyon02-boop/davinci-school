@@ -92,9 +92,10 @@ export function collectReferences(assessment: AssessmentT | null): { id: string;
  * 자연히 회복되도록), 그 계산은 이 함수의 책임이 아니라 publishItemSet/미리보기 화면이 DB를 조회해서 결정한다.
  */
 export function buildSnapshot({ theme, itemSet, standards, version }: {
-  theme: { title: string; level: string; grade: number; intro: string | null; materials: MaterialT[] | null }
+  /** grade null = 학년 지정 안 함 — 표지(cover.grade)에도 null 로 남는다(화면은 '중학교(1~3학년군)'). */
+  theme: { title: string; level: string; grade: number | null; intro: string | null; materials: MaterialT[] | null }
   itemSet: {
-    subject: string; level: string; grade: number
+    subject: string; level: string; grade: number | null
     reconstruction: string | null; reconstruction_detail: ReconstructedStandardT[] | null; learning_goals: LearningGoalT[] | null; key_question: string | null
     unit_plan: UnitPlanT | null; lessons: LessonT[] | null; materials: MaterialT[] | null; assessment: AssessmentT | null
     teacher_guide: TeacherGuideT | null; notice_plan: NoticePlanT | null; stage_status: Record<string, StageStatus | undefined> | null
@@ -113,7 +114,7 @@ export function buildSnapshot({ theme, itemSet, standards, version }: {
   const models = Array.from(new Set(Object.values(itemSet.stage_status ?? {}).map((s) => s?.model).filter((m): m is string => !!m)))
   return {
     schema_version: 2,
-    cover: { title: theme.title, subject: itemSet.subject, level: theme.level, grade: theme.grade, version, published_at: new Date().toISOString() },
+    cover: { title: theme.title, subject: itemSet.subject, level: theme.level, grade: theme.grade ?? null, version, published_at: new Date().toISOString() },
     standards,
     intro: theme.intro ?? '',
     reconstruction: itemSet.reconstruction ?? '',

@@ -8,7 +8,8 @@ import { app } from '@/content/site'
 const copy = app.classroom.assign
 export type StudentOption = { id: string; name: string; grade: number; assigned: boolean }
 
-export function AssignForm({ setId, setGrade, students, maxLessons }: { setId: string; setGrade: number; students: StudentOption[]; maxLessons: number }) {
+/** setGrade null = 학년을 정하지 않은 세트(학교급 학년군 전체) — 학년이 달라도 표시하지 않는다. */
+export function AssignForm({ setId, setGrade, students, maxLessons }: { setId: string; setGrade: number | null; students: StudentOption[]; maxLessons: number }) {
   const bound = createAssignments.bind(null, setId)
   const [state, action, pending] = useActionState<AssignState, FormData>(bound, undefined)
   return (
@@ -24,7 +25,7 @@ export function AssignForm({ setId, setGrade, students, maxLessons }: { setId: s
               <input type="checkbox" name="student" value={st.id} disabled={st.assigned} />
               <span className={st.assigned ? 'text-ink-500' : ''}>{st.name}</span>
               {st.assigned && <Badge tone="gray">{copy.alreadyAssigned}</Badge>}
-              {!st.assigned && st.grade !== setGrade && <Badge tone="lemon">{copy.gradeMismatch(setGrade)}</Badge>}
+              {!st.assigned && setGrade != null && st.grade !== setGrade && <Badge tone="lemon">{copy.gradeMismatch(setGrade)}</Badge>}
             </li>
           ))}
         </ul>

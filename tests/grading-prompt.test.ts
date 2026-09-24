@@ -78,3 +78,12 @@ describe('grading fixtures follow the v2 math items (mock mode)', () => {
     expect(d.score).toBe(d.criteria.reduce((s: number, c: { points: number }) => s + c.points, 0))
   })
 })
+
+describe('학년 선택(대표 2026-09-26): 채점·안내장 프롬프트의 학년 줄', () => {
+  it('uses the student grade when there is one, else the school band — never "null학년"', () => {
+    const noGrade: Snapshot = { ...snapshot, cover: { ...snapshot.cover, grade: null } }
+    expect(buildGradingPrompt({ snapshot: noGrade, itemNo: 1, studentGrade: 2, answer: 'x' }).user).toContain('학생 학년: 중 2학년')
+    const u = buildGradingPrompt({ snapshot: noGrade, itemNo: 1, studentGrade: null, answer: 'x' }).user
+    expect(u).toContain('학생 학년: 중학교(1~3학년군)'); expect(u).not.toMatch(/null학년/)
+  })
+})

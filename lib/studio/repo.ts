@@ -89,7 +89,8 @@ export function createSupabaseRepo(supabase: Supabase): Repo {
       if (Array.isArray(theme.materials)) prior.shared_materials = (theme.materials as unknown[]).map(withMaterialDefaults)
 
       return {
-        theme: { title: theme.title, level: itemSet.level, grade: itemSet.grade, subjects },
+        // 세트 학년은 대주제 학년의 복사본(updateThemeGrade 가 함께 바꾼다) — null 이면 학교급 학년군 전체(대표 2026-09-26)
+        theme: { title: theme.title, level: itemSet.level, grade: (itemSet.grade as number | null) ?? null, subjects },
         subject: itemSet.subject,
         standards,
         prior,
@@ -193,7 +194,7 @@ export function createSupabaseThemeRepo(supabase: Supabase): ThemeRepo {
       return {
         title: data.title,
         level: data.level,
-        grade: data.grade,
+        grade: (data.grade as number | null) ?? null,
         subjects: ((data.subjects as string[] | null) ?? []),
         intro_ideas: (data.intro_ideas as StageStatus | null) ?? null,
       }

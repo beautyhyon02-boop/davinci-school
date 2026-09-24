@@ -61,7 +61,7 @@ npx supabase db push
 (`supabase/config.toml`의 `project_id = "davinci-school"`는 로컬 라벨일 뿐, 프로젝트 ref가 아닙니다.)  
 `supabase/migrations/` 폴더의 마이그레이션이 순서대로 적용됩니다. 새 마이그레이션을 추가한 뒤에도 같은 `db push`를 다시 실행하면 됩니다.
 
-주요 마이그레이션(발췌): `20260918000001_schema.sql`(기본 스키마) · `20260919000004_role_in_app_metadata.sql`(역할 저장 위치) · `20260920000006_studio.sql`/`20260920000007_studio_fixes.sql`(제작소 v1) · `20260921000008_studio_ui.sql`(대주제 공유 자료) · `20260922000009_classroom.sql`(수업 운영: 배정·채점·퀴즈) · `20260925000011_studio_v2.sql`(제작소 v2: `item_sets.unit_plan/reconstruction_detail/notice_plan` 열 + 학생별 안내장 표 `lesson_notices`). 다시 실행해도 안전합니다(열·표·정책 모두 "있으면 건너뜀").
+주요 마이그레이션(발췌): `20260918000001_schema.sql`(기본 스키마) · `20260919000004_role_in_app_metadata.sql`(역할 저장 위치) · `20260920000006_studio.sql`/`20260920000007_studio_fixes.sql`(제작소 v1) · `20260921000008_studio_ui.sql`(대주제 공유 자료) · `20260922000009_classroom.sql`(수업 운영: 배정·채점·퀴즈) · `20260925000011_studio_v2.sql`(제작소 v2: `item_sets.unit_plan/reconstruction_detail/notice_plan` 열 + 학생별 안내장 표 `lesson_notices`) · `20260926000012_theme_grade_optional.sql`(대주제·세트 학년 선택: `themes.grade`·`item_sets.grade` null 허용 = 학년 지정 안 함, 학교급 학년군 전체). 다시 실행해도 안전합니다(열·표·정책 모두 "있으면 건너뜀").
 
 > **역할 저장 위치:** 계정의 `role`/`academy_id`/`login_id`는 `auth.users`의 **app_metadata**에 저장됩니다
 > (service role 키로만 수정 가능). `user_metadata`에는 이름만 둡니다.

@@ -13,13 +13,13 @@ const fx = (k: string) => JSON.parse(readFileSync(`data/studio-fixtures/${k}.jso
 const v1 = (k: string) => JSON.parse(readFileSync(`tests/fixtures/v1/${k}.json`, 'utf8'))
 const c = app.packageView
 
-function snapshotFor(subject: '수학' | '과학'): Snapshot {
+function snapshotFor(subject: '수학' | '과학', grade: number | null = 1): Snapshot {
   const sfx = subject === '과학' ? '-과학' : ''
   const s2 = fx(`stage2-generate${sfx}`); const s3 = fx(`stage3-generate${sfx}`)
   return buildSnapshot({
-    theme: { title: '학교 축제, 일회용품을 줄이자', level: '중', grade: 1, intro: '대주제 소개 문장', materials: null },
+    theme: { title: '학교 축제, 일회용품을 줄이자', level: '중', grade, intro: '대주제 소개 문장', materials: null },
     itemSet: {
-      subject, level: '중', grade: 1, reconstruction: s2.reconstruction, reconstruction_detail: s2.standards, learning_goals: s2.learning_goals,
+      subject, level: '중', grade, reconstruction: s2.reconstruction, reconstruction_detail: s2.standards, learning_goals: s2.learning_goals,
       key_question: s2.key_question_candidates[0], unit_plan: s3.unit_plan, lessons: s3.lessons, materials: fx(`stage4-generate${sfx}`).materials,
       assessment: fx(`stage5-generate${sfx}`), teacher_guide: fx(`stage6-generate${sfx}`), notice_plan: fx(`stage7-generate${sfx}`),
       stage_status: { stage5: { state: 'accepted', attempt: 1, model: 'mock', updated_at: '' } },
@@ -266,5 +266,22 @@ describe('mergedLevelRows — 묶인 성취수준은 한 줄로', () => {
     const rows = mergedLevelRows({ A: '가', B: '가', C: '나', D: '나', E: '다' }, [['A', 'B'], ['C', 'D']])
     expect(rows).toEqual([{ label: 'A·B', text: '가' }, { label: 'C·D', text: '나' }, { label: 'E', text: '다' }])
     expect(mergedLevelRows({ A: '가', B: '나' }, [])).toEqual([{ label: 'A', text: '가' }, { label: 'B', text: '나' }])
+  })
+})
+
+describe('학년 선택(대표 2026-09-26): 표지·문제지의 학교급 표기', () => {
+  it('cover with a grade keeps "중 1학년 · 수학"', () => {
+    expect(text(render(snapshotFor('수학'), 'teacher'))).toContain('중 1학년 · 수학')
+  })
+  it('cover with null grade says "중학교(1~3학년군) · 수학" — on screen and on the print sheet (cover is kept)', () => {
+    const snap = snapshotFor('수학', null)
+    expect(snap.cover.grade).toBeNull()
+    for (const mode of ['admin', 'teacher'] as const) {
+      const html = render(snap, mode)
+      const cover = html.slice(0, html.indexOf(`<h2 class="text-lg font-bold">${c.standardsHeading}</h2>`))
+      expect(text(cover)).toContain('중학교(1~3학년군) · 수학')
+      expect(cover).not.toContain('data-print="omit"><p class="mt-1 text-sm text-ink-500">중학교')   // 학년 줄은 인쇄에서 빠지지 않는다
+      expect(text(html)).not.toMatch(/null학년|중 1학년|undefined학년/)
+    }
   })
 })

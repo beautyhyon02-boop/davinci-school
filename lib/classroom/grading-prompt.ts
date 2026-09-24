@@ -1,10 +1,12 @@
 import type { Snapshot } from '@/lib/studio/publish'
 import { GRADING_PROMPT_RULES } from '@/lib/studio/prompts/rules/grading'
+import { gradeLabel } from '@/lib/studio/level-map'
 
 /** 고정 규칙(첫 system 블록 = 캐시 대상). 부록 A.4 G-01~G-09 중 모델이 지킬 문장(rules/grading.ts). */
 export const GRADING_RULES = GRADING_PROMPT_RULES
 
-export type GradingPromptInput = { snapshot: Snapshot; itemNo: number; studentGrade: number; answer: string }
+/** studentGrade: 학생 학년(students.grade). 없으면 세트 표지 학년 — 그것도 null(학년 미지정 대주제)이면 학교급 학년군으로 쓴다. */
+export type GradingPromptInput = { snapshot: Snapshot; itemNo: number; studentGrade: number | null; answer: string }
 
 /**
  * 채점 프롬프트(스펙 §2.9 채점). 문항의 채점표(요소별 max 가변 척도)·총체적 기준·유의점·A~E 예상 구간·이 문항의 예시답안·조건을
@@ -26,7 +28,7 @@ export function buildGradingPrompt({ snapshot, itemNo, studentGrade, answer }: G
   const levels = item.level_map.map((l) => `- ${l.level}: ${l.min}~${l.max}점 — ${l.trait}`).join('\n')
   const conditions = item.conditions.items.map((c) => `${c.no}. ${c.text}`).join('\n')
   const user = [
-    `학생 학년: ${snapshot.cover.level} ${studentGrade}학년 · 과목: ${snapshot.cover.subject}`,
+    `학생 학년: ${studentGrade != null ? `${snapshot.cover.level} ${studentGrade}학년` : gradeLabel(snapshot.cover.level, null)} · 과목: ${snapshot.cover.subject}`,
     `문항(${item.kind}, ${item.points}점):\n${item.stem}`,
     `조건:\n${conditions || '없음(서술형은 조건 없이 분량·형식만 — C-32)'}\n분량 ${item.conditions.length} / 형식 ${item.conditions.format}${item.conditions.overflow_rule ? ` / ${item.conditions.overflow_rule}` : ''}`,
     `채점표(요소 ${criteria.length}개, 요소 이름과 max를 그대로 쓴다):\n${rubric}`,

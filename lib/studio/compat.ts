@@ -20,7 +20,8 @@ type MainStepT = LessonT['flow']['main'][number]
 /** v2 스냅샷(publish.ts 의 Snapshot 과 동일 — 순환 import 를 피하려 여기서 구조적으로 정의). */
 export type SnapshotV2 = {
   schema_version: 2
-  cover: { title: string; subject: string; level: string; grade: number; unit?: string; version: number; published_at: string }
+  /** grade: 옛 판은 숫자, 학년을 정하지 않은 대주제(대표 2026-09-26)의 새 판은 null(학교급 학년군 전체). */
+  cover: { title: string; subject: string; level: string; grade: number | null; unit?: string; version: number; published_at: string }
   standards: { code: string; text: string }[]
   intro: string
   reconstruction: string

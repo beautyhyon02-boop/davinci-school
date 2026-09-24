@@ -54,7 +54,8 @@ export type Repo = {
 // 대주제 소개(0단계)는 세트(item_sets)가 아니라 대주제(themes)에 저장된다 — 세트 여러 개가 같은 대주제 소개를 공유하기 때문.
 export type ThemeLogRow = { themeId: string; stage: 0; role: 'generate' | 'review'; attempt: number; model: string; input: number; output: number; cacheRead: number; ok: boolean; issues?: unknown; error?: string }
 export type ThemeRepo = {
-  loadTheme(themeId: string): Promise<{ title: string; level: string; grade: number; subjects: string[]; intro_ideas: StageStatus | null }>
+  /** grade null = 학년 지정 안 함(학교급 학년군 전체, 대표 2026-09-26) */
+  loadTheme(themeId: string): Promise<{ title: string; level: string; grade: number | null; subjects: string[]; intro_ideas: StageStatus | null }>
   saveThemeIntro(themeId: string, status: StageStatus, accepted?: { intro: string; subject_ideas: { subject: string; idea: string }[] }): Promise<void>
   log(entry: ThemeLogRow): Promise<void>
 }

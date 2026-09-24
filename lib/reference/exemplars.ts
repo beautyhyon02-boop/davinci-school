@@ -9,7 +9,7 @@ export type ExemplarRecord = {
   exemplar_answers: { level: string; text: string }[]; feedback: string | null; cognitive: string[]; source: { file: string; pages: number[] }
   strand?: string; evaluation_elements?: string[]; requires_drawing?: boolean
 }
-export type ExemplarQuery = { subject: string; school_level: '초' | '중' | '고'; grade: number | null; codes: string[]; unit: string | null; kind: '서술형' | '논술형' | '수행' | 'any'; answerMode?: 'screen' | 'paper' }
+export type ExemplarQuery = { subject: string; school_level: '초' | '중' | '고'; grade?: number | null; codes: string[]; unit: string | null; kind: '서술형' | '논술형' | '수행' | 'any'; answerMode?: 'screen' | 'paper' }
 
 const ROOT = ['data', 'reference', 'exemplars']
 const FOLDER_FOR: Record<string, string[]> = { '국어': ['국어'], '수학': ['수학'], '영어': ['영어'], '과학': ['과학', '2025'], '사회': ['사회', '2025'], '한국사': ['역사', '2025'], '세계사': ['역사', '2025'], '역사': ['역사', '2025'] }
@@ -41,7 +41,8 @@ export function scoreExemplar(r: ExemplarRecord, q: ExemplarQuery): number {
   if (r.standard_codes.some((c) => q.codes.includes(c))) s += 4
   if (r.standard_codes.some((c) => q.codes.some((qc) => prefix(qc) === prefix(c)))) s += 3
   if (q.unit && r.unit && r.unit === q.unit) s += 2
-  if (q.grade !== null && r.grade === q.grade) s += 2
+  // 학년을 정하지 않은 대주제(grade null/없음, 대표 2026-09-26)는 학년 가점 없이 코드·단원·종류로만 고른다
+  if (q.grade != null && r.grade === q.grade) s += 2
   if (sameKind(r.kind, q.kind)) s += 3
   if (r.rubric?.criteria?.length) s += 1
   if (r.exemplar_answers?.length) s += 1

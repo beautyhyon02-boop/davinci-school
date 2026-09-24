@@ -8,7 +8,7 @@ import { SUBJECTS, LEVELS } from '@/lib/studio/schemas'
 const copy = app.teacherItems
 
 type SearchParams = { level?: string; subject?: string }
-type Row = { id: string; subject: string; level: string; grade: number; version: number; themes: { title: string } | null }
+type Row = { id: string; subject: string; level: string; grade: number | null; version: number; themes: { title: string } | null }
 
 // RLS(스펙 §4.4): item_sets는 status='published'일 때만 원장(authenticated)이 읽을 수 있고, 원 구분 없이 전체 공개다.
 export default async function TeacherItemsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {

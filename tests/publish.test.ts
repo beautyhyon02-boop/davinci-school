@@ -255,3 +255,19 @@ describe('buildSnapshot', () => {
     expect(snap.generated_with.models.sort()).toEqual(['claude-a', 'claude-b'])
   })
 })
+
+describe('학년 선택(대표 2026-09-26): 스냅샷 cover.grade', () => {
+  it('a theme without a grade publishes cover.grade = null and it round-trips through upgradeSnapshot', () => {
+    const snap = buildSnapshot({ theme: { ...baseTheme, grade: null }, itemSet: { ...baseItemSet, grade: null }, standards: [{ code: '[9수04-02]', text: '원문' }], version: 1 })
+    expect(snap.cover.grade).toBeNull()
+    const back = upgradeSnapshot(JSON.parse(JSON.stringify(snap)))
+    expect(back.cover.grade).toBeNull()
+    expect(back.cover).toEqual(snap.cover)
+  })
+  it('an old published snapshot with grade 1 keeps its number (v2 and v1 shapes)', () => {
+    const v2 = buildSnapshot({ theme: { ...baseTheme, grade: 1 }, itemSet: { ...baseItemSet, grade: 1 }, standards: [], version: 3 })
+    expect(upgradeSnapshot(JSON.parse(JSON.stringify(v2))).cover.grade).toBe(1)
+    const v1raw = { cover: { title: 'v1 판', subject: '수학', level: '중', grade: 1, version: 1, published_at: '2026-09-20T00:00:00.000Z' }, standards: [], intro: '', reconstruction: '', learning_goals: [], key_question: '', lessons: [], materials: [], assessment: null, teacher_guide: null, generated_with: { models: [] } }
+    expect(upgradeSnapshot(v1raw).cover).toEqual(v1raw.cover)
+  })
+})
