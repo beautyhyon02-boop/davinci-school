@@ -225,22 +225,40 @@ for (const set of SETS) describe(`${set.subject} fixtures (v2)`, () => {
   })
 })
 
+// 대표 결정 2026-09-26: 검토는 참고, [확인]으로 진행 — 기본 흐름은 생성 → 확인(검토 호출 없음)
+function mockRepo(set: (typeof SETS)[number], logs: unknown[] = []) {
+  const standards = std(set.standards); const outputs: Record<number, unknown> = {}; const statuses: Record<number, StageStatus> = {}
+  for (let s = 0; s < 2; s++) { outputs[s] = { placeholder: `stage${s}` }; statuses[s] = { state: 'accepted', attempt: 1, output: outputs[s], review: { pass: true, issues: [] }, updated_at: '' } }
+  const repo: Repo = {
+    async loadContext() { return { theme: { title: '학교 축제, 일회용품을 줄이자', level: '중', grade: 1, subjects: ['수학', '과학'] }, subject: set.subject, standards, prior: {}, outputs, statuses } },
+    async saveOutput(_id, stage, out) { outputs[stage] = out }, async saveStatus(_id, stage, st) { statuses[stage] = st }, async log(e) { logs.push(e) },
+  }
+  return { repo, outputs, statuses }
+}
+
 describe('runStage end-to-end in mock mode (2~7단계)', () => {
   beforeAll(() => { process.env.AI_MOCK = '1'; delete process.env.ANTHROPIC_API_KEY })
-  for (const set of SETS) it(`${set.subject}: generate → review → accept for every stage`, async () => {
-    const standards = std(set.standards); const outputs: Record<number, unknown> = {}; const statuses: Record<number, StageStatus> = {}
-    for (let s = 0; s < 2; s++) { outputs[s] = { placeholder: `stage${s}` }; statuses[s] = { state: 'accepted', attempt: 1, output: outputs[s], review: { pass: true, issues: [] }, updated_at: '' } }
-    const repo: Repo = {
-      async loadContext() { return { theme: { title: '학교 축제, 일회용품을 줄이자', level: '중', grade: 1, subjects: ['수학', '과학'] }, subject: set.subject, standards, prior: {}, outputs, statuses } },
-      async saveOutput(_id, stage, out) { outputs[stage] = out }, async saveStatus(_id, stage, st) { statuses[stage] = st }, async log() {},
-    }
+  for (const set of SETS) it(`${set.subject}: generate → confirm for every stage (no review calls)`, async () => {
+    const logs: { role: string; model: string }[] = []
+    const { repo, outputs } = mockRepo(set, logs)
     for (const stage of STAGES) {
       const g = await runStage({ itemSetId: 'x', stage, action: 'generate', repo })
       expect(g.status.error, `stage${stage} generate`).toBeUndefined(); expect(g.status.state).toBe('generated'); expect(g.status.model).toBe('mock')
-      const r = await runStage({ itemSetId: 'x', stage, action: 'review', repo }); expect(r.status.review?.issues ?? [], `stage${stage} review`).toEqual([])
-      expect(r.status.review?.pass).toBe(true)
+      // 시연 fixture 는 자동 검사 메모가 비어 있어야 한다(메모는 막지 않지만, 시연 데이터가 깨끗한지 여기서 지킨다)
+      expect(g.status.notes, `stage${stage} notes`).toEqual([])
       expect((await runStage({ itemSetId: 'x', stage, action: 'accept', repo })).status.state).toBe('accepted')
     }
+    expect(logs.filter((l) => l.role === 'review')).toEqual([])
     expect((outputs[7] as { per_lesson: unknown[] }).per_lesson.length).toBe((outputs[3] as { lessons: unknown[] }).lessons.length)
+  })
+  for (const set of SETS) it(`${set.subject}: the optional AI review still works on every stage (generate → review → confirm)`, async () => {
+    const { repo } = mockRepo(set)
+    for (const stage of STAGES) {
+      await runStage({ itemSetId: 'x', stage, action: 'generate', repo })
+      const r = await runStage({ itemSetId: 'x', stage, action: 'review', repo })
+      expect(r.status.review?.issues ?? [], `stage${stage} review`).toEqual([])
+      expect(r.status.review?.pass).toBe(true); expect(r.status.notes).toEqual([]); expect(r.status.error).toBeUndefined()
+      expect((await runStage({ itemSetId: 'x', stage, action: 'accept', repo })).status.state).toBe('accepted')
+    }
   })
 })

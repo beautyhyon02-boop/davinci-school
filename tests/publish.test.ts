@@ -29,6 +29,17 @@ describe('canPublish', () => {
     expect(r).toEqual({ ok: true, blockers: [] })
   })
 
+  // 대표 결정 2026-09-26: 검토는 참고 — 게시는 구조만 본다(확인·성취기준·핵심질문·단답형 퀴즈)
+  it('ignores review results and static notes on confirmed stages (advisory only)', () => {
+    const advisory: StageStatus = { ...accepted(), review: { pass: false, issues: [{ kind: 'other', detail: 'AI 의견' }] }, notes: [{ kind: 'fidelity', detail: '메모' }], error: '검토 반복 한도 도달 — 관리자가 직접 수정' }
+    const r = canPublish({
+      statuses: { ...allAccepted, stage2: advisory, stage5: advisory },
+      standards: [{ code: '[9수04-02]', verified: true }],
+      keyQuestion: 'q',
+    })
+    expect(r).toEqual({ ok: true, blockers: [] })
+  })
+
   it('blocks with stageNotAccepted:<n> for each stage 2-7 that is not accepted', () => {
     const r = canPublish({
       statuses: { ...allAccepted, stage3: { state: 'reviewed', attempt: 1, updated_at: '' }, stage5: undefined },

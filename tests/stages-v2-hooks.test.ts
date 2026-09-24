@@ -1,9 +1,9 @@
-// runStage v2 연결부(enrich 후 저장, [TS] 검사 선행)를 가짜 callStructured 로 검사한다.
+// runStage v2 연결부(enrich 후 저장, 생성 직후 [TS] 자동 검사 메모, 선택 검토)를 가짜 callStructured 로 검사한다.
 // mock fixture 가 v1 인 동안(T6 전)에도 generate 경로를 돌려 보기 위해 tests/stages.test.ts 와 따로 둔다.
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { callStructured } from '@/lib/ai/claude'
 import { runStage, type Repo, type StageStatus, type LogRow } from '@/lib/studio/stages'
-import { MAX_ATTEMPTS } from '@/lib/studio/max-attempts'
+import { MAX_ATTEMPTS, EXHAUSTED_ERROR } from '@/lib/studio/max-attempts'
 import { nextAction } from '@/lib/studio/next-action'
 
 vi.mock('@/lib/ai/claude', () => ({ callStructured: vi.fn() }))
@@ -39,43 +39,74 @@ describe('runStage v2 hooks (fake callStructured)', () => {
     const saved = outputs[2] as { level_anchor: { code: string; level: string }[] }
     expect(saved.level_anchor.map((a) => [a.code, a.level])).toEqual([['[9수04-02]', 'C'], ['[9수04-03]', 'C']])
     expect(g.status.output).toBe(saved)
+    expect(g.status.notes).toEqual([])
     expect(call).toHaveBeenCalledTimes(1)
   })
-  it('review with static issues does not call the model at all', async () => {
-    const bad = unfaithful()
+  // 대표 결정 2026-09-26: 검토는 참고, [확인]으로 진행 — [TS] 는 생성 직후 메모로만 남고 아무것도 막지 않는다
+  it('generate runs the [TS] check right away and stores its issues as advisory notes (no extra model call, no error)', async () => {
+    call.mockResolvedValueOnce({ data: unfaithful(), usage: { input: 0, output: 0, cacheRead: 0 }, model: 'fake' })
     const logs: LogRow[] = []
-    const statuses: Record<number, StageStatus> = { 1: accepted(), 2: { state: 'generated', attempt: 1, output: bad, model: 'fake', updated_at: '' } }
-    const r = await runStage({ itemSetId: 'x', stage: 2, action: 'review', repo: repo({ 2: bad }, statuses, logs) })
-    expect(call).not.toHaveBeenCalled()
-    expect(r.status).toMatchObject({ state: 'reviewed', attempt: 1, model: 'fake', review: { pass: false } })
-    expect(logs).toHaveLength(1)
-    expect(logs[0]).toMatchObject({ role: 'review', model: 'static', ok: false, input: 0, output: 0, cacheRead: 0, issues: { pass: false } })
+    const statuses: Record<number, StageStatus> = { 0: accepted(), 1: accepted() }
+    const g = await runStage({ itemSetId: 'x', stage: 2, action: 'generate', repo: repo({}, statuses, logs) })
+    expect(call).toHaveBeenCalledTimes(1)
+    expect(g.status).toMatchObject({ state: 'generated', attempt: 1, model: 'fake' })
+    expect(g.status.error).toBeUndefined()
+    expect(g.status.review).toBeUndefined()
+    expect(g.status.notes?.some((n) => n.kind === 'fidelity')).toBe(true)
+    expect(statuses[2].notes).toEqual(g.status.notes)
+    // generation_log 는 그대로 남는다: 모델 생성 행(가짜라 log 콜백 없음) + [TS] 메모 행
+    expect(logs).toEqual([expect.objectContaining({ role: 'review', model: 'static', ok: false, input: 0, output: 0, cacheRead: 0, issues: { pass: false, issues: g.status.notes } })])
+    expect(nextAction(g.status)).toBe('accept')
   })
-  it('MAX_ATTEMPTS is 3 for every stage 0..7 (ruling: a non-developer admin must be able to regenerate after a miss)', () => {
+  it('accept right after generate succeeds even with static notes (no review needed)', async () => {
+    call.mockResolvedValueOnce({ data: unfaithful(), usage: { input: 0, output: 0, cacheRead: 0 }, model: 'fake' })
+    const outputs: Record<number, unknown> = {}
+    const statuses: Record<number, StageStatus> = { 0: accepted(), 1: accepted() }
+    await runStage({ itemSetId: 'x', stage: 2, action: 'generate', repo: repo(outputs, statuses, []) })
+    const a = await runStage({ itemSetId: 'x', stage: 2, action: 'accept', repo: repo(outputs, statuses, []) })
+    expect(call).toHaveBeenCalledTimes(1)
+    expect(a.status).toMatchObject({ state: 'accepted', model: 'fake' })
+    expect(a.status.notes?.length).toBeGreaterThan(0)
+    expect(a.status.output).toBe(outputs[2])
+  })
+  it('MAX_ATTEMPTS stays 3 for every stage 0..7 (record only — it never gates the set wizard)', () => {
     for (const s of [0, 1, 2, 3, 4, 5, 6, 7] as const) expect(MAX_ATTEMPTS[s]).toBe(3)
   })
-  it('a static failure on attempt 1 leaves room to regenerate (no limit error, next action is generate)', async () => {
+  it('optional review with static issues still asks the model once, keeps [TS] notes separate, and never sets an error (even past MAX_ATTEMPTS)', async () => {
+    call.mockImplementationOnce(async (inp) => {
+      await inp.log?.({ model: 'fake-review', input: 1, output: 1, cacheRead: 0, ok: true })
+      return { data: { pass: false, issues: [{ kind: 'other', detail: 'AI 의견' }] }, usage: { input: 1, output: 1, cacheRead: 0 }, model: 'fake-review' } as never
+    })
     const bad = unfaithful()
-    const statuses: Record<number, StageStatus> = { 1: accepted(), 2: { state: 'generated', attempt: 1, output: bad, updated_at: '' } }
-    const r = await runStage({ itemSetId: 'x', stage: 2, action: 'review', repo: repo({ 2: bad }, statuses, []) })
+    const logs: LogRow[] = []
+    const statuses: Record<number, StageStatus> = { 1: accepted(), 2: { state: 'generated', attempt: 7, output: bad, model: 'fake', updated_at: '' } }
+    const r = await runStage({ itemSetId: 'x', stage: 2, action: 'review', repo: repo({ 2: bad }, statuses, logs) })
+    expect(call).toHaveBeenCalledTimes(1)
+    expect(r.status).toMatchObject({ state: 'reviewed', attempt: 7, model: 'fake', review: { pass: false, issues: [{ kind: 'other', detail: 'AI 의견' }] } })
+    expect(r.status.notes?.some((n) => n.kind === 'fidelity')).toBe(true)
     expect(r.status.error).toBeUndefined()
-    expect(nextAction(r.status, MAX_ATTEMPTS[2] ?? 1)).toBe('generate')
+    expect(logs.map((l) => l.model)).toEqual(['static', 'fake-review'])
+    // 검토 의견이 무엇이든 다음 행동은 [확인]이고, 확인도 된다
+    expect(nextAction(r.status)).toBe('accept')
+    const a = await runStage({ itemSetId: 'x', stage: 2, action: 'accept', repo: repo({ 2: bad }, statuses, logs) })
+    expect(a.status.state).toBe('accepted')
   })
-  it('static failure follows MAX_ATTEMPTS (stage 2 limit 3 → exhausted at attempt 3)', async () => {
-    const bad = unfaithful()
-    const statuses: Record<number, StageStatus> = { 1: accepted(), 2: { state: 'generated', attempt: 3, output: bad, updated_at: '' } }
-    const r = await runStage({ itemSetId: 'x', stage: 2, action: 'review', repo: repo({ 2: bad }, statuses, []) })
-    expect(r.status.error).toMatch(/한도/)
-    expect(nextAction(r.status, MAX_ATTEMPTS[2] ?? 1)).toBe('edit')
-  })
-  it('an output the static checks cannot read (old v1 shape) becomes an issue instead of a crash, without a model call', async () => {
+  it('an output the static checks cannot read (old v1 shape) becomes a note instead of a crash', async () => {
+    call.mockResolvedValueOnce({ data: { pass: true, issues: [] }, usage: { input: 0, output: 0, cacheRead: 0 }, model: 'fake-review' } as never)
     const v1 = { reconstruction: '자료를 나타내고 해석할 수 있다.', key_questions: ['q?'] }
     const logs: LogRow[] = []
     const statuses: Record<number, StageStatus> = { 1: accepted(), 2: { state: 'generated', attempt: 1, output: v1, updated_at: '' } }
     const r = await runStage({ itemSetId: 'x', stage: 2, action: 'review', repo: repo({ 2: v1 }, statuses, logs) })
-    expect(call).not.toHaveBeenCalled()
-    expect(r.status.review).toMatchObject({ pass: false, issues: [{ kind: 'other' }] })
+    expect(r.status.notes).toMatchObject([{ kind: 'other' }])
     expect(logs[0]).toMatchObject({ model: 'static', ok: false })
+  })
+  it('accept clears a stale exhausted marker left on an old row', async () => {
+    const out = structuredClone(faithful)
+    const statuses: Record<number, StageStatus> = { 1: accepted(), 2: { state: 'reviewed', attempt: 3, output: out, review: { pass: false, issues: [] }, error: EXHAUSTED_ERROR, updated_at: '' } }
+    const a = await runStage({ itemSetId: 'x', stage: 2, action: 'accept', repo: repo({ 2: out }, statuses, []) })
+    expect(a.status.state).toBe('accepted')
+    expect(a.status.error).toBeUndefined()
+    expect(call).not.toHaveBeenCalled()
   })
   it('review with no static issues calls the model exactly once and logs its result', async () => {
     call.mockImplementationOnce(async (inp) => {

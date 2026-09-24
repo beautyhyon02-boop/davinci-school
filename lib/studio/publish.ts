@@ -49,7 +49,7 @@ export const PUBLISH_STAGES = [2, 3, 4, 5, 6, 7] as const
 /**
  * 세트를 게시할 수 있는지 순수하게 판정한다. 반환하는 blockers는 화면 문구 키(app.studio.publish.blockers)이며
  * 여기서 직접 한국어 문구를 만들지 않는다 — 문구는 content/site.ts에서만 고친다는 프로젝트 규칙 때문.
- * - 2~7단계가 모두 accepted 여야 한다.
+ * - 2~7단계가 모두 accepted([확인]) 여야 한다. 검토 결과·자동 검사 메모는 보지 않는다(대표 결정 2026-09-26: 검토는 참고).
  * - 연결된 성취기준이 전부 원문 검증(verified)되어야 한다.
  * - 핵심질문(keyQuestion)이 정해져 있어야 한다.
  * - 초안 차시(item_sets.lessons)의 퀴즈가 모두 단답형이어야 한다(대표 2026-09-26: 객관식 폐지) — 그 전에 3단계를 확정한 초안에
