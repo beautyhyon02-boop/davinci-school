@@ -220,6 +220,7 @@ function QuizView({ quiz, showAnswers }: { quiz: QuizItem[]; showAnswers: boolea
         {quiz.map((q, i) => (
           <li key={i}>
             <p>{q.q} <Badge tone="gray">{c.typeLabel[q.type]}</Badge></p>
+            {/* 보기 목록은 2026-09-26 이전에 게시된 판의 선택형 퀴즈에만 있다 — 새 세트의 퀴즈는 단답형만(choices null) */}
             {q.choices && <ul className="mt-1 list-disc pl-5">{q.choices.map((ch, j) => <li key={j}>{ch}</li>)}</ul>}
           </li>
         ))}

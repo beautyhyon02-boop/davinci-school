@@ -8,6 +8,11 @@ const copy = app.classroom.student.quiz
 // answer·explanation 은 이미 제출한 차시에서만 온다(제출 전에는 서버가 빼고 보낸다). 방금 제출한 경우엔 submitQuiz 결과에서 읽는다.
 type Quiz = { q: string; type: 'choice' | 'short'; choices: string[] | null; answer?: string; explanation?: string }
 type Done = { response: string; correct: boolean }
+/**
+ * 대표 2026-09-26: 퀴즈는 단답형만(객관식 폐지) — 새 세트의 퀴즈는 모두 입력 칸이다. 보기 단추는 그 전에 게시된 판(스냅샷)의
+ * 선택형 퀴즈를 그대로 보이고 채점하기 위해서만 남겨 둔다(lib/classroom/quiz.ts 는 선택형을 표시 기호 완전 일치로 본다).
+ */
+const isLegacyChoice = (q: Quiz) => q.type === 'choice' && (q.choices?.length ?? 0) > 0
 
 export function QuizForm({ assignmentId, lessonNo, quiz, done }: { assignmentId: string; lessonNo: number; quiz: Quiz[]; done: Done[] | null }) {
   const [responses, setResponses] = useState<string[]>(quiz.map(() => ''))
@@ -29,7 +34,8 @@ export function QuizForm({ assignmentId, lessonNo, quiz, done }: { assignmentId:
                 <p>{copy.answerLabel}: {keyOf(i)?.answer ?? ''}</p>
                 <p className="text-sm text-ink-700">{copy.explanationLabel}: {keyOf(i)?.explanation ?? ''}</p>
               </div>
-            ) : q.type === 'choice' ? (
+            ) : isLegacyChoice(q) ? (
+              // 옛 판(2026-09-26 이전 게시)의 선택형만 — 새 세트는 아래 입력 칸(단답형)이 기본이다
               <div className="mt-2 grid gap-2 sm:grid-cols-2">
                 {(q.choices ?? []).map((c) => (
                   <button key={c} type="button" onClick={() => setResponses((r) => r.map((x, j) => (j === i ? c : x)))}
