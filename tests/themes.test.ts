@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { parseTheme, canCreateSet, validateStandardSelection, validateStandardIds, parseSharedMaterialsInput, sharedMaterialsJson, addThemeSubjects, removeThemeSubject, THEME_FIELDS } from '@/lib/studio/themes'
+import { parseTheme, parseThemeGrade, gradeOptions, GRADE_NONE, canCreateSet, validateStandardSelection, validateStandardIds, parseSharedMaterialsInput, sharedMaterialsJson, addThemeSubjects, removeThemeSubject, THEME_FIELDS } from '@/lib/studio/themes'
 import { app } from '@/content/site'
+import { SCHOOL_BANDS, gradeLabel } from '@/lib/studio/level-map'
 
 function fd(o: Record<string, string | string[]>) {
   const f = new FormData()
@@ -254,5 +255,53 @@ describe('removeThemeSubject', () => {
 
   it('refuses to remove the last subject', () => {
     expect(removeThemeSubject(['수학'], '수학', [])).toEqual({ ok: false, error: remove.lastSubject })
+  })
+})
+
+describe('학년 선택(대표 2026-09-26): 대주제는 학교급만 필수, 학년은 선택', () => {
+  const base = { [THEME_FIELDS.title]: '학교 축제', [THEME_FIELDS.subjects]: ['수학'] }
+  it('parseTheme reads an empty grade, "none" or a missing field as null (학년 지정 안 함)', () => {
+    for (const grade of ['', GRADE_NONE, ' none ']) {
+      const r = parseTheme(fd({ ...base, [THEME_FIELDS.level]: '중', [THEME_FIELDS.grade]: grade }))
+      expect(r.ok && r.data.grade, JSON.stringify(grade)).toBeNull()
+    }
+    const missing = parseTheme(fd({ ...base, [THEME_FIELDS.level]: '초' }))
+    expect(missing.ok && missing.data.grade).toBeNull()
+  })
+  it('parseTheme still keeps a set grade and rejects one outside the school level', () => {
+    const r = parseTheme(fd({ ...base, [THEME_FIELDS.level]: '중', [THEME_FIELDS.grade]: '2' }))
+    expect(r.ok && r.data.grade).toBe(2)
+    expect(parseTheme(fd({ ...base, [THEME_FIELDS.level]: '중', [THEME_FIELDS.grade]: '5' })).ok).toBe(false)
+    expect(parseTheme(fd({ ...base, [THEME_FIELDS.level]: '중', [THEME_FIELDS.grade]: '1.5' })).ok).toBe(false)
+  })
+  it('parseThemeGrade (학년 바꾸기의 순수 부분): none → null, 범위 안 숫자 → 숫자, 그 밖 → gradeInvalid', () => {
+    expect(parseThemeGrade('중', GRADE_NONE)).toEqual({ ok: true, grade: null })
+    expect(parseThemeGrade('중', null)).toEqual({ ok: true, grade: null })
+    expect(parseThemeGrade('중', '3')).toEqual({ ok: true, grade: 3 })
+    expect(parseThemeGrade('초', '6')).toEqual({ ok: true, grade: 6 })
+    expect(parseThemeGrade('중', '4')).toEqual({ ok: false, error: app.studio.errors.gradeInvalid })
+    expect(parseThemeGrade('중', 'abc')).toEqual({ ok: false, error: app.studio.errors.gradeInvalid })
+    expect(parseThemeGrade('대', '1')).toEqual({ ok: false, error: app.studio.errors.levelInvalid })
+  })
+  it('gradeOptions lists the grades of each school level', () => {
+    expect(gradeOptions('초')).toEqual([1, 2, 3, 4, 5, 6])
+    expect(gradeOptions('중')).toEqual([1, 2, 3])
+  })
+  it('the create form offers "학년 지정 안 함(학년군 전체)" and the theme page has a 학년 바꾸기 control', () => {
+    expect(app.studio.newTheme.gradeNone).toBe('학년 지정 안 함(학년군 전체)')
+    expect(app.studio.theme.gradeEdit.label).toBe('학년 바꾸기')
+  })
+  it('theme header wording: "중 1학년" when set, "중등 · 1~3학년군" / "초등 · 3~6학년" when unset', () => {
+    expect(app.studio.theme.meta('중', 1)).toBe('중 1학년')
+    expect(app.studio.theme.meta('중', null)).toBe('중등 · 1~3학년군')
+    expect(app.studio.theme.meta('초', null)).toBe('초등 · 3~6학년')
+    expect(app.teacherItems.card.meta('중', null)).toBe('중등 · 1~3학년군')
+  })
+  it('UI band words (content/site.ts) match the prompt band words (level-map SCHOOL_BANDS)', () => {
+    for (const level of ['초', '중', '고'] as const) {
+      expect(app.studio.gradeBand[level]?.school).toBe(SCHOOL_BANDS[level].school)
+      expect(app.studio.gradeBand[level]?.band).toBe(SCHOOL_BANDS[level].band)
+      expect(app.packageView.cover.meta(level, null, '수학')).toBe(`${gradeLabel(level, null)} · 수학`)
+    }
   })
 })

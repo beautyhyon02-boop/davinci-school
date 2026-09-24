@@ -2,7 +2,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { getSessionProfile } from '@/lib/auth/session'
-import { canCreateSet, validateStandardSelection, validateStandardIds, parseSharedMaterialsInput, addThemeSubjects, removeThemeSubject } from '@/lib/studio/themes'
+import { canCreateSet, validateStandardSelection, validateStandardIds, parseSharedMaterialsInput, addThemeSubjects, removeThemeSubject, parseThemeGrade, GRADE_NONE } from '@/lib/studio/themes'
 import type { Subject } from '@/lib/studio/schemas'
 import { app } from '@/content/site'
 
@@ -124,6 +124,31 @@ export async function removeSubjectFromTheme(themeId: string, formData: FormData
 
   revalidatePath(`/admin/items/${themeId}`)
   return { ok: true as const }
+}
+
+/**
+ * 대주제 학년을 바꾼다(null = 학년 지정 안 함 → 학교급 학년군 전체, 대표 결정 2026-09-26).
+ * 세트(item_sets.grade)는 만들 때 대주제 학년을 복사해 두므로 같이 바꾼다 — AI 생성 문구(loadContext)와 원장 목록 카드가 따라온다.
+ * 이미 게시한 판(item_set_versions.snapshot)은 건드리지 않는다: 다시 게시해야 표지 학년이 바뀐다.
+ */
+export async function updateThemeGrade(themeId: string, grade: number | null) {
+  await assertAdmin()
+  const supabase = await createClient()
+
+  const { data: theme, error: themeErr } = await supabase.from('themes').select('level').eq('id', themeId).single()
+  if (themeErr || !theme) return { ok: false as const, error: errors.themeNotFound }
+
+  const g = parseThemeGrade(theme.level as string, grade == null ? GRADE_NONE : String(grade))
+  if (!g.ok) return { ok: false as const, error: g.error }
+
+  const { error } = await supabase.from('themes').update({ grade: g.grade }).eq('id', themeId)
+  if (error) return { ok: false as const, error: errors.saveFailed }
+  const { error: setsErr } = await supabase.from('item_sets').update({ grade: g.grade }).eq('theme_id', themeId)
+  if (setsErr) return { ok: false as const, error: errors.saveFailed }
+
+  revalidatePath(`/admin/items/${themeId}`)
+  revalidatePath('/admin/items')
+  return { ok: true as const, grade: g.grade }
 }
 
 export async function saveSharedMaterials(themeId: string, materialsJson: string) {

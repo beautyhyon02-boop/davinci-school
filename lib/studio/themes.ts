@@ -9,7 +9,31 @@ export const THEME_FIELDS = { title: 'title', level: 'level', grade: 'grade', su
 
 const GRADE_RANGE: Record<Level, [number, number]> = { 초: [1, 6], 중: [1, 3], 고: [1, 3] }
 
-export type ThemeInput = { title: string; level: Level; grade: number; subjects: Subject[] }
+/** 학년 선택 상자의 "학년 지정 안 함(학년군 전체)" 값. 빈 값('')도 같은 뜻으로 받는다(대표 결정 2026-09-26). */
+export const GRADE_NONE = 'none'
+
+/** 학교급별로 고를 수 있는 학년(선택 상자 보기). */
+export function gradeOptions(level: Level): number[] {
+  const [min, max] = GRADE_RANGE[level]
+  return Array.from({ length: max - min + 1 }, (_, i) => min + i)
+}
+
+/**
+ * 학년 입력 하나를 읽는다. 빈 값·'none'(GRADE_NONE)·null 은 "학년 지정 안 함" → null(학교급 학년군 전체).
+ * 그 밖에는 학교급 범위(초 1~6, 중·고 1~3) 안의 정수여야 한다. 대주제 생성(parseTheme)과 학년 바꾸기(updateThemeGrade)가 같이 쓴다.
+ */
+export function parseThemeGrade(level: string, raw: FormDataEntryValue | string | null | undefined): { ok: true; grade: number | null } | { ok: false; error: string } {
+  if (!(LEVELS as readonly string[]).includes(level)) return { ok: false, error: errors.levelInvalid }
+  const text = raw == null ? '' : String(raw).trim()
+  if (text === '' || text === GRADE_NONE) return { ok: true, grade: null }
+  const grade = Number(text)
+  const [min, max] = GRADE_RANGE[level as Level]
+  if (!Number.isInteger(grade) || grade < min || grade > max) return { ok: false, error: errors.gradeInvalid }
+  return { ok: true, grade }
+}
+
+/** grade 가 null 이면 학년 지정 안 함 — 모든 문구가 "중학교(1~3학년군)" 수준이 된다(lib/studio/level-map.ts gradeLabel). */
+export type ThemeInput = { title: string; level: Level; grade: number | null; subjects: Subject[] }
 
 export function parseTheme(formData: FormData): { ok: true; data: ThemeInput } | { ok: false; error: string } {
   const title = String(formData.get(THEME_FIELDS.title) ?? '').trim()
@@ -19,10 +43,9 @@ export function parseTheme(formData: FormData): { ok: true; data: ThemeInput } |
   if (!(LEVELS as readonly string[]).includes(levelRaw)) return { ok: false, error: errors.levelInvalid }
   const level = levelRaw as Level
 
-  const gradeRaw = formData.get(THEME_FIELDS.grade)
-  const grade = Number(gradeRaw)
-  const [min, max] = GRADE_RANGE[level]
-  if (!Number.isInteger(grade) || grade < min || grade > max) return { ok: false, error: errors.gradeInvalid }
+  const g = parseThemeGrade(level, formData.get(THEME_FIELDS.grade))
+  if (!g.ok) return { ok: false, error: g.error }
+  const grade = g.grade
 
   const subjectsRaw = formData.getAll(THEME_FIELDS.subjects).map((v) => String(v))
   const subjects = Array.from(new Set(subjectsRaw))

@@ -74,6 +74,28 @@ export const auth = {
   },
 }
 
+/**
+ * 학년을 정하지 않은 대주제·세트의 학교급 표기(대표 결정 2026-09-26: 2022 개정 성취기준은 학년군 단위).
+ * 프롬프트 쪽 같은 낱말은 lib/studio/level-map.ts SCHOOL_BANDS — tests/themes.test.ts 가 둘이 같은지 본다.
+ */
+const GRADE_BAND: Record<string, { school: string; short: string; band: string } | undefined> = {
+  초: { school: '초등학교', short: '초등', band: '3~6학년' },
+  중: { school: '중학교', short: '중등', band: '1~3학년군' },
+  고: { school: '고등학교', short: '고등', band: '1~3학년' },
+}
+/** "중 1학년" / 학년 없음 → "중등 · 1~3학년군" (목록·머리말·카드) */
+const levelGradeShort = (level: string, grade: number | null) => {
+  if (grade != null) return `${level} ${grade}학년`
+  const b = GRADE_BAND[level]
+  return b ? `${b.short} · ${b.band}` : level
+}
+/** "중 1학년" / 학년 없음 → "중학교(1~3학년군)" (세트 표지·문제지) */
+const levelGradeLong = (level: string, grade: number | null) => {
+  if (grade != null) return `${level} ${grade}학년`
+  const b = GRADE_BAND[level]
+  return b ? `${b.school}(${b.band})` : level
+}
+
 export const app = {
   roleLabel: { admin: '본사 관리자', teacher: '원장님', student: '학생' },
   logout: '로그아웃',
@@ -169,10 +191,11 @@ export const app = {
     },
   },
   studio: {
+    gradeBand: GRADE_BAND,
     errors: {
       titleRequired: '대주제 제목을 입력하세요.',
       levelInvalid: '학교급을 선택하세요.',
-      gradeInvalid: '학년을 확인하세요. (초 1~6, 중·고 1~3)',
+      gradeInvalid: '학년을 확인하세요. (초 1~6, 중·고 1~3, 또는 학년 지정 안 함)',
       subjectsRequired: '과목을 1개 이상 선택하세요.',
       subjectInvalid: '알 수 없는 과목입니다.',
       subjectNotInTheme: '대주제에 포함되지 않은 과목입니다.',
@@ -202,13 +225,23 @@ export const app = {
     },
     newTheme: {
       title: '새 대주제',
-      labels: { title: '제목', level: '학교급', grade: '학년', subjects: '과목' },
+      labels: { title: '제목', level: '학교급', grade: '학년(선택)', subjects: '과목' },
+      gradeNone: '학년 지정 안 함(학년군 전체)',
+      gradeOption: (grade: number) => `${grade}학년`,
+      gradeHelp: '2022 개정 성취기준은 학년군 단위입니다. 학년을 정하지 않으면 중학교는 1~3학년군, 초등학교는 3~6학년 수준으로 만듭니다. 초등은 1~6학년, 중등은 1~3학년 중에서 고를 수 있습니다.',
       submit: '만들기',
       submitting: '만드는 중…',
     },
     theme: {
       backToList: '← 목록으로',
-      meta: (level: string, grade: number) => `${level} ${grade}학년`,
+      meta: (level: string, grade: number | null) => levelGradeShort(level, grade),
+      gradeEdit: {
+        label: '학년 바꾸기',
+        help: '학년을 정하지 않으면 AI가 학교급 학년군 전체(중학교 1~3학년군, 초등학교 3~6학년) 수준으로 만듭니다. 바꾼 학년은 이 대주제의 세트에도 적용됩니다 — 이미 게시한 판은 다시 게시해야 표지가 바뀝니다.',
+        submit: '바꾸기',
+        submitting: '바꾸는 중…',
+        saved: '학년을 바꿨습니다.',
+      },
       addSubjects: {
         heading: '과목 추가',
         help: '대주제를 만들 때 고르지 않은 과목을 나중에 추가합니다.',
@@ -413,7 +446,7 @@ export const app = {
     cover: {
       versionLabel: (v: number) => `버전 ${v}`,
       publishedAtLabel: '게시일',
-      meta: (level: string, grade: number, subject: string) => `${level} ${grade}학년 · ${subject}`,
+      meta: (level: string, grade: number | null, subject: string) => `${levelGradeLong(level, grade)} · ${subject}`,
     },
     intro: '대주제 소개',
     standardsHeading: '성취기준',
@@ -559,7 +592,7 @@ export const app = {
     },
     card: {
       versionLabel: (v: number) => `버전 ${v}`,
-      meta: (level: string, grade: number) => `${level} ${grade}학년`,
+      meta: (level: string, grade: number | null) => levelGradeShort(level, grade),
       open: '열기',
     },
     empty: '아직 게시된 문항이 없습니다.',

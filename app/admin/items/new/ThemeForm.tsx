@@ -1,8 +1,8 @@
 'use client'
-import { useActionState } from 'react'
+import { useActionState, useState } from 'react'
 import { createTheme } from '../actions'
-import { THEME_FIELDS } from '@/lib/studio/themes'
-import { SUBJECTS, LEVELS } from '@/lib/studio/schemas'
+import { THEME_FIELDS, GRADE_NONE, gradeOptions } from '@/lib/studio/themes'
+import { SUBJECTS, LEVELS, type Level } from '@/lib/studio/schemas'
 import { Button } from '@/components/ui/Button'
 import { app } from '@/content/site'
 
@@ -11,6 +11,8 @@ const input = 'rounded-xl border border-ink-300 px-4 py-3 font-normal'
 
 export function ThemeForm() {
   const [state, action, pending] = useActionState(createTheme, undefined)
+  // 학년은 선택(대표 2026-09-26) — 기본값은 "학년 지정 안 함(학년군 전체)", 보기는 학교급에 맞춰 바뀐다
+  const [level, setLevel] = useState<Level>(LEVELS[0])
 
   return (
     <form action={action} className="grid max-w-md gap-4">
@@ -20,13 +22,17 @@ export function ThemeForm() {
       </label>
       <label className="grid gap-1 text-sm font-semibold">
         {copy.labels.level}
-        <select name={THEME_FIELDS.level} defaultValue={LEVELS[0]} className={input}>
+        <select name={THEME_FIELDS.level} value={level} onChange={(e) => setLevel(e.target.value as Level)} className={input}>
           {LEVELS.map((l) => <option key={l} value={l}>{l}</option>)}
         </select>
       </label>
       <label className="grid gap-1 text-sm font-semibold">
         {copy.labels.grade}
-        <input name={THEME_FIELDS.grade} type="number" min={1} max={6} required className={input} />
+        <select key={level} name={THEME_FIELDS.grade} defaultValue={GRADE_NONE} className={input}>
+          <option value={GRADE_NONE}>{copy.gradeNone}</option>
+          {gradeOptions(level).map((g) => <option key={g} value={String(g)}>{copy.gradeOption(g)}</option>)}
+        </select>
+        <span className="text-xs font-normal text-ink-500">{copy.gradeHelp}</span>
       </label>
       <fieldset className="grid gap-1 text-sm font-semibold">
         <legend>{copy.labels.subjects}</legend>

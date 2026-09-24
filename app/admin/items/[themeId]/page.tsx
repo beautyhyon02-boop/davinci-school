@@ -7,8 +7,9 @@ import { Card } from '@/components/ui/Card'
 import { ThemeIntroPanel } from './ThemeIntroPanel'
 import { SharedMaterialsPanel } from './SharedMaterialsPanel'
 import { AddSubjectsPanel } from './AddSubjectsPanel'
+import { GradeEditor } from './GradeEditor'
 import { StandardsPicker, type StandardsBySubject } from './StandardsPicker'
-import type { Subject } from '@/lib/studio/schemas'
+import type { Subject, Level } from '@/lib/studio/schemas'
 import { sharedMaterialsJson, type SharedMaterial } from '@/lib/studio/themes'
 import { fetchAll } from '@/lib/supabase/fetch-all'
 import { app } from '@/content/site'
@@ -82,7 +83,8 @@ export default async function ThemeDetailPage({ params }: { params: Promise<{ th
     <>
       <Link href="/admin/items" className="text-sm text-mint-700 underline">{app.studio.theme.backToList}</Link>
       <h1 className="mt-2 text-2xl font-bold">{theme.title}</h1>
-      <p className="mt-1 text-ink-500">{app.studio.theme.meta(theme.level, theme.grade)}</p>
+      <p className="mt-1 text-ink-500">{app.studio.theme.meta(theme.level, (theme.grade as number | null) ?? null)}</p>
+      <GradeEditor themeId={themeId} level={theme.level as Level} grade={(theme.grade as number | null) ?? null} />
       <div className="mt-2 flex flex-wrap gap-2">
         {themeSubjects.map((s) => (
           <Badge key={s} tone="lavender">{s}</Badge>

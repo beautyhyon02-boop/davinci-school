@@ -43,3 +43,36 @@ export const GRADE_TABLE_22: GradeBoundary[] = [
   { grade: 2, min: 5, max: 7, band: '하', level_ref: 'E 미만' },
   { grade: 1, min: 0, max: 4, band: '하', level_ref: 'E 미만' },
 ]
+
+/**
+ * 학교급 전체(학년 미지정) 범위 — 대표 결정 2026-09-26: 2022 개정 성취기준은 학년군 단위라 대주제를 학년 하나에 묶지 않는다.
+ * school·band 는 프롬프트 문구(gradeLabel)가 쓰고, 화면 문구는 content/site.ts(app.gradeBand)가 같은 낱말로 따로 갖는다
+ * (tests/themes.test.ts 가 둘이 같은지 본다). codePrefixes 는 성취기준 코드 접두 — 1단계 적합성 판단은 이것만 본다.
+ */
+export const SCHOOL_BANDS: Record<'초' | '중' | '고', { school: string; band: string; codePrefixes: string[] }> = {
+  초: { school: '초등학교', band: '3~6학년', codePrefixes: ['[4', '[6'] },
+  중: { school: '중학교', band: '1~3학년군', codePrefixes: ['[9'] },
+  고: { school: '고등학교', band: '1~3학년', codePrefixes: ['[1'] },
+}
+
+function bandOf(level: string) {
+  return (SCHOOL_BANDS as Record<string, (typeof SCHOOL_BANDS)['중'] | undefined>)[level]
+}
+
+/**
+ * 프롬프트용 학교급·학년 표기. 학년이 있으면 지금까지와 같은 "중학교 1학년", 없으면 "중학교(1~3학년군)" / "초등학교(3~6학년)".
+ * 옛 게시 판(cover.grade 숫자)과 새 판(null)을 모두 받는다.
+ */
+export function gradeLabel(level: string, grade: number | null | undefined): string {
+  const b = bandOf(level)
+  const school = b?.school ?? level
+  if (grade == null) return b ? `${school}(${b.band})` : school
+  return `${school} ${grade}학년`
+}
+
+/** 이 학교급(과 학년) 성취기준 코드 접두. 초등 1~2학년으로 정한 대주제만 [2…](1~2학년군)를 더한다. */
+export function standardCodePrefixes(level: string, grade: number | null | undefined): string[] {
+  const b = bandOf(level)
+  if (!b) return []
+  return level === '초' && grade != null && grade <= 2 ? ['[2', ...b.codePrefixes] : b.codePrefixes
+}

@@ -9,7 +9,8 @@ type ThemeRow = {
   id: string
   title: string
   level: string
-  grade: number
+  /** null = 학년 지정 안 함(학교급 학년군 전체, 대표 2026-09-26) */
+  grade: number | null
   subjects: string[] | null
 }
 
