@@ -58,14 +58,20 @@ for (const set of SETS) describe(`${set.subject} fixtures (v2)`, () => {
     expect(checkReconstructionFidelity(gen.reconstruction, standards.map((s) => s.text)).unknownTokens).toEqual([])
     expect(new Set(gen.learning_goals.map((g) => g.axis)).size).toBe(3)
   })
-  it('stage3 covers every standard, places 서술형1→서술형2→논술형 and gives the essay lesson a 35-minute writing step', () => {
-    const { lessons, unit_plan } = loadFixture(`stage3-generate${set.suffix}`) as { lessons: { no: number; standards: string[]; assessment: string | null; flow: { main: { step_label: string; minutes: number }[] } }[]; unit_plan: { assessment_plan: { summative_placement: { lesson_no: number }[] } } }
+  it('stage3 (대표 2026-09-26): 교수 차시 5개마다 퀴즈 3문항, 마지막 교수 차시 뒤 단원 평가 차시 6에 서술형 → 논술형, 논술형 35분', () => {
+    type L = { no: number; kind: string; standards: string[]; assessment: string[]; formative_check: { quiz: unknown[] }; flow: { main: { step_label: string; minutes: number }[] }; worksheet: { tasks: unknown[] } }
+    const { lessons, unit_plan } = loadFixture(`stage3-generate${set.suffix}`) as { lessons: L[]; unit_plan: { assessment_plan: { summative_placement: { lesson_no: number; kind: string }[] } } }
     expect([...new Set(lessons.flatMap((l) => l.standards))].sort()).toEqual(standards.map((s) => s.code).sort())
-    expect(lessons.filter((l) => l.assessment).map((l) => l.assessment)).toEqual(['서술형1', '서술형2', '논술형'])
-    const essay = lessons.find((l) => l.assessment === '논술형')!
-    expect(essay.flow.main.some((m) => m.step_label.includes('논술형') && m.minutes >= 35)).toBe(true)
-    const items = (loadFixture(`stage5-generate${set.suffix}`) as { items: { lesson_no: number }[] }).items
-    expect(items.map((i) => i.lesson_no)).toEqual(unit_plan.assessment_plan.summative_placement.map((p) => p.lesson_no))
+    const teaching = lessons.filter((l) => l.kind === 'teaching')
+    expect(teaching.map((l) => l.no)).toEqual([1, 2, 3, 4, 5])
+    for (const l of teaching) { expect(l.formative_check.quiz, `${l.no}차시 퀴즈`).toHaveLength(3); expect(l.assessment, `${l.no}차시`).toEqual([]); expect(l.worksheet.tasks.length).toBeGreaterThanOrEqual(2) }
+    const session = lessons[lessons.length - 1]
+    expect([session.no, session.kind, session.assessment]).toEqual([6, 'assessment', ['서술형', '논술형']])
+    expect(session.formative_check.quiz).toEqual([])
+    expect(session.flow.main.map((m) => [m.step_label, m.minutes])).toEqual([['서술형 작성', 15], ['논술형 작성', 35]])
+    expect(unit_plan.assessment_plan.summative_placement).toEqual([{ lesson_no: 6, kind: '서술형' }, { lesson_no: 6, kind: '논술형' }])
+    const items = (loadFixture(`stage5-generate${set.suffix}`) as { items: { kind: string; lesson_no: number }[] }).items
+    expect(items.map((i) => [i.kind, i.lesson_no])).toEqual([['서술형', 6], ['논술형', 6]])
   })
   it('lesson topics are hand-written short noun phrases (≤20자) and unit_plan.lesson_map carries the same topic per lesson (헤딩 절단 재발 방지)', () => {
     const { lessons, unit_plan } = loadFixture(`stage3-generate${set.suffix}`) as { lessons: { no: number; topic: string }[]; unit_plan: { lesson_map: { lesson_no: number; topic: string }[] } }
@@ -75,31 +81,39 @@ for (const set of SETS) describe(`${set.subject} fixtures (v2)`, () => {
   it('stage4 materials do not carry the answers the items ask for (C-03)', () => {
     const { materials } = loadFixture(`stage4-generate${set.suffix}`) as { materials: { id: string; body: string | null; role: string }[] }
     const body = (id: string) => materials.find((m) => m.id === id)?.body ?? ''
-    // 수학 문항 1(도수분포표)·문항 2(상대도수 0.24·0.30)의 답이 자료 본문에 없어야 한다 — 공유 자료 B는 두 과목 모두 개수만 싣는다(M5)
+    // 수학 서술형(상대도수 0.24·0.30)과 뺀 서술형 1(도수분포표)의 답이 자료 본문에 없어야 한다 — 공유 자료 B는 두 과목 모두 개수만 싣는다(M5)
     expect(body('A')).not.toMatch(/1·3·6|30~40|도수/)
     expect(body('B')).not.toMatch(/0\.24|0\.30|상대도수/)
-    // 과학 4차시 퀴즈·서술형 2가 끌어낼 결론("여러 번 써야 이득")이 자료 E에 없어야 한다
+    // 과학 4차시 퀴즈가 끌어낼 결론("여러 번 써야 이득", 뺀 서술형 2의 답이자 논술형의 판단 근거)이 자료 E에 없어야 한다
     expect(body('E')).not.toMatch(/이득/)
     expect(materials.some((m) => m.role === 'raw')).toBe(true)
   })
-  it('no lesson hands out a 서술형 answer (C-03 at lesson level: flow of the carrying lesson; quizzes·worksheets·scripts of every lesson)', () => {
-    // 문항이 학생에게 구하게 하는 값·결론. 같은 차시의 전개 활동·발문·활동지·퀴즈·유의점이 이것을 미리 말하면 안 된다.
-    const ANSWERS: Record<string, RegExp[]> = {
-      수학: [/30개 이상 40개 미만|30~40|1·3·6·5·4·1/, /0\.24|0\.30/],
-      // 과학 서술형 1은 자료 D·E의 근거를 인용하게 하는 문항(재활용이 어려운 이유는 자료 D 본문 그대로)이라 차시 대조에서 뺀다 — (?!)는 아무것도 맞추지 않음
-      과학: [/(?!)/,/여러 번 (써야|사용해야|반복해 사용해야) 이득|여러 번 반복해 사용할 것/],
+  it('no lesson hands out the 서술형 answer (C-03 at lesson level: flows, notes, quizzes·worksheets·scripts of every teaching lesson)', () => {
+    // 남긴 서술형이 학생에게 구하게 하는 값·결론. 교수 차시의 전개 활동·유의점·발문·활동지·퀴즈가 이것을 미리 말하면 안 된다.
+    // 과학 서술형(재활용이 어려운 이유)은 자료 D·E의 근거를 인용하게 하는 문항이라(대표님 판단, T6) 요인 문장 대조는 하지 않고,
+    // 성질과 재활용을 잇는 결론 문장("섞이면 … 다시 녹여 쓰기 어렵다")만 본다.
+    const ANSWERS: Record<string, RegExp> = { 수학: /0\.24|0\.30/, 과학: /나누어 다시 녹여|다시 녹여 쓰기 어렵/ }
+    const { lessons } = loadFixture(`stage3-generate${set.suffix}`) as { lessons: { no: number; kind: string; flow: { main: { activities: string[] }[] }; teacher_script: unknown; worksheet: unknown; formative_check: unknown; caution_notes: string[] }[] }
+    for (const l of lessons.filter((x) => x.kind === 'teaching')) {
+      for (const t of [...l.flow.main.flatMap((m) => m.activities), ...l.caution_notes]) expect(t, `${l.no}차시`).not.toMatch(ANSWERS[set.subject])
+      for (const t of [JSON.stringify(l.teacher_script), JSON.stringify(l.worksheet), JSON.stringify(l.formative_check)]) expect(t, `${l.no}차시 퀴즈·활동지·발문`).not.toMatch(ANSWERS[set.subject])
     }
-    const { lessons } = loadFixture(`stage3-generate${set.suffix}`) as { lessons: { no: number; flow: { main: { activities: string[] }[] }; teacher_script: unknown; worksheet: unknown; formative_check: unknown; caution_notes: string[] }[] }
-    const items = (loadFixture(`stage5-generate${set.suffix}`) as { items: { kind: string; lesson_no: number }[] }).items.filter((i) => i.kind === '서술형')
-    items.forEach((it, k) => {
-      const l = lessons.find((x) => x.no === it.lesson_no)!
-      const texts = [...l.flow.main.flatMap((m) => m.activities), ...l.caution_notes]
-      for (const t of texts) expect(t, `${it.lesson_no}차시`).not.toMatch(ANSWERS[set.subject][k])
-      // 재도전 때 다른 차시의 퀴즈·활동지·발문이 답을 주면 안 된다(M6: 수학 3차시 "가장 높은 직사각형의 계급")
-      for (const o of lessons) for (const t of [JSON.stringify(o.teacher_script), JSON.stringify(o.worksheet), JSON.stringify(o.formative_check)]) {
-        expect(t, `서술형 ${k + 1}의 답이 ${o.no}차시 퀴즈·활동지·발문에`).not.toMatch(ANSWERS[set.subject][k])
-      }
-    })
+  })
+  it('the kept 서술형 is a 6-point item with analytic (3 × 0~2) + holistic rubrics and 1~6 exemplars; no paper item in the demo sets', () => {
+    type C = { name: string; max: number }
+    const a = loadFixture(`stage5-generate${set.suffix}`) as { items: { kind: string; points: number; stem: string; rubric: { criteria: C[]; holistic: Record<string, string> | null }; exemplar_answers: { points: number }[]; conditions: { answer_mode: string } }[] }
+    const short = a.items[0]
+    // 수학은 서술형 2(상대도수)를, 과학은 서술형 1(재활용이 어려운 이유)을 남겼다(scripts/upgrade-fixtures-v2.ts 가 이유를 적는다)
+    expect(short.stem).toMatch(set.subject === '수학' ? /상대도수/ : /재활용하기 어려운 이유/)
+    expect(short.points).toBe(6); expect(short.stem.endsWith('[6점]')).toBe(true)
+    expect(short.rubric.criteria.map((c) => c.max)).toEqual([2, 2, 2])
+    expect(Object.keys(short.rubric.holistic ?? {})).toEqual(['상', '중', '하'])
+    expect(short.exemplar_answers.map((e) => e.points)).toEqual([6, 5, 4, 3, 2, 1])
+    // 두 문항의 채점 요소 이름은 겹치지 않는다(단원 평가 차시 안내장·채점 대조)
+    const names = a.items.flatMap((i) => i.rubric.criteria.map((c) => c.name))
+    expect(new Set(names).size).toBe(names.length)
+    // 수학 서술형 1(종이 답안 도수분포표)을 뺐으므로 시연 세트에는 종이 답안 문항이 없다 — 종이 경로는 합성 문항 테스트가 지킨다
+    expect(a.items.map((i) => i.conditions.answer_mode)).toEqual(['screen', 'screen'])
   })
   it('lessons carry no v1 upgrade artifacts (I3: goal sentence reused as expected, "N분 —" headers in hints)', () => {
     const { lessons } = loadFixture(`stage3-generate${set.suffix}`) as { lessons: { no: number; goal: string; teacher_script: { questions: { expected_answer: string; if_stuck: string }[] }; worksheet: { tasks: { no: number; expected: string }[] } }[] }
@@ -148,7 +162,8 @@ for (const set of SETS) describe(`${set.subject} fixtures (v2)`, () => {
     expect(a.items.reduce((s, i) => s + i.points, 0)).toBe(22)
     expect(a.items.every((i) => i.min_competency)).toBe(true)
     expect(a.items.filter((i) => i.conditions.answer_mode === 'paper').length).toBeLessThanOrEqual(1)
-    for (const it of a.items.filter((i) => i.kind === '서술형')) expect(it.exemplar_answers.map((e) => e.points).sort()).toEqual([1, 2, 3])
+    expect(a.items.map((i) => [i.kind, i.points])).toEqual([['서술형', 6], ['논술형', 16]])
+    for (const it of a.items.filter((i) => i.kind === '서술형')) expect(it.exemplar_answers.map((e) => e.points).sort()).toEqual([1, 2, 3, 4, 5, 6])
     const essay = a.items.find((i) => i.kind === '논술형')!
     for (const ex of essay.exemplar_answers) {
       expect(ex.assumed_short_points).not.toBeNull()
@@ -156,7 +171,7 @@ for (const set of SETS) describe(`${set.subject} fixtures (v2)`, () => {
       expect(a.grade_boundaries.find((b) => total >= b.min && total <= b.max)?.band).toBe(ex.level)
     }
   })
-  it('stage6 and stage7 have one entry per lesson; criteria phrases only on assessed lessons, named after the rubric', () => {
+  it('stage6 and stage7 have one entry per lesson; criteria phrases only on the 단원 평가 차시 (both items, named after the rubrics)', () => {
     const { lessons } = loadFixture(`stage3-generate${set.suffix}`) as { lessons: { no: number }[] }
     const { per_lesson } = loadFixture(`stage6-generate${set.suffix}`) as { per_lesson: { no: number }[] }
     expect(per_lesson.map((p) => p.no)).toEqual(lessons.map((l) => l.no))
@@ -164,9 +179,10 @@ for (const set of SETS) describe(`${set.subject} fixtures (v2)`, () => {
     expect(plan.per_lesson.map((p) => p.lesson_no)).toEqual(lessons.map((l) => l.no))
     const items = (loadFixture(`stage5-generate${set.suffix}`) as { items: { lesson_no: number; rubric: { criteria: { name: string }[] } }[] }).items
     for (const p of plan.per_lesson) {
-      const item = items.find((i) => i.lesson_no === p.lesson_no)
-      expect(p.criteria_phrases?.map((c) => c.criterion_name) ?? null).toEqual(item ? item.rubric.criteria.map((c) => c.name) : null)
+      const here = items.filter((i) => i.lesson_no === p.lesson_no)
+      expect(p.criteria_phrases?.map((c) => c.criterion_name) ?? null).toEqual(here.length ? here.flatMap((i) => i.rubric.criteria.map((c) => c.name)) : null)
     }
+    expect(plan.per_lesson.filter((p) => p.criteria_phrases).map((p) => p.lesson_no)).toEqual([6])
   })
 })
 

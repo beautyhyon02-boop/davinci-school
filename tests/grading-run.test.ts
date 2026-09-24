@@ -62,7 +62,7 @@ describe('runGrading (mock)', () => {
     const status = await runGrading({ gradingId: 'g1', db: db as never })
     expect(status).toBe('drafted')
     const last = db.updates.at(-1)!.patch
-    expect(last.status).toBe('drafted'); expect(last.model).toBe('mock'); expect(last.ai_score).toBe(2)
+    expect(last.status).toBe('drafted'); expect(last.model).toBe('mock'); expect(last.ai_score).toBe(4)
     // F1: drafted 쓰기도 updated_at 을 바꿔야 검수 카드가 새 초안으로 다시 그려진다
     expect(typeof last.updated_at).toBe('string')
     expect(Number.isNaN(Date.parse(last.updated_at as string))).toBe(false)
@@ -160,7 +160,7 @@ describe('runGrading fails loudly on a draft that does not match the rubric', ()
     expect(await runGrading({ gradingId: 'g1', db: db as never })).toBe('failed')
     const last = db.updates.at(-1)!.patch
     expect(last.status).toBe('failed')
-    expect(String(last.error)).toContain('서술형 채점표')
+    expect(String(last.error)).toContain(assessment.items[0].rubric.criteria[0].name)
     expect(typeof last.updated_at).toBe('string')
     expect(db.updates.some((u) => u.patch.status === 'drafted' || 'ai_criteria' in u.patch)).toBe(false)
   })
@@ -170,11 +170,11 @@ describe('runGrading stores rubric-aligned criteria', () => {
   const prev = process.env.AI_MOCK
   beforeEach(() => { process.env.AI_MOCK = '1'; vi.mocked(claude.callStructured).mockClear() })
   afterEach(() => { process.env.AI_MOCK = prev })
-  it('논술형 mock draft: ai_criteria names and max equal the item 3 rubric, ai_score = sum', async () => {
-    const db = fakeDb({ gradings: [{ id: 'g1', status: 'pending', answer_id: 'a1' }], answers: [{ ...answerRows, item_no: 3 }], item_set_versions: [{ snapshot }], students: [{ grade: 1 }] })
+  it('논술형 mock draft: ai_criteria names and max equal the item 2 rubric, ai_score = sum', async () => {
+    const db = fakeDb({ gradings: [{ id: 'g1', status: 'pending', answer_id: 'a1' }], answers: [{ ...answerRows, item_no: 2 }], item_set_versions: [{ snapshot }], students: [{ grade: 1 }] })
     expect(await runGrading({ gradingId: 'g1', db: db as never })).toBe('drafted')
     const last = db.updates.at(-1)!.patch as { ai_criteria: { name: string; max: number; points: number }[]; ai_score: number }
-    expect(last.ai_criteria.map((c) => [c.name, c.max])).toEqual(assessment.items[2].rubric.criteria.map((c: { name: string; max: number }) => [c.name, c.max]))
+    expect(last.ai_criteria.map((c) => [c.name, c.max])).toEqual(assessment.items[1].rubric.criteria.map((c: { name: string; max: number }) => [c.name, c.max]))
     expect(last.ai_score).toBe(last.ai_criteria.reduce((s, c) => s + c.points, 0))
   })
 })
@@ -186,11 +186,14 @@ describe('mock grading fixtures are keyed by subject (I1)', () => {
   const sci = JSON.parse(readFileSync('data/studio-fixtures/stage5-generate-과학.json', 'utf8'))
   const sciSnapshot = { ...snapshot, cover: { ...snapshot.cover, subject: '과학' }, assessment: sci }
   it('buildGradingPrompt asks for grading-{kind}-{subject} (mock falls back to grading-{kind})', () => {
-    expect(buildGradingPrompt({ snapshot: sciSnapshot as never, itemNo: 3, studentGrade: 1, answer: 'x' }).fixtureKey).toBe('grading-논술형-과학')
+    expect(buildGradingPrompt({ snapshot: sciSnapshot as never, itemNo: 2, studentGrade: 1, answer: 'x' }).fixtureKey).toBe('grading-논술형-과학')
+    expect(buildGradingPrompt({ snapshot: sciSnapshot as never, itemNo: 1, studentGrade: 1, answer: 'x' }).fixtureKey).toBe('grading-서술형-과학')
     expect(buildGradingPrompt({ snapshot: snapshot as never, itemNo: 1, studentGrade: 1, answer: 'x' }).fixtureKey).toBe('grading-서술형-수학')
     expect(loadFixture('grading-논술형-수학')).toEqual(JSON.parse(readFileSync('data/studio-fixtures/grading-논술형.json', 'utf8')))
+    // 서술형은 과목마다 채점 요소가 다르다(2026-09-26 6점 문항) — 과학 파일이 따로 있다
+    expect(loadFixture('grading-서술형-과학')).toEqual(JSON.parse(readFileSync('data/studio-fixtures/grading-서술형-과학.json', 'utf8')))
   })
-  for (const [label, snap, a, itemNo] of [['과학 논술형', sciSnapshot, sci, 3], ['과학 서술형', sciSnapshot, sci, 1], ['수학 논술형', snapshot, assessment, 3]] as const) {
+  for (const [label, snap, a, itemNo] of [['과학 논술형', sciSnapshot, sci, 2], ['과학 서술형', sciSnapshot, sci, 1], ['수학 논술형', snapshot, assessment, 2], ['수학 서술형', snapshot, assessment, 1]] as const) {
     it(`${label}: the mock draft aligns with the item rubric (no GradingAlignError)`, async () => {
       const db = fakeDb({ gradings: [{ id: 'g1', status: 'pending', answer_id: 'a1' }], answers: [{ ...answerRows, item_no: itemNo }], item_set_versions: [{ snapshot: snap }], students: [{ grade: 1 }] })
       const status = await runGrading({ gradingId: 'g1', db: db as never })

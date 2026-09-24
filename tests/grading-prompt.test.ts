@@ -16,21 +16,21 @@ describe('buildGradingPrompt v2', () => {
     expect(p.user).toContain(assessment.items[0].stem)
     expect(p.user).toContain(assessment.items[0].rubric.notes[0])
     expect(p.user).toContain(assessment.items[0].exemplar_answers[0].text.slice(0, 20))
-    expect(p.user).not.toContain(assessment.items[2].exemplar_answers[0].text.slice(0, 20))
+    expect(p.user).not.toContain(assessment.items[1].exemplar_answers[0].text.slice(0, 20))
     expect(p.user).toMatch(/max=\d/); expect(p.user).toMatch(/A~E 예상 구간/); expect(p.fixtureKey).toBe('grading-서술형-수학')
     // C-32: 서술형은 조건이 없다 — 빈 condition_nos 가 "조건 )"처럼 빈 꼬리를 남기지 않는다
     expect(assessment.items[0].conditions.items).toEqual([])
     expect(p.user).not.toMatch(/조건 \)/); expect(p.user).toMatch(/조건:\n없음/)
   })
   it('논술형 lists 4 criteria names with max=4 and the holistic bands', () => {
-    const p = buildGradingPrompt({ snapshot, itemNo: 3, studentGrade: 1, answer: 'x'.repeat(60) })
+    const p = buildGradingPrompt({ snapshot, itemNo: 2, studentGrade: 1, answer: 'x'.repeat(60) })
     expect(p.fixtureKey).toBe('grading-논술형-수학')
-    for (const c of assessment.items[2].rubric.criteria) expect(p.user).toContain(`${c.name}(max=4`)
-    expect(p.user).toContain(assessment.items[2].rubric.holistic.상)
+    for (const c of assessment.items[1].rubric.criteria) expect(p.user).toContain(`${c.name}(max=4`)
+    expect(p.user).toContain(assessment.items[1].rubric.holistic.상)
   })
   it('numbers every condition and states the axis, condition numbers and exemplar rationale', () => {
-    const item = assessment.items[2]
-    const p = buildGradingPrompt({ snapshot, itemNo: 3, studentGrade: 1, answer: 'x'.repeat(60) })
+    const item = assessment.items[1]
+    const p = buildGradingPrompt({ snapshot, itemNo: 2, studentGrade: 1, answer: 'x'.repeat(60) })
     for (const c of item.conditions.items) expect(p.user).toContain(`${c.no}. ${c.text}`)
     expect(p.user).toContain(`${item.rubric.criteria[2].name}(max=4, ${item.rubric.criteria[2].axis}, 조건 ${item.rubric.criteria[2].condition_nos.join('·')})`)
     expect(p.user).toContain(item.exemplar_answers[0].rationale)
@@ -49,8 +49,16 @@ describe('buildGradingPrompt v2', () => {
     expect(at('A~E 예상 구간')).toBeLessThan(at('예시 답안(이 문항)'))
     expect(at('예시 답안(이 문항)')).toBeLessThan(at('ANSWER_MARK'))
   })
-  it('서술형 has no holistic line', () => {
-    expect(buildGradingPrompt({ snapshot, itemNo: 2, studentGrade: 1, answer: 'x'.repeat(60) }).user).not.toContain('총체적 기준')
+  it('서술형 now carries the holistic 상/중/하 too (대표 2026-09-26, C-15) and its 2~3 criteria with max 2', () => {
+    const p = buildGradingPrompt({ snapshot, itemNo: 1, studentGrade: 1, answer: 'x'.repeat(60) })
+    const h = assessment.items[0].rubric.holistic
+    expect(p.user).toContain(`총체적 기준: 상=${h.상} / 중=${h.중} / 하=${h.하}`)
+    for (const c of assessment.items[0].rubric.criteria) expect(p.user).toContain(`${c.name}(max=2`)
+    expect(p.user).toContain('문항(서술형, 6점)')
+  })
+  it('an old 판 서술형 without holistic (legacy 3점) still builds a prompt with no holistic line', () => {
+    const legacy = structuredClone(snapshot); legacy.assessment!.items[0].rubric.holistic = null
+    expect(buildGradingPrompt({ snapshot: legacy, itemNo: 1, studentGrade: 1, answer: 'x'.repeat(60) }).user).not.toContain('총체적 기준')
   })
 })
 
@@ -60,9 +68,13 @@ describe('grading fixtures follow the v2 math items (mock mode)', () => {
     const d = draft('서술형')
     expect(d.criteria.map((c: { name: string; max: number }) => [c.name, c.max])).toEqual(assessment.items[0].rubric.criteria.map((c: { name: string; max: number }) => [c.name, c.max]))
   })
-  it('논술형 fixture criteria = item 3 criteria names and max, score = sum', () => {
+  it('서술형 fixture score = sum', () => {
+    const d = draft('서술형')
+    expect(d.score).toBe(d.criteria.reduce((s: number, c: { points: number }) => s + c.points, 0))
+  })
+  it('논술형 fixture criteria = item 2 criteria names and max, score = sum', () => {
     const d = draft('논술형')
-    expect(d.criteria.map((c: { name: string; max: number }) => [c.name, c.max])).toEqual(assessment.items[2].rubric.criteria.map((c: { name: string; max: number }) => [c.name, c.max]))
+    expect(d.criteria.map((c: { name: string; max: number }) => [c.name, c.max])).toEqual(assessment.items[1].rubric.criteria.map((c: { name: string; max: number }) => [c.name, c.max]))
     expect(d.score).toBe(d.criteria.reduce((s: number, c: { points: number }) => s + c.points, 0))
   })
 })

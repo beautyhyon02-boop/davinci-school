@@ -19,5 +19,15 @@ describe('enrichOutput', () => {
     const given = structuredClone(assessmentV2); Object.assign(given.items[0], { min_competency: '이미 있음' })
     expect((enrichOutput(5, given, { standards, prior }) as typeof assessmentV2).items[0].min_competency).toBe('이미 있음')
   })
+  it('stage 5: two items on one 단원 평가 차시 take that lesson\'s standards in item order (서술형 → 첫째, 논술형 → 둘째)', () => {
+    const prior = { stage3: { lessons: [{ no: 6, standards: ['[9수04-03]', '[9수04-02]'] }] } }
+    const both = structuredClone(assessmentV2); both.items.forEach((it) => { it.lesson_no = 6 })
+    const out = enrichOutput(5, both, { standards, prior }) as typeof assessmentV2
+    expect(out.items[0].min_competency).toContain('상대도수')
+    expect(out.items[1].min_competency).toContain('부분적으로')
+    // 성취기준이 하나뿐이면 두 문항 모두 그것
+    const one = enrichOutput(5, structuredClone(both), { standards, prior: { stage3: { lessons: [{ no: 6, standards: ['[9수04-03]'] }] } } }) as typeof assessmentV2
+    expect(one.items.map((i) => i.min_competency)).toEqual([out.items[0].min_competency, out.items[0].min_competency])
+  })
   it('other stages pass through', () => { const o = { a: 1 }; expect(enrichOutput(4, o, { standards, prior: {} })).toBe(o) })
 })

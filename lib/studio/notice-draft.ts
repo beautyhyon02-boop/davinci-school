@@ -1,5 +1,6 @@
 import type { z } from 'zod'
 import { NOTICE_DISCLAIMER, type Lesson, type Assessment, type NoticePlan } from './schemas'
+import { isAssessmentSession, lessonAssessments } from './assessment-structure'
 
 type LessonT = z.infer<typeof Lesson>
 type AssessmentT = z.infer<typeof Assessment>
@@ -81,7 +82,9 @@ function improvePhrases(nearTop: string): [string, string] {
  */
 function goodPhrases(item: ItemT, criterionIndex: number, top: string): [string, string] {
   const g1 = clip(plain(top), LIMIT)
-  const holisticPart = item.rubric.holistic ? plain(item.rubric.holistic.상.split(' / ')[criterionIndex] ?? '') : ''
+  // 총체적 상이 요소별 서술을 " / "로 이은 모양(옛 판 compat)일 때만 이 요소 몫을 쓴다 — 한 문장짜리 총체적 기준(서술형 포함)은 요소 몫이 아니다
+  const parts = item.rubric.holistic ? item.rubric.holistic.상.split(' / ') : []
+  const holisticPart = parts.length === item.rubric.criteria.length ? plain(parts[criterionIndex] ?? '') : ''
   const traitA = item.level_map.find((l) => l.level === 'A')?.trait ?? ''
   const g2 = [holisticPart, plain(traitA), '채점 기준의 가장 높은 단계를 충족함'].find((t) => t && clip(t, LIMIT) !== g1)!
   return [g1, clip(g2, LIMIT)]
@@ -108,8 +111,13 @@ function wrongNote(q: QuizT): string {
     ?? '해설을 다시 읽고 근거가 되는 곳을 찾아봅시다.'
 }
 
-/** 가정 학습 제안(N-12): 문항 모양을 따른다 — 종이에 표·그래프를 만드는 문항은 다시 그리기, 서술형은 한 문장 고쳐 쓰기, 논술형은 문단 고쳐 쓰기. */
-function homeStudy(item: ItemT | null): string {
+/**
+ * 가정 학습 제안(N-12): 문항 모양을 따른다 — 종이에 표·그래프를 만드는 문항은 다시 그리기, 서술형은 한 문장 고쳐 쓰기, 논술형은 문단 고쳐 쓰기.
+ * 단원 평가 차시(서술형 + 논술형)는 두 답 가운데 하나를 골라 고쳐 쓰게 한다(종이 답안 문항이 있으면 그 문항 모양이 먼저).
+ */
+function homeStudy(items: ItemT[]): string {
+  if (items.length > 1 && !items.some((i) => i.conditions.answer_mode === 'paper')) return '오늘 쓴 서술형·논술형 답 가운데 하나를 골라 보완할 점 한 가지를 고쳐 써 봅시다.'
+  const item = items.find((i) => i.conditions.answer_mode === 'paper') ?? items[0] ?? null
   if (!item) return '오늘 퀴즈 중 틀린 문항과 같은 유형 1개를 다시 풀어 봅시다.'
   const shape = `${item.conditions.format} ${item.stem}`
   if (item.conditions.answer_mode === 'paper') {
@@ -122,28 +130,39 @@ function homeStudy(item: ItemT | null): string {
     : '오늘 쓴 답의 보완할 점 한 가지를 고쳐 한 문장으로 다시 써 봅시다.'
 }
 
+/** 다음 차시 예고(50자). 다음이 평가 차시(단원 평가, 옛 판의 논술형 차시)면 "배워요" 대신 그 차시의 문항에 답한다고 알린다. */
+function previewOf(next: LessonT): string {
+  const kinds = lessonAssessments(next)
+  if (isAssessmentSession(next) && kinds.length) {
+    const full = `다음 시간에는 ${next.topic}에서 ${kinds.join('·')} 문항에 답해요.`
+    return full.length <= 50 ? full : `다음 시간에는 ${kinds.join('·')} 문항에 답해요.`   // 주제가 길면(옛 판 목표 문장) 주제를 뺀다
+  }
+  return clip(`다음 시간에는 ${next.topic}${objectParticle(next.topic)} 배워요.`, 50)
+}
+
 /**
  * 안내장 틀(7단계)의 결정적 초안 — fixture·mock용. AI 생성본과 같은 모양이며 문장 규칙(N-05·N-06·N-12)을 지킨다.
- * 서·논술형 문항이 있는 차시만 criteria_phrases 를 채우고 나머지는 null(대표님 잠정 결정: 안내장은 서·논술형 차시만).
+ * 서·논술형 문항이 있는 차시만 criteria_phrases 를 채우고 나머지는 null(대표님 잠정 결정: 안내장은 서·논술형 차시만) —
+ * 지금 구조(2026-09-26)에서는 단원 평가 차시 하나에 두 문항의 요소가 모두 들어간다(요소 이름은 문항 사이에 겹치지 않는다, [TS]).
  */
 export function draftNoticePlan(lessons: LessonT[], assessment: AssessmentT | null): NoticePlanT {
   const sorted = [...lessons].sort((a, b) => a.no - b.no)
   return {
     per_lesson: sorted.map((l, i) => {
       const next = sorted[i + 1]
-      const item = assessment?.items.find((it) => it.lesson_no === l.no) ?? null
+      const items = assessment?.items.filter((it) => it.lesson_no === l.no) ?? []
       return {
         lesson_no: l.no,
         topic_summary: clip(l.goal, LIMIT),
-        preview: next ? clip(`다음 시간에는 ${next.topic}${objectParticle(next.topic)} 배워요.`, 50) : '이번 세트를 마무리했어요. 정리한 내용을 다시 읽어 봅시다.',
-        home_study_suggestion: homeStudy(item),
+        preview: next ? previewOf(next) : '이번 세트를 마무리했어요. 정리한 내용을 다시 읽어 봅시다.',
+        home_study_suggestion: homeStudy(items),
         quiz_notes: l.formative_check.quiz.map((q, k) => ({ quiz_no: k + 1, wrong_note: wrongNote(q) })),
-        criteria_phrases: item
-          ? item.rubric.criteria.map((c, ci) => {
+        criteria_phrases: items.length
+          ? items.flatMap((item) => item.rubric.criteria.map((c, ci) => {
               const at = (p: number) => c.scale.find((s) => s.points === p)
               const top = at(c.max)!; const nearTop = at(Math.max(1, c.max - 1))!
               return { criterion_name: c.name, good: goodPhrases(item, ci, top.descriptor), improve: improvePhrases(nearTop.descriptor) }
-            })
+            }))
           : null,
       }
     }),

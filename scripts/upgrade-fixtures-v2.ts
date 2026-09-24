@@ -16,6 +16,8 @@ import { draftNoticePlan } from '../lib/studio/notice-draft'
 import { enrichOutput } from '../lib/studio/enrich'
 import { STAGE_SCHEMAS, type Lesson, type Material, type Assessment } from '../lib/studio/schemas'
 import { staticIssues } from '../lib/studio/checks'
+import { levelMapFor } from '../lib/studio/level-map'
+import { ASSESSMENT_SESSION, SET_ORDER, SHORT_POINTS } from '../lib/studio/assessment-structure'
 
 type LessonT = z.infer<typeof Lesson>; type MaterialT = z.infer<typeof Material>; type AssessmentT = z.infer<typeof Assessment>
 type V1Lesson = Parameters<typeof upgradeLessonV1>[0]; type V1Material = Parameters<typeof upgradeMaterialV1>[0]; type V1Assessment = Parameters<typeof upgradeAssessmentV1>[0]
@@ -40,6 +42,8 @@ type SetDef = {
   patchMaterials?: (materials: MaterialT[]) => MaterialT[]
   /** v2 평가(5단계, enrich 전)에 입히는 수정. */
   patchAssessment?: (a: AssessmentT) => void
+  /** 단원 평가 차시(대표 2026-09-26 보완) 문장. 5단계 수정 뒤에 차시 목록 끝에 붙이고 두 문항을 그 차시로 옮긴다. */
+  session?: SessionDef
 }
 
 // ── PATCHES ────────────────────────────────────────────────────────────
@@ -52,11 +56,6 @@ function tidyFlow(lessons: LessonT[]) {
     l.flow.intro = l.flow.intro.map(stripHead); l.flow.wrapup = l.flow.wrapup.map(stripHead)
     for (const m of l.flow.main) m.activities = m.activities.map(stripHead)
   }
-}
-/** 논술형 차시: 안내 소단계 분을 v1 원래 배분에 맞추고, 작성 35분 소단계 문장을 정리한다(스펙 §2.3 "논술형 작성(35분 이상)"). */
-function essayTiming(l: LessonT, t: { intro: number; guide: number; wrapup: number }) {
-  l.time_budget = { intro_min: t.intro, main_min: t.guide + 35, wrapup_min: t.wrapup }
-  l.flow.main = [{ ...l.flow.main[0], minutes: t.guide }, { step_label: '논술형 작성', minutes: 35, activities: ['논술형 문항에 답안을 작성한다(35분, 퀴즈 없음 — 평가로 대체).'] }]
 }
 const setTopics = (lessons: LessonT[], topics: string[]) => lessons.forEach((l, i) => { l.topic = topics[i] })
 /** v1 문장 안의 한 구절을 바꾼다. 구절이 없으면(입력이 바뀌었으면) 조용히 넘어가지 않고 멈춘다. */
@@ -78,7 +77,10 @@ function setChallenges(lessons: LessonT[], expected: Record<number, string>) {
     t.expected = text
   }
 }
-/** 논술형 차시의 활동지·발문을 통째로 바꾼다 — v1 논술형 차시에는 퀴즈가 없어 compat 이 핵심질문으로 만든 자리표시 과제·발문뿐이다. */
+/**
+ * 옛 논술형 차시(지금은 논술형을 준비하는 마지막 교수 차시, teachFormerEssayLesson)의 활동지·발문을 통째로 바꾼다 —
+ * v1 논술형 차시에는 퀴즈가 없어 compat 이 핵심질문으로 만든 자리표시 과제·발문뿐이다.
+ */
 function setEssayLesson(l: LessonT, tasks: [string, string][], questions: QuestionT[]) {
   const tiers: Pick<TaskT, 'tier' | 'level_ref' | 'answer_space'>[] = [{ tier: '기본', level_ref: 'D~E', answer_space: 'short' }, { tier: '표준', level_ref: 'C', answer_space: 'lines' }, { tier: '도전', level_ref: 'A~B', answer_space: 'lines' }]
   l.worksheet.tasks = tasks.map(([prompt, expected], i) => ({ no: i + 1, prompt, expected, ...tiers[i] }))
@@ -107,6 +109,90 @@ function setEssayConditions(it: ItemT, items: [text: string, verb: string, categ
   }
 }
 
+// ── 세트 구조(대표 2026-09-26): 세트 끝 = 서술형 1 + 논술형 1, 마지막 교수 차시 뒤 단원 평가 차시 ──────────────
+/**
+ * v1 에는 서술형이 둘(각 3점)이었다 — 하나만 남기고(무엇을 왜 남기는지는 SETS 에) 순서를 서술형 → 논술형으로 둔다.
+ * 문항을 합치지 않는다(합치면 없던 문항을 지어내는 셈이다).
+ */
+function keepOneShort(a: AssessmentT, keep: number) {
+  const short = a.items[keep]; const essay = a.items.find((i) => i.kind === '논술형')
+  if (short?.kind !== '서술형' || !essay) throw new Error('PATCHES: keepOneShort — 남길 서술형이나 논술형이 없음')
+  a.items = [short, essay]
+}
+type CriterionT = ItemT['rubric']['criteria'][number]
+type ShortDef = {
+  /** 전제문 + 발문(배점 꼬리는 스크립트가 붙인다). */
+  stem: string
+  element: string
+  length: string
+  format: string
+  /** 요소마다 이름·축·척도 서술(scale[p] = p점 서술). 0점 서술은 무응답과 "시도했으나"를 모두 말한다(C-13). */
+  criteria: { name: string; axis: CriterionT['axis']; scale: string[] }[]
+  holistic: { 상: string; 중: string; 하: string }
+  notes: string[]
+  /** 1~6점 예시답안: [요소별 점수, 학생 답안, 채점자 의견]. */
+  exemplars: [number[], string, string][]
+  traits: Record<'A' | 'B' | 'C' | 'D' | 'E', string>
+}
+/**
+ * 남긴 서술형을 6점 문항으로 다시 쓴다(대표 2026-09-26: 두 문항 모두 분석적 + 총체적): 요소 2~3개 × 0~2(max 합 6)의 분석적 채점표,
+ * 총체적 상/중/하, 0점을 뺀 총점 단계마다 예시답안(C-14, 6·5·4·3·2·1), A~E 구간(levelMapFor + 문항 특성 문장). 조건은 없다(C-32).
+ */
+function rebuildShortItem(it: ItemT, d: ShortDef) {
+  if (it.kind !== '서술형') throw new Error('PATCHES: rebuildShortItem 은 서술형만')
+  const criteria: CriterionT[] = d.criteria.map((c) => ({ name: c.name, axis: c.axis, condition_nos: [], max: c.scale.length - 1, scale: c.scale.map((descriptor, points) => ({ points, descriptor, example: null })) }))
+  const points = criteria.reduce((s, c) => s + c.max, 0)
+  if (points !== SHORT_POINTS) throw new Error(`PATCHES: 서술형 요소 최댓값 합 ${points} ≠ ${SHORT_POINTS}`)
+  it.points = points
+  it.stem = `${d.stem} [${points}점]`
+  it.evaluation_elements = [d.element]
+  it.conditions = { ...it.conditions, items: [], length: d.length, format: d.format }
+  it.rubric = { criteria, holistic: d.holistic, notes: d.notes }
+  it.exemplar_answers = d.exemplars.map(([scores, text, rationale]) => ({ level: null, points: scores.reduce((s, v) => s + v, 0), scores, assumed_short_points: null, text, rationale }))
+  it.level_map = levelMapFor(points).map((l) => ({ ...l, trait: d.traits[l.level] }))
+}
+type SessionDef = { key_question: string; goal: string; intro: string; short: string; essay: string; wrapup: string; caution: string[] }
+/**
+ * 단원 평가 차시를 마지막 교수 차시 뒤에 붙인다(ASSESSMENT_SESSION: 평가 안내 5 · 서술형 작성 15 · 논술형 작성 35 · 정리 5, 퀴즈 0).
+ * 성취기준은 두 문항이 원래 걸려 있던 차시의 것(서술형 → 논술형 순, 최대 2개), 자료는 두 문항이 쓰는 자료. 교수 차시의 서·논술형 표시는 지운다.
+ */
+function appendAssessmentSession(lessons: LessonT[], a: AssessmentT, d: SessionDef) {
+  if (a.items.map((i) => i.kind).join(',') !== SET_ORDER.join(',')) throw new Error('PATCHES: 단원 평가 차시는 서술형 → 논술형 두 문항으로만 만든다')
+  const no = lessons.length + 1
+  const standards = [...new Set(a.items.flatMap((it) => lessons.find((l) => l.no === it.lesson_no)?.standards ?? []))].slice(0, 2)
+  for (const l of lessons) { if (l.kind !== 'teaching' || l.assessment.length) throw new Error(`PATCHES: ${l.no}차시가 아직 교수 차시가 아님`) }
+  const [shortStep, essayStep] = ASSESSMENT_SESSION.steps
+  lessons.push({
+    no, kind: 'assessment', standards, topic: ASSESSMENT_SESSION.topic, key_question: d.key_question, goal: d.goal,
+    time_budget: { ...ASSESSMENT_SESSION.time_budget },
+    flow: { intro: [d.intro], main: [{ step_label: shortStep.step_label, minutes: shortStep.minutes, activities: [d.short] }, { step_label: essayStep.step_label, minutes: essayStep.minutes, activities: [d.essay] }], wrapup: [d.wrapup] },
+    teacher_script: { questions: [] }, materials_used: [...new Set(a.items.flatMap((i) => i.materials_used))].sort(), materials_needed: [],
+    caution_notes: d.caution, worksheet: { tasks: [], self_check: [] }, formative_check: { quiz: [] },
+    assessment: [...SET_ORDER], mergeable_with: null, merge_note: null, images: [],
+  })
+  for (const it of a.items) it.lesson_no = no
+}
+type QuizT = LessonT['formative_check']['quiz'][number]
+/**
+ * v1 의 논술형 차시(안내 + 작성 35분, 퀴즈 없음)를 교수 차시로 바꾼다 — 논술형은 단원 평가 차시로 옮겨 가고, 이 차시는
+ * 논술형을 준비하는 수업과 마무리 퀴즈 3문항(마지막 교수 차시 포함, L-09)을 갖는다. 서·논술형의 답은 말하지 않는다(C-03).
+ */
+function teachFormerEssayLesson(l: LessonT, d: { time: LessonT['time_budget']; intro: string; main: LessonT['flow']['main']; wrapup: string[]; quiz: QuizT[]; needed: string[] }) {
+  if (l.kind !== 'assessment') throw new Error(`PATCHES: ${l.no}차시는 옛 논술형 차시가 아님`)
+  Object.assign(l, { kind: 'teaching', assessment: [], time_budget: d.time, flow: { intro: [d.intro], main: d.main, wrapup: d.wrapup }, formative_check: { quiz: d.quiz }, materials_needed: d.needed })
+}
+/** 교수 차시의 서·논술형 표시를 지운다(문항은 단원 평가 차시로 간다). */
+const clearLessonAssessments = (lessons: LessonT[]) => lessons.forEach((l) => { if (l.kind === 'teaching') l.assessment = [] })
+/** v1 지침서 차시 메모 한 줄을 바꾼다. 문장이 없으면(입력이 바뀌었으면) 멈춘다. */
+function swapNote(s6: V1Guide, no: number, from: string, to: string) {
+  const notes = s6.per_lesson.find((p) => p.no === no)?.notes
+  const i = notes?.indexOf(from) ?? -1
+  if (!notes || i < 0) throw new Error(`PATCHES: ${no}차시 메모 "${from.slice(0, 20)}…" 없음`)
+  notes[i] = to
+}
+/** 서술형이 빠진 차시의 정리 시간은 새 활동 없이 피드백·정리에 쓴다(L-11). */
+const L11_NOTE = '퀴즈 뒤 남는 시간은 새 활동 없이 퀴즈 오답과 오늘 만든 결과물을 되짚는 데 쓴다(L-11).'
+
 /** 공유 자료 B 본문(두 과목 공통, M5): 상대도수(0.24·0.30 …)는 수학 서술형 2가 구하게 하는 답이라 원자료 설명만 둔다(C-03). docs/samples 공유 자료와 같은 문장. */
 const RAW_B_BODY = '품목별 일회용품 개수를 작년(부스 16곳)과 올해(부스 20곳)로 나누어 센 자료. 두 해는 부스 수와 전체 개수가 다르다.'
 
@@ -114,44 +200,60 @@ const SETS: SetDef[] = [
   {
     suffix: '', standardsFile: 'standards-math.json', title: '자료의 정리와 해석',
     patchV1: ({ s2, s3, s4, s6 }) => {
-      // C-03(차시 수준): 서술형 차시의 수업이 그 문항의 답을 먼저 말하지 않게 한다 — 방법은 다른 값으로 연습하고, 문항의 값은 학생이 구한다.
-      // 2차시(서술형 1 = 20곳 전체 도수분포표, 가장 큰 계급 30~40): 표 만들기는 부스 11~20번으로 연습(가장 큰 계급 40~50, 도수 5)
+      // 대표 2026-09-26: 서술형은 하나만 — 수학은 서술형 2(상대도수, 화면 답안)를 남기고 서술형 1(20곳 도수분포표, 종이 답안)을 뺀다.
+      // 남긴 이유: 상대도수 문항은 계산 + 해석 + 이유로 6점 분석적 채점표를 세울 수 있고, 논술형(상대도수로 감축 목표)의 바탕이 된다.
+      // 결과: 시연 세트에 종이 답안 문항이 없다(종이 답안 코드 경로는 합성 문항 테스트로 지킨다).
+      // 예전 2·3차시 C-03 패치(표 만들기를 부스 11~20번으로 연습, 3차시 퀴즈 2 교체)는 서술형 1의 답을 지키려던 것이라 v1 원문으로 되돌리고,
+      // 2차시 정리의 "서술형 1 (10분)"은 피드백 시간으로 바꾼다(L-11).
       const l2 = lessonV1(s3, 2)
-      l2.flow.main = swap(swap(l2.flow.main,
-        '③ 계급의 크기 10인 도수분포표 완성', '③ 부스 11~20번 값으로 계급의 크기 10인 도수분포표 만들기 연습(20곳 전체 표는 서술형 1에서 만든다)'),
-        '④ "30~40개 부스가 6곳으로 가장 많다"처럼 표에서 문장 만들기', '④ "40~50개 부스가 5곳으로 가장 많다"처럼 연습 표에서 문장 만들기')
-      l2.quiz[1] = { q: '부스 11~20번 자료에서 계급 40개 이상 50개 미만의 도수는?', type: 'short', choices: null, answer: '5', explanation: '부스 11~20번 값 중 41·42·44·45·47의 다섯 개가 이 계급에 든다.' }
-      s6.per_lesson.find((p) => p.no === 2)!.notes[1] = '연습 표의 도수의 합이 10(부스 11~20번)이 되는지 반드시 확인시킨다.'
-      const l3 = lessonV1(s3, 3)
-      l3.flow.intro = '서술형 1에서 만든 20곳 전체 도수분포표를 함께 확인해 칠판에 붙이고 "한눈에 보이게 그리려면?"'
-      // M6(재도전 대비 C-03): 3차시 퀴즈 2(= 활동지 표준·발문 2)의 "가장 높은 직사각형의 계급 → 30개 이상 40개 미만"은 서술형 1의 답이다 →
-      // 가장 왼쪽(가장 작은 값의) 계급을 묻는다. 자료 A 최솟값 18(부스 1) → 10개 이상 20개 미만(도수 1). 부스 7(35개)은 30~40이라 답이 겹쳐 쓰지 않는다.
-      l3.quiz[1] = { q: '자료 A의 히스토그램에서 가장 왼쪽에 있는 직사각형의 계급은?', type: 'short', choices: null, answer: '10개 이상 20개 미만', explanation: '가로축에는 계급이 작은 값부터 차례로 놓이므로, 자료 A에서 가장 작은 값이 드는 계급을 찾으면 된다.' }
-      // 4차시(서술형 2 = 플라스틱컵 상대도수 0.24·0.30): 상대도수 구하기·해석은 다른 품목으로, 플라스틱컵은 문항에 남긴다
+      l2.flow.wrapup = swap(l2.flow.wrapup, '퀴즈 → 서술형 1 (10분)', '퀴즈 → 짝과 도수분포표를 바꾸어 도수의 합(20)을 서로 확인하고 틀린 칸을 고친다')
+      swapNote(s6, 2, '서술형 1은 정리·퀴즈 후 마지막 10분에 실시하고 걷는다.', L11_NOTE)
+      // 4차시(남긴 서술형 = 플라스틱컵 상대도수 0.24·0.30, 단원 평가 차시에서 본다): 상대도수 구하기·해석은 다른 품목으로, 플라스틱컵은 문항에 남긴다
       const l4 = lessonV1(s3, 4)
       l4.flow.main = swap(swap(l4.flow.main,
-        '② 작년·올해 품목별 상대도수 표 완성(소수 둘째 자리)', '② 작년·올해 종이컵·일회용 접시·비닐봉지·나무젓가락의 상대도수 구하기(소수 둘째 자리, 플라스틱컵은 서술형 2에서 직접 구한다)'),
+        '② 작년·올해 품목별 상대도수 표 완성(소수 둘째 자리)', '② 작년·올해 종이컵·일회용 접시·비닐봉지·나무젓가락의 상대도수 구하기(소수 둘째 자리, 플라스틱컵은 단원 평가 서술형에서 직접 구한다)'),
         '④ "개수는 종이컵이 가장 많지만, 비율이 가장 크게 오른 것은 플라스틱컵(0.24 → 0.30)" 해석', '④ "개수는 종이컵이 가장 많지만 상대도수는 0.32 → 0.31로 거의 그대로"처럼 개수와 상대도수가 다르게 말하는 경우를 해석하기')
+      l4.flow.wrapup = swap(l4.flow.wrapup, '퀴즈 → 서술형 2 (10분)', '퀴즈 → 개수와 상대도수가 다르게 말한 품목을 한 문장씩 발표하고 서로 고쳐 준다')
+      swapNote(s6, 4, '서술형 2는 마지막 10분.', L11_NOTE)
+      // 5차시: 논술형은 단원 평가 차시(6)로 옮긴다 — 5차시는 감축 목표를 세우는 교수 차시(teachFormerEssayLesson)가 되고 메모도 바꾼다
+      const n5 = s6.per_lesson.find((p) => p.no === 5)!
+      n5.notes = ['목표 수치 연습은 종이컵으로만 하고, 학생이 논술형에서 쓸 품목과 목표 수치는 미리 정해 주지 않는다.', '스프레드시트 기기가 없으면 계산기로 같은 계산을 한다.']
+      s6.per_lesson.push({ no: 6, notes: ['서술형 15분이 지나면 논술형으로 넘어가도록 안내하고, 논술형 35분은 시험처럼 조용히 진행한다.', '자료 A·B와 자신이 만든 표·그래프를 보면서 쓰게 한다(오픈 자료).'] })
+      s6.general.schedule_note = swap(s6.general.schedule_note, '5차시+보충', '5차시 + 단원 평가(6차시: 서술형 15분 + 논술형 35분)')
       // 학습 목표 축: v1 문장은 모두 과정·기능으로 읽혀 첫·끝 목표에 축을 억지로 붙이게 된다 → 축이 드러나게 문장을 다듬는다
       s2.learning_goals[0] = '계급·도수·도수분포표의 뜻을 이해하고, 자료를 계급으로 나누어 도수분포표로 나타낼 수 있다.'
       s2.learning_goals[3] = '통계적 탐구 결과를 근거로 축제 일회용품을 줄이는 목표를 정하고, 자료에 근거해 판단하는 태도를 기른다.'
-      // C-03: 자료 B 본문의 상대도수(0.24·0.30 …)는 서술형 2가 구하게 하는 답이다 → 원자료 설명만 남긴다
+      // C-03: 자료 B 본문의 상대도수(0.24·0.30 …)는 남긴 서술형이 구하게 하는 답이다 → 원자료 설명만 남긴다
       s4.materials.find((m) => m.id === 'B')!.body = RAW_B_BODY
     },
     patchLessons: (lessons) => {
       // v1 에는 차시 주제가 없어 compat 이 목표 앞 40자를 잘라 쓴다 → 안내장·평가 계획표에 보일 짧은 주제명
       setTopics(lessons, ['통계적 탐구 문제 세우기', '줄기와 잎 그림과 도수분포표', '히스토그램과 도수분포다각형', '상대도수로 두 집단 비교하기', '자료로 감축 목표 제안하기'])
       tidyFlow(lessons)
-      // v1 5차시: 공학 도구로 목표 수치 정하기 안내 + 평가 35분 → 도입 5 · 안내 15 · 작성 35 · 정리 5
-      essayTiming(lessons[4], { intro: 5, guide: 15, wrapup: 5 })
-      // I3: 도전 과제 기대 수행 — 서술형 1(20곳 전체 표·가장 큰 계급)·서술형 2(플라스틱컵 상대도수)의 값은 적지 않는다
+      // I3: 도전 과제 기대 수행 — 남긴 서술형(플라스틱컵 상대도수)의 값은 적지 않는다
       setChallenges(lessons, {
         1: '조사 항목(품목별 일회용품 개수)·대상(축제 부스)·방법(누가 언제 어떻게 셀지)을 모두 정하고, 부스 수도 함께 세어야 하는 까닭(해마다 부스 수가 달라 개수만으로는 비교하기 어려움)을 쓰면 인정',
-        2: '원자료로는 잘 보이지 않던 분포(부스가 어느 구간에 몰려 있고 어느 구간에 드문지)가 계급으로 나누면 한눈에 보인다는 점을, 연습 표(부스 11~20번)에서 도수가 가장 큰 계급을 예로 들어 설명하면 인정',
+        2: '원자료로는 잘 보이지 않던 분포(부스가 어느 구간에 몰려 있고 어느 구간에 드문지)가 계급으로 나누면 한눈에 보인다는 점을, 도수분포표에서 도수가 가장 큰 계급을 예로 들어 설명하면 인정',
         3: '히스토그램에서 가장 높은 직사각형이 있는 곳과 양 끝의 낮은 직사각형을 함께 근거로 들어, 부스들이 가운데 구간에 몰려 있고 아주 적거나 아주 많이 쓴 부스는 드물다는 뜻의 문장을 쓰면 인정',
         4: '부스 수(16곳 → 20곳)와 전체 개수(1,200개 → 1,350개)가 달라 개수가 늘어도 차지하는 비율은 그대로일 수 있음을, 종이컵처럼 개수와 상대도수가 다르게 말하는 품목을 예로 들어 설명하면 인정',
       })
-      // I3: 5차시(논술형) — v1 에 퀴즈가 없어 발문·활동지가 핵심질문 자리표시였다. 논술형 답(줄일 품목·목표 수치)은 말하지 않고 준비 과정만 다룬다.
+      // 5차시: 논술형이 단원 평가 차시로 옮겨 가 감축 목표를 세우는 교수 차시가 된다(대표 2026-09-26 보완) — 목표 수치 정하는 법은
+      // 종이컵으로 연습하고, 논술형 답(줄일 품목·목표 수치)은 말하지 않는다(C-03). 마무리 퀴즈 3문항(L-09).
+      teachFormerEssayLesson(lessons[4], {
+        time: { intro_min: 10, main_min: 40, wrapup_min: 10 },
+        intro: '2~4차시 산출물(표·히스토그램·상대도수표)을 한 장에 모으고 "자료는 무엇을 먼저 줄이라고 말하는가?"를 다시 묻는다.',
+        main: [
+          { step_label: '목표 수치 정하는 법', minutes: 20, activities: ['① (공학 도구) 스프레드시트로 자료 B의 품목별 상대도수를 계산해 그래프로 확인한다(기기가 없으면 계산기).', '② 종이컵으로 "올해 상대도수를 작년 수준으로 되돌리려면 올해 몇 개여야 하는가"를 함께 구한다.'] },
+          { step_label: '근거 문장 만들기', minutes: 20, activities: ['③ 자료의 수치를 단위·출처와 함께 인용해 "주장 + 근거" 두 문장을 짝과 써 보고 서로 고친다(품목은 각자 고른다).', '④ 다음 시간 단원 평가(서술형 15분 + 논술형 35분) 진행 방식을 안내한다.'] },
+        ],
+        wrapup: ['퀴즈 → 오늘 쓴 "주장 + 근거" 두 문장을 짝과 바꾸어 읽고 근거의 단위·출처를 확인한다'],
+        quiz: [
+          { q: '작년 종이컵의 상대도수를 반올림해 소수 둘째 자리까지 구하면?', type: 'short', choices: null, answer: '0.32', explanation: '종이컵 380개를 작년 전체 1,200개로 나누면 0.316…이므로 반올림해 0.32이다.' },
+          { q: '올해 종이컵을 작년 상대도수(0.32) 수준으로 맞추려면 올해 전체 1,350개 가운데 약 몇 개여야 하는가?', type: 'choice', choices: ['약 380개', '약 420개', '약 432개'], answer: '약 432개', explanation: '0.32 × 1,350 = 432이므로 약 432개이다. 올해 종이컵 420개는 이미 이보다 적다.' },
+          { q: '주장을 뒷받침하는 근거로 가장 알맞은 것은?', type: 'choice', choices: ['나는 일회용품이 싫다', '자료 B에서 올해 일회용 접시는 240개이다', '친구들이 그렇게 말했다'], answer: '자료 B에서 올해 일회용 접시는 240개이다', explanation: '근거는 자료에서 확인할 수 있는 수치나 사실이어야 한다.' },
+        ],
+        needed: ['스프레드시트 가능한 기기 1대 이상(없으면 계산기)'],
+      })
       setEssayLesson(lessons[4], [
         ['2~4차시에 만든 표·그래프·상대도수표 가운데 논술형에서 근거로 쓸 자료 두 가지를 골라 이름을 적어 보자.', '자료 A의 도수분포표·히스토그램, 자료 B의 품목별 개수 또는 상대도수 가운데 두 가지를 골라 무엇을 보여 주는 자료인지와 함께 쓰면 인정'],
         ['고른 자료에서 근거로 쓸 수치 두 개를 단위와 출처(자료 A/B)를 붙여 옮겨 적어 보자.', '자료에 실제로 있는 수치 두 개(예: 부스 수 16곳·20곳, 어떤 품목의 작년·올해 개수)를 단위와 출처까지 정확히 적으면 인정'],
@@ -162,25 +264,61 @@ const SETS: SetDef[] = [
       ])
     },
     patchAssessment: (a) => {
-      // 스펙 §2.5 [TS]-4: 서술형은 1~3점 단계마다 예시답안. v1 은 1점 예시가 없었다.
-      const [i1, i2, essay] = a.items
-      i1.exemplar_answers.push({ level: null, points: 1, scores: [1], assumed_short_points: null,
-        text: '10 이상 20 미만: 1, 20 이상 30 미만: 4, 30 이상 40 미만: 4, 40 이상 50 미만: 7, 50 이상 60 미만: 3, 60 이상 70 미만: 1 / 가장 큰 계급: 40개 이상 50개 미만',
-        rationale: '계급은 크기 10으로 나누었으나 도수의 절반 이상이 틀리고 가장 큰 계급도 틀려, 계급을 나누려는 시도만 인정되는 1점 단계에 해당함' })
-      // v1 2점 예시("0.24, 0.3 / 비교가 쉬워서")는 20자 미만이라 채점표 문장이 덧붙었다 → 학생 답안 모양으로
-      const two = i2.exemplar_answers.find((e) => e.points === 2)!
-      two.text = '작년 290÷1200=0.24, 올해 405÷1350=0.3이다. 상대도수로 비교하면 더 쉽기 때문이다.'
-      two.rationale = '올해 값을 소수 둘째 자리(0.30)까지 쓰지 않았고, 이유가 도수의 총합 차이와 이어지지 않아 2점 단계에 해당함'
-      i2.exemplar_answers.push({ level: null, points: 1, scores: [1], assumed_short_points: null,
-        text: '작년 290÷1200=0.29, 올해 405÷1350=0.35이다. 플라스틱컵이 늘었다.',
-        rationale: '계산식은 세웠으나 두 값이 모두 틀리고, 상대도수로 비교해야 하는 이유가 없어 1점 단계에 해당함' })
+      const [, i2, essay] = a.items
+      // 대표 2026-09-26: 서술형 하나만 — 서술형 2(상대도수)를 남기고 서술형 1(종이 표)을 뺀다(이유는 patchV1 첫 줄).
+      // 남긴 문항은 6점: 상대도수 계산 · 비율 변화 해석 · 상대도수로 비교하는 이유 세 요소 × 0~2, 총체적 상/중/하, 1~6점 예시답안.
+      // 값(0.24·0.30)과 총합(1,200·1,350)은 서술 괄호 안에 둔다 — 안내장 문구(notice-draft plain)가 괄호를 떼므로 답이 문구로 새지 않는다.
+      rebuildShortItem(i2, {
+        stem: '자료 B는 축제에서 쓰인 일회용품을 품목별로 작년과 올해로 나누어 센 자료이다. 작년과 올해 플라스틱컵의 상대도수를 각각 구하고(소수 둘째 자리까지), 플라스틱컵이 전체에서 차지하는 비율이 어떻게 달라졌는지와 개수가 아니라 상대도수로 비교해야 하는 이유를 쓰시오.',
+        element: '자료 B에서 플라스틱컵의 상대도수를 구하고, 비율의 변화와 상대도수로 비교해야 하는 이유를 쓰기',
+        length: '값 2개와 문장 2개(변화 1문장, 이유 1문장)',
+        format: '상대도수 두 값 + "~다"로 끝나는 문장 2개',
+        criteria: [
+          { name: '상대도수 계산', axis: '지식·이해', scale: [
+            '무응답이거나, 시도했으나 두 값을 모두 틀리거나 개수를 그대로 씀',
+            '두 값을 구했으나 한 값이 틀리거나 소수 둘째 자리로 쓰지 않음(예: 0.3) / 한 값만 맞게 씀',
+            '작년과 올해 플라스틱컵의 상대도수를 소수 둘째 자리까지 모두 맞게 구함(0.24, 0.30)'] },
+          { name: '비율 변화 해석', axis: '과정·기능', scale: [
+            '무응답이거나, 시도했으나 변화를 쓰지 않거나 줄었다고 씀',
+            '늘었다고 썼으나 개수가 늘어난 것인지 전체에서 차지하는 비율이 늘어난 것인지 구분하지 않음',
+            '두 상대도수를 비교해 플라스틱컵이 전체에서 차지하는 비율이 늘었다고 씀'] },
+          { name: '상대도수로 비교하는 이유', axis: '과정·기능', scale: [
+            '무응답이거나, 시도했으나 이유가 상대도수와 관련 없음',
+            '이유를 썼으나 "비교가 쉬워서"처럼 도수의 총합 차이와 연결하지 않음',
+            '두 해의 도수의 총합이 달라 개수로는 공정하게 비교할 수 없다는 점을 씀(전체 개수 1,200개·1,350개 또는 부스 수 16곳·20곳)'] },
+        ],
+        holistic: {
+          상: '두 상대도수를 소수 둘째 자리까지 맞게 구하고, 비율이 늘었다는 해석과 도수의 총합이 다르다는 이유를 모두 씀(5~6점)',
+          중: '상대도수를 구하고 변화나 이유를 썼으나 값 하나가 틀리거나 이유가 도수의 총합 차이와 이어지지 않음(3~4점)',
+          하: '상대도수 값·변화·이유 가운데 한 가지만 쓰거나 개수로만 비교함(1~2점)',
+        },
+        notes: [
+          '예시답안과 표현이 달라도 의미가 같으면 인정한다.',
+          '계산식(290÷1200 등)을 함께 쓴 경우 반올림 과정의 차이(0.241 등)는 인정하되, 답으로 쓴 값은 소수 둘째 자리여야 한다.',
+          '이유에 "전체 개수가 다르다"와 "부스 수가 다르다" 가운데 하나만 있어도 도수의 총합 차이로 인정한다.',
+          '예시답안은 유일한 정답이 아니다.',
+        ],
+        exemplars: [
+          [[2, 2, 2], '작년 플라스틱컵의 상대도수는 290÷1200=0.24, 올해는 405÷1350=0.30이다. 플라스틱컵이 전체에서 차지하는 비율이 0.24에서 0.30으로 늘었다. 두 해는 전체 개수가 1,200개와 1,350개로 달라서 개수만 비교하면 공정하지 않기 때문이다.', '두 값을 소수 둘째 자리까지 맞게 구했고(2), 차지하는 비율이 늘었다고 해석했으며(2), 도수의 총합 차이를 이유로 들어(2) 6점에 해당함'],
+          [[2, 2, 1], '작년 0.24, 올해 0.30이다. 전체에서 플라스틱컵이 차지하는 비율이 늘었다. 상대도수로 비교하면 더 쉽기 때문이다.', '값과 해석은 맞으나(2·2) 이유가 도수의 총합 차이와 이어지지 않아(1) 5점에 해당함'],
+          [[1, 2, 1], '작년 290÷1200=0.24, 올해 405÷1350=0.3이다. 플라스틱컵의 비율이 늘었다. 비율로 보면 편해서이다.', '올해 값을 소수 둘째 자리로 쓰지 않았고(1), 비율이 늘었다는 해석은 맞으나(2), 이유가 막연해(1) 4점에 해당함'],
+          [[1, 1, 1], '작년 0.24, 올해 0.35이다. 플라스틱컵이 늘었다. 상대도수가 더 정확해서이다.', '올해 값이 틀렸고(1), 개수와 비율 가운데 무엇이 늘었는지 구분하지 않았으며(1), 이유가 도수의 총합과 이어지지 않아(1) 3점에 해당함'],
+          [[0, 0, 2], '상대도수는 구하지 못했다. 작년과 올해는 부스 수가 16곳과 20곳으로 달라서 개수로만 비교하면 안 된다.', '값과 변화는 쓰지 않았으나(0·0) 도수의 총합 차이를 이유로 들어(2) 2점에 해당함'],
+          [[1, 0, 0], '작년 290÷1200=0.24, 올해 405÷1350=0.35이다.', '작년 값만 맞고(1) 변화와 이유를 쓰지 않아(0·0) 1점에 해당함'],
+        ],
+        traits: {
+          A: '두 상대도수·비율의 변화·도수의 총합이 다르다는 이유를 모두 정확히 씀',
+          B: '값과 해석은 맞으나 이유가 도수의 총합 차이와 약하게 이어짐',
+          C: '상대도수를 구해 비교하나 값의 자릿수나 이유 가운데 하나가 부족함',
+          D: '값·해석·이유 가운데 일부만 맞고 개수와 비율을 구분하지 않음',
+          E: '상대도수를 구하려는 시도는 있으나 값·해석·이유가 대부분 빠짐(미응답 포함)',
+        },
+      })
+      keepOneShort(a, 1)
       // 스펙 §2.5 [TS]-7: 논술형에는 과제 상황(GRASPS 축약)이 필수
       essay.situation = { role: '학생회 환경부원', audience: '학생회 임원과 축제 담당 선생님', purpose: '내년 축제에서 가장 먼저 줄일 일회용품과 감축 목표를 자료로 설득하기', product: '감축 제안문(300자 내외, 문단 2~3개)' }
-      // C-32: 서술형 1·2 조건 삭제. 분량의 "계급 6행"은 만들어야 할 계급 수(답의 일부)라 빼고, 서술형 2 형식의 "계산 과정(=으로 이어 쓰기)"은 풀이 방법을 알려 주므로 뺀다
-      clearShortConditions(i1); clearShortConditions(i2)
-      i1.conditions.length = '표 1개와 문장 1개'
-      i2.conditions.length = '값 2개와 문장 1개(40자 안팎)'
-      i2.conditions.format = '상대도수 두 값 + "~다"로 끝나는 문장 1개'
+      // C-32: 서술형은 조건 없음(rebuildShortItem 이 비운다). 서술형 형식에는 계산 과정(=으로 이어 쓰기) 같은 풀이 방법을 쓰지 않는다
+      clearShortConditions(i2)
       // C-32: 논술형 조건 — v1 은 문단별 순서("첫 문단: … 둘째 문단: …")와 답이 되는 수치("405개 → 200개, 0.30 → 0.15"), 답의 핵심 용어(상대도수)를 담았다 → 입장·근거 수·인용 자료·형식만
       setEssayConditions(essay, [
         ['가장 먼저 줄일 일회용품 한 가지와 감축 목표 수치를 정해 밝힐 것', '밝히다', '내용'],
@@ -190,28 +328,49 @@ const SETS: SetDef[] = [
       ], { '자료 정리의 정확성': [2, 3], '해석의 타당성': [2], '제안과 근거의 연결': [1], '수학적 표현과 서술': [3, 4] },
       '줄일 일회용품을 두 가지 이상 쓰면 처음 쓴 한 가지만 채점한다.')
     },
+    session: {
+      key_question: '자료는 내년 축제에서 무엇을 먼저 줄여야 한다고 말하는가?',
+      goal: '상대도수로 두 해를 비교하는 서술형과 자료를 근거로 감축 목표를 제안하는 논술형에 답해 단원에서 배운 것을 스스로 정리한다.',
+      intro: '평가 안내: 서술형 15분, 논술형 35분으로 나누어 쓰고, 자료 A·B와 그동안 만든 표·그래프를 보면서 쓸 수 있음을 알린다.',
+      short: '서술형 문항(상대도수)에 답안을 작성한다(15분).',
+      essay: '논술형 문항(감축 제안문)에 답안을 작성한다(35분, 퀴즈 없음 — 평가로 대체).',
+      wrapup: '제출한 답안을 문항의 분량·형식과 논술형 작성 조건에 하나씩 대조해 스스로 점검한다.',
+      caution: ['작성 중에는 자료를 다시 설명하거나 답의 방향을 알려 주지 않는다.', '서술형 15분이 지나면 논술형으로 넘어가도록 안내하되, 서술형을 마저 쓰려는 학생은 논술형 시간 안에서 쓰게 한다.'],
+    },
   },
   {
     suffix: '-과학', standardsFile: 'standards-science.json', title: '과학적 탐구와 지속가능한 삶',
     patchV1: ({ s3, s4, s6 }) => {
-      // 스펙 §2.3 [TS]: 병합 쌍 중 하나만 서·논술형이어야 한다 — 4(서술형2)·5(논술형) 병합 표시를 뗀다
+      // 대표 2026-09-26: 서술형은 하나만 — 과학은 서술형 1(재활용이 어려운 이유, 3차시 관찰과 이어짐)을 남기고 서술형 2(개인 차원 방안 + 과학적 이유)를 뺀다.
+      // 남긴 이유: 서술형 2는 논술형(개인 차원·학교 차원 방안 + 자료 B 수치 + 자료 D 근거)과 요구가 겹친다 — 두 문항 세트에서 한 학생이 같은
+      // 방안(텀블러)을 두 번 쓰게 된다. 서술형 1은 논술형이 기대는 과학 내용(재질·오염·섞임)을 먼저 점검하고, 6점으로 늘리며
+      // "플라스틱의 성질과 연결한 설명" 요소를 더해 3차시 관찰(물에 뜨고 가라앉음)을 적용하게 한다.
+      // 4·5차시 병합 표시를 뗀다(5차시 다음은 단원 평가 차시 — 병합하지 않는다, L-05)
       for (const l of s3.lessons) if (l.no === 4 || l.no === 5) l.mergeable_with = null
-      // C-03(차시 수준): 4차시 서술형 2의 과학적 이유("여러 번 써야 이득")를 수업·퀴즈·유의점이 먼저 말하지 않게 한다 —
-      // 수업은 자료 E로 두 컵을 만드는 데 드는 재료의 양과 재사용 횟수를 비교하는 데까지, 결론은 학생이 문항에서 쓴다
+      const l3 = lessonV1(s3, 3)
+      l3.flow.wrapup = swap(l3.flow.wrapup, '퀴즈 → 서술형 1 (10분)', '퀴즈 → 관찰 기록지를 모둠끼리 바꾸어 보고 자료 E와 다른 곳을 짚어 준다')
+      swapNote(s6, 3, '서술형 1은 마지막 10분에 실시하고 걷는다.', L11_NOTE)
+      // C-03(차시 수준): 4차시의 결론("여러 번 써야 이득")을 수업·퀴즈·유의점이 먼저 말하지 않게 한다(뺀 서술형 2의 답이었고, 논술형에서
+      // 학생이 스스로 판단할 근거다) — 수업은 자료 E로 두 컵을 만드는 데 드는 재료의 양과 재사용 횟수를 비교하는 데까지
       const l4 = lessonV1(s3, 4)
       l4.flow.main = swap(l4.flow.main,
         '② 자료 E로 확인: 다회용컵은 만들 때 자원이 더 들므로 여러 번 써야 이득 → "몇 번부터 이득일까" 어림 토의',
         '② 자료 E로 확인: 일회용 PET컵(약 8 g)과 스테인리스 다회용컵(약 150 g)을 만드는 데 드는 재료의 양과 재사용 횟수를 표에서 읽어 비교하기')
       l4.quiz[2] = { q: '다음 중 과학기술이 지속가능한 삶에 이바지하는 예로 알맞은 것은?', type: 'choice', choices: ['재질을 자동으로 골라내는 분리 기술', '일회용컵을 더 싸게 많이 만드는 기술', '쓰레기를 땅에 더 깊이 묻는 방법'], answer: '재질을 자동으로 골라내는 분리 기술', explanation: '재질별로 골라내면 재활용이 쉬워져 자원을 다시 쓸 수 있다.' }
-      s6.per_lesson.find((p) => p.no === 4)!.notes[0] = '"다회용컵이 무조건 좋다"는 답이 나오면 자료 E의 무게(약 150 g vs 약 8 g)를 짚어 만드는 데 드는 재료의 양을 비교하게 한다. 어느 쪽이 언제 나은지는 서술형 2에서 학생이 쓰도록 결론을 미리 말해 주지 않는다.'
-      s6.general.schedule_note = '2시간 등원이면 1·2차시 / 3·4차시 / 5차시+보충 순으로 3주가 표준. 2차시는 1차시와 병합 가능(자료 D 읽기를 1차시 정리 시간에 붙이고 "책상 위 플라스틱 찾기" 도입과 재활용 표시 확인 활동을 생략). 3차시는 관찰 활동이 핵심이고, 4·5차시는 서술형·논술형 평가 차시라 병합하지 않는다.'
-      // C-03: 자료 E 본문의 "여러 번 써야 이득"은 4차시 퀴즈·서술형 2가 끌어내게 하는 결론이다 → 수치의 전제만 남긴다
+      s6.per_lesson.find((p) => p.no === 4)!.notes[0] = '"다회용컵이 무조건 좋다"는 답이 나오면 자료 E의 무게(약 150 g vs 약 8 g)를 짚어 만드는 데 드는 재료의 양을 비교하게 한다. 어느 쪽이 언제 나은지는 학생이 스스로 판단하도록 결론을 미리 말해 주지 않는다.'
+      l4.flow.wrapup = swap(l4.flow.wrapup, '퀴즈 → 서술형 2 (10분)', '퀴즈 → 개인/사회 두 칸 표에서 모둠마다 한 줄씩 발표하고 서로 고쳐 준다')
+      swapNote(s6, 4, '서술형 2는 마지막 10분.', L11_NOTE)
+      // 5차시: 논술형은 단원 평가 차시(6)로 옮긴다 — 5차시는 제안서 뼈대를 익히는 교수 차시(teachFormerEssayLesson)가 되고 메모도 바꾼다
+      s6.per_lesson.find((p) => p.no === 5)!.notes = ['비닐봉지·나무젓가락 같은 다른 품목으로 연습하고, 일회용컵에 대한 제안 내용은 단원 평가에서 학생이 직접 쓰도록 미리 정해 주지 않는다.', '제안서 뼈대 다섯 칸은 칠판에 남겨 두어 다음 시간에도 보이게 한다.']
+      s6.per_lesson.push({ no: 6, notes: ['서술형 15분이 지나면 논술형으로 넘어가도록 안내하고, 논술형 35분은 시험처럼 조용히 진행한다. 자료 B·D·E를 보면서 쓰게 한다(오픈 자료).'] })
+      s6.general.schedule_note = '2시간 등원이면 1·2차시 / 3·4차시 / 5차시 + 단원 평가(6차시: 서술형 15분 + 논술형 35분) 순으로 3주가 표준. 2차시는 1차시와 병합 가능(자료 D 읽기를 1차시 정리 시간에 붙이고 "책상 위 플라스틱 찾기" 도입과 재활용 표시 확인 활동을 생략). 3차시는 관찰 활동이 핵심이고, 6차시는 단원 평가라 병합하지 않는다.'
+      // C-03: 자료 E 본문의 "여러 번 써야 이득"은 4차시 퀴즈가 끌어내게 하는 결론이다 → 수치의 전제만 남긴다
       const e = s4.materials.find((m) => m.id === 'E')!
       e.body = '무게는 흔히 쓰는 200~350 mL 컵의 대략적인 값이고, 재사용 횟수는 보통의 사용을 가정한 어림값이다.'
       // 문항이 참조하는 공유 자료 B·D 를 4단계 fixture 에 함께 둔다 — 공유 자료가 없는 대주제에서도 mock 5단계 [TS](없는 자료) 검사가 통과하도록.
       // 게시 때는 대주제 공유 자료가 같은 ID 를 이긴다(publish.ts buildSnapshot). 원문은 docs/samples 공유 자료 그대로.
       const shared = (readJson(join(ROOT, 'docs', 'samples', '2026-09-20-중1-일회용품-공유자료.json')) as { materials: V1Material[] }).materials
-      // M5: 공유 자료 B 는 두 과목 모두 개수만 싣는다(상대도수 0.24·0.30 = 수학 서술형 2의 답). docs/samples 도 같은 문장이지만 여기서 한 번 더 못박는다.
+      // M5: 공유 자료 B 는 두 과목 모두 개수만 싣는다(상대도수 0.24·0.30 = 수학 서술형의 답). docs/samples 도 같은 문장이지만 여기서 한 번 더 못박는다.
       s4.materials = [...shared.filter((m) => m.id === 'B' || m.id === 'D').map((m) => (m.id === 'B' ? { ...m, body: RAW_B_BODY } : m)), ...s4.materials]
     },
     patchLessons: (lessons) => {
@@ -224,16 +383,30 @@ const SETS: SetDef[] = [
         { step_label: '컵 재질 비교 관찰', minutes: 25, activities: l3.flow.main[0].activities.map((a) => a.replace(/\s*\/\s*전개\s*\d+분\s*—\s*$/u, '')) },
         { step_label: '자료 대조와 정리', minutes: 20, activities: l3.flow.main[1].activities },
       ]
-      // v1 5차시: 도입 10 · 뼈대 안내 15 · 평가 35 → 도입 10 · 안내 10 · 작성 35 · 정리 5
-      essayTiming(lessons[4], { intro: 10, guide: 10, wrapup: 5 })
-      // I3: 도전 과제 기대 수행 — 4차시는 서술형 2의 결론(다회용컵이 언제 나은지)을 적지 않고 판단 근거만 본다
+      // I3: 도전 과제 기대 수행 — 4차시는 결론(다회용컵이 언제 나은지)을 적지 않고 판단 근거만 본다
       setChallenges(lessons, {
         1: '느낌을 나타내는 말(많다·심하다)을 세거나 잴 수 있는 것(어떤 일회용품이 몇 개 나왔는지)으로 바꾸어 탐구 문제를 쓰고, 그 문제에 맞는 가설을 "~하면 ~할 것이다" 형식으로 쓰면 인정',
         2: '가볍고 잘 깨지지 않으며 값이 싸서 편리하다는 점과, 잘 변하지 않는 성질 때문에 버려진 뒤 미생물이 거의 분해하지 못해 약 수백 년 남는다는 점을 자료 D를 근거로 이어 쓰면 인정',
         3: '물에 뜨고 가라앉는 관찰 결과로 플라스틱도 종류마다 성질이 다르다는 것을 쓰고, 재활용이 잘 되는 컵과 그렇지 않은 컵의 차이를 자료 D·E의 내용으로 설명하면 인정',
-        4: '교사 확인: 자료 E의 무게(약 8 g과 약 150 g)와 재사용 횟수를 둘 다 근거로 들어 판단했는지 본다. 어느 쪽이 언제 나은지는 서술형 2에서 학생이 직접 쓰므로 결론 문장을 미리 말해 주지 않는다',
+        4: '교사 확인: 자료 E의 무게(약 8 g과 약 150 g)와 재사용 횟수를 둘 다 근거로 들어 판단했는지 본다. 어느 쪽이 언제 나은지는 학생이 스스로 판단하도록 결론 문장을 미리 말해 주지 않는다',
       })
-      // I3: 5차시(논술형) — 자리표시였던 발문(v1 흐름 문장 "도입 10분 — …"이 힌트로 들어감)·활동지를 제안서 준비 과정으로 바꾼다. 제안 내용은 말하지 않는다.
+      // 5차시: 논술형이 단원 평가 차시로 옮겨 가 제안서 뼈대를 익히는 교수 차시가 된다(대표 2026-09-26 보완) — 다른 품목(비닐봉지·
+      // 나무젓가락·일회용 접시)으로 연습하고 일회용컵 제안 내용은 말하지 않는다(C-03). 마무리 퀴즈 3문항(L-09).
+      teachFormerEssayLesson(lessons[4], {
+        time: { intro_min: 10, main_min: 40, wrapup_min: 10 },
+        intro: '2~4차시 산출물(자료 D 밑줄, 관찰 기록지, 개인/사회 두 칸 표)을 책상에 펼치고 "우리 학교는 무엇을 바꾸는 것이 과학적으로 가장 타당한가?"를 다시 묻는다.',
+        main: [
+          { step_label: '제안서 뼈대 익히기', minutes: 20, activities: ['① 제안서의 뼈대 안내: 자료의 수치로 문제 짚기 → 과학적 이유 → 제안 → 개인 방안 → 학교 방안', '② 비닐봉지를 예로 교사가 뼈대 칸마다 한 문장씩 말로 보여 준다(일회용컵 제안은 단원 평가에서 학생이 쓴다).'] },
+          { step_label: '근거 연결 연습', minutes: 20, activities: ['③ 모둠별로 나무젓가락이나 일회용 접시 가운데 하나를 골라 뼈대의 첫 두 칸(수치·과학적 이유)을 써 보고 서로 고친다.', '④ 다음 시간 단원 평가(서술형 15분 + 논술형 35분) 진행 방식을 안내한다.'] },
+        ],
+        wrapup: ['퀴즈 → 모둠이 쓴 뼈대 두 칸을 발표하고 근거에 자료 이름과 단위가 있는지 서로 확인한다'],
+        quiz: [
+          { q: '제안서의 "과학적 이유" 칸에 들어갈 내용으로 가장 알맞은 것은?', type: 'choice', choices: ['플라스틱은 미생물이 거의 분해하지 못해 오래 남는다', '플라스틱컵은 색이 예쁘다', '친구들이 다회용컵을 좋아한다'], answer: '플라스틱은 미생물이 거의 분해하지 못해 오래 남는다', explanation: '과학적 이유는 자료 D처럼 물질의 성질이나 자연에서 일어나는 일로 설명하는 내용이다.' },
+          { q: '다음 중 개인 차원의 방안은?', type: 'choice', choices: ['장바구니를 들고 다닌다', '학교가 급식실에 세척기를 들인다', '시청이 분리수거 시설을 늘린다'], answer: '장바구니를 들고 다닌다', explanation: '개인 차원은 나 혼자 할 수 있는 일이고, 학교·사회 차원은 여럿이 정하거나 설비가 필요한 일이다.' },
+          { q: '자료 B의 수치를 근거로 쓸 때 함께 적어야 하는 것은?', type: 'choice', choices: ['단위와 출처(자료 이름)', '글쓴이의 느낌', '다른 학생의 의견'], answer: '단위와 출처(자료 이름)', explanation: '수치는 단위와 어느 자료에서 왔는지를 함께 적어야 근거가 된다.' },
+        ],
+        needed: ['제안서 뼈대 활동지'],
+      })
       setEssayLesson(lessons[4], [
         ['제안서에서 근거로 쓸 자료 두 가지를 골라, 각 자료가 알려 주는 것을 한 줄씩 적어 보자.', '자료 B(품목별 작년·올해 개수), 자료 D(플라스틱의 재료·분해·재활용), 자료 E(컵 재질 비교) 가운데 두 가지를 골라 알려 주는 내용을 맞게 쓰면 인정'],
         ['자료 B에서 근거로 쓸 수치 두 개를 단위와 함께 옮겨 적어 보자.', '자료 B에 실제로 있는 개수 두 개(예: 한 품목의 작년 개수와 올해 개수)를 단위(개)와 함께 정확히 적으면 인정'],
@@ -246,22 +419,76 @@ const SETS: SetDef[] = [
     patchMaterials: (materials) => materials.map((m) => (m.id === 'D' ? { ...m, role: 'context' as const } : m)),
     patchAssessment: (a) => {
       a.items[2].situation = { role: '학교 환경 동아리 부원', audience: '학생회와 교장 선생님', purpose: '축제의 일회용컵 문제를 줄일 과학적 해결 방안을 설득하기', product: '해결 방안 제안서(300자 내외)' }
-      // I3: v1 1점 예시("학교가 다회용컵을 빌려준다.")는 20자 미만이라 compat 이 '짧은 답안' 표시를 붙인다 → 1점 단계 모양의 학생 답안으로
-      const one = a.items[1].exemplar_answers.find((e) => e.points === 1)!
-      one.text = '학교가 축제 때 다회용컵을 빌려주고 다 쓴 컵은 돌려받으면 된다.'
-      one.rationale = '학교(사회) 차원의 방안을 개인 방안으로 제시했고, 그 방안이 효과가 있는 과학적 이유가 없어 1점 단계에 해당함'
+      // 대표 2026-09-26: 서술형 하나만 — 서술형 1(재활용이 어려운 이유)을 남기고 서술형 2를 뺀다(이유는 patchV1 첫 줄).
+      // 남긴 문항은 6점: 재활용을 어렵게 하는 요인 · 자료를 근거로 밝히기 · 성질과 연결한 설명 세 요소 × 0~2, 총체적 상/중/하, 1~6점 예시답안.
+      rebuildShortItem(a.items[0], {
+        stem: '자료 D는 플라스틱의 재료와 분해·재활용을, 자료 E는 컵 재질별 무게·재사용 횟수·재활용 특성을 담고 있다. 자료 D와 자료 E를 근거로, 축제에서 사용한 플라스틱컵을 재활용하기 어려운 이유 두 가지를 쓰고, 그중 한 가지는 플라스틱의 성질과 연결해 왜 재활용이 어려워지는지 설명하시오.',
+        element: '자료 D·E를 근거로 플라스틱컵을 재활용하기 어려운 이유 두 가지를 쓰고 플라스틱의 성질과 연결해 설명하기',
+        length: '세 문장 안팎(이유 두 문장 + 성질 설명 한 문장)',
+        format: '"~다"로 끝나는 문장',
+        criteria: [
+          { name: '재활용을 어렵게 하는 요인', axis: '지식·이해', scale: [
+            '무응답이거나, 시도했으나 "환경에 나쁘다"처럼 재활용과 관련 없는 내용이나 과학적으로 틀린 내용만 씀',
+            '요인을 두 가지 썼으나 한 가지만 맞거나 같은 요인을 되풀이해 서로 다른 요인으로 구분하지 않음 / 요인을 한 가지만 씀',
+            '서로 다른 요인 두 가지를 맞게 씀(음료 등 이물질 오염 / 서로 다른 재질이 섞임 / 색소·첨가제 가운데 2개)'] },
+          { name: '자료를 근거로 밝히기', axis: '과정·기능', scale: [
+            '무응답이거나, 시도했으나 자료 D·E의 내용을 하나도 근거로 들지 않음',
+            '한 요인은 자료 D·E의 내용으로 뒷받침했으나 다른 요인의 근거가 없음',
+            '두 요인 모두 자료 D 또는 자료 E의 내용을 근거로 밝힘(예: 종류별로 따로 모아야 다시 쓸 수 있음, PET와 PP가 섞이면 둘 다 재활용이 어려움)'] },
+          { name: '성질과 연결한 설명', axis: '과정·기능', scale: [
+            '무응답이거나, 시도했으나 플라스틱의 성질을 언급하지 않음',
+            '성질을 언급했으나 그 성질 때문에 재활용이 어려워지는 까닭과 연결하지 않음(예: "PP는 물에 뜬다"만 씀)',
+            '재질마다 성질이 달라 섞이면 종류별로 나누어 다시 녹여 쓰기 어렵다는 인과를 씀(물에 뜨고 가라앉음, 녹는 온도 등)'] },
+        ],
+        holistic: {
+          상: '재활용을 어렵게 하는 서로 다른 요인 두 가지를 자료로 뒷받침하고, 재질마다 성질이 달라 섞이면 나누어 다시 쓰기 어렵다는 인과까지 씀(5~6점)',
+          중: '요인 두 가지를 썼으나 근거가 한쪽만 있거나, 성질을 언급했으나 재활용이 어려워지는 까닭과 연결하지 않음(3~4점)',
+          하: '요인을 한 가지만 쓰거나 "썩지 않는다"처럼 재활용과 다른 문제를 씀(1~2점)',
+        },
+        notes: [
+          '예시답안과 표현이 달라도 의미가 같으면 인정한다.',
+          '"잘 썩지 않는다"는 분해의 문제이지 재활용을 어렵게 하는 요인이 아니므로 요인으로 인정하지 않는다.',
+          '종이컵 안쪽의 플라스틱 막처럼 자료 E에 나온 다른 재질 혼합의 예를 들어도 "서로 다른 재질이 섞임"으로 인정한다.',
+          '예시답안은 유일한 정답이 아니다.',
+        ],
+        exemplars: [
+          [[2, 2, 2], '컵 안에 음료가 남아 있으면 오염되어 재활용하기 어렵다고 자료 D에 나와 있다. 또 자료 E처럼 PET 컵과 PP 뚜껑이 섞이면 둘 다 재활용이 어려워진다. PET는 물에 가라앉고 PP는 뜨는 것처럼 재질마다 성질이 달라서, 섞여 있으면 종류별로 나누어 다시 녹여 쓸 수 없기 때문이다.', '서로 다른 요인 두 가지(오염·재질 섞임)를 쓰고(2), 둘 다 자료 D·E로 뒷받침했으며(2), 성질 차이 때문에 나누어 다시 쓰기 어렵다는 인과를 써(2) 6점에 해당함'],
+          [[2, 2, 1], '자료 D를 보면 음료가 남은 컵은 오염되어 재활용이 어렵다. 자료 E를 보면 PET와 PP가 섞이면 둘 다 재활용이 어려워진다. PET는 가라앉고 PP는 물에 뜬다.', '요인 두 가지와 자료 근거는 맞으나(2·2), 뜨고 가라앉는 성질을 재활용이 어려운 까닭과 연결하지 않아(1) 5점에 해당함'],
+          [[2, 1, 1], '음료가 남아 있으면 더러워서 재활용이 어렵다. 컵과 뚜껑의 재질이 달라서 섞이면 어렵다고 자료 E에 있다. 플라스틱은 종류마다 무게가 다르다.', '요인 두 가지는 맞으나(2) 자료 근거는 한 요인에만 있고(1), 무게 차이를 재활용과 연결하지 않아(1) 4점에 해당함'],
+          [[1, 1, 1], '자료 D에 음료가 남아 있으면 재활용이 어렵다고 나와 있다. 플라스틱은 잘 썩지 않아서 재활용이 어렵다. PP는 물에 뜬다.', '"잘 썩지 않는다"는 재활용 요인이 아니어서 요인은 한 가지만 인정되고(1), 근거도 한 요인에만 있으며(1), 성질을 언급만 해(1) 3점에 해당함'],
+          [[1, 0, 1], '음료가 남아 있으면 재활용하기 어렵다. 플라스틱은 종류마다 무게가 다르다.', '요인 한 가지를 쓰고(1) 자료 근거는 없으며(0), 성질을 언급했으나 재활용과 연결하지 않아(1) 2점에 해당함'],
+          [[1, 0, 0], '플라스틱컵은 잘 썩지 않고, 음료가 남아 있으면 재활용이 어렵다.', '오염 한 가지만 요인으로 인정되고(1) 자료 근거와 성질 설명이 없어(0·0) 1점에 해당함'],
+        ],
+        traits: {
+          A: '서로 다른 요인 두 가지를 자료로 뒷받침하고 성질 차이와 재활용의 인과를 설명함',
+          B: '요인과 근거는 맞으나 성질과 재활용을 잇는 설명이 부분적임',
+          C: '요인 두 가지를 쓰나 자료 근거나 성질 설명 가운데 하나가 부족함',
+          D: '요인을 한 가지만 맞게 쓰고 근거·성질 설명이 대부분 빠짐',
+          E: '재활용과 관련된 요인을 찾으려는 시도는 있으나 핵심이 빠짐(미응답 포함)',
+        },
+      })
+      keepOneShort(a, 0)
       // M5: 공유 자료 B 에 상대도수가 없으므로 상 예시답안은 자료 B의 개수를 인용한다(비율을 계산해 쓰는 것은 학생의 몫이라 괜찮지만 예시는 개수로)
-      const top = a.items[2].exemplar_answers.find((e) => e.level === '상')!
+      const top = a.items[1].exemplar_answers.find((e) => e.level === '상')!
       top.text = swap(top.text, '자료 B를 보면 플라스틱컵은 작년 290개에서 올해 405개로 늘었고, 전체에서 차지하는 비율도 0.24에서 0.30으로 품목 가운데 가장 크게 올랐다.',
         '자료 B를 보면 플라스틱컵은 작년 290개에서 올해 405개로 115개 늘어, 다섯 품목 가운데 가장 많이 늘었다.')
-      // C-32: 서술형 1·2 조건 삭제(인용할 자료는 발문이 이미 "자료 D와 자료 E를 근거로"라고 밝힌다). 논술형은 지침 4개 그대로 두되 문장을 다듬고 요소별로 대응시킨다
-      clearShortConditions(a.items[0]); clearShortConditions(a.items[1])
-      setEssayConditions(a.items[2], [
+      // C-32: 서술형 조건 없음(인용할 자료는 발문이 이미 "자료 D와 자료 E를 근거로"라고 밝힌다). 논술형은 지침 4개 그대로 두되 문장을 다듬고 요소별로 대응시킨다
+      clearShortConditions(a.items[0])
+      setEssayConditions(a.items[1], [
         ['자료 B의 수치를 한 개 이상 근거로 인용할 것', '인용하다', '내용'],
         ['자료 D의 과학적 내용을 한 개 이상 근거로 인용할 것', '인용하다', '내용'],
         ['개인 차원과 학교(사회) 차원의 방안을 한 가지씩 쓸 것', '쓰다', '내용'],
         ['"~다"로 끝나는 문장으로 쓸 것', '쓰다', '형식'],
       ], { '과학적 근거의 정확성': [1, 2], '문제와 해결 방안의 연결': [1, 2], '실천 가능성(개인·사회 구분)': [3], '서술': [4] }, null)
+    },
+    session: {
+      key_question: '축제의 일회용컵 문제를 줄이기 위해 우리 학교가 무엇을 바꾸는 것이 과학적으로 가장 타당한가?',
+      goal: '재활용이 어려운 까닭을 설명하는 서술형과 과학적 근거로 해결 방안을 제안하는 논술형에 답해 단원에서 배운 것을 스스로 정리한다.',
+      intro: '평가 안내: 서술형 15분, 논술형 35분으로 나누어 쓰고, 자료 B·D·E를 보면서 쓸 수 있음을 알린다.',
+      short: '서술형 문항(재활용이 어려운 이유)에 답안을 작성한다(15분).',
+      essay: '논술형 문항(해결 방안 제안서)에 답안을 작성한다(35분, 퀴즈 없음 — 평가로 대체).',
+      wrapup: '제출한 답안을 문항의 분량·형식과 논술형 작성 조건에 하나씩 대조해 스스로 점검한다.',
+      caution: ['작성 중에는 자료를 다시 설명하거나 답의 방향을 알려 주지 않는다.', '서술형 15분이 지나면 논술형으로 넘어가도록 안내하되, 서술형을 마저 쓰려는 학생은 논술형 시간 안에서 쓰게 한다.'],
     },
   },
 ]
@@ -284,6 +511,7 @@ export function convertSet(set: SetDef): { files: Record<string, unknown>; probl
   set.patchLessons?.(lessons)
   const assessment = upgradeAssessmentV1(s5)
   set.patchAssessment?.(assessment)
+  if (set.session) { clearLessonAssessments(lessons); appendAssessmentSession(lessons, assessment, set.session) }
   const stage3 = { unit_plan: unitPlanFrom(set.title, input.s2.key_question_candidates[0], lessons, assessment), lessons }
   const materials = input.s4.materials.map(upgradeMaterialV1)
   const stage4 = { materials: set.patchMaterials ? set.patchMaterials(materials) : materials }
