@@ -104,6 +104,21 @@ describe('staticIssues', () => {
     const noHolistic = structuredClone(assessmentV2); noHolistic.items[0].rubric.holistic = null
     expect(staticIssues(5, noHolistic, { standards, prior }).some((i) => i.detail.includes('총체적'))).toBe(true)
   })
+  it('stage 5: 척도는 점수로 읽는다 — 만점부터 적은(내림차순) 채점표도 0점 서술을 찾고, 풀어 쓴 무응답·시도("쓰지 않았거나 …썼지만")는 인정한다(2026-09-25 영어 세트)', () => {
+    const prior = { stage4: { materials }, stage3: { lessons: [] } }
+    const zeroNotes = (a: unknown) => staticIssues(5, a, { standards, prior }).filter((i) => i.detail.includes('0점 서술'))
+    const desc = structuredClone(assessmentV2)
+    for (const it of desc.items) for (const c of it.rubric.criteria) {
+      c.scale = [...c.scale].reverse().map((s) => (s.points === 0 ? { ...s, descriptor: '답을 쓰지 않았거나, 영어 문장을 썼지만 자료 F의 사실을 하나도 담지 않음' } : s))
+      expect(c.scale[0].points).toBe(c.max)   // index 0 = 만점 서술(저장된 영어 세트와 같은 순서)
+    }
+    expect(zeroNotes(desc)).toEqual([])
+    // 무응답만 있고 시도 구분이 없는 0점 서술은 여전히 잡는다(순서와 무관)
+    const noAttempt = structuredClone(desc); noAttempt.items[1].rubric.criteria[2].scale.at(-1)!.descriptor = '답을 쓰지 않음(빈 답안)'
+    expect(zeroNotes(noAttempt).map((i) => i.detail)).toEqual([`문항 2 ${noAttempt.items[1].rubric.criteria[2].name}: 0점 서술에 무응답·시도 구분이 없음`])
+    const neither = structuredClone(desc); neither.items[0].rubric.criteria[0].scale.at(-1)!.descriptor = '자료의 사실을 하나도 담지 않음'
+    expect(zeroNotes(neither)).toHaveLength(1)
+  })
   it('stage 5: criterion names must differ across the two items (the 단원 평가 차시 notice splits them by name)', () => {
     const prior = { stage4: { materials }, stage3: { lessons: [] } }
     const dup = structuredClone(assessmentV2); dup.items[0].rubric.criteria[0].name = dup.items[1].rubric.criteria[0].name

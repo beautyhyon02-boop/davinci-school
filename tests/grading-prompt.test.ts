@@ -60,6 +60,15 @@ describe('buildGradingPrompt v2', () => {
     const legacy = structuredClone(snapshot); legacy.assessment!.items[0].rubric.holistic = null
     expect(buildGradingPrompt({ snapshot: legacy, itemNo: 1, studentGrade: 1, answer: 'x'.repeat(60) }).user).not.toContain('총체적 기준')
   })
+  it('척도는 0점부터 오름차순으로 옮긴다 — 만점부터 저장된(내림차순) 채점표도 같은 줄을 만든다(lib/studio/scale.ts)', () => {
+    const c = assessment.items[0].rubric.criteria[0]
+    const line = `${c.name}(max=${c.max}, ${c.axis}): ${[0, 1, 2].map((p) => `${p}=${c.scale.find((s: { points: number }) => s.points === p).descriptor}`).join(' / ')}`
+    expect(buildGradingPrompt({ snapshot, itemNo: 1, studentGrade: 1, answer: 'x' }).user).toContain(line)
+    const desc = structuredClone(snapshot)
+    for (const cr of desc.assessment!.items[0].rubric.criteria) cr.scale.reverse()
+    expect(desc.assessment!.items[0].rubric.criteria[0].scale[0].points).toBe(c.max)
+    expect(buildGradingPrompt({ snapshot: desc, itemNo: 1, studentGrade: 1, answer: 'x' }).user).toContain(line)
+  })
 })
 
 describe('grading fixtures follow the v2 math items (mock mode)', () => {

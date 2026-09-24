@@ -115,6 +115,17 @@ describe('옛 v2 판(2026-09-26 이전)의 모양 맞추기', () => {
     const s = upgradeSnapshot(early())
     expect(normalizeSnapshotV2(s)).toBe(s); expect(upgradeSnapshot(s)).toBe(s)
   })
+  it('채점표 척도가 만점부터(내림차순) 저장된 판은 0점부터 오름차순으로 맞춘다 — 고칠 것이 없으면 같은 객체(2026-09-25 영어 세트)', () => {
+    const s = upgradeSnapshot(early())
+    const desc = structuredClone(s)
+    for (const it of desc.assessment!.items) for (const c of it.rubric.criteria) c.scale.reverse()
+    expect(desc.assessment!.items[0].rubric.criteria[0].scale[0].points).toBeGreaterThan(0)
+    const fixed = upgradeSnapshot(desc)
+    expect(fixed).not.toBe(desc)
+    for (const it of fixed.assessment!.items) for (const c of it.rubric.criteria) expect(c.scale.map((x) => x.points)).toEqual(Array.from({ length: c.max + 1 }, (_, p) => p))
+    expect(fixed.assessment).toEqual(s.assessment)
+    expect(upgradeSnapshot(fixed)).toBe(fixed)
+  })
   it('unitPlanFrom writes one placement per assessed kind (단원 평가 차시 = two placements on one lesson)', () => {
     const lessons = v1('stage3-generate').lessons.map((l: Parameters<typeof upgradeLessonV1>[0]) => upgradeLessonV1(l, []))
     const session = { ...lessons[4], no: 6, kind: 'assessment' as const, assessment: ['서술형' as const, '논술형' as const] }

@@ -1,6 +1,7 @@
 import type { Snapshot } from '@/lib/studio/publish'
 import { GRADING_PROMPT_RULES } from '@/lib/studio/prompts/rules/grading'
 import { gradeLabel } from '@/lib/studio/level-map'
+import { sortScale } from '@/lib/studio/scale'
 
 /** 고정 규칙(첫 system 블록 = 캐시 대상). 부록 A.4 G-01~G-09 중 모델이 지킬 문장(rules/grading.ts). */
 export const GRADING_RULES = GRADING_PROMPT_RULES
@@ -20,7 +21,7 @@ export function buildGradingPrompt({ snapshot, itemNo, studentGrade, answer }: G
   if (!item) throw new Error(`item ${itemNo} not found`)
   const { criteria, holistic, notes } = item.rubric
   const rubric = criteria
-    .map((c) => `- ${c.name}(max=${c.max}, ${c.axis}${c.condition_nos.length ? `, 조건 ${c.condition_nos.join('·')}` : ''}): ${[...c.scale].sort((x, y) => y.points - x.points).map((s) => `${s.points}=${s.descriptor}${s.example ? ` (예: ${s.example})` : ''}`).join(' / ')}`)
+    .map((c) => `- ${c.name}(max=${c.max}, ${c.axis}${c.condition_nos.length ? `, 조건 ${c.condition_nos.join('·')}` : ''}): ${sortScale(c.scale).map((s) => `${s.points}=${s.descriptor}${s.example ? ` (예: ${s.example})` : ''}`).join(' / ')}`)
     .join('\n')
   const exemplars = item.exemplar_answers
     .map((e) => `[${e.level ?? `${e.points}점`}] 요소별 ${e.scores.join('·')} = ${e.points}점 — ${e.rationale}\n${e.text}`)

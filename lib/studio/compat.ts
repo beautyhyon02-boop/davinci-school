@@ -3,6 +3,7 @@ import { Lesson, Material, Assessment, TeacherGuide, AssessmentItem, type Recons
 import { levelMapFor, levelRefFor } from './level-map'
 import { lessonAssessments, kindFamily, isUnitAssessmentSession, type ItemKind } from './assessment-structure'
 import { conditionHints, materialNumbers } from './checks'
+import { sortAssessmentScales, stepAt, maxStep, zeroStep } from './scale'
 
 type LessonT = z.infer<typeof Lesson>
 type MaterialT = z.infer<typeof Material>
@@ -189,14 +190,15 @@ export function normalizeLessonsV2(lessons: LessonT[]): LessonT[] {
 }
 
 /**
- * v2 판을 읽을 때의 모양 맞추기(차시 라벨·kind, 평가 계획 라벨, 조건의 풀이 힌트 — C-32). 고칠 것이 없으면 같은 객체(스펙 §4.3).
+ * v2 판을 읽을 때의 모양 맞추기(차시 라벨·kind, 평가 계획 라벨, 조건의 풀이 힌트 — C-32, 채점표 척도 순서). 고칠 것이 없으면 같은 객체(스펙 §4.3).
  * 조건 정리(cleanAssessmentConditions)는 2026-09-26 이전에 v2 로 이미 저장된 판(문항 schema_version 은 2지만 조건은 옛 규칙 이전)까지 다시 본다.
+ * 척도는 0점부터 오름차순으로 맞춘다(생성 AI가 만점부터 적은 판이 있다 — 2026-09-25 영어 세트, lib/studio/scale.ts).
  */
 export function normalizeSnapshotV2(s: SnapshotV2): SnapshotV2 {
   const lessons = normalizeLessonsV2(s.lessons ?? [])
   const plan = s.unit_plan?.assessment_plan?.summative_placement
   const planFix = Array.isArray(plan) && plan.some((p) => p.kind !== '서술형' && p.kind !== '논술형')
-  const assessment = cleanAssessmentConditions(s.assessment, s.materials ?? [])
+  const assessment = sortAssessmentScales(cleanAssessmentConditions(s.assessment, s.materials ?? []))
   if (lessons === s.lessons && !planFix && assessment === s.assessment) return s
   const unit_plan = planFix && s.unit_plan
     ? { ...s.unit_plan, assessment_plan: { ...s.unit_plan.assessment_plan, summative_placement: plan!.map((p) => ({ ...p, kind: kindFamily(p.kind) })) } }
@@ -335,7 +337,8 @@ export function upgradeItemV1(it: ItemV1, exemplars: AssessmentV1['exemplars'], 
     }))
   } else {
     const criteria = it.rubric.criteria.map((c) => ({ name: c.name, axis: axisOf(c.name), condition_nos: allNos, max: 4, scale: (['0', '1', '2', '3', '4'] as const).map((k) => ({ points: Number(k), descriptor: k === '0' ? `${c.bands[k]}${ZERO_TAIL}` : c.bands[k], example: null })) }))
-    rubric = { criteria, holistic: { 상: criteria.map((c) => c.scale[4].descriptor).join(' / '), 중: criteria.map((c) => c.scale[2].descriptor).join(' / '), 하: criteria.map((c) => c.scale[1].descriptor).join(' / ') }, notes: ['예시답안과 표현이 달라도 의미가 같으면 인정한다.'] }
+    const at = (p: number) => criteria.map((c) => stepAt(c.scale, p)!.descriptor).join(' / ')
+    rubric = { criteria, holistic: { 상: at(4), 중: at(2), 하: at(1) }, notes: ['예시답안과 표현이 달라도 의미가 같으면 인정한다.'] }
     exemplar_answers = exemplars.map((e) => {
       const sum = e.scores.reduce((s, v) => s + v, 0)
       // v1 total 은 서술형 두 문항의 가정 점수를 포함했다 → 그 차이를 assumed_short_points 로 남겨 등급 밴드 대조를 유지한다
@@ -396,7 +399,8 @@ export function upgradeTeacherGuideV1(g: GuideV1, lessons: LessonT[], assessment
   const items = assessment?.items ?? []
   const errorOf = (it: AssessmentT['items'][number], i: number, k: number) => {
     const c = it.rubric.criteria[k]
-    return { item_no: i + 1, error: c.scale.find((x) => x.points === 1)?.descriptor ?? c.scale[0].descriptor, how_to_read: c.scale.find((x) => x.points === c.max)?.descriptor ?? c.scale[c.scale.length - 1].descriptor }
+    // 척도는 점수로 찾는다(배열 순서 아님 — lib/studio/scale.ts)
+    return { item_no: i + 1, error: (stepAt(c.scale, 1) ?? zeroStep(c.scale) ?? c.scale[0]).descriptor, how_to_read: (maxStep(c.scale, c.max) ?? maxStep(c.scale)!).descriptor }
   }
   const common_errors = items.map((it, i) => errorOf(it, i, 0))
   for (let k = 1; common_errors.length < 3 && items.some((it) => it.rubric.criteria.length > k); k++) {
