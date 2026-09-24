@@ -56,7 +56,15 @@ export function FieldEditor({
 
   function save() {
     setError(null)
-    const next = applyFieldEdits(output, fields, values)
+    let next: unknown
+    try {
+      next = applyFieldEdits(output, fields, values)
+    } catch (e) {
+      // 칸 경로가 출력과 어긋나면(다른 곳에서 바뀐 출력 등) 예외 대신 일반 오류 문구를 보인다
+      console.error('[studio] field edit apply failed', e)
+      setError({ message: app.studio.wizard.errors.generic })
+      return
+    }
     const invalid = validateEdited(stage, next, fields)
     if (invalid) {
       const field = fields.find((f) => f.id === invalid.fieldId)

@@ -11,6 +11,14 @@ describe('mentionedMaterialIds', () => {
     expect(mentionedMaterialIds('자료 D와 E를 비교')).toEqual(['D', 'E'])
     expect(mentionedMaterialIds('자료 F, G 중에서')).toEqual(['F', 'G'])
   })
+  it('expands ranges (리뷰 2026-09-26: "자료 A~D"만 적힌 참조가 B·C·D를 빼면 안 된다)', () => {
+    expect(mentionedMaterialIds('자료 A~D를 활용')).toEqual(['A', 'B', 'C', 'D'])
+    expect(mentionedMaterialIds('자료 A-D 참고')).toEqual(['A', 'B', 'C', 'D'])
+    expect(mentionedMaterialIds('자료 B–D 참고')).toEqual(['B', 'C', 'D'])
+    expect(mentionedMaterialIds('자료 A부터 D까지 읽는다')).toEqual(['A', 'B', 'C', 'D'])
+    expect(mentionedMaterialIds('자료 A ~ C와 E를 비교')).toEqual(['A', 'B', 'C', 'E'])
+    expect(mentionedMaterialIds('자료 A-1번 칸')).toEqual(['A'])
+  })
   it('ignores words that only start with a capital letter', () => {
     expect(mentionedMaterialIds('자료 AB는 없다')).toEqual([])
     expect(mentionedMaterialIds('자료를 읽는다 A')).toEqual([])

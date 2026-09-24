@@ -294,6 +294,13 @@ describe('buildSnapshot: 참조하는 자료만 싣는다(materials_omitted)', (
     expect(snap.materials_omitted).toEqual(['A', 'H', 'I'])
   })
 
+  it('keeps B·C·D when the only reference to them is a range in a lesson sentence ("자료 A~D")', () => {
+    const lessons = [{ no: 1, materials_used: [], flow: { intro: ['자료 A~D를 훑어보며 오늘 질문을 연다.'], main: [], wrapup: [] } }] as never
+    const snap = buildSnapshot({ theme, itemSet: { ...baseItemSet, materials: setMaterials, assessment, lessons }, standards: [], version: 1 })
+    expect(snap.materials.map((m) => m.id)).toEqual(['A', 'B', 'C', 'D', 'E', 'F'])
+    expect(snap.materials_omitted).toEqual(['G', 'H', 'I'])
+  })
+
   it('keeps every material when nothing references any yet (early draft preview)', () => {
     const snap = buildSnapshot({ theme, itemSet: { ...baseItemSet, materials: setMaterials }, standards: [], version: 1 })
     expect(snap.materials).toHaveLength(9)

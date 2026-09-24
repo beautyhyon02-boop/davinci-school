@@ -26,13 +26,25 @@ export const titleHasSourceMarker = (title: string): boolean => cleanMaterialTit
  */
 export const MAX_SET_MATERIALS = 5
 
-// 문장 속 자료 언급: "자료 A", "자료 A·B", "자료 A와 B", "자료 A, C", "자료B" — 뒤에 영문자가 이어지면(자료 AB 등) 언급으로 보지 않는다.
-const MENTION = /자료\s*([A-Z](?![A-Za-z])(?:\s*(?:,|·|\/|와|과|및|또는)\s*[A-Z](?![A-Za-z]))*)/g
+// 문장 속 자료 언급: "자료 A", "자료 A·B", "자료 A와 B", "자료 A, C", "자료B", 범위 "자료 A~D"·"A-D"·"A–D"·"A부터 D까지",
+// 섞어 쓴 "자료 A~C와 E". 뒤에 영문자가 이어지면(자료 AB 등) 언급으로 보지 않는다.
+const ID = '[A-Z](?![A-Za-z])'
+const RANGE_SEP = '(?:~|-|–|부터)'
+const TOKEN = `${ID}(?:\\s*${RANGE_SEP}\\s*${ID}(?:\\s*까지)?)?`
+const LIST_SEP = '\\s*(?:,|·|/|와|과|및|또는)\\s*'
+const MENTION = new RegExp(`자료\\s*(${TOKEN}(?:${LIST_SEP}${TOKEN})*)`, 'g')
+const TOKEN_PARTS = new RegExp(`([A-Z])(?:\\s*${RANGE_SEP}\\s*([A-Z]))?`, 'g')
 
-/** 문장에서 '자료 X' 언급의 ID(대문자 한 글자)를 모두 뽑는다(중복 제거 전). */
+/** 문장에서 '자료 X' 언급의 ID(대문자 한 글자)를 모두 뽑는다(중복 제거 전). 범위(A~D)는 사이 글자까지 모두 펼친다. */
 export function mentionedMaterialIds(text: string): string[] {
   const out: string[] = []
-  for (const m of text.matchAll(MENTION)) for (const id of m[1].match(/[A-Z]/g) ?? []) out.push(id)
+  for (const m of text.matchAll(MENTION)) {
+    for (const [, from, to] of m[1].matchAll(TOKEN_PARTS)) {
+      if (!to) { out.push(from); continue }
+      const [a, b] = [from.charCodeAt(0), to.charCodeAt(0)].sort((x, y) => x - y)
+      for (let c = a; c <= b; c++) out.push(String.fromCharCode(c))
+    }
+  }
   return out
 }
 
