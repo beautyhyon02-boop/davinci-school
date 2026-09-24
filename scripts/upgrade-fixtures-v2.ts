@@ -517,7 +517,8 @@ export function convertSet(set: SetDef): { files: Record<string, unknown>; probl
   set.patchAssessment?.(assessment)
   if (set.session) { clearLessonAssessments(lessons); appendAssessmentSession(lessons, assessment, set.session) }
   const stage3 = { unit_plan: unitPlanFrom(set.title, input.s2.key_question_candidates[0], lessons, assessment), lessons }
-  const materials = input.s4.materials.map(upgradeMaterialV1)
+  // 대표님 지시(2026-09-26): 자료 제목의 '본사 자작' 같은 내부 표기는 지운다.
+  const materials = input.s4.materials.map(upgradeMaterialV1).map((m) => ({ ...m, title: m.title.replace(/\s*\((?:[^()]*?,\s*)?본사 자작\)/g, '') }))
   const stage4 = { materials: set.patchMaterials ? set.patchMaterials(materials) : materials }
   ctx.prior = { stage2, stage3, stage4 }
   const stage5 = enrichOutput(5, assessment, ctx)
