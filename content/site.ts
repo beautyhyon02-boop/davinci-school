@@ -470,6 +470,8 @@ export const app = {
     },
     answersToggle: '정답·채점 자료 펼치기',
     materialsHeading: '자료',
+    // 관리자 미리보기만: 게시 판에서 뺀 자료(어느 문항·차시도 쓰지 않음, 대표 2026-09-26 — 세트는 실제로 쓰는 자료만 싣는다)
+    materialsOmitted: (ids: string[]) => `게시 판에서 빠지는 자료: ${ids.map((id) => `자료 ${id}`).join(', ')} — 어느 문항·차시도 쓰지 않습니다.`,
     materials: {
       idLabel: '자료',
       imagesAlt: (title: string, n: number) => `${title} 첨부 이미지 ${n}`,

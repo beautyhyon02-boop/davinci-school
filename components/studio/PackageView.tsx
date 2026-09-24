@@ -674,6 +674,9 @@ export function PackageView({ snapshot, mode, showAnswers = false }: { snapshot:
       )}
 
       <MaterialsSection materials={snapshot.materials} />
+      {mode === 'admin' && (snapshot.materials_omitted?.length ?? 0) > 0 && (
+        <p data-print="omit" className="text-sm text-ink-500">{c.materialsOmitted(snapshot.materials_omitted!)}</p>
+      )}
       <AssessmentSection assessment={snapshot.assessment} showAnswers={showAnswers} open={open} />
       <TeacherGuideSection guide={snapshot.teacher_guide} />
       <NoticePlanSection plan={snapshot.notice_plan} />

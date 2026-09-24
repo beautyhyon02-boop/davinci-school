@@ -271,3 +271,32 @@ describe('학년 선택(대표 2026-09-26): 스냅샷 cover.grade', () => {
     expect(upgradeSnapshot(v1raw).cover).toEqual(v1raw.cover)
   })
 })
+
+// 대표 2026-09-26: 세트는 문항·차시가 실제로 쓰는 자료만 싣는다(실제 서논술 문항은 자료 2~4개). 영어 세트가 대주제 공유 A~D(수학 표)까지 싣던 문제.
+describe('buildSnapshot: 참조하는 자료만 싣는다(materials_omitted)', () => {
+  const theme = { ...baseTheme, materials: ['A', 'B', 'C', 'D'].map((id) => material(id, `공유 자료 ${id}`)) }
+  const setMaterials = ['E', 'F', 'G', 'H', 'I'].map((id) => material(id, `세트 자료 ${id}`))
+  const items = [{ materials_used: ['B', 'E'], references: [] }, { materials_used: ['E', 'F'], references: [] }]
+  const assessment = { items, grade_boundaries: [], feedback_templates: { 상: '', 중: '', 하: '' } } as never
+
+  it('shared A–D + set E–I, items use B·E·F → snapshot keeps B·E·F and lists the rest in materials_omitted', () => {
+    const snap = buildSnapshot({ theme, itemSet: { ...baseItemSet, materials: setMaterials, assessment }, standards: [], version: 1 })
+    expect(snap.materials.map((m) => m.id)).toEqual(['B', 'E', 'F'])
+    expect(snap.materials_omitted).toEqual(['A', 'C', 'D', 'G', 'H', 'I'])
+  })
+
+  it('never drops a material a lesson uses (materials_used) or mentions in its worksheet text', () => {
+    const lessons = [
+      { no: 1, materials_used: ['G'], worksheet: { tasks: [{ prompt: '자료 C와 D를 비교해 보자.' }], self_check: [] } },
+    ] as never
+    const snap = buildSnapshot({ theme, itemSet: { ...baseItemSet, materials: setMaterials, assessment, lessons }, standards: [], version: 1 })
+    expect(snap.materials.map((m) => m.id)).toEqual(['B', 'C', 'D', 'E', 'F', 'G'])
+    expect(snap.materials_omitted).toEqual(['A', 'H', 'I'])
+  })
+
+  it('keeps every material when nothing references any yet (early draft preview)', () => {
+    const snap = buildSnapshot({ theme, itemSet: { ...baseItemSet, materials: setMaterials }, standards: [], version: 1 })
+    expect(snap.materials).toHaveLength(9)
+    expect(snap.materials_omitted).toEqual([])
+  })
+})

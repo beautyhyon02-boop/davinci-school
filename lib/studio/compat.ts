@@ -31,6 +31,8 @@ export type SnapshotV2 = {
   unit_plan: UnitPlanT | null
   lessons: LessonT[]
   materials: MaterialT[]
+  /** 게시 때 뺀 자료 ID(어느 문항·차시도 참조하지 않음, 대표 2026-09-26). 그 전에 게시된 판에는 없다. */
+  materials_omitted?: string[]
   assessment: AssessmentT | null
   teacher_guide: GuideT | null
   notice_plan: NoticePlanT | null

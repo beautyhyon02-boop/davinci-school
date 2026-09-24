@@ -5,6 +5,7 @@ import type { StageStatus } from './stages'
 import type { SnapshotV2, UnitPlanT, ReconstructedStandardT, LearningGoalT, NoticePlanT } from './compat'
 import { upgradeSnapshot as upgradeSnapshotCompat } from './compat'
 import { withMaterialDefaults, upgradeDraftColumns } from './draft-defaults'
+import { usedMaterialIds } from './materials'
 
 /** 게시 판 스냅샷(v2). 모양은 compat.ts 에 정의되어 있다 — 옛 v1 판은 읽을 때 upgradeSnapshot 으로 올린다. */
 export type Snapshot = SnapshotV2
@@ -86,8 +87,20 @@ export function collectReferences(assessment: AssessmentT | null): { id: string;
 }
 
 /**
+ * 게시 판에 실을 자료 고르기(대표 2026-09-26: 세트는 문항·차시가 실제로 쓰는 자료만 싣는다 — 실제 서논술 문항은 자료 2~4개).
+ * 어느 문항·차시가 참조하는 자료만 남기고(usedMaterialIds: materials_used + 문장 속 '자료 X' 언급), 나머지 ID는 omitted 로 돌려준다.
+ * 참조가 하나도 없으면(차시·문항이 아직 없는 초안 미리보기) 거르지 않는다 — 다 빼 버리면 미리보기가 비기 때문이다.
+ */
+export function selectUsedMaterials<M extends { id: string }>(materials: M[], used: Set<string>): { materials: M[]; omitted: string[] } {
+  if (used.size === 0) return { materials, omitted: [] }
+  return { materials: materials.filter((m) => used.has(m.id)), omitted: materials.filter((m) => !used.has(m.id)).map((m) => m.id) }
+}
+
+/**
  * 게시용 버전 스냅샷(v2)을 만든다. 자료는 대주제 공유 자료(theme.materials)와 세트 자료(itemSet.materials)를 id로 병합하되,
  * 같은 id가 있으면 대주제(공유) 자료가 이긴다(겹치는 세트 자료는 버린다) — 결과는 id 오름차순으로 정렬한다.
+ * 병합한 자료 중 어느 문항·차시도 참조하지 않는 것(이 과목이 쓰지 않는 공유 자료 등)은 싣지 않고 materials_omitted 에 ID를 남긴다
+ * (selectUsedMaterials — 관리자 미리보기에 한 줄로 보인다).
  * cover.version은 호출자가 넘긴다 — 다음 게시 버전 번호는 item_set_versions의 최댓값+1로 정하는데(고아 행에서도
  * 자연히 회복되도록), 그 계산은 이 함수의 책임이 아니라 publishItemSet/미리보기 화면이 DB를 조회해서 결정한다.
  */
@@ -110,7 +123,9 @@ export function buildSnapshot({ theme, itemSet, standards, version }: {
   const merged = new Map<string, MaterialT>()
   for (const m of materialsWithDefaults(theme.materials)) merged.set(m.id, m)
   for (const m of materialsWithDefaults(up.materials)) if (!merged.has(m.id)) merged.set(m.id, m)
-  const materials = [...merged.values()].sort((a, b) => a.id.localeCompare(b.id))
+  const lessons = lessonsWithDefaults(itemSet.unit_plan ?? null, up.lessons)
+  const used = usedMaterialIds({ lessons, items: up.assessment?.items ?? [], texts: [up.teacher_guide, itemSet.notice_plan] })
+  const { materials, omitted } = selectUsedMaterials([...merged.values()].sort((a, b) => a.id.localeCompare(b.id)), used)
   const models = Array.from(new Set(Object.values(itemSet.stage_status ?? {}).map((s) => s?.model).filter((m): m is string => !!m)))
   return {
     schema_version: 2,
@@ -122,8 +137,9 @@ export function buildSnapshot({ theme, itemSet, standards, version }: {
     learning_goals: up.learning_goals,
     key_question: itemSet.key_question ?? '',
     unit_plan: itemSet.unit_plan ?? null,
-    lessons: lessonsWithDefaults(itemSet.unit_plan ?? null, up.lessons),
+    lessons,
     materials,
+    materials_omitted: omitted,
     assessment: up.assessment,
     teacher_guide: up.teacher_guide,
     notice_plan: itemSet.notice_plan ?? null,

@@ -4,7 +4,7 @@ import { levelRefFor } from './level-map'
 import { structureIssues, kindFamily, sessionPlacementIssues, isAssessmentSession, lessonAssessments, ESSAY_MIN_MINUTES } from './assessment-structure'
 import type { Stage, ReviewKind, Reconstruction, LessonDesign, Materials, Assessment, TeacherGuide, NoticePlan } from './schemas'
 import { QUIZ_SHORT_ONLY, isShortQuiz } from './schemas'
-import { titleHasSourceMarker } from './materials'
+import { titleHasSourceMarker, usedMaterialIds, MAX_SET_MATERIALS } from './materials'
 
 export type Issue = { kind: ReviewKind; detail: string }
 export type CheckCtx = {
@@ -104,6 +104,27 @@ function materialIssues(o: MaterialsT): Issue[] {
 }
 
 /**
+ * 세트 자료 수(대표 2026-09-26: 실제 서논술 문항은 자료 2~4개 — 게시 판에는 문항·차시가 참조하는 자료만 실린다, publish.ts selectUsedMaterials).
+ * 참고용 자문만 남긴다(막지 않음). 4단계: 차시(3단계 확정본)가 쓰는 자료 기준 — 문항은 아직 없으므로 "어느 차시도 쓰지 않음"은
+ * 5단계 문항이 쓰면 괜찮다고 적는다. 5단계: 문항 + 차시 기준 — 어디서도 참조하지 않는 세트 자료는 게시 판에서 빠진다.
+ * 공유 자료(prior.shared_materials)는 참조될 때만 센다(이 과목이 쓰지 않는 공유 자료는 원래 빠진다).
+ */
+function materialUseIssues(setMaterials: { id: string }[], ctx: CheckCtx, items: AssessmentT['items'] | null): Issue[] {
+  const lessons = (ctx.prior.stage3 as Partial<LessonDesignT> | undefined)?.lessons
+  if (!Array.isArray(lessons) || lessons.length === 0) return []
+  const shared = ((ctx.prior.shared_materials as { id: string }[] | undefined) ?? []).map((m) => m.id)
+  const setIds = setMaterials.map((m) => m.id)
+  const used = usedMaterialIds({ lessons, items: items ?? [] })
+  const issues: Issue[] = []
+  const counted = new Set([...(items ? setIds.filter((id) => used.has(id)) : setIds), ...shared.filter((id) => used.has(id))])
+  if (counted.size > MAX_SET_MATERIALS) issues.push({ kind: 'other', detail: `세트 자료 ${counted.size}개(${[...counted].sort().join(', ')}) — 문항·차시가 실제로 쓰는 2~4개(많아도 ${MAX_SET_MATERIALS}개)만 둔다` })
+  for (const id of setIds.filter((x) => !used.has(x) && !shared.includes(x))) {
+    issues.push({ kind: 'other', detail: items ? `자료 ${id}: 어느 문항·차시도 쓰지 않음 — 게시 판에서 빠진다` : `자료 ${id}: 어느 차시도 쓰지 않음 — 5단계 문항도 쓰지 않으면 게시 판에서 빠진다` })
+  }
+  return issues
+}
+
+/**
  * C-32(대표 2026-09-26): 조건은 지침이지 풀이 힌트가 아니다. 조건 문장에서 풀이 절차의 흔적을 찾는다 —
  * 숫자 사이 연산 기호, 계산 동사·공식·소수 자리 지시, 단계 순서어(먼저/다음에/그다음/마지막으로 + 동사; "가장 먼저"는 주제라 뺀다),
  * 소수, 참조 자료에 있는 두 자리 이상 수치. 근거·문장·단어·글자 수와 배점("2개 이상", "200자", "(2점)")은 허용한다.
@@ -189,6 +210,8 @@ function assessmentIssues(o: AssessmentT, ctx: CheckCtx): Issue[] {
     if (it.kind === '논술형' && !it.rubric.criteria.some((c) => c.axis === '가치·태도')) issues.push({ kind: 'level', detail: '논술형 4요소 중 가치·태도 축이 없음(정당화 가능성 기준으로 서술)' })
   }
   issues.push(...placementIssues(o, ctx))
+  const setMaterials = (ctx.prior.stage4 as MaterialsT | undefined)?.materials
+  if (Array.isArray(setMaterials)) issues.push(...materialUseIssues(setMaterials, ctx, o.items))
   return issues
 }
 
@@ -251,7 +274,7 @@ export function staticIssues(stage: Stage, output: unknown, ctx: CheckCtx): Issu
   switch (stage) {
     case 2: return reconstructionIssues(output as ReconstructionT, ctx)
     case 3: return lessonIssues(output as LessonDesignT, ctx)
-    case 4: return materialIssues(output as MaterialsT)
+    case 4: return [...materialIssues(output as MaterialsT), ...materialUseIssues((output as MaterialsT).materials, ctx, null)]
     case 5: return assessmentIssues(output as AssessmentT, ctx)
     case 6: return guideIssues(output as GuideT, ctx)
     case 7: return noticePlanIssues(output as NoticePlanT)
