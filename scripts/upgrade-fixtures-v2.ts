@@ -84,6 +84,29 @@ function setEssayLesson(l: LessonT, tasks: [string, string][], questions: Questi
   l.worksheet.tasks = tasks.map(([prompt, expected], i) => ({ no: i + 1, prompt, expected, ...tiers[i] }))
   l.teacher_script.questions = questions
 }
+type ItemT = AssessmentT['items'][number]; type ConditionT = ItemT['conditions']['items'][number]
+/**
+ * C-32(대표 2026-09-26): 조건은 지침이지 풀이 힌트가 아니고, 논술형에만 둔다. v1 서술형 조건은 풀이 순서·계산식·자료 수치
+ * ("290 ÷ 1200 을 소수 둘째 자리까지", "계급의 크기 10으로 나눈다 … 합계(20)")를 담고 있었다 → 서술형은 조건을 비우고(분량·형식만)
+ * 채점 요소의 condition_nos 도 비운다. 채점표 descriptor·예시답안의 계산값은 답이라 그대로 둔다.
+ */
+function clearShortConditions(it: ItemT) {
+  if (it.kind !== '서술형') throw new Error('PATCHES: clearShortConditions 는 서술형만')
+  it.conditions.items = []
+  for (const c of it.rubric.criteria) c.condition_nos = []
+}
+/** 논술형 조건을 지침(입장·근거 수·인용 자료·형식)으로 통째로 바꾸고, 채점 요소 이름마다 가리키는 조건 번호를 다시 적는다. */
+function setEssayConditions(it: ItemT, items: [text: string, verb: string, category: ConditionT['category']][], byCriterion: Record<string, number[]>, overflow: string | null) {
+  if (it.kind !== '논술형') throw new Error('PATCHES: setEssayConditions 는 논술형만')
+  it.conditions.items = items.map(([text, verb, category], i) => ({ no: i + 1, text, verb, points: null, category }))
+  it.conditions.overflow_rule = overflow
+  for (const c of it.rubric.criteria) {
+    const nos = byCriterion[c.name]
+    if (!nos) throw new Error(`PATCHES: 채점 요소 "${c.name}"의 조건 대응이 없음`)
+    c.condition_nos = nos
+  }
+}
+
 /** 공유 자료 B 본문(두 과목 공통, M5): 상대도수(0.24·0.30 …)는 수학 서술형 2가 구하게 하는 답이라 원자료 설명만 둔다(C-03). docs/samples 공유 자료와 같은 문장. */
 const RAW_B_BODY = '품목별 일회용품 개수를 작년(부스 16곳)과 올해(부스 20곳)로 나누어 센 자료. 두 해는 부스 수와 전체 개수가 다르다.'
 
@@ -153,6 +176,19 @@ const SETS: SetDef[] = [
         rationale: '계산식은 세웠으나 두 값이 모두 틀리고, 상대도수로 비교해야 하는 이유가 없어 1점 단계에 해당함' })
       // 스펙 §2.5 [TS]-7: 논술형에는 과제 상황(GRASPS 축약)이 필수
       essay.situation = { role: '학생회 환경부원', audience: '학생회 임원과 축제 담당 선생님', purpose: '내년 축제에서 가장 먼저 줄일 일회용품과 감축 목표를 자료로 설득하기', product: '감축 제안문(300자 내외, 문단 2~3개)' }
+      // C-32: 서술형 1·2 조건 삭제. 분량의 "계급 6행"은 만들어야 할 계급 수(답의 일부)라 빼고, 서술형 2 형식의 "계산 과정(=으로 이어 쓰기)"은 풀이 방법을 알려 주므로 뺀다
+      clearShortConditions(i1); clearShortConditions(i2)
+      i1.conditions.length = '표 1개와 문장 1개'
+      i2.conditions.length = '값 2개와 문장 1개(40자 안팎)'
+      i2.conditions.format = '상대도수 두 값 + "~다"로 끝나는 문장 1개'
+      // C-32: 논술형 조건 — v1 은 문단별 순서("첫 문단: … 둘째 문단: …")와 답이 되는 수치("405개 → 200개, 0.30 → 0.15"), 답의 핵심 용어(상대도수)를 담았다 → 입장·근거 수·인용 자료·형식만
+      setEssayConditions(essay, [
+        ['가장 먼저 줄일 일회용품 한 가지와 감축 목표 수치를 정해 밝힐 것', '밝히다', '내용'],
+        ['근거는 두 가지 이상 들고, 자료 A와 자료 B를 모두 인용할 것', '인용하다', '내용'],
+        ['인용한 수치에는 단위와 출처(자료 A·자료 B)를 함께 적을 것', '적다', '형식'],
+        ['"~다"로 끝나는 문장으로 쓸 것', '쓰다', '형식'],
+      ], { '자료 정리의 정확성': [2, 3], '해석의 타당성': [2], '제안과 근거의 연결': [1], '수학적 표현과 서술': [3, 4] },
+      '줄일 일회용품을 두 가지 이상 쓰면 처음 쓴 한 가지만 채점한다.')
     },
   },
   {
@@ -218,6 +254,14 @@ const SETS: SetDef[] = [
       const top = a.items[2].exemplar_answers.find((e) => e.level === '상')!
       top.text = swap(top.text, '자료 B를 보면 플라스틱컵은 작년 290개에서 올해 405개로 늘었고, 전체에서 차지하는 비율도 0.24에서 0.30으로 품목 가운데 가장 크게 올랐다.',
         '자료 B를 보면 플라스틱컵은 작년 290개에서 올해 405개로 115개 늘어, 다섯 품목 가운데 가장 많이 늘었다.')
+      // C-32: 서술형 1·2 조건 삭제(인용할 자료는 발문이 이미 "자료 D와 자료 E를 근거로"라고 밝힌다). 논술형은 지침 4개 그대로 두되 문장을 다듬고 요소별로 대응시킨다
+      clearShortConditions(a.items[0]); clearShortConditions(a.items[1])
+      setEssayConditions(a.items[2], [
+        ['자료 B의 수치를 한 개 이상 근거로 인용할 것', '인용하다', '내용'],
+        ['자료 D의 과학적 내용을 한 개 이상 근거로 인용할 것', '인용하다', '내용'],
+        ['개인 차원과 학교(사회) 차원의 방안을 한 가지씩 쓸 것', '쓰다', '내용'],
+        ['"~다"로 끝나는 문장으로 쓸 것', '쓰다', '형식'],
+      ], { '과학적 근거의 정확성': [1, 2], '문제와 해결 방안의 연결': [1, 2], '실천 가능성(개인·사회 구분)': [3], '서술': [4] }, null)
     },
   },
 ]

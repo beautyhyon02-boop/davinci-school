@@ -14,22 +14,7 @@
       ],
       "stem": "자료 D와 자료 E를 근거로, 축제에서 사용한 플라스틱컵을 재활용하기 어려운 이유 두 가지를 서술하시오. [3점]",
       "conditions": {
-        "items": [
-          {
-            "no": 1,
-            "text": "각 문장에 자료 D 또는 자료 E의 내용을 근거로 밝힐 것",
-            "verb": "서술하다",
-            "points": null,
-            "category": "내용"
-          },
-          {
-            "no": 2,
-            "text": "재활용을 어렵게 하는 이유 두 가지",
-            "verb": "서술하다",
-            "points": null,
-            "category": "내용"
-          }
-        ],
+        "items": [],
         "length": "두 문장",
         "format": "\"~다\"로 끝나는 문장",
         "answer_mode": "screen",
@@ -40,10 +25,7 @@
           {
             "name": "서술형 채점표",
             "axis": "과정·기능",
-            "condition_nos": [
-              1,
-              2
-            ],
+            "condition_nos": [],
             "max": 3,
             "scale": [
               {
@@ -155,22 +137,7 @@
       ],
       "stem": "자료 D와 자료 E를 바탕으로, 축제에서 일회용컵을 줄이기 위한 개인 차원의 활동 방안 한 가지를 제안하고, 그 방안이 효과가 있는 과학적 이유를 서술하시오. [3점]",
       "conditions": {
-        "items": [
-          {
-            "no": 1,
-            "text": "개인 차원의 활동 방안 한 가지",
-            "verb": "서술하다",
-            "points": null,
-            "category": "내용"
-          },
-          {
-            "no": 2,
-            "text": "이유에 자료 D 또는 자료 E의 내용을 포함할 것",
-            "verb": "서술하다",
-            "points": null,
-            "category": "내용"
-          }
-        ],
+        "items": [],
         "length": "두 문장(방안 한 문장 + 이유 한 문장)",
         "format": "서술형(문장)",
         "answer_mode": "screen",
@@ -181,10 +148,7 @@
           {
             "name": "서술형 채점표",
             "axis": "과정·기능",
-            "condition_nos": [
-              1,
-              2
-            ],
+            "condition_nos": [],
             "max": 3,
             "scale": [
               {
@@ -304,21 +268,21 @@
         "items": [
           {
             "no": 1,
-            "text": "자료 B의 수치를 한 개 이상 인용할 것",
+            "text": "자료 B의 수치를 한 개 이상 근거로 인용할 것",
             "verb": "인용하다",
             "points": null,
             "category": "내용"
           },
           {
             "no": 2,
-            "text": "자료 D의 과학적 근거를 한 개 이상 인용할 것",
+            "text": "자료 D의 과학적 내용을 한 개 이상 근거로 인용할 것",
             "verb": "인용하다",
             "points": null,
             "category": "내용"
           },
           {
             "no": 3,
-            "text": "개인 차원의 방안 1개와 학교(사회) 차원의 방안 1개를 모두 쓸 것",
+            "text": "개인 차원과 학교(사회) 차원의 방안을 한 가지씩 쓸 것",
             "verb": "쓰다",
             "points": null,
             "category": "내용"
@@ -343,9 +307,7 @@
             "axis": "지식·이해",
             "condition_nos": [
               1,
-              2,
-              3,
-              4
+              2
             ],
             "max": 4,
             "scale": [
@@ -381,9 +343,7 @@
             "axis": "과정·기능",
             "condition_nos": [
               1,
-              2,
-              3,
-              4
+              2
             ],
             "max": 4,
             "scale": [
@@ -418,10 +378,7 @@
             "name": "실천 가능성(개인·사회 구분)",
             "axis": "가치·태도",
             "condition_nos": [
-              1,
-              2,
-              3,
-              4
+              3
             ],
             "max": 4,
             "scale": [
@@ -456,9 +413,6 @@
             "name": "서술",
             "axis": "과정·기능",
             "condition_nos": [
-              1,
-              2,
-              3,
               4
             ],
             "max": 4,
