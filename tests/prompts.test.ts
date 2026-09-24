@@ -43,7 +43,7 @@ describe('prompts v2', () => {
     expect(task).toMatch(/문항 카드 2장/); expect(task).toMatch(/서술형 1개\(6점/); expect(task).toMatch(/논술형 1개\(16점/)
     expect(task).toMatch(/holistic은 두 문항 모두 상\/중\/하/); expect(task).toMatch(/2~3요소로 max 합 6/)
     expect(task).toMatch(/1~6점 각 1개/); expect(task).toMatch(/서술형 문항 점수 0~6/); expect(task).toMatch(/단원 평가 차시/)
-    expect(task).toMatch(/평가원·교육청 공개 예시 문항과 같은 수준·형식/); expect(task).toMatch(/문장·수치는 옮기지 않는다/)
+    expect(task).not.toMatch(/평가원|교육청/); expect(task).toMatch(/문장·수치는 옮기지 않는다/)
     expect(task).not.toMatch(/서술형 2개|두 문항 점수 합|holistic은 논술형만/)
   })
   it('stage 5 shows 2 서술형 + 3 논술형 reference cards (no duplicates)', () => {

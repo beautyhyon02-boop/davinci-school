@@ -57,14 +57,16 @@ describe.each(['수학', '과학'] as const)('PackageView v2 (%s mock snapshot)'
     }
     for (const tier of ['기본', '표준', '도전']) expect(t).toContain(tier)
   })
-  it('shows materials with the mint 자료 label, source and role badges', () => {
+  it('shows materials with the mint 자료 label and no internal source/role badges', () => {
     for (const m of snap.materials) {
       expect(html).toContain(`>${c.materials.idLabel} ${m.id}</span>`)
       expect(t).toContain(norm(m.title))
     }
     expect(html).toMatch(/bg-mint-500[^>]*>자료 [A-Z]</)
-    expect(t).toContain(c.materials.sourceLabel.자작)
-    expect(t).toContain(c.materials.roleLabel.raw)
+    // 배지 마크업만 검사한다(본문·규칙 문장에 같은 낱말이 있을 수 있다)
+    expect(html).not.toMatch(new RegExp(`>${c.materials.sourceLabel.자작}<`))
+    expect(html).not.toMatch(new RegExp(`>${c.materials.roleLabel.raw}<`))
+    expect(html).not.toMatch(new RegExp(`>${c.materials.aiBadge}<`))
   })
   it('shows each item card: stem ending [N점], numbered conditions, rubric criteria with max, notes, exemplars, A~E', () => {
     for (const it of snap.assessment!.items) {

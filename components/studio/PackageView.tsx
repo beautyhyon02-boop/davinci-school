@@ -103,13 +103,12 @@ export function MaterialsSection({ materials }: { materials: Material[] }) {
       <div className="mt-3 space-y-6">
         {materials.map((m) => (
           <div key={m.id} data-print="material" className="rounded-xl border border-ink-100 bg-ink-100/30 p-4">
-            {/* 자료마다 큰 라벨(자료 A/B…)로 구분이 한눈에 보이게. 출처·역할 배지(스펙 §2.4). */}
+            {/* 자료마다 큰 라벨(자료 A/B…)로 구분이 한눈에 보이게. 공개 자료 출처만 배지로(스펙 §2.4, 2026-09-26 수정). */}
             <div className="flex flex-wrap items-center gap-2">
               <span className="rounded-full bg-mint-500 px-3 py-1 text-sm font-bold text-white">{c.idLabel} {m.id}</span>
               <p className="text-base font-bold">{m.title}</p>
-              <Badge tone="gray">{c.sourceLabel[m.source.kind]}{m.source.attribution ? ` · ${m.source.attribution}` : ''}</Badge>
-              <span data-print="omit"><Badge tone="gray">{c.roleLabel[m.role]}</Badge></span>
-              {m.source.ai_assisted && <span data-print="omit"><Badge tone="lemon">{c.aiBadge}</Badge></span>}
+              {/* 대표님 지시(2026-09-26): 자작·원자료 같은 내부 표지는 화면에 내지 않는다. 공개 자료의 출처만 남긴다(공공누리 표기 의무). */}
+              {m.source.kind === '공개' && m.source.attribution && <Badge tone="gray">{c.sourceLabel.공개} · {m.source.attribution}</Badge>}
             </div>
             {m.body && <p className="mt-1 whitespace-pre-wrap text-sm">{m.body}</p>}
             <MaterialTable material={m} />
