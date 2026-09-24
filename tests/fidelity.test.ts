@@ -52,6 +52,50 @@ describe('checkReconstructionFidelity', () => {
     const r = checkReconstructionFidelity('통계청 자료를 도수분포표로 나타내고 해석할 수 있다.', STD)
     expect(r.ok).toBe(true)
   })
+
+  it('fails a wholly unrelated sentence', () => {
+    const r = checkReconstructionFidelity('학생은 축구공을 차서 골대에 넣을 수 있다.', STD)
+    expect(r.ok).toBe(false)
+    expect(r.unknownTokens.length).toBeGreaterThan(0)
+  })
+})
+
+// owner 사례(2026-09-24 오너 스크린샷): [9영02-03]·[9영02-09] 재구조화가 "원문에 없는 표현"으로 반려됐다 —
+// 실제로는 L-02 문장 틀 낱말(가지고·해서·관한 등)과 일반 결과물 명사(글·발표·답 등), 어미 활용 차이(쓰기↔쓴다)일 뿐이다.
+describe('checkReconstructionFidelity: L-02 문장 틀·일반 결과물 명사·어미 변화 허용(2026-09-24)', () => {
+  const ENGLISH = {
+    '9영02-03': '친숙한 주제에 관해 사실적 정보를 설명한다.',
+    '9영02-09': '적절한 매체를 활용하여 정보 윤리를 준수하며 말하거나 쓴다.',
+    '9영02-10': '적절한 전략을 활용하여 상황이나 목적에 맞게 말하거나 쓴다.',
+  }
+
+  it('[9영02-03]: "관한"(원문 "관해")·"가지고"·"해서"·"글쓰기를"·"글을" 은 원문에 없는 표현이 아니다', () => {
+    const r = checkReconstructionFidelity('학생은 친숙한 주제에 관한 자료를 가지고 사실적 정보를 설명하는 글쓰기를 해서 글을 쓸 수 있다.', [ENGLISH['9영02-03']])
+    expect(r.unknownTokens).toEqual([])
+    expect(r.ok).toBe(true)
+  })
+
+  it('[9영02-09]: "가지고"·"쓰기를"(원문 "쓴다")·"발표를" 은 원문에 없는 표현이 아니다', () => {
+    const r = checkReconstructionFidelity('학생은 적절한 매체를 가지고 정보 윤리를 준수하며 말하거나 쓰기를 해서 발표를 할 수 있다.', [ENGLISH['9영02-09']])
+    expect(r.unknownTokens).toEqual([])
+    expect(r.ok).toBe(true)
+  })
+
+  it('[9영02-10]: 조사만 다른 변형("전략을"·"상황이나")과 일반 결과물 명사("답을")도 허용한다', () => {
+    const r = checkReconstructionFidelity('학생은 적절한 전략을 가지고 상황이나 목적에 맞게 말하거나 쓰기를 해서 답을 할 수 있다.', [ENGLISH['9영02-10']])
+    expect(r.unknownTokens).toEqual([])
+    expect(r.ok).toBe(true)
+  })
+
+  it('a 수학 원문에 "축제 일회용품"을 섞으면 여전히 반려된다(새 내용어는 계속 잡아야 한다)', () => {
+    const r = checkReconstructionFidelity('학생은 축제 일회용품 자료를 도수분포표로 정리하고 감축 방안을 제안할 수 있다.', STD)
+    expect(r.ok).toBe(false)
+    expect(r.unknownTokens).toEqual(expect.arrayContaining(['축제', '일회용품']))
+  })
+
+  it('조사만 다른 차이는 계속 통과한다(느슨해진 규칙이 본래 하던 일을 깨지 않는다)', () => {
+    expect(checkReconstructionFidelity('자료가 도수분포표로 나타내고 해석할 수 있다.', STD).ok).toBe(true)
+  })
 })
 
 describe('stem', () => {
