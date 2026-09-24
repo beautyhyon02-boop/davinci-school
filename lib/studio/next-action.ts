@@ -1,39 +1,68 @@
 import type { StageStatus } from './stages'
 
-export type WizardAction = 'generate' | 'review' | 'accept' | 'done' | 'edit'
+export type WizardAction = 'generate' | 'accept' | 'done'
 
 /**
- * 세트 마법사(2~7단계)의 "다음 행동"을 순수 함수로 계산한다.
- * idle/failed/미생성 → generate, generated → review, reviewed&통과 → accept,
- * reviewed&불통과 → 시도 횟수가 한도(max) 미만이면 generate, 도달했으면 edit(직접 수정 권유), accepted → done.
- * 'edit'은 [기본값으로 진행] 자동 반복을 멈추라는 뜻일 뿐 잠금이 아니다 — 사람이 누르는 [생성]은 canGenerate가 따로 정한다.
+ * 세트 마법사(2~7단계)의 "다음 행동"을 순수 함수로 계산한다(대표 결정 2026-09-26: 검토는 참고, [확인]으로 진행).
+ * 준비 전·실패·미생성 → generate, 생성됨·검토 의견 받음 → accept(검토 결과와 무관), 확인됨 → done.
+ * 시도 횟수 한도로 멈추지 않는다 — [기본값으로 진행]은 생성이 실패할 때만 멈춘다(useStageRunner).
  */
-export function nextAction(status: StageStatus | undefined, max: number): WizardAction {
+export function nextAction(status: StageStatus | undefined): WizardAction {
   if (!status || status.state === 'idle' || status.state === 'failed') return 'generate'
-  if (status.state === 'generated') return 'review'
-  if (status.state === 'reviewed') {
-    if (status.review?.pass) return 'accept'
-    return status.attempt < max ? 'generate' : 'edit'
-  }
+  if (status.state === 'generated' || status.state === 'reviewed') return 'accept'
   // accepted
   return 'done'
 }
 
 /**
- * 사람이 [생성](다시 생성)을 누를 수 있는지. 검토 한도(max)에 닿은 뒤에도 누를 수 있다 — 한도 표지(EXHAUSTED_ERROR)는
- * 안내일 뿐 잠금이 아니다(대주제 소개 e65db5e 와 같은 방식, 2026-09-24 오너 사례: 한도 뒤 [확정]도 [생성]도 못 눌러 막혔다).
- * 생성됨(검토 전)·검토 통과(확정 대기)·확정됨 에서는 지금처럼 누를 수 없다. 확정은 여전히 통과한 검토가 있어야 한다.
+ * 사람이 [생성](다시 생성)을 누를 수 있는지. 확인(accepted)하기 전에는 언제든 누를 수 있다 — 생성됨·검토 의견 받음 상태에서도
+ * 결과가 마음에 들지 않으면 다시 만든다. 확인한 단계는 [JSON 편집]으로 고친다(하위 단계가 함께 초기화된다).
  */
-export function canGenerate(status: StageStatus | undefined, max: number): boolean {
-  const action = nextAction(status, max)
-  return action === 'generate' || action === 'edit'
+export function canGenerate(status: StageStatus | undefined): boolean {
+  return status?.state !== 'accepted'
 }
 
+/** [확인]을 누를 수 있는지 — 확인할 출력이 있고(생성됨·검토 의견 받음) 아직 확인하지 않았으면 언제나. 검토 결과는 보지 않는다. */
+export function canAccept(status: StageStatus | undefined): boolean {
+  return nextAction(status) === 'accept' && status?.output !== undefined
+}
+
+/** [AI 검토 의견 보기]를 누를 수 있는지 — 선택 기능. 출력이 있으면 확인 전후 언제나(결과는 참고일 뿐 아무것도 막지 않는다). */
+export function canReview(status: StageStatus | undefined): boolean {
+  return status?.output !== undefined && status.state !== 'failed' && status.state !== 'idle'
+}
+
+export type AutoRunStop = { kind: 'failed' } | { kind: 'error'; message: string }
+
 /**
- * `runDefaults`가 stage state:'failed'를 계속 보게 될 때(예: AI 호출이 매번 실패) generate를 무한 반복하지
- * 않도록 하는 순수 판단. `nextAction`은 failed를 항상 'generate'로 돌려주므로(재시도 자체는 정당), 루프를
- * 도는 쪽에서 실패 횟수를 세어 한도(max)에 도달하면 멈추고 사용자가 직접 편집하도록 유도해야 한다.
+ * [기본값으로 진행]의 순수 루프(대표 결정 2026-09-26). `from` 단계부터 끝까지 각 단계를 nextAction 대로 생성하고 곧바로 확인한다 —
+ * 검토('review')는 부르지 않는다. 확인된 단계는 건너뛰고, 이미 생성된 단계는 확인만 한다. 생성 결과가 failed 이거나 요청이
+ * 거절(throw)되면 그 단계에서 멈춘다. 한 단계는 많아야 두 번(생성·확인) 부른다 — 무한 반복 방지.
+ * 돌려주는 stage 는 멈춘(또는 마지막으로 다룬) 단계다.
  */
-export function shouldStopOnFailure(failedCount: number, max: number): boolean {
-  return failedCount >= max
+export async function autoConfirm<S extends number>({ stages, from, get, post, onStatus }: {
+  stages: readonly S[]
+  from: S
+  get: (stage: S) => StageStatus | undefined
+  post: (stage: S, action: 'generate' | 'accept') => Promise<StageStatus>
+  onStatus: (stage: S, status: StageStatus) => void
+}): Promise<{ stage: S | undefined; stop?: AutoRunStop }> {
+  let last: S | undefined
+  for (const stage of stages) {
+    if (stage < from) continue
+    last = stage
+    for (let step = 0; step < 2; step++) {
+      const action = nextAction(get(stage))
+      if (action === 'done') break
+      let status: StageStatus
+      try {
+        status = await post(stage, action)
+      } catch (e) {
+        return { stage, stop: { kind: 'error', message: (e as Error).message } }
+      }
+      onStatus(stage, status)
+      if (status.state === 'failed') return { stage, stop: { kind: 'failed' } }
+    }
+  }
+  return { stage: last }
 }

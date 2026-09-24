@@ -1,14 +1,14 @@
 'use client'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { StageStatus } from '@/lib/studio/stages'
-import { MAX_ATTEMPTS } from '@/lib/studio/max-attempts'
-import { nextAction, shouldStopOnFailure } from '@/lib/studio/next-action'
+import { autoConfirm } from '@/lib/studio/next-action'
 import { app } from '@/content/site'
 
 import { WIZARD_STAGES, type WizardStage } from '@/lib/studio/wizard-stages'
 
 export { WIZARD_STAGES, type WizardStage }
 export type WizardActionKind = 'generate' | 'review' | 'accept'
+type Statuses = Partial<Record<WizardStage, StageStatus>>
 
 const errors = app.studio.wizard.errors
 
@@ -16,6 +16,11 @@ async function fetchStatus(setId: string, stage: number): Promise<StageStatus> {
   const res = await fetch(`/api/studio/item-sets/${setId}/stages/${stage}`)
   const data = await res.json().catch(() => ({}))
   return (data?.status as StageStatus) ?? { state: 'idle', attempt: 0, updated_at: '' }
+}
+
+async function fetchAll(setId: string): Promise<Statuses> {
+  const entries = await Promise.all(WIZARD_STAGES.map(async (s) => [s, await fetchStatus(setId, s)] as const))
+  return Object.fromEntries(entries) as Statuses
 }
 
 async function postAction(setId: string, stage: number, action: WizardActionKind): Promise<StageStatus> {
@@ -29,27 +34,41 @@ async function postAction(setId: string, stage: number, action: WizardActionKind
   return data.status as StageStatus
 }
 
-/** 세트 마법사(2~7단계) 훅: 상태 로드, 개별 실행, 기본값(첫 미확정 단계부터 자동) 진행. */
-export function useStageRunner(setId: string) {
-  const [statuses, setStatuses] = useState<Partial<Record<WizardStage, StageStatus>>>({})
+/**
+ * 세트 마법사(2~7단계) 훅: 상태 로드, 개별 실행, 기본값 진행.
+ * `initial`은 서버 컴포넌트가 내려준 상태 — 첫 렌더부터(클라이언트 로드 전에도) 자동 진행이 올바른 상태를 보게 한다.
+ */
+export function useStageRunner(setId: string, initial: Statuses = {}) {
+  const [statuses, setStatuses] = useState<Statuses>(initial)
   const [loaded, setLoaded] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   // runDefaults가 진행 중인 최신 상태를 즉시 읽을 수 있도록(React state는 비동기라 다음 stage로 넘어갈 때 stale일 수 있음) ref도 함께 둔다.
-  const statusesRef = useRef(statuses)
-  statusesRef.current = statuses
+  // 렌더 중에는 쓰지 않는다 — 상태를 바꾸는 곳(setStage·로드)에서 state와 ref를 함께 갱신한다.
+  const statusesRef = useRef<Statuses>(initial)
 
-  const refresh = useCallback(async () => {
-    const entries = await Promise.all(WIZARD_STAGES.map(async (s) => [s, await fetchStatus(setId, s)] as const))
-    const next = Object.fromEntries(entries) as Partial<Record<WizardStage, StageStatus>>
+  /** 한 단계의 상태를 state 와 ref 에 함께 반영한다. JSON 편집 저장(onSaved)도 이것을 쓴다. */
+  const setStageStatus = useCallback((stage: WizardStage, status: StageStatus) => {
+    statusesRef.current = { ...statusesRef.current, [stage]: status }
+    setStatuses((prev) => ({ ...prev, [stage]: status }))
+  }, [])
+
+  const applyAll = useCallback((next: Statuses) => {
+    statusesRef.current = next
     setStatuses(next)
     setLoaded(true)
-  }, [setId])
+  }, [])
 
+  const refresh = useCallback(async () => {
+    applyAll(await fetchAll(setId))
+  }, [setId, applyAll])
+
+  // 세트가 바뀌면 서버의 최신 상태를 읽는다. setState 는 응답이 온 뒤(콜백)에서만 부르고, 그 사이 세트가 바뀌면 버린다.
   useEffect(() => {
-    refresh()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setId])
+    let cancelled = false
+    fetchAll(setId).then((next) => { if (!cancelled) applyAll(next) }, () => {})
+    return () => { cancelled = true }
+  }, [setId, applyAll])
 
   // 실패는 error 상태로만 알린다 — StagePanel 은 onRun 을 await/catch 없이 부르므로, 다시 throw 하면
   // 실패할 때마다 잡히지 않는 rejection 이 난다.
@@ -58,8 +77,7 @@ export function useStageRunner(setId: string) {
     setError(null)
     try {
       const status = await postAction(setId, stage, action)
-      setStatuses((prev) => ({ ...prev, [stage]: status }))
-      statusesRef.current = { ...statusesRef.current, [stage]: status }
+      setStageStatus(stage, status)
       return status
     } catch (e) {
       setError((e as Error).message)
@@ -67,42 +85,29 @@ export function useStageRunner(setId: string) {
     } finally {
       setBusy(false)
     }
-  }, [setId])
+  }, [setId, setStageStatus])
 
-  const runDefaults = useCallback(async (fromStage: WizardStage = 2) => {
+  /**
+   * [기본값으로 진행]: fromStage 부터 7단계까지 각 단계를 생성하고 곧바로 확인한다(대표 결정 2026-09-26 — 검토 호출 없음).
+   * 생성이 실패하거나 요청이 거절되면 그 단계에서 멈춘다. 멈춘(또는 마지막으로 다룬) 단계를 돌려준다 — 화면이 그 단계를 열 수 있게.
+   */
+  const runDefaults = useCallback(async (fromStage: WizardStage = 2): Promise<WizardStage | undefined> => {
     setBusy(true)
     setError(null)
     try {
-      for (const stage of WIZARD_STAGES) {
-        if (stage < fromStage) continue
-        const max = MAX_ATTEMPTS[stage] ?? 1
-        // generate가 state:'failed'를 계속 돌려주면 nextAction(failed→'generate')만으로는 멈추지 않으므로
-        // (재시도 자체는 정당한 동작), 이 stage에서 failed를 본 횟수를 세어 한도에 도달하면 직접 편집을 유도한다.
-        let failedCount = 0
-        for (;;) {
-          const current = statusesRef.current[stage]
-          if (current?.state === 'failed' && shouldStopOnFailure(failedCount, max)) {
-            setError(errors.tooManyFailures)
-            return
-          }
-          const action = nextAction(current, max)
-          if (action === 'done') break
-          if (action === 'edit') return
-          try {
-            const status = await postAction(setId, stage, action)
-            setStatuses((prev) => ({ ...prev, [stage]: status }))
-            statusesRef.current = { ...statusesRef.current, [stage]: status }
-            if (status.state === 'failed') failedCount += 1
-          } catch (e) {
-            setError((e as Error).message)
-            return
-          }
-        }
-      }
+      const { stage, stop } = await autoConfirm({
+        stages: WIZARD_STAGES,
+        from: fromStage,
+        get: (s) => statusesRef.current[s],
+        post: (s, action) => postAction(setId, s, action),
+        onStatus: setStageStatus,
+      })
+      if (stop) setError(stop.kind === 'failed' ? errors.autoStopped : stop.message)
+      return stage
     } finally {
       setBusy(false)
     }
-  }, [setId])
+  }, [setId, setStageStatus])
 
-  return { statuses, loaded, busy, error, run, runDefaults, refresh, setStatuses }
+  return { statuses, loaded, busy, error, run, runDefaults, refresh, setStageStatus }
 }

@@ -281,16 +281,15 @@ export const app = {
       backToTheme: '← 세트 목록으로',
       versionLabel: (v: number) => `버전 ${v}`,
       stageNames: { 2: '재구성·목표·핵심질문', 3: '차시 설계', 4: '자료', 5: '평가', 6: '교사용 지침서', 7: '안내장 틀' } as Record<number, string>,
-      stateLabel: { idle: '준비 전', generated: '생성됨', reviewed: '검토됨', accepted: '확정됨', failed: '실패' },
-      reviewPass: '통과',
-      reviewFail: '통과 못함',
+      // 대표 결정 2026-09-26: [생성] → 읽기 → [확인]. 검토는 참고(선택)이고 진행을 막지 않는다.
+      stateLabel: { idle: '준비 전', generated: '생성됨', reviewed: 'AI 의견 받음', accepted: '확인됨', failed: '실패' },
       mockBadge: '가짜 응답',
       editedBadge: '편집됨',
       attemptLabel: (n: number) => `시도 ${n}`,
       actions: {
         generate: '생성',
-        review: '검토',
-        accept: '확정',
+        review: 'AI 검토 의견 보기',
+        accept: '확인',
         runDefaults: '기본값으로 진행',
         editJson: 'JSON 편집',
         cancelEdit: '취소',
@@ -298,16 +297,19 @@ export const app = {
       },
       busy: '처리 중…',
       empty: '아직 생성된 결과가 없습니다. [생성]을 눌러 시작하세요.',
-      reviewIssuesHeading: '검토 결과 — 통과하지 못했습니다',
+      // 생성 직후 자동으로 도는 형식·원문 검사의 지적 — 참고용 메모(막지 않는다)
+      notesHeading: '자동 검사 메모 (참고)',
+      notesNone: '자동 검사에서 짚은 점이 없습니다.',
+      // [AI 검토 의견 보기]를 눌렀을 때만 나온다 — 참고용
+      aiReviewHeading: 'AI 검토 의견 (참고)',
+      aiReviewNone: 'AI가 짚은 점이 없습니다.',
       errorPrefix: '오류: ',
       // AI 출력이 형식 검사(zod)를 통과하지 못했을 때 — 원인 문구(claude.ts)를 그대로 보여 주지 않고 이 안내를 앞에 두고, 원문은 작게 아래에 둔다
       parseErrorHeading: 'AI 출력이 형식 검사를 통과하지 못했습니다 — [생성]을 다시 누르세요.',
-      // 검토 반복 한도에 닿았을 때의 안내(잠금 아님) — 빨간 오류 대신 이 문구를 보여 준다
-      exhausted: '검토를 여러 번 통과하지 못했습니다. [생성]을 눌러 다시 만들어 보거나, [JSON 편집]으로 고쳐 저장한 뒤 [검토]를 통과하면 확정할 수 있습니다.',
-      prevStageHint: '이전 단계를 먼저 확정해야 진행할 수 있습니다.',
+      prevStageHint: '이전 단계를 먼저 [확인]해야 진행할 수 있습니다.',
       keyQuestion: {
         heading: '핵심질문 선택',
-        empty: '2단계 확정 후 후보가 표시됩니다.',
+        empty: '2단계를 확인하면 후보가 표시됩니다.',
         select: '선택',
         current: (q: string) => `현재 핵심질문: ${q}`,
         saved: '핵심질문을 저장했습니다.',
@@ -352,12 +354,12 @@ export const app = {
       errors: {
         invalidJson: 'JSON 형식을 확인하세요.',
         invalidShape: (msg: string) => `형식이 올바르지 않습니다: ${msg}`,
-        keyQuestionInvalid: '핵심질문 후보 중에서 선택하세요. (2단계가 확정되어야 합니다)',
-        prevNotAccepted: '이전 단계를 먼저 확정해야 이 단계를 수정할 수 있습니다.',
+        keyQuestionInvalid: '핵심질문 후보 중에서 선택하세요. (2단계를 먼저 확인해야 합니다)',
+        prevNotAccepted: '이전 단계를 먼저 확인해야 이 단계를 수정할 수 있습니다.',
         tooFewStandards: '세트에 성취기준이 2개 이상 연결되어야 합니다.',
         saveFailed: '저장 중 오류가 났습니다. 잠시 후 다시 시도해 주세요.',
         generic: '요청 처리 중 오류가 났습니다.',
-        tooManyFailures: '생성이 반복해서 실패했습니다. [JSON 편집]으로 직접 입력해 주세요.',
+        autoStopped: '생성이 실패해 자동 진행을 멈췄습니다. 멈춘 단계에서 [생성]을 다시 누르세요.',
       },
     },
     attachments: {
@@ -395,7 +397,7 @@ export const app = {
       success: (v: number) => `버전 ${v}로 게시했습니다.`,
       blockersHeading: '아직 게시할 수 없습니다',
       blockers: {
-        stageNotAccepted: (stage: number) => `${stage}단계가 아직 확정되지 않았습니다.`,
+        stageNotAccepted: (stage: number) => `${stage}단계를 아직 [확인]하지 않았습니다.`,
         unverifiedStandard: (code: string) => `성취기준 ${code}이(가) 원문 검증되지 않았습니다.`,
         noKeyQuestion: '핵심질문이 아직 선택되지 않았습니다.',
         quizChoice: (n: number) => `${n}차시 퀴즈에 선택지가 남아 있습니다 — 3단계를 다시 생성하세요.`,
