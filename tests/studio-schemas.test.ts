@@ -146,6 +146,13 @@ describe('schemas v2', () => {
     expect(messages((a) => { a.items[0].rubric.holistic = null; return a })).toMatch(/총체적/)
     // 서술형 요소 2~3개, max 합 6
     expect(messages((a) => { a.items[0].rubric.criteria = [a.items[0].rubric.criteria[0]]; return a })).toMatch(/요소 최댓값 합/)
+    // 서술형 요소는 3개까지(SHORT_CRITERIA.max) — max 합이 6이어도 4요소는 막는다
+    expect(messages((a) => {
+      const c = a.items[0].rubric.criteria
+      a.items[0].rubric.criteria = [c[0], c[1], { ...c[2], name: '이유 1', max: 1, scale: c[2].scale.slice(0, 2) }, { ...c[2], name: '이유 2', max: 1, scale: c[2].scale.slice(0, 2) }]
+      a.items[0].exemplar_answers = a.items[0].exemplar_answers.map((e) => ({ ...e, scores: [...e.scores.slice(0, 2), 0, 0], points: e.scores[0] + e.scores[1] }))
+      return a
+    })).toMatch(/서술형 채점 요소는 3개 이하/)
     // 순서·개수·배점
     expect(messages((a) => { a.items = [a.items[1], a.items[0]]; return a })).toMatch(/서술형 → 논술형/)
     expect(messages((a) => { a.items = [a.items[0], structuredClone(a.items[0]), a.items[1]]; return a })).not.toBe('')

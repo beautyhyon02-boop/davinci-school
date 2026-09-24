@@ -1,5 +1,5 @@
 import type { Snapshot } from '@/lib/studio/publish'
-import { itemLabels, lessonAssessments, isAssessmentSession } from '@/lib/studio/assessment-structure'
+import { itemLabels, lessonAssessments, isAssessmentSession, SET_ITEM_COUNT } from '@/lib/studio/assessment-structure'
 type AssessmentItem = NonNullable<Snapshot['assessment']>['items'][number]
 
 /**
@@ -32,6 +32,16 @@ export function lessonNoForItem(snapshot: Snapshot, itemNo: number): number {
   if (item?.lesson_no) return item.lesson_no
   const label = itemLabel(snapshot, itemNo)
   return snapshot.lessons.find((l) => lessonAssessments(l).includes(label))?.no ?? snapshot.lessons.length
+}
+
+/**
+ * 학생 목록 카드의 "답안 n/N": N = 그 배정 판의 문항 수(옛 판 3, 지금 구조 2), 판을 못 읽으면 세트 구조 상수.
+ * n = 제출한 문항 수(재도전 답안은 같은 문항이라 한 번만 센다).
+ */
+export function answerProgress(itemCount: number | null | undefined, answers: { item_no: number; submitted_at: string | null }[]): { done: number; total: number } {
+  const total = itemCount && itemCount > 0 ? itemCount : SET_ITEM_COUNT
+  const done = new Set(answers.filter((a) => a.submitted_at).map((a) => a.item_no)).size
+  return { done, total }
 }
 
 export function isLessonOpen(openLessons: number, lessonNo: number): boolean {

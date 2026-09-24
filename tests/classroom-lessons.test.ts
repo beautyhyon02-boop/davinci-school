@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { itemNosForLesson, lessonNoForItem, itemLabel, isLessonOpen, materialIdsForLesson, isPaperItem, studentConditions } from '@/lib/classroom/lessons'
+import { itemNosForLesson, lessonNoForItem, itemLabel, isLessonOpen, materialIdsForLesson, isPaperItem, studentConditions, answerProgress } from '@/lib/classroom/lessons'
 
 // 지금 구조(대표 2026-09-26): 교수 차시 1~5 + 단원 평가 차시 6에 서술형(1)·논술형(2)
 const snapshot = {
@@ -36,6 +36,18 @@ describe('lesson ↔ item mapping', () => {
   it('falls back to the lesson labels when items have no lesson_no', () => {
     const noLessonNo = { lessons: [{ no: 6, kind: 'assessment', assessment: ['서술형', '논술형'] }], assessment: { items: [{ kind: '서술형' }, { kind: '논술형' }] } } as never
     expect(itemNosForLesson(noLessonNo, 6)).toEqual([1, 2])
+  })
+})
+
+describe('answerProgress (학생 목록 카드 "답안 n/N")', () => {
+  const a = (item_no: number, submitted = true) => ({ item_no, submitted_at: submitted ? '2026-09-29' : null })
+  it('uses the 판 item count: an old 판 with 2 of 3 submitted shows 2/3, not 2/2', () => {
+    expect(answerProgress(3, [a(1), a(2)])).toEqual({ done: 2, total: 3 })
+  })
+  it('counts an item once even with a retry answer, ignores unsubmitted drafts, and falls back to the set structure', () => {
+    expect(answerProgress(2, [a(1), { ...a(1) }, a(2, false)])).toEqual({ done: 1, total: 2 })
+    expect(answerProgress(null, [])).toEqual({ done: 0, total: 2 })
+    expect(answerProgress(0, [a(1)])).toEqual({ done: 1, total: 2 })
   })
 })
 
