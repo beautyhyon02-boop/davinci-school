@@ -92,6 +92,37 @@ const ZERO_TAIL = ' (무응답과 시도했으나 관련 내용이 없는 경우
 
 /** 핵심질문 끝의 물음표를 뗀 몸통(교사 확인 문장에 넣는다). */
 const kqCore = (kq: string) => kq.trim().replace(/[?？]+$/u, '')
+
+const TOPIC_LIMIT = 48
+// 이 조사로 끝나면 목 잘린 문장처럼 읽힌다("…방법을" 처럼) — 뒤 경계까지 통째로 물러난다. "에서"가 "에"보다 먼저 와야
+// endsWith 로 검사할 때 더 긴 쪽부터 걸린다(예: "…학교에서" 는 "에서" 로 먼저 잡혀야지 "에" 로 잘못 잡히지 않는다).
+const TRAILING_PARTICLES = ['에서', '을', '를', '이', '가', '은', '는', '와', '과', '의', '에']
+/**
+ * v1 차시 목표 문장 → 짧은 차시 주제(제목처럼 쓰인다, PackageView 헤딩·안내장 lesson_map). 문장 끝의 "다."/"다"/"." 를
+ * 떼고, 48자 이하면 그대로 쓴다. 넘으면 공백·"·"·"," 경계에서 잘라 "…" 를 붙이되, 단어 중간을 자르지 않고 잘린 끝이
+ * 조사 하나만 남는 조각(TRAILING_PARTICLES)이면 그 앞 경계까지 통째로 물러난다(원래 버그가 바로 이 모양이었다).
+ */
+export function topicFromGoal(goal: string): string {
+  let s = goal.trim()
+  if (s.endsWith('다.')) s = s.slice(0, -2)
+  else if (s.endsWith('다')) s = s.slice(0, -1)
+  else if (s.endsWith('.')) s = s.slice(0, -1)
+  s = s.trim()
+  if (s.length <= TOPIC_LIMIT) return s
+  const prefix = s.slice(0, TOPIC_LIMIT)
+  let cut = -1
+  for (let i = prefix.length - 1; i > 0; i--) if (/[\s·,]/u.test(prefix[i])) { cut = i; break }
+  let head = (cut > 0 ? prefix.slice(0, cut) : prefix).replace(/[\s·,]+$/u, '')
+  for (;;) {
+    const particle = TRAILING_PARTICLES.find((p) => head.endsWith(p))
+    if (!particle) break
+    const lastBoundary = Math.max(head.lastIndexOf(' '), head.lastIndexOf('·'), head.lastIndexOf(','))
+    if (lastBoundary < 0) break // 경계가 더 없으면(한 낱말뿐이면) 그대로 둔다 — 빈 문자열보다는 낫다
+    head = head.slice(0, lastBoundary).replace(/[\s·,]+$/u, '')
+  }
+  return `${head}…`
+}
+
 const squash = (s: string) => s.replace(/\s+/g, '')
 /** 막혔을 때 힌트(L-06): v1 퀴즈 해설이 정답을 그대로 담고 있으면 정답을 말하지 않는 중립 힌트로 바꾼다. */
 function hintFor(q: QuizV1): string {
@@ -130,7 +161,7 @@ export function upgradeLessonV1(l: LessonV1, cautionNotes: string[]): LessonT {
         { ...challenge, prompt: `${l.key_question} 자신의 판단과 이유를 문단으로 써 보자.` },
       ]
   return {
-    no: l.no, standards: l.standards, topic: l.goal.slice(0, 40), key_question: l.key_question, goal: l.goal,
+    no: l.no, standards: l.standards, topic: topicFromGoal(l.goal), key_question: l.key_question, goal: l.goal,
     time_budget: { intro_min: 10, main_min: 40, wrapup_min: 10 },
     // 논술형 차시: v1 은 전개(안내) + 정리 자리의 '평가 35분'이었다 → 안내 5분 + 논술형 작성 35분 두 소단계(스펙 §2.3 [TS])
     flow: isEssay

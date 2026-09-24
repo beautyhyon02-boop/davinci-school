@@ -67,6 +67,11 @@ for (const set of SETS) describe(`${set.subject} fixtures (v2)`, () => {
     const items = (loadFixture(`stage5-generate${set.suffix}`) as { items: { lesson_no: number }[] }).items
     expect(items.map((i) => i.lesson_no)).toEqual(unit_plan.assessment_plan.summative_placement.map((p) => p.lesson_no))
   })
+  it('lesson topics are hand-written short noun phrases (≤20자) and unit_plan.lesson_map carries the same topic per lesson (헤딩 절단 재발 방지)', () => {
+    const { lessons, unit_plan } = loadFixture(`stage3-generate${set.suffix}`) as { lessons: { no: number; topic: string }[]; unit_plan: { lesson_map: { lesson_no: number; topic: string }[] } }
+    for (const l of lessons) expect(l.topic.length, `${set.subject} ${l.no}차시 주제 "${l.topic}"`).toBeLessThanOrEqual(20)
+    expect(unit_plan.lesson_map.map((m) => ({ no: m.lesson_no, topic: m.topic }))).toEqual(lessons.map((l) => ({ no: l.no, topic: l.topic })))
+  })
   it('stage4 materials do not carry the answers the items ask for (C-03)', () => {
     const { materials } = loadFixture(`stage4-generate${set.suffix}`) as { materials: { id: string; body: string | null; role: string }[] }
     const body = (id: string) => materials.find((m) => m.id === id)?.body ?? ''
