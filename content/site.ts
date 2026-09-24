@@ -206,6 +206,14 @@ export const app = {
         submitting: '추가하는 중…',
         saved: '과목을 추가했습니다.',
         nothingToAdd: '추가할 수 있는 과목이 없습니다.',
+        remove: {
+          help: '세트를 아직 만들지 않은 과목은 [빼기]로 대주제에서 뺄 수 있습니다.',
+          button: '빼기',
+          removing: '빼는 중…',
+          removed: '과목을 뺐습니다.',
+          hasSet: '이미 세트가 만들어진 과목은 뺄 수 없습니다.',
+          lastSubject: '대주제에는 과목이 하나 이상 있어야 합니다.',
+        },
       },
     },
     intro: {

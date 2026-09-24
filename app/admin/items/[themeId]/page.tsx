@@ -116,7 +116,7 @@ export default async function ThemeDetailPage({ params }: { params: Promise<{ th
           </div>
         </Card>
 
-        <AddSubjectsPanel themeId={themeId} themeSubjects={themeSubjects} />
+        <AddSubjectsPanel themeId={themeId} themeSubjects={themeSubjects} subjectsWithSets={existingSubjects} />
 
         <StandardsPicker themeId={themeId} availableSubjects={availableSubjects} standardsBySubject={standardsBySubject} />
       </div>

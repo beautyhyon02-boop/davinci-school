@@ -2,7 +2,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { getSessionProfile } from '@/lib/auth/session'
-import { canCreateSet, validateStandardSelection, validateStandardIds, parseSharedMaterialsInput, addThemeSubjects } from '@/lib/studio/themes'
+import { canCreateSet, validateStandardSelection, validateStandardIds, parseSharedMaterialsInput, addThemeSubjects, removeThemeSubject } from '@/lib/studio/themes'
 import type { Subject } from '@/lib/studio/schemas'
 import { app } from '@/content/site'
 
@@ -95,6 +95,28 @@ export async function addSubjectsToTheme(themeId: string, formData: FormData) {
 
   const toAdd = formData.getAll('subjects').map((v) => String(v))
   const r = addThemeSubjects((theme.subjects ?? []) as string[], toAdd)
+  if (!r.ok) return { ok: false as const, error: r.error }
+
+  const { error } = await supabase.from('themes').update({ subjects: r.subjects }).eq('id', themeId)
+  if (error) return { ok: false as const, error: errors.saveFailed }
+
+  revalidatePath(`/admin/items/${themeId}`)
+  return { ok: true as const }
+}
+
+/** 대주제에서 과목 하나를 뺀다. 그 과목의 세트가 있는지는 화면이 아니라 여기서 item_sets 로 다시 확인한다. */
+export async function removeSubjectFromTheme(themeId: string, formData: FormData) {
+  await assertAdmin()
+  const supabase = await createClient()
+
+  const { data: theme, error: themeErr } = await supabase.from('themes').select('subjects').eq('id', themeId).single()
+  if (themeErr || !theme) return { ok: false as const, error: errors.themeNotFound }
+
+  const { data: sets, error: setsErr } = await supabase.from('item_sets').select('subject').eq('theme_id', themeId)
+  if (setsErr) return { ok: false as const, error: errors.saveFailed }
+
+  const subject = String(formData.get('subject') ?? '')
+  const r = removeThemeSubject((theme.subjects ?? []) as string[], subject, (sets ?? []).map((s) => s.subject as string))
   if (!r.ok) return { ok: false as const, error: r.error }
 
   const { error } = await supabase.from('themes').update({ subjects: r.subjects }).eq('id', themeId)

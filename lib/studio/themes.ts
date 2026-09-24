@@ -55,6 +55,23 @@ export function addThemeSubjects(
   return { ok: true, subjects: [...current, ...additions] as Subject[] }
 }
 
+/**
+ * 대주제에서 과목 하나를 뺀다. 그 과목으로 이미 세트가 있으면(subjectsWithSets) 뺄 수 없다 — 세트가 대주제 과목을 전제로 하기 때문.
+ * 대주제에 없는 과목이거나 마지막 남은 과목이어도 거부한다(대주제는 과목이 하나 이상이어야 한다). 나머지 순서는 그대로 둔다.
+ */
+export function removeThemeSubject(
+  current: string[],
+  subject: string,
+  subjectsWithSets: string[],
+): { ok: true; subjects: Subject[] } | { ok: false; error: string } {
+  const s = subject.trim()
+  if (!current.includes(s)) return { ok: false, error: errors.subjectNotInTheme }
+  if (subjectsWithSets.includes(s)) return { ok: false, error: app.studio.theme.addSubjects.remove.hasSet }
+  const subjects = current.filter((x) => x !== s)
+  if (subjects.length === 0) return { ok: false, error: app.studio.theme.addSubjects.remove.lastSubject }
+  return { ok: true, subjects: subjects as Subject[] }
+}
+
 /** subject가 theme.subjects 안에 있고, existingSubjects(이미 세트가 만들어진 과목)와 겹치지 않는지 확인한다. */
 export function canCreateSet(
   theme: { subjects: string[] },

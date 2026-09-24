@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { parseTheme, canCreateSet, validateStandardSelection, validateStandardIds, parseSharedMaterialsInput, sharedMaterialsJson, addThemeSubjects, THEME_FIELDS } from '@/lib/studio/themes'
+import { parseTheme, canCreateSet, validateStandardSelection, validateStandardIds, parseSharedMaterialsInput, sharedMaterialsJson, addThemeSubjects, removeThemeSubject, THEME_FIELDS } from '@/lib/studio/themes'
+import { app } from '@/content/site'
 
 function fd(o: Record<string, string | string[]>) {
   const f = new FormData()
@@ -230,5 +231,28 @@ describe('addThemeSubjects', () => {
 
   it('rejects an unknown subject', () => {
     expect(addThemeSubjects(['국어'], ['음악']).ok).toBe(false)
+  })
+})
+
+describe('removeThemeSubject', () => {
+  const remove = app.studio.theme.addSubjects.remove
+
+  it('removes a subject that has no set, keeping the order of the rest', () => {
+    const r = removeThemeSubject(['국어', '수학', '과학', '세계사'], '과학', ['수학'])
+    expect(r).toEqual({ ok: true, subjects: ['국어', '수학', '세계사'] })
+  })
+
+  it('refuses a subject that already has a set', () => {
+    expect(removeThemeSubject(['수학', '과학'], '수학', ['수학'])).toEqual({ ok: false, error: remove.hasSet })
+  })
+
+  it('refuses a subject that is not in the theme', () => {
+    const r = removeThemeSubject(['수학', '과학'], '영어', [])
+    expect(r.ok).toBe(false)
+    expect(!r.ok && r.error).toBe(app.studio.errors.subjectNotInTheme)
+  })
+
+  it('refuses to remove the last subject', () => {
+    expect(removeThemeSubject(['수학'], '수학', [])).toEqual({ ok: false, error: remove.lastSubject })
   })
 })
