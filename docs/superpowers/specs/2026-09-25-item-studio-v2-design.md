@@ -17,7 +17,7 @@
 | 0 소개 | 소개문 + 과목별 아이디어 + 공유 자료 A~D(JSON 붙여넣기) | 그대로. 공유 자료는 3B 계획대로 [생성]→[검토]→[확정]. **AI가 만들거나 모은 자료에는 "원장 확인 필요" 표식**을 남긴다 | 2025 문항집은 AI 산출 자료를 검증 없이 썼는데 우리는 검증 절차를 되살린다 (wp13 §5-11) |
 | 1 성취기준 | 소단원의 성취기준 2~6개 선택, 원문 확인 체크 | 그대로 + 고른 성취기준마다 **성취수준 A~E 문장을 자동으로 붙여 보여 준다**(`data/reference/levels`) | 성취수준 = 표시 + 수행특성 문장 세트 (wp1 §1; 총론 p.78) |
 | 2 재구성·목표·핵심질문 | 통합 문장 1개 + 학습 목표 3~4 + 핵심질문 후보 | **재구조화 표**(성취기준마다 통합/재조정/유지 + 원문 병기) + 통합 문장 1개(유지) + 학습 목표를 **지식·이해/과정·기능/가치·태도 세 축**으로 표시 + C수준(도달점) 문장 병기 + 핵심질문 후보 | 재구조화 3유형·원문 병기 (wp7 §1; 수학재구성 p.11·13), C가 도달점 (wp1 §7-3) |
-| 3 차시 설계 | 차시별 성취기준·핵심질문·목표·흐름(문장 3개)·자료·퀴즈 3·평가 배치·병합 | **평가 계획표 + 차시 지도안 + 활동지**. 60분 배분(10/40/10), 전개 소단계에 분 표시, **발문 Q 2~4개 + 예상 답 + 막힐 때 힌트**, 준비물, 지도상 유의점, 활동지(기본/표준/도전 과제 + 자기평가), 퀴즈 3(논술형 차시 0) | 대구 본시지도안(분 단위·핵심질문·유의점)이 최적 모델 (wp7 §0-2, §3(d); 대구수업평가설계 p.9), 발문+예상답은 공식 관행 (wp7 §0-3; 수학재구성 p.92-95) |
+| 3 차시 설계 | 차시별 성취기준·핵심질문·목표·흐름(문장 3개)·자료·퀴즈 3·평가 배치·병합 | **평가 계획표 + 차시 지도안 + 활동지**. 60분 배분(10/40/10), 전개 소단계에 분 표시, **발문 Q 2~4개 + 예상 답 + 막힐 때 힌트**, 준비물, 지도상 유의점, 활동지(기본/표준/도전 과제 + 자기평가), 퀴즈 3(교수 차시마다), 서·논술형은 마지막 교수 차시 뒤 단원 평가 차시(2026-09-26) | 대구 본시지도안(분 단위·핵심질문·유의점)이 최적 모델 (wp7 §0-2, §3(d); 대구수업평가설계 p.9), 발문+예상답은 공식 관행 (wp7 §0-3; 수학재구성 p.92-95) |
 | 4 자료 | 가상 자료(자작만), 표·글·그래프 | 그대로 + **출처 종류 확장**(자작 / 공개 자료 인용·출처 표기) + 자료 크기 관행(표 5~10행, 원자료 20~25개, 그래프 1~2개) 검토 + 원자료만(답을 미리 담지 않음) 검사 유지 | 자료 규모 관행 (WP5-수학 README 관찰4; wp11 §6-1), 자료 의존성 원칙 (wp4 §5) |
 | 5 평가 문항 | 문두·조건(분량/필수/형식)·채점표(서술형 단계표 / 논술형 4×5)·등급표·논술형 예시답안 상중하·피드백 틀 | **문항 카드**(2025 서식): 평가 요소(~하기) · 상황 · 사용 자료 · 문두(전제문+발문+[배점]) · **조건(행동동사 단위 + 부분배점)** · **채점표(요소 × 척도 × 수행특성, 1점 단위, 조건↔요소 대응)** · 총체적 상/중/하(논술형) · **예시답안(척도 단계마다)** · 채점 시 유의점 · 최소 능력 · A~E 예상 점수 구간 · 답안 방식(화면/종이) · 참고한 공개 자료 | 2025 문항 카드 7블록 (wp13 §1), 조건-배점 병기 (서울 §2, §6-3), 척도별 예시답안 (서울 §3, §6-5), 채점 유의점 (wp13 §5-6) |
 | 6 교사용 지침서 | 세트 준비물·일정·용어·차시별 메모 | 차시별 발문·유의점·퀴즈 해설은 **3단계 지도안으로 흡수**. 남는 것: 세트 총괄(준비물·일정·목적), 용어, **병합 안내**(어느 활동을 빼는지), **검수 요령**(흔한 오답·유의점·재도전 안내) | 지침서와 지도안의 중복 제거 (wp13 §5-1: 문항+수업 설계를 한 산출물로) |
@@ -156,6 +156,8 @@ export const Reconstruction = z.object({
 
 ### 2.3 3단계 — 평가 계획 + 차시 지도안 + 활동지
 
+> **세트 구조 결정(대표님 2026-09-26)**: 세트 = 단원 = 교수 차시 1~5개. 매 교수 차시 끝 = 이해 점검 퀴즈 3문항(마지막 교수 차시 포함). 세트 끝 = 서술형 1문항 + 논술형 1문항(정확히 2문항)을 **마지막 교수 차시 뒤 별도 단원 평가 차시**(lessons 의 마지막, `kind: 'assessment'`, 60분 = 평가 안내 5 · 서술형 작성 15 · 논술형 작성 35 · 정리 5, 퀴즈·활동지·발문 없음)에서 함께 본다. 두 문항 모두 분석적 + 총체적 루브릭. 배점 가정 서술형 6 + 논술형 16 = 22(대표님이 바꿀 수 있음 — `lib/studio/assessment-structure.ts` 한 곳). 이 절과 §2.5의 이전 문장(서술형 2 + 논술형 1, 논술형 차시 퀴즈 0)은 아래처럼 바뀌었다. 옛 구조로 게시된 판은 고쳐 쓰지 않고 그대로 읽는다(§4.3).
+
 입력: 2단계 확정 출력 + 각 차시 성취기준의 C·D·E 문장 + 예시 은행에서 뽑은 **수행형·형성평가 레코드 2개**(활동 아이디어용, 문항 아님) + 공유 자료 ID.
 
 출력 JSON(`templates/lesson-design.json`을 zod로 옮긴 것 + 활동지):
@@ -166,8 +168,8 @@ export const UnitPlan = z.object({
   set_key_question: z.string(),                          // 2단계에서 고른 것을 복사
   lesson_map: z.array(z.object({ lesson_no: z.number().int(), standards: z.array(z.string()).min(1).max(2), topic: z.string() })).min(4).max(6),
   assessment_plan: z.object({
-    formative: z.string(),                               // "차시별 퀴즈 3문항, 논술형 차시 0"
-    summative_placement: z.array(z.object({ lesson_no: z.number().int(), kind: z.enum(['서술형1', '서술형2', '논술형']) })).length(3),
+    formative: z.string(),                               // "교수 차시마다 퀴즈 3문항"
+    summative_placement: z.array(z.object({ lesson_no: z.number().int(), kind: z.enum(['서술형', '논술형']) })).length(2),   // 두 건 모두 단원 평가 차시 번호
     rubric_note: z.object({ 상: z.string(), 중: z.string(), 하: z.string() }), // 종합 도달 모습(참고), A~B/C/D~E 어휘
   }),
 })
@@ -178,11 +180,12 @@ export const WorksheetTask = z.object({
   answer_space: z.enum(['short', 'lines', 'table', 'draw']), expected: z.string().min(2),
 })
 export const Worksheet = z.object({
-  tasks: z.array(WorksheetTask).min(2).max(5),           // 기본 1 · 표준 1~2 · 도전 1 이상
-  self_check: z.array(z.string()).min(1).max(3),         // "미흡/보통/만족" 척도 문장
+  tasks: z.array(WorksheetTask).max(5),                  // 교수 차시: 2~5개, 기본 1 · 표준 1~2 · 도전 1 이상(superRefine) — 평가 차시는 비움
+  self_check: z.array(z.string()).max(3),                // 교수 차시: 1~3 "미흡/보통/만족" 척도 문장
 })
 export const Lesson = z.object({
   no: z.number().int().min(1).max(8),
+  kind: z.enum(['teaching', 'assessment']).default('teaching'),   // assessment = 마지막 교수 차시 뒤 단원 평가 차시(2026-09-26)
   standards: z.array(z.string()).min(1).max(2),
   topic: z.string().min(2),
   key_question: z.string().min(5),
@@ -193,23 +196,23 @@ export const Lesson = z.object({
     main: z.array(z.object({ step_label: z.string(), minutes: z.number().int().min(5), activities: z.array(z.string()).min(1) })).min(2).max(4),
     wrapup: z.array(z.string()).min(1),
   }),
-  teacher_script: z.object({ questions: z.array(ScriptQuestion).min(2).max(4) }),
+  teacher_script: z.object({ questions: z.array(ScriptQuestion).max(4) }),   // 교수 차시 2~4(superRefine), 평가 차시 0~4
   materials_used: z.array(z.string().regex(/^[A-Z]$/)).default([]),   // 자료 ID(기존 `materials`의 "자료 A" 파싱을 대체)
   materials_needed: z.array(z.string()).default([]),                  // 준비물(활동지 출력물, 자, 색연필 …)
   caution_notes: z.array(z.string()).min(1).max(4),
   worksheet: Worksheet,
   formative_check: z.object({ quiz: z.array(QuizItem).max(3) }),
-  assessment: z.enum(['서술형1', '서술형2', '논술형']).nullable(),
+  assessment: z.array(z.enum(['서술형', '논술형'])).max(2).default([]),   // 교수 차시 [], 단원 평가 차시 ['서술형', '논술형']
   mergeable_with: z.number().int().nullable(),
   merge_note: z.string().nullable(),                     // 병합 시 빼도 되는 활동(있으면)
   images: z.array(z.string().url()).default([]),
-}).superRefine(/* 논술형 차시 quiz 0, 그 외 3 (v1) · time_budget 합 60 · main.minutes 합 = main_min · 논술형 차시는 main에 "논술형 작성(35분 이상)" 소단계 */)
-export const LessonDesign = z.object({ unit_plan: UnitPlan, lessons: z.array(Lesson).min(4).max(6) })
+}).superRefine(/* 교수 차시 quiz 3·발문 2~4·활동지 tier 3종, 단원 평가 차시 quiz 0·assessment 비지 않음 · time_budget 합 60 · main.minutes 합 = main_min */)
+export const LessonDesign = z.object({ unit_plan: UnitPlan, lessons: z.array(Lesson).min(4).max(6) })   // 교수 차시 3~5 + 단원 평가 차시 1
 ```
 
 검토 규칙:
-- [TS] 모든 성취기준이 어느 차시엔가 배정(v1 coverage). `summative_placement`와 `lessons[].assessment`가 일치. 서술형은 세트 중후반, 논술형은 마지막 차시. `mergeable_with`는 인접 번호이고 둘 중 하나만 서·논술형이거나 둘 다 없음. 퀴즈 정답이 `choices` 안에 있음(선택형). 활동지 `tier` 세 종류가 모두 있음. `materials_used`가 4단계 자료 ID 범위(A~F) 안.
-- [AI] 퀴즈가 차시 핵심질문을 점검하는지·정답 검증(v1), 발문이 "무엇을 왜 묻는지" 원장이 읽고 진행할 만큼 구체적인지, `if_stuck`이 정답을 그대로 말해 주지 않는지, `caution_notes`에 흔한 오개념 1개 이상.
+- [TS] 모든 성취기준이 어느 차시엔가 배정(v1 coverage). `summative_placement`와 `lessons[].assessment`가 일치. 단원 평가 차시(`kind: 'assessment'`)가 정확히 1개이고 마지막 번호이며 `['서술형', '논술형']`을 담고, 교수 차시에는 서·논술형이 없고, 교수 차시는 3~5개(`sessionPlacementIssues`). 평가 차시 전개에 서술형 작성 소단계와 논술형 작성(35분 이상) 소단계. `mergeable_with`는 인접 번호이고 단원 평가 차시는 병합하지 않음. 퀴즈 정답이 `choices` 안에 있음(선택형). 활동지 `tier` 세 종류가 모두 있음. `materials_used`가 4단계 자료 ID 범위(A~F) 안.
+- [AI] 퀴즈가 차시 핵심질문을 점검하는지·정답 검증(v1), 교수 차시의 수업·퀴즈가 단원 평가 문항의 답을 미리 말하지 않는지(C-03), 발문이 "무엇을 왜 묻는지" 원장이 읽고 진행할 만큼 구체적인지, `if_stuck`이 정답을 그대로 말해 주지 않는지, `caution_notes`에 흔한 오개념 1개 이상.
 
 근거: 대구 본시지도안(분 단위·핵심질문 3-터치·유의점) (wp7 §3(d), §5; 대구수업평가설계 p.9·17), 발문 Q1~Q3+예상 답안 관행 (wp7 §5; 수학재구성 p.92-95), 형성평가 선행 → 서술형 → 논술형 배치 (wp7 §6; 수학재구성 p.168-169, 사회재구성 p.148-149), 활동지 공통 요소(반·번호·이름, 핵심질문 재게시, 자기평가) (wp7 §3(e); 수학재구성 p.172-174, 대구 p.34), 60분·병합 시 120분 재편성·퀴즈 3문항은 우리 확장 (wp7 §8, §9-1·4), "수업 = 수행평가 준비" (wp7 §2; 대구 p.8).
 
@@ -275,7 +278,7 @@ export const Criterion = z.object({
 })
 export const Rubric = z.object({
   criteria: z.array(Criterion).min(1).max(4),
-  holistic: z.object({ 상: z.string(), 중: z.string(), 하: z.string() }).nullable(),   // 논술형 필수, 서술형 null
+  holistic: z.object({ 상: z.string(), 중: z.string(), 하: z.string() }).nullable(),   // 새 세트는 두 문항 모두 필수(C-15, 2026-09-26) — null 은 옛 판 서술형만
   notes: z.array(z.string().min(5)).min(1).max(4),                                       // 채점 시 유의점
 })
 export const ExemplarAnswer = z.object({
@@ -289,20 +292,20 @@ export const LevelExpectation = z.object({ level: z.enum(['A', 'B', 'C', 'D', 'E
 export const AssessmentItem = z.object({
   kind: z.enum(['서술형', '논술형']),
   lesson_no: z.number().int(),
-  points: z.number().int().positive(),           // 서술형 3, 논술형 16
+  points: z.number().int().positive(),           // 서술형 6, 논술형 16(2026-09-26 가정; 옛 판 서술형 3)
   evaluation_elements: z.array(z.string().min(3)).min(1).max(3),   // "~하기" 명사형
   situation: z.object({ role: z.string(), audience: z.string(), purpose: z.string(), product: z.string() }).nullable(), // 논술형 필수(GRASPS 축약)
   materials_used: z.array(z.string().regex(/^[A-Z]$/)).min(1),
   stem: z.string().min(10),                      // 전제문(자료 한 줄 요약) + 발문 + "[N점]"
   conditions: Conditions,
   rubric: Rubric,
-  exemplar_answers: z.array(ExemplarAnswer).min(2),                  // 서술형: 0점 제외 총점 단계마다 1개(3점이면 3·2·1), 논술형: 상/중/하 3개
+  exemplar_answers: z.array(ExemplarAnswer).min(2),                  // 서술형: 0점 제외 총점 단계마다 1개(6점이면 6·5·4·3·2·1), 논술형: 상/중/하 3개
   level_map: z.array(LevelExpectation).length(5),                    // A~E 예상 점수 구간 + 응답 특성
   min_competency: z.string().nullable(),                             // E 수준 최소 수행(중: 서버가 E 문장 복사, 고: 생성 필수)
   references: z.array(z.object({ id: z.string(), source: z.string() })).default([]),
 })
 export const Assessment = z.object({
-  items: z.array(AssessmentItem).length(3),
+  items: z.array(AssessmentItem).length(2),                          // 서술형 1 → 논술형 1(2026-09-26), 둘 다 lesson_no = 단원 평가 차시
   grade_boundaries: z.array(z.object({
     grade: z.number().int().min(1).max(7), min: z.number().int(), max: z.number().int(),
     band: z.enum(['상', '중', '하']), level_ref: z.enum(['A', 'B', 'C', 'D', 'E', 'E 미만']),
@@ -311,16 +314,16 @@ export const Assessment = z.object({
 }).superRefine(/* 아래 [TS] 검사 */)
 ```
 
-v1과의 대응: `AssessmentItem.kind/lesson_no/stem/points`는 그대로. `conditions.length/format`은 그대로 두고 `required[]`가 `items[]`(구조화)로 바뀐다. `ShortRubric`/`ExtendedRubric` 유니온은 하나의 `Rubric`으로 합쳐진다 — 서술형은 요소 1~3개(최댓값 합 3), 논술형은 요소 정확히 4개 × 최댓값 4(대표님 확정 4요소×0~4 유지). 세트 단위 `Assessment.exemplars`는 문항 단위 `exemplar_answers`로 옮긴다(서술형이 논술형 예시로 채점되던 v1의 어긋남 해소 — `grading-prompt.ts`가 세트 예시를 모든 문항에 넣고 있었다).
+v1과의 대응: `AssessmentItem.kind/lesson_no/stem/points`는 그대로. `conditions.length/format`은 그대로 두고 `required[]`가 `items[]`(구조화)로 바뀐다. `ShortRubric`/`ExtendedRubric` 유니온은 하나의 `Rubric`으로 합쳐진다 — 서술형은 요소 2~3개(최댓값 합 6, 2026-09-26 이전 판은 1~3개·합 3), 논술형은 요소 정확히 4개 × 최댓값 4(대표님 확정 4요소×0~4 유지). 세트 단위 `Assessment.exemplars`는 문항 단위 `exemplar_answers`로 옮긴다(서술형이 논술형 예시로 채점되던 v1의 어긋남 해소 — `grading-prompt.ts`가 세트 예시를 모든 문항에 넣고 있었다).
 
 [TS] 검사(`lib/studio/checks/assessment.ts`, 순수 함수, 전부 테스트):
-1. 문항 3개 = 서술형 2(각 3점) + 논술형 1(16점), 합 22. 등급표 7행이 0~22를 빈틈·겹침 없이 덮고 1등급 max = 22. `level_ref`는 §1.1 대응표와 일치.
+1. 문항 2개 = 서술형 1(6점, 요소 2~3개) → 논술형 1(16점), 합 22(2026-09-26; `structureIssues`). 두 문항 모두 `holistic` 필수. 등급표 7행이 0~22를 빈틈·겹침 없이 덮고 1등급 max = 22. `level_ref`는 §1.1 대응표와 일치.
 2. 요소 `max` 합 = 문항 배점. 각 요소의 `scale.points`는 0..max 정수 집합과 정확히 일치(간격 균등·중간값 누락 금지). 0점 descriptor에 "무응답"과 "시도했으나"가 모두 언급.
 3. 조건의 `points` 합 ≤ 문항 배점; 모든 조건 번호가 어느 요소의 `condition_nos`에 한 번 이상 등장(조건은 반드시 채점표에 반영, 조건을 가리키지 않는 요소는 빈 배열 허용). 조건이 4개 이상이면 `category`가 두 종류 이상.
-4. 서술형 `exemplar_answers`의 `points` 집합 ⊇ {1..points}; 논술형은 상/중/하 각 1개. 모든 예시의 `scores` 길이 = 요소 수, 합 = `points`, 각 값 ≤ 해당 `max`. **논술형 상/중/하 총점이 등급표에서 각각 상·중·하 밴드에 떨어져야 한다.**
+4. 서술형 `exemplar_answers`의 `points` 집합 ⊇ {1..points}(6점이면 1~6); 논술형은 상/중/하 각 1개. 논술형 예시의 `assumed_short_points`(0~6)는 그 예시가 전제하는 서술형 문항 점수. 모든 예시의 `scores` 길이 = 요소 수, 합 = `points`, 각 값 ≤ 해당 `max`. **논술형 상/중/하 총점이 등급표에서 각각 상·중·하 밴드에 떨어져야 한다.**
 5. `level_map` 구간이 A→E로 단조 감소하고 0..points를 덮는다.
 6. 세트에서 `answer_mode='paper'`는 최대 1개(대표님 결정 + 관행). 논술형은 `screen`.
-7. `stem`이 "[N점]"으로 끝나고 N = `points`. 논술형에 `situation`과 `holistic` 필수.
+7. `stem`이 "[N점]"으로 끝나고 N = `points`. 논술형에 `situation` 필수, 두 문항 모두 `holistic` 필수(C-15).
 8. `materials_used`가 4단계 ID 안에 있고, 참조 자료가 `role='raw'`를 최소 1개 포함.
 9. 척도 descriptor 인접 단계가 **부사만 다른지** 휴리스틱(동사 원형·목적어 명사구가 같고 부사만 다르면 경고) — 완전 자동은 아니므로 경고만.
 10. **조건 = 지침(C-32, 대표 2026-09-26)**: 서술형 `conditions.items`는 빈 배열, 논술형은 2~4개(4개 초과는 종류와 무관하게 걸림). 조건 문장에 숫자 사이 연산 기호(÷ × / = + −), 계산 동사·공식·소수 자리 지시(계산해·구해·나누어·곱해·더해·빼서·공식·소수 ○째 자리), 단계 순서어(먼저·다음에·그다음·마지막으로 + 동사; "가장 먼저"는 제외), 소수, 참조 자료(표 칸·열 이름·본문)에 있는 두 자리 이상 수치가 있으면 `other`. 근거·문장·단어·글자 수와 배점("2개 이상", "200자", "(2점)")은 허용(`lib/studio/checks.ts` `conditionHints`).
@@ -343,7 +346,7 @@ export const TeacherGuide = z.object({
   glossary: z.array(z.object({ term: z.string(), explanation: z.string() })).min(3),                     // v1 유지
   merge_guide: z.array(z.object({ lessons: z.tuple([z.number().int(), z.number().int()]), skip_activities: z.array(z.string()).min(1), time_budget_120: z.object({ intro_min: z.number().int(), main_min: z.number().int(), wrapup_min: z.number().int() }) })).default([]),
   grading_guide: z.object({
-    common_errors: z.array(z.object({ item_no: z.number().int().min(1).max(3), error: z.string(), how_to_read: z.string() })).min(3),  // 문항별 흔한 오답과 검수 시 볼 곳
+    common_errors: z.array(z.object({ item_no: z.number().int().min(1), error: z.string(), how_to_read: z.string() })).min(3),  // 문항별 흔한 오답과 검수 시 볼 곳(item_no ≤ 5단계 문항 수는 [TS])
     review_tips: z.array(z.string()).min(2).max(5),      // AI 초안 검수 요령(근거 인용 확인, 유의점 적용, 조정 이유 남기기)
     retry_guidance: z.string().min(10),                 // 재도전을 언제·어떻게 열어 줄지
   }),
@@ -368,18 +371,18 @@ export const NoticePlan = z.object({
     topic_summary: z.string().max(60),                    // "~활동에서 ~을 배웠습니다"
     preview: z.string().max(50),                          // "다음 시간에는 ~을 배워요" (마지막 차시는 세트 마무리 문장)
     home_study_suggestion: z.string().max(60),            // 혼자 실행 가능한 구체 행동 1개, 청유형
-    quiz_notes: z.array(z.object({ quiz_no: z.number().int(), wrong_note: z.string().max(40) })),   // 퀴즈 수와 같음(0 또는 3)
+    quiz_notes: z.array(z.object({ quiz_no: z.number().int(), wrong_note: z.string().max(40) })),   // 퀴즈 수와 같음(교수 차시 3, 단원 평가 차시 0)
     criteria_phrases: z.array(z.object({
       criterion_name: z.string(),                         // 5단계 rubric.criteria[].name과 동일
       good: z.array(z.string().max(60)).min(2),           // 잘한 점 후보(정도부사+완성동사)
       improve: z.array(z.string().max(60)).min(2),        // 보완 후보(부분 긍정 + 역접 + 완곡 + 다음 행동)
-    })).nullable(),                                       // 서·논술형 차시만
+    })).nullable(),                                       // 단원 평가 차시만(두 문항의 요소 전부), 교수 차시는 null
   })).min(4).max(6),
   footer_disclaimer: z.literal('본 안내장은 학교생활기록부가 아니며, 학원 자체 학습 기록입니다.'),
 })
 ```
 
-수업 운영 시 학생별 `Notice`(notice.json 그대로; 필드 출처는 `data / ai_draft / director` 셋): `lesson_context`는 data(핵심질문·목표 복사) + `topic_summary`(틀에서 복사), `participation.quiz`는 data, 틀린 문항 `note`는 `quiz_notes`에서 복사, `essay_result`는 **확정 채점만**(미확정이면 null), `criteria_feedback.good_point/improve_point`는 AI가 `criteria_phrases`와 확정 채점의 `evidence`로 한 문장씩 초안, `retry`는 data + `improvement_comment` AI 초안, `next_lesson`은 틀에서 복사, `director_comment`·`director_message`는 원장 자유 서술(비면 섹션 생략).
+수업 운영 시 학생별 `Notice`(notice.json 그대로; 필드 출처는 `data / ai_draft / director` 셋): `lesson_context`는 data(핵심질문·목표 복사) + `topic_summary`(틀에서 복사), `participation.quiz`는 data, 틀린 문항 `note`는 `quiz_notes`에서 복사, `essay_results`는 **확정 채점만**(단원 평가 차시는 서술형·논술형 두 결과, 미확정 문항은 빠진다), `criteria_feedback.good_point/improve_point`는 AI가 `criteria_phrases`와 확정 채점의 `evidence`로 한 문장씩 초안, `retry`는 data + `improvement_comment` AI 초안, `next_lesson`은 틀에서 복사, `director_comment`·`director_message`는 원장 자유 서술(비면 섹션 생략).
 
 검토 규칙(`lib/classroom/notice-lint.ts`, 순수 함수):
 - [TS] 금지어: `못한다/못했다/실패/모른다`(부정 서술어), `등수/석차/상위 n%/평균보다`(비교), 다른 학생 이름(원생 목록 대조), `매우 우수/보통/미흡`이 단독 문장으로 끝남. `improve_point`가 있으면 같은 요소의 `good_point`가 비어 있지 않아야 함. `home_study_suggestion`에 동사가 있어야 함(청유형 종결 `~봅시다/~하세요`). 미확정 채점을 넣으면 반려(서버가 `confirmed_at`을 확인).
@@ -394,7 +397,7 @@ v1처럼 `RULES`(과목별 `rulesFor(subject)`)를 첫 system 블록(캐시)으�
 ### 2.9 게시·패키지·교재에 미치는 영향
 
 - **스냅샷(`lib/studio/publish.ts` `Snapshot`)**: `unit_plan`, `reconstruction_detail`(2단계 표), `notice_plan`, `references`(문항 카드가 참고한 공개 자료 합집합)가 추가된다. 배정된 과제는 판(스냅샷)에 고정되므로 기존 v1 판은 그대로 두고 읽을 때 `upgradeSnapshotV1()`(§4.3)으로 v2 모양으로 올린다.
-- **PackageView(관리자·원장)**: 카드 순서 = 표지 → 소개 → 성취기준(+A~E 접이식) → 재구조화 표 → 학습 목표(세 축 배지) → 핵심질문 → 평가 계획표 → 차시 카드(시간·흐름 소단계·발문 대본·준비물·유의점·활동지·퀴즈) → 자료(출처 배지) → 문항 카드 3장(평가 요소·상황·문두·조건 표·채점표·유의점·예시답안·A~E 구간·최소 능력) → 등급표(`level_ref` 열) → 피드백 틀 → 안내장 틀 → 참고한 공개 자료 → 생성 모델. 원장 화면(`mode='teacher'`)은 정답·예시답안을 접어 둔다(v1 `showAnswers`).
+- **PackageView(관리자·원장)**: 카드 순서 = 표지 → 소개 → 성취기준(+A~E 접이식) → 재구조화 표 → 학습 목표(세 축 배지) → 핵심질문 → 평가 계획표 → 차시 카드(시간·흐름 소단계·발문 대본·준비물·유의점·활동지·퀴즈) → 단원 평가 차시 카드(평가 안내·작성 시간·두 문항, 2026-09-26) → 자료(출처 배지) → 문항 카드 2장(옛 판 3장; 평가 요소·상황·문두·조건 표·채점표·유의점·예시답안·A~E 구간·최소 능력) → 등급표(`level_ref` 열) → 피드백 틀 → 안내장 틀 → 참고한 공개 자료 → 생성 모델. 원장 화면(`mode='teacher'`)은 정답·예시답안을 접어 둔다(v1 `showAnswers`).
 - **학생 화면**: `lesson.formative_check.quiz`, `lesson.materials_used`(정규식 파싱 제거), 문항은 `stem` + `conditions.items[].text`·`length`·`format`만 노출. `answer_mode='paper'`면 입력 칸 대신 "종이에 풀어 선생님께 내세요"(3B 계획과 동일, 접두 대신 필드로 판정).
 - **교재 인쇄(3B `lib/print/booklet.ts`, 아직 없음)**: 처음부터 v2 모양으로 만든다. 학생용 = 표지·소개·핵심질문·자료(출처)·차시마다 활동지 쪽 + 퀴즈 답 칸·문항지(조건 표 포함, 종이 답안 문항은 자료 재수록). 교사용 = 재구조화 표·평가 계획·차시 지도안(대본 포함)·문항 카드 전체·등급표·안내장 틀·용어. 안내장 자체는 A5 1장 양식(발표 뒤).
 - **채점(`lib/classroom/grading-prompt.ts`)**: 문항의 `rubric.criteria`(max 가변)·`rubric.notes`·`exemplar_answers`·`level_map`·`conditions.items`를 넣는다. `ai_criteria[]`의 `max`는 요소 `max`를 따른다(서술형은 1~3). 규칙 블록은 `rules/grading.ts`(G-).
@@ -459,6 +462,7 @@ WP5 README 관찰과 wp4 §8·wp7 §7·wp1 §4에서 뽑았다. "규모"는 예�
 - **재생성이 원칙**: 스테이징에 있는 세트는 시연용 1~2개(수학·과학)뿐이다. 게시 전 초안은 2단계부터 다시 만든다.
 - **이미 게시·배정된 판**은 건드리지 않고 `lib/studio/compat.ts`의 `upgradeSnapshotV1(snapshot)`(순수 함수, 테스트)로 읽을 때 올린다: `flow` 문자열 → `[문자열]`·`main` → `[{step_label:'전개', minutes:40, activities:[main]}]`, `materials` → `materials_used`(v1 정규식으로 ID 추출) + `materials_needed`(나머지), `quiz` → `formative_check.quiz`, `time_budget` 기본값, `teacher_script.questions=[]`·`worksheet.tasks=[]`(올린 판은 `superRefine`을 건너뛰도록 `_upgraded: true` 표식), `conditions.required[]` → `items[{no, text, verb:'', points:null, category:'내용'}]`, `format` 접두 `[종이 답안]` → `answer_mode='paper'`, `ShortRubric.levels` → `criteria[{name:'서술형 채점표', axis:'과정·기능', condition_nos:[전부], max:points, scale:levels}]`, `ExtendedRubric.criteria` → `max:4, scale: bands 0..4`, 세트 `exemplars` → 논술형 문항의 `exemplar_answers`, 서술형은 `rubric.levels[].example`에서 만든 1개, `source:'자작'` → `{kind:'자작', attribution:null, ai_assisted:false}`.
 - 채점 행(`gradings.ai_criteria`)은 요소 이름으로 맞추므로 변환 불필요.
+- **세트 구조 변경(2026-09-26, 서술형 1 + 논술형 1 · 단원 평가 차시)과 옛 판**: 옛 구조(서술형 3점 × 2 + 논술형 16점, 교수 차시 안에 서술형·마지막 차시에 논술형)로 게시된 판은 **문항을 합치거나 버리거나 배점을 바꾸지 않고 그대로** 읽는다. 학생 답안(`answers.item_no` 1~3)·확정 채점(3점 만점)·열린 차시(`open_lessons`)가 그 판의 문항 번호와 차시에 이미 묶여 있기 때문이다 — 문항 하나를 빼면 3번 답안이 가리킬 문항이 없어지고, 평가 차시를 덧붙여 문항을 옮기면 배정 때 열어 둔 차시 수로는 문항이 잠긴다. 읽을 때 compat 이 하는 일은 모양 맞추기뿐이다: 차시 라벨 `'서술형1'·'서술형2'` → `['서술형']`, `null` → `[]`, 논술형을 보던 마지막 차시 → `kind: 'assessment'`, 서술형 `holistic`은 없는 채로 둔다. 옛 판은 `PublishedAssessment`·`PublishedLessonDesign`(게시 판 읽기 스키마)을 통과하고, 새 5단계 생성·검토(`Assessment`·`LessonDesign`)는 지금 구조만 받는다. 옛 초안(게시 전)은 재생성이 원칙이다([TS] 검사가 문항 구조·평가 차시를 잡는다).
 
 ### 4.4 성취수준·예시 은행 접근
 
@@ -563,7 +567,7 @@ D1→D2·D3·D4는 병렬 가능(D2~D4는 D1의 타입만 있으면 됨). D5·D6
 
 ### 7.4 "설명회용으로 충분하다"의 정의
 
-다음 전부를 만족하면 충분하다: (a) 5과목 세트가 게시되어 원장 화면에 보인다, (b) 각 세트의 성취기준이 검증됨 표시, (c) 차시 4~6개 모두 대본·유의점·활동지·퀴즈가 있고 시간 합이 60, (d) 문항 카드 3장이 [TS] 9개 검사를 통과하고 논술형 예시답안 상/중/하가 등급표에서 각 밴드에 떨어짐, (e) 자료마다 출처 종류가 표시되고 공개 자료는 출처 문구가 있음, (f) 안내장 틀이 차시마다 있고 린트를 통과, (g) 대표님 체크리스트에 X가 과목당 2개 이하, (h) 자리 채움 문장("추후 작성", "예시") 0건 — `tests/no-placeholder.test.ts`가 게시 스냅샷을 훑는다.
+다음 전부를 만족하면 충분하다: (a) 5과목 세트가 게시되어 원장 화면에 보인다, (b) 각 세트의 성취기준이 검증됨 표시, (c) 차시 4~6개 모두 대본·유의점·활동지·퀴즈가 있고 시간 합이 60, (d) 문항 카드 2장(서술형 1 + 논술형 1)이 [TS] 9개 검사를 통과하고 논술형 예시답안 상/중/하가 등급표에서 각 밴드에 떨어짐, (e) 자료마다 출처 종류가 표시되고 공개 자료는 출처 문구가 있음, (f) 안내장 틀이 차시마다 있고 린트를 통과, (g) 대표님 체크리스트에 X가 과목당 2개 이하, (h) 자리 채움 문장("추후 작성", "예시") 0건 — `tests/no-placeholder.test.ts`가 게시 스냅샷을 훑는다.
 
 ---
 
@@ -588,8 +592,8 @@ D1→D2·D3·D4는 병렬 가능(D2~D4는 D1의 타입만 있으면 됨). D5·D6
 | C-11 | 조건은 답안이 갖춰야 할 요건 하나당 한 줄로 쓰고(풀이 단계로 쪼개지 않는다, C-32) 필요한 조건 끝에 부분배점을 소괄호로 병기한다; 문항 배점은 문두 끝 대괄호 | P+S | [서울-3][WP5-수-2][WP5-사-2] |
 | C-12 | 채점표는 요소·척도·수행특성 3요소를 갖추고, "잘함/미흡" 같은 평어 대신 관찰 가능한 표현("근거 2개 이상")으로 쓴다; 척도는 1점 단위 연속(중간값 누락 금지) | P+S | [WP4-13][WP4-15][서울-4] |
 | C-13 | 최하위 척도(0점)는 무응답과 "시도했으나 부족"을 구분해 서술한다 | P+S | [WP4-16] |
-| C-14 | 예시답안은 서술형은 0점을 뺀 총점 단계마다 1개, 논술형은 상/중/하 각 1개를 요소별 점수·채점자 의견과 함께 만들고, "유일한 정답이 아님"을 유의점에 적는다 | P+S | [서울-5][WP4-17][WP13-7][WP5-영-5] |
-| C-15 | 논술형(고배점)은 분석적 채점표 + 총체적 상/중/하를 함께, 서술형(저배점)은 분석적 하나만 | P+S | [WP4-14][서울-6][WP5-수-3] |
+| C-14 | 예시답안은 서술형은 0점을 뺀 총점 단계마다 1개(6점이면 6·5·4·3·2·1), 논술형은 상/중/하 각 1개를 요소별 점수·채점자 의견(rationale)과 함께 만들고, "유일한 정답이 아님"을 유의점에 적는다. | P+S | [서울-5][WP4-17][WP13-7][WP5-영-5] |
+| C-15 | 서술형·논술형 모두 분석적 채점표(요소별 척도) + 총체적 상/중/하(holistic, 답안 전체의 모습)를 함께 둔다; 총체적 기준은 요소별 점수와 어긋나지 않게 쓴다(대표 2026-09-26). | P+S | [WP4-14][서울-6][WP5-수-3][대표] |
 | C-16 | 채점 시 유의점 1~4줄: 핵심 내용이 있으면 표현·단어 차이로 감점하지 않음, 맞춤법은 의미 전달되면 관용, 반올림 허용 범위, 그림 대신 말로 설명한 경우 인정 여부 | P+S | [WP13-6][서울-8][WP5-국-5][WP5-사-4] |
 | C-17 | 반응 지시어(발문 동사)는 성취기준의 과정·기능에서 고른다 — 요약·설명·비교·분류·분석·해석·추론·예측·평가·판단·비판·제안·설계·정당화·구성·서술·논술·증명·적용·탐구·표현 | P | [WP13-8] |
 | C-18 | 평가 요소는 "~하기" 명사형 1~3개로 적는다 | P+S | [WP13 §1] |
@@ -605,7 +609,7 @@ D1→D2·D3·D4는 병렬 가능(D2~D4는 D1의 타입만 있으면 됨). D5·D6
 | C-28 | 척도 수와 성취수준 단계 수를 억지로 맞추지 않되, 문항마다 A~E 예상 점수 구간(`level_map`)을 적는다 | P+S | [WP1-11][WP4 §2] |
 | C-29 | 동사는 매번 창작하지 않고 교과×축×등급 동사 뱅크(과학 5범주, 사회 탐구기능, 역사 인지 위계, Bloom 한국어판)에서 고른다 | P(발표 뒤 파일화) | [WP1-14] |
 | C-30 | 문항 개발 후 8문항 자가 점검(성취기준 부합·3범주 반영·상황맥락·고차 사고·채점기준 부합·변별·명료성·채점자 불변성)을 검토 AI 초점으로 쓴다 | S | [WP13-9] |
-| C-31 | 세트 평가는 서술형 2개(각 3점) + 논술형 1개(16점) = 22점, 논술형 채점표는 4요소 × 0~4점, 등급표는 7등급(21~22, 18~20, 15~17, 11~14, 8~10, 5~7, 0~4; 상=6~7, 중=3~5, 하=1~2)에 level_ref(7=A, 6=B, 5=C, 4=D, 3=E, 2·1=E 미만)를 병기한다. 논술형 예시답안 상/중/하는 채점표로 실제 채점했을 때 그 밴드가 나와야 한다 | P+S | [대표][v1] |
+| C-31 | 세트 평가는 서술형 1문항(6점, 채점 요소 2~3개) + 논술형 1문항(16점, 4요소 × 0~4점) = 22점이고, 두 문항 모두 분석적 + 총체적 채점표를 갖춘다(대표 2026-09-26, 배점은 본사 가정). 등급표는 7등급(21~22, 18~20, 15~17, 11~14, 8~10, 5~7, 0~4; 상=6~7, 중=3~5, 하=1~2)에 level_ref(7=A, 6=B, 5=C, 4=D, 3=E, 2·1=E 미만)를 병기한다. 논술형 예시답안 상/중/하는 채점표로 실제 채점한 점수에 전제한 서술형 점수(assumed_short_points, 0~6)를 더했을 때 그 밴드가 나와야 한다. | P+S | [대표][v1] |
 | C-32 | 조건(conditions)은 지침이지 풀이 힌트가 아니다. 조건은 논술형 문항에만 2~4개 두고, 서술형에는 조건을 두지 않는다(분량·형식만 적는다). 조건에는 답안이 지켜야 할 제약만 쓴다 — 입장 정하기(찬성/반대 중 하나), 근거 개수(2개 이상), 인용할 자료(자료 B의 수치를 근거로), 형식(표/문장/문단, 종결어미), 분량(3문장 이내, 200자 내외), 초과 응답 규칙. 풀이 과정은 쓰지 않는다 — 계산식·공식("290 ÷ 1200", "합계로 나눈다"), 계산에 딸린 반올림 지시, 단계 순서("먼저 표를 만들고 다음에…"), 답이 되는 자료의 구체적 수치, 결론. 수업을 이해하지 못한 학생이 조건만 따라 답을 만들 수 있으면 안 된다. | P+S | [대표][v2-0926] |
 
 ### A.2 차시·재구성(L-)
@@ -616,11 +620,11 @@ D1→D2·D3·D4는 병렬 가능(D2~D4는 D1의 타입만 있으면 됨). D5·D6
 | L-02 | 재구조화 문장은 "학생은 [자료]를 가지고 [수행]을 해서 [결과물]을 할 수 있다" 한 문장; 원문에 없는 수행·절차·특정 과제 상황을 넣지 않는다 | P+S | [WP4 §2 house][v1] |
 | L-03 | 학습 목표 3~5개에 지식·이해/과정·기능/가치·태도를 각 1개 이상; C 문장을 도달점으로 | P+S | [WP1 §3][WP1-3][WP1-8] |
 | L-04 | 세트 핵심질문 1개 + 차시 핵심질문(사실 확인형 금지, 기능어별 패턴), 차시 핵심질문은 도입 제시·전개 상기·정리 재확인 | P | [v1][WP7 §5] |
-| L-05 | 1차시 60분 = 도입 10·전개 40·정리 10 기본, 전개는 소단계 2~4개에 분 표시; 병합 시 120분을 10/90/20으로 재편성하고 뺄 활동을 적는다 | P+S | [WP7 §8·§9-1] |
+| L-05 | 1차시 60분 = 도입 10·전개 40·정리 10 기본, 전개는 소단계 2~4개에 분 표시(합 = 전개 시간); 병합 가능 차시는 mergeable_with에 인접 번호를 적고 merge_note에 뺄 활동을 적는다(병합 시 120분을 10/90/20으로 재편성). 단원 평가 차시는 병합하지 않는다. | P+S | [WP7 §8·§9-1] |
 | L-06 | 발문 2~4개마다 예상 답과 막힐 때 힌트(정답을 그대로 말하지 않음) | P+S | [WP7 §5·§9-2] |
 | L-07 | 준비물(오프라인 교구·출력물)과 지도상 유의점(오개념 1개 이상)을 차시마다 적는다 | P+S | [WP7 §3(d)] |
 | L-08 | 활동지: 핵심질문 재게시, 과제 2~5개(기본 D~E·표준 C·도전 A~B), 자기평가 1~3문장 | P+S | [WP7 §3(e)][WP1 §5] |
-| L-09 | 형성평가(퀴즈 3문항, 논술형 차시 0)가 항상 선행하고 서술형은 중후반, 논술형은 마지막 차시 전체 | P+S | [WP7 §6][대표] |
+| L-09 | 형성평가가 항상 선행한다: 교수 차시는 마지막 교수 차시까지 모두 마무리 퀴즈 정확히 3문항(선택형/단답형, 정답·해설). 서술형 1 + 논술형 1은 마지막 교수 차시 뒤 별도 단원 평가 차시(kind "assessment", 60분 = 평가 안내 5 · 서술형 작성 15 · 논술형 작성 35 · 정리 5, 퀴즈 0)에서 함께 본다(대표 2026-09-26). | P+S | [WP7 §6][대표] |
 | L-10 | 퀴즈는 워밍업 어투(짧은 "구하시오", 단일 조회)에 개념 관계 문항을 섞고, 해설은 한두 줄 | P | [WP11-3][WP11-9] |
 | L-11 | 압축으로 남은 시간은 새 활동이 아니라 피드백·정리·형성평가에 쓴다 | P | [WP7 §4] |
 | L-12 | 문항 카드에 차시 흐름(어느 차시가 어느 문항을 준비하는지)을 함께 담는다 | S | [WP13-1] |
@@ -635,8 +639,8 @@ D1→D2·D3·D4는 병렬 가능(D2~D4는 D1의 타입만 있으면 됨). D5·D6
 | S-국-04 | 맞춤법·띄어쓰기는 오류 2개 이하 관용, 의미 전달되면 감점하지 않음 | [WP4 §8][C-16] |
 | S-국-05 | 두 자료 비교 문항의 비교 기준(관점·표현 방법 등)을 문두 전제문에 먼저 밝힌다(v2: 모델이 전제문에 명시) | [WP4-운1] |
 | S-국-06 | "느낀 점"만 묻는 주관적 서술 금지, 발문이 단답형으로 축소되지 않게 | [WP4 §8] |
-| S-수-01 | 통계 단원에서 표를 새로 작성하게 하는 문항은 서술형 중 최대 1개, 나머지는 정리된 표를 읽고 계산·비교·판단 | [서울-1] |
-| S-수-02 | 저배점(3점) 서술형은 채점표를 1점 단위로 나누고("무엇을 쓰면 몇 점") 계산 정확성과 결론 문장을 별도 요소로; 서술형에는 조건을 두지 않는다(C-32) | [서울-4][WP5-수-2] |
+| S-수-01 | 통계 단원에서 표를 새로 작성하게 하는 문항은 세트에 최대 1개(서술형으로만, C-10)이고, 그 밖의 문항은 정리된 표를 읽고 계산·비교·판단하게 한다. | [서울-1] |
+| S-수-02 | 서술형(6점)은 채점 요소 2~3개로 나누어 요소마다 1점 단위로("무엇을 쓰면 몇 점") 쓰고 계산 정확성과 결론·이유 문장을 별도 요소로 둔다; 서술형에는 조건을 두지 않는다(C-32). | [서울-4][WP5-수-2] |
 | S-수-03 | 논술형은 자료 해석→판단·제안으로 끝내고 표·그래프를 새로 만들게 하지 않으며, "판단+제안"을 별도 요소로 둔다 | [서울-7][WP11-6] |
 | S-수-04 | 서술형 "이유 서술"은 핵심 채점 포인트(예: 총합이 다르다는 점을 언급)를 채점표 descriptor에 적고, 발문·조건에는 쓰지 않는다(C-32) | [WP11-5] |
 | S-수-05 | 오류 찾기형(가상 학생의 틀린 풀이)은 고등 위주 템플릿, 중1은 선택 | [WP5-수-5][C-09] |
@@ -653,7 +657,7 @@ D1→D2·D3·D4는 병렬 가능(D2~D4는 D1의 타입만 있으면 됨). D5·D6
 | S-역-03 | 정답이 여러 갈래인 문항은 채점 유의점에 인정 범위를 넓게 적고 검수 요령에 "동교과 협의" 대신 유의점 재확인을 넣는다 | [2025-4] |
 | S-과-01 | 1차 자료는 표·그래프·도식(회로·구조·모형)을 우선, 실험 결과 예측형은 자료 해석→서술 순서 | [WP5-과-1] |
 | S-과-02 | 탐구 설계 문항은 독립·종속·통제 변인 구분을 채점 요소로 | [WP5-과-2] |
-| S-과-03 | 필수 용어(예: 항체·전기음성도)를 조건(논술형) 또는 발문(서술형)에 명시하고 충족 여부로 배점 | [WP5-과-3] |
+| S-과-03 | 필수 용어(예: 항체·전기음성도)는 서술형·논술형 모두 문두(전제문·발문)에 밝히고 조건에는 쓰지 않으며(C-32), 용어를 바르게 썼는지를 채점표 요소로 배점한다. | [WP5-과-3] |
 | S-과-04 | 계산 정확성과 논리성을 분리 채점, 그래프는 축·수치·형태 3분해 | [WP4 §8][C-10] |
 | S-과-05 | 사회적 쟁점(에너지·유전자 가위 등)은 찬반 영향을 모두 고려한 뒤 입장+근거+출처를 요구하고 찬반 각각의 모범 논거를 예시로 | [WP5-과-5] |
 | S-과-06 | 수준 문장·척도 서술어는 '~할 수 있다'로 통일, '안다'류 최소화, 교수법 표현 금지, 탐구활동과 연계 | [WP1 §4] |
@@ -662,7 +666,7 @@ D1→D2·D3·D4는 병렬 가능(D2~D4는 D1의 타입만 있으면 됨). D5·D6
 | S-영-02 | 분량은 단어 수 구간으로(예: 40~60단어), 채점표에 구간별 점수 | [WP5-영-2][WP4 §4] |
 | S-영-03 | 채점 요소는 내용/구성/언어사용(+과제 완성), 언어사용은 오류 개수 구간으로 정량화 | [WP5-영-3] |
 | S-영-04 | 지시문·조건·채점표·피드백은 한국어, 답안만 영어(우리말 서술 요구 시 예외 명시) | [WP5-영-4] |
-| S-영-05 | 제시 어휘는 재배열만으로 풀리지 않을 최소한, 조건에 정답 어휘(비교급 등)를 노출하지 않음, 성취기준 무관 문법 조건 금지 | [WP4-운2][WP4 §8][C-07] |
+| S-영-05 | 제시 어휘는 재배열만으로 풀리지 않을 최소한, 조건에 정답 어휘(비교급 등)를 노출하지 않음(C-32), 성취기준 무관 문법 조건 금지. | [WP4-운2][WP4 §8][C-07] |
 | S-영-06 | 예시답안에 만점 외 전형적 오류(관사·3인칭 단수·어순) 부분점수 예시를 포함하고 진단형 피드백을 적는다 | [WP5-영-5] |
 | S-영-07 | 중1 어휘 범위(1,500단어 학년군)를 넘는 지문 어휘는 각주 처리 | [WP1 §4] |
 
@@ -711,11 +715,11 @@ D1→D2·D3·D4는 병렬 가능(D2~D4는 D1의 타입만 있으면 됨). D5·D6
 | 세 축 | 지식·이해 / 과정·기능 / 가치·태도. 2022 개정의 내용 체계 범주이자 OECD 대응 축 |
 | 재구조화(재구성) | 성취기준을 평가 가능하게 다듬는 것. 통합·재조정·유지 3유형, 원문 병기 |
 | 핵심질문(세트/차시) | 세트 전체를 관통하는 질문 1개와 차시마다 1개. 사실 확인형 금지 |
-| 형성평가 / 총괄 | 차시 끝 퀴즈(3문항) / 서술형 2 + 논술형 1(22점) |
+| 형성평가 / 총괄 | 교수 차시 끝 퀴즈(3문항) / 마지막 교수 차시 뒤 단원 평가 차시의 서술형 1(6점) + 논술형 1(16점) = 22점(2026-09-26) |
 | 서술형 / 논술형 | 한~서너 문장, 정답 분명 / 한 문단 이상, 다양한 답 가능(주장+근거). 2025 경기도는 제한형/확장형으로 부름 |
 | 평가 요소 | 성취기준 도달의 증거로 기대하는 핵심 내용("~하기") |
 | 채점 요소·척도·수행특성 | 평가 요소를 문항에 맞게 구체화한 것 · 점수 단계 · 각 단계에서 보일 수행 서술 |
-| 분석적 / 총체적 루브릭 | 요소별로 점수 / 답안 전체를 상·중·하로 판단. 논술형은 둘 다 |
+| 분석적 / 총체적 루브릭 | 요소별로 점수 / 답안 전체를 상·중·하로 판단. 서술형·논술형 모두 둘 다(2026-09-26) |
 | 조건 | 답안의 내용·범위·형식을 지정하는 문장. 행동 동사 단위, 부분배점 병기, 채점표와 1:1 |
 | 채점 시 유의점 | 애매한 답안 처리 기준(대안 표현 인정, 반올림, 그림 대신 말) |
 | 최소 능력의 수행 특성 | 성취율 40% 근방 학생의 최소 수행 서술(고등 필수, 중은 E 문장) |

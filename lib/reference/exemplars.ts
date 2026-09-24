@@ -87,8 +87,29 @@ export function exemplarCard(r: ExemplarRecord): string {
   return fitted ? `${fitted}\n${source}` : source
 }
 
+const BLOCK_HEAD = '참고 예시(공개 자료, 형식·조건·채점표의 패턴만 참고하고 문장·수치를 그대로 옮기지 않는다. 참고한 id를 references에 남긴다):'
+
 export function exemplarsBlock(q: ExemplarQuery, n = 4, source?: ExemplarRecord[]): string {
   const picked = selectExemplars(q, n, source)
   if (!picked.length) return ''
-  return ['참고 예시(공개 자료, 형식·조건·채점표의 패턴만 참고하고 문장·수치를 그대로 옮기지 않는다. 참고한 id를 references에 남긴다):', ...picked.map(exemplarCard)].join('\n')
+  return [BLOCK_HEAD, ...picked.map(exemplarCard)].join('\n')
+}
+
+/**
+ * 종류별 개수를 정해 뽑는 참고 예시 블록(5단계: 서술형 2 + 논술형 3 — 평가원·교육청 공개 예시 문항 수준·형식을 맞춘다).
+ * 종류마다 selectExemplars 를 따로 부르고(그 종류가 모자라면 selectExemplars 가 다른 종류로 채운다) 같은 id 는 한 번만 싣는다.
+ */
+export function exemplarsBlockMixed(q: Omit<ExemplarQuery, 'kind'>, counts: Partial<Record<'서술형' | '논술형', number>>, source?: ExemplarRecord[]): string {
+  const seen = new Set<string>()
+  const picked: ExemplarRecord[] = []
+  for (const [kind, n] of Object.entries(counts) as ['서술형' | '논술형', number][]) {
+    let added = 0
+    for (const r of selectExemplars({ ...q, kind }, n + seen.size, source)) {
+      if (added >= n) break
+      if (seen.has(r.id)) continue
+      seen.add(r.id); picked.push(r); added++
+    }
+  }
+  if (!picked.length) return ''
+  return [BLOCK_HEAD, ...picked.map(exemplarCard)].join('\n')
 }

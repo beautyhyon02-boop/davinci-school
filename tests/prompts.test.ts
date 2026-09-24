@@ -20,13 +20,38 @@ describe('prompts v2', () => {
   it('stage 3 asks for unit_plan + lessons with 60-minute budgets, scripts, worksheet tiers, and includes exemplars', () => {
     const u = buildPrompt(3, ctx).user
     expect(u).toMatch(/도입 10·전개 40·정리 10/); expect(u).toMatch(/발문 2~4개/); expect(u).toMatch(/기본·표준·도전/)
-    expect(u).toMatch(/논술형을 배치한 차시는 0문항/); expect(u).toMatch(/\[예시 /)
+    expect(u).toMatch(/\[예시 /)
+  })
+  it('stage 3 (대표 2026-09-26 보완): 교수 차시마다 퀴즈 3문항, 서·논술형은 마지막 교수 차시 뒤 단원 평가 차시에서 함께', () => {
+    const task = buildPrompt(3, ctx).user.split('과제: ')[1]
+    expect(task).toMatch(/교수 차시 3~5개/); expect(task).toMatch(/단원 평가 차시 1개/)
+    expect(task).toMatch(/마지막 교수 차시 포함.*정확히 3문항|정확히 3문항.*마지막 교수 차시 포함/)
+    expect(task).toMatch(/kind "assessment"/); expect(task).toMatch(/도입 5·전개 50·정리 5/)
+    expect(task).toMatch(/서술형 작성 15분/); expect(task).toMatch(/논술형 작성 35분/)
+    expect(task).toMatch(/\["서술형", "논술형"\]/); expect(task).toMatch(/summative_placement 2건/)
+    expect(task).not.toMatch(/서술형1|서술형2|논술형을 배치한 차시는 0문항/)
   })
   it('stage 5 asks for the item card fields, injects A~E and exemplars, and forbids copying', () => {
     const u = buildPrompt(5, ctx).user
     for (const f of ['evaluation_elements', 'situation', 'condition_nos', 'answer_mode', 'exemplar_answers', 'level_map', 'holistic', 'notes', 'references', 'assumed_short_points', 'lesson_no']) expect(u).toContain(f)
     expect(u).toMatch(/summative_placement/)
-    expect(u).toMatch(/\[3점\]/); expect(u).toMatch(/\[16점\]/); expect(u).toMatch(/그대로 옮기지 않는다/); expect(u).toMatch(/E: /)
+    expect(u).toMatch(/\[6점\]/); expect(u).toMatch(/\[16점\]/); expect(u).toMatch(/그대로 옮기지 않는다/); expect(u).toMatch(/E: /)
+    expect(u.split('과제: ')[1]).not.toMatch(/\[3점\]/)
+  })
+  it('stage 5 (대표 2026-09-26): 카드 2장 = 서술형 1(6점) → 논술형 1(16점), 두 문항 모두 분석적 + 총체적, 공개 예시 문항 수준', () => {
+    const task = buildPrompt(5, ctx).user.split('과제: ')[1]
+    expect(task).toMatch(/문항 카드 2장/); expect(task).toMatch(/서술형 1개\(6점/); expect(task).toMatch(/논술형 1개\(16점/)
+    expect(task).toMatch(/holistic은 두 문항 모두 상\/중\/하/); expect(task).toMatch(/2~3요소로 max 합 6/)
+    expect(task).toMatch(/1~6점 각 1개/); expect(task).toMatch(/서술형 문항 점수 0~6/); expect(task).toMatch(/단원 평가 차시/)
+    expect(task).toMatch(/평가원·교육청 공개 예시 문항과 같은 수준·형식/); expect(task).toMatch(/문장·수치는 옮기지 않는다/)
+    expect(task).not.toMatch(/서술형 2개|두 문항 점수 합|holistic은 논술형만/)
+  })
+  it('stage 5 shows 2 서술형 + 3 논술형 reference cards (no duplicates)', () => {
+    const u = buildPrompt(5, ctx).user
+    const cards = [...u.matchAll(/^\[예시 ([^\]]+)\] \S+ \S+ (서술형|논술형|서·논술형|수행)/gm)]
+    expect(cards.filter((c) => c[2] === '서술형')).toHaveLength(2)
+    expect(cards.filter((c) => c[2] === '논술형')).toHaveLength(3)
+    expect(new Set(cards.map((c) => c[1])).size).toBe(cards.length)
   })
   it('stage 5 conditions are guidelines only (C-32, 대표 2026-09-26): 서술형 none, 논술형 2~4, no solving hints', () => {
     const task = buildPrompt(5, ctx).user.split('과제: ')[1]
@@ -38,7 +63,11 @@ describe('prompts v2', () => {
   })
   it('stage 7 asks for per-lesson notice plan for essay lessons only (owner default) and the fixed footer', () => {
     const u = buildPrompt(7, ctx).user
-    expect(u).toMatch(/criteria_phrases/); expect(u).toMatch(/서·논술형이 있는 차시/); expect(u).toContain('본 안내장은 학교생활기록부가 아니며')
+    expect(u).toMatch(/criteria_phrases/); expect(u).toMatch(/단원 평가 차시만/); expect(u).toContain('본 안내장은 학교생활기록부가 아니며')
+    expect(u).toMatch(/두 문항의 채점표 요소/)
+  })
+  it('stage 6 common_errors are numbered by the stage 5 items (1~2)', () => {
+    expect(buildPrompt(6, ctx).user).toMatch(/item_no는 5단계 문항 번호 1~2/)
   })
   it('stage 4 tells the model to continue material lettering after the shared ids and needs source objects', () => {
     const shared = ['A', 'B'].map((id) => ({ id, title: `자료 ${id}`, kind: 'text', body: 'x', table: null, source: { kind: '자작', attribution: null, ai_assisted: false } }))
@@ -67,6 +96,13 @@ describe('review focus v2', () => {
     expect(u).toMatch(/서술형에 조건\(items\)이 있으면 other/)
     expect(u).toMatch(/셀 수 있는 분량/)
     expect(u).not.toMatch(/학생 혼자 답안을 쓸 만큼/); expect(u).not.toMatch(/행동 동사·부분배점/)
+  })
+  it('stage 3/5 review focus follows the 2026-09-26 structure (단원 평가 차시, 서술형 6 + 논술형 16)', () => {
+    const u3 = buildReviewPrompt(3, ctx, {}).user.split('검토 초점: ')[1]
+    expect(u3).toMatch(/단원 평가 차시/); expect(u3).toMatch(/교수 차시마다 퀴즈 3문항/); expect(u3).not.toMatch(/서술형1·2/)
+    const u5 = buildReviewPrompt(5, ctx, { items: [] }).user.split('검토 초점: ')[1]
+    expect(u5).toMatch(/서술형 6 \+ 논술형 16 = 22/); expect(u5).toMatch(/두 문항 모두 총체적/); expect(u5).toMatch(/서술형 문항 점수 0~6/)
+    expect(u5).not.toMatch(/두 문항 점수 합/)
   })
   it('stage 3 review checks scripts, worksheet tiers and quiz answers; stage 7 checks notice rules', () => {
     expect(buildReviewPrompt(3, ctx, {}).user).toMatch(/if_stuck/); expect(buildReviewPrompt(3, ctx, {}).user).toMatch(/기본·표준·도전/)
