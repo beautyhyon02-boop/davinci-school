@@ -202,8 +202,6 @@ describe('site content', () => {
 
   it('exposes studio wizard copy (stage names, state/action labels, JSON edit, key question, error texts)', () => {
     expect(app.studio.wizard.backToTheme).toBeTruthy()
-    expect(app.studio.wizard.exhausted).toContain('[생성]')
-    expect(app.studio.wizard.exhausted).toContain('[JSON 편집]')
     expect(app.studio.wizard.versionLabel(2)).toContain('2')
     expect(app.studio.wizard.stageNames[2]).toBeTruthy()
     expect(app.studio.wizard.stageNames[3]).toBeTruthy()
@@ -216,8 +214,12 @@ describe('site content', () => {
     expect(app.studio.publish.blockers.stageNotAccepted(7)).toContain('7단계')
     expect(app.studio.wizard.stateLabel.accepted).toBeTruthy()
     expect(app.studio.wizard.actions.generate).toBeTruthy()
-    expect(app.studio.wizard.actions.review).toBeTruthy()
-    expect(app.studio.wizard.actions.accept).toBeTruthy()
+    // 대표 결정 2026-09-26: 검토는 참고, [확인]으로 진행
+    expect(app.studio.wizard.actions.review).toBe('AI 검토 의견 보기')
+    expect(app.studio.wizard.actions.accept).toBe('확인')
+    expect(app.studio.wizard.notesHeading).toContain('자동 검사 메모')
+    expect(app.studio.wizard.aiReviewHeading).toContain('AI 검토 의견')
+    expect(JSON.stringify(app.studio.wizard)).not.toMatch(/검토 결과|검토를 여러 번|통과 못함/)
     expect(app.studio.wizard.actions.runDefaults).toBeTruthy()
     expect(app.studio.wizard.actions.editJson).toBeTruthy()
     expect(app.studio.wizard.actions.save).toBeTruthy()
@@ -228,7 +230,7 @@ describe('site content', () => {
     expect(app.studio.wizard.stage5.pointsLabel(3)).toContain('3')
     expect(app.studio.wizard.stage5.boundary(4, 15, 18, '중')).toBe('4등급: 15~18 (중)')
     expect(app.studio.wizard.stage5.exemplarCount(3, 4)).toBe('3번 문항 예시답안 4개')
-    expect(app.studio.wizard.errors.tooManyFailures).toBeTruthy()
+    expect(app.studio.wizard.errors.autoStopped).toContain('[생성]')
     expect(app.studio.wizard.stage6.termsCount(5)).toContain('5')
     expect(app.studio.wizard.errors.invalidJson).toBeTruthy()
     expect(app.studio.wizard.errors.invalidShape('bad')).toContain('bad')

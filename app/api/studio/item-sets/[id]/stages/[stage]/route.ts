@@ -7,6 +7,11 @@ import type { Stage } from '@/lib/studio/schemas'
 
 export const maxDuration = 300
 
+/**
+ * 세트 단계 실행. action: 'generate'(생성 + 자동 검사 메모) · 'accept'([확인], 출력만 있으면 됨) · 'review'(선택, AI 검토 의견 — 참고용).
+ * 대표 결정 2026-09-26: 검토 결과로 막지 않는다. 알려진 거절(StageError)은 400, 그 밖은 500.
+ */
+
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string; stage: string }> }) {
   const s = await getSessionProfileOrNull()
   if (!s) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })

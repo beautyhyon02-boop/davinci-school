@@ -4,9 +4,10 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { app } from '@/content/site'
-import { canGenerate as canGenerateStage, nextAction } from '@/lib/studio/next-action'
+import { canAccept as canAcceptStage, canGenerate as canGenerateStage, canReview as canReviewStage } from '@/lib/studio/next-action'
 import type { StageStatus } from '@/lib/studio/stages'
-import { MAX_ATTEMPTS, EXHAUSTED_ERROR } from '@/lib/studio/max-attempts'
+import type { Issue } from '@/lib/studio/checks'
+import { EXHAUSTED_ERROR } from '@/lib/studio/max-attempts'
 import { lessonAssessments } from '@/lib/studio/assessment-structure'
 import { chooseKeyQuestion, saveStageEdit } from './actions'
 import { WIZARD_STAGES, useStageRunner, type WizardStage } from './useStageRunner'
@@ -198,6 +199,25 @@ function StageOutput({ stage, output }: { stage: WizardStage; output: unknown })
   )
 }
 
+/**
+ * 참고용 메모 목록(자동 검사 메모·AI 검토 의견). 대표 결정 2026-09-26: 검토는 참고일 뿐 진행을 막지 않으므로
+ * 빨간색·'통과 못함' 표현 없이 중립 색으로만 보여 준다. 지적이 없으면 none 문구 한 줄.
+ */
+function AdvisoryList({ heading, none, issues }: { heading: string; none: string; issues: Issue[] }) {
+  return (
+    <div className="mt-4 rounded-xl bg-lavender-50 p-4">
+      <p className="text-sm font-semibold">{heading}</p>
+      {issues.length === 0 ? (
+        <p className="mt-1 text-sm text-ink-500">{none}</p>
+      ) : (
+        <ul className="mt-2 list-disc pl-5 text-sm">
+          {issues.map((issue, i) => <li key={i}>[{issue.kind}] {issue.detail}</li>)}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 function KeyQuestionPicker({ setId, candidates, current }: { setId: string; candidates: string[]; current: string | null }) {
   const [selected, setSelected] = useState(current ?? candidates[0] ?? '')
   const [pending, startTransition] = useTransition()
@@ -260,14 +280,13 @@ function StagePanel({
   const [pending, startTransition] = useTransition()
 
   const state = status?.state ?? 'idle'
-  const max = MAX_ATTEMPTS[stage] ?? 1
-  const action = nextAction(status, max)
 
-  // 검토 한도에 닿은 뒤에도 [생성]은 누를 수 있다(한도는 안내, 잠금 아님) — 확정은 여전히 통과한 검토가 있어야 한다
-  const canGenerate = prevAccepted && canGenerateStage(status, max)
-  const exhausted = status?.error === EXHAUSTED_ERROR
-  const canReview = action === 'review'
-  const canAccept = action === 'accept'
+  // 대표 결정 2026-09-26: [생성] → 읽기 → [확인]. 검토는 선택(AI 검토 의견 보기)이고 결과와 무관하게 [확인]할 수 있다.
+  const canGenerate = prevAccepted && canGenerateStage(status)
+  const canAccept = prevAccepted && canAcceptStage(status)
+  const canReview = canReviewStage(status)
+  // 옛 행에 남은 검토 한도 표지는 더 이상 뜻이 없으므로 보여 주지 않는다
+  const shownError = status?.error && status.error !== EXHAUSTED_ERROR ? status.error : null
 
   function openEdit() {
     setDraft(JSON.stringify(status?.output ?? {}, null, 2))
@@ -284,7 +303,7 @@ function StagePanel({
         return
       }
       setEditing(false)
-      onSaved(stage, { state: 'generated', attempt: status?.attempt ?? 0, output: JSON.parse(draft), updated_at: new Date().toISOString(), model: 'edited' })
+      onSaved(stage, res.status)
     })
   }
 
@@ -296,7 +315,6 @@ function StagePanel({
         {status && <Badge tone="gray">{copy.attemptLabel(status.attempt)}</Badge>}
         {status?.model === 'mock' && <Badge tone="lemon">{copy.mockBadge}</Badge>}
         {status?.model === 'edited' && <Badge tone="lavender">{copy.editedBadge}</Badge>}
-        {status?.review && <Badge tone={status.review.pass ? 'mint' : 'gray'}>{status.review.pass ? copy.reviewPass : copy.reviewFail}</Badge>}
       </div>
 
       {!prevAccepted && <p className="mt-3 text-sm text-lemon-600">{copy.prevStageHint}</p>}
@@ -319,31 +337,21 @@ function StagePanel({
         <StageOutput stage={stage} output={status?.output} />
       )}
 
-      {status?.review && !status.review.pass && !editing && (
-        <div className="mt-4 rounded-xl bg-lemon-50 p-4">
-          <p className="text-sm font-semibold">{copy.reviewIssuesHeading}</p>
-          <ul className="mt-2 list-disc pl-5 text-sm">
-            {status.review.issues.map((issue, i) => <li key={i}>[{issue.kind}] {issue.detail}</li>)}
-          </ul>
-        </div>
-      )}
+      {status?.notes && !editing && <AdvisoryList heading={copy.notesHeading} none={copy.notesNone} issues={status.notes} />}
+      {status?.review && !editing && <AdvisoryList heading={copy.aiReviewHeading} none={copy.aiReviewNone} issues={status.review.issues} />}
 
-      {exhausted ? (
-        <p className="mt-3 rounded-xl bg-lemon-50 p-3 text-sm">{copy.exhausted}</p>
-      ) : (
-        status?.error && <StageErrorMessage message={status.error} />
-      )}
+      {shownError && <StageErrorMessage message={shownError} />}
 
       {!editing && (
         <div className="mt-4 flex flex-wrap gap-2">
           <Button variant="ghost" disabled={busy || !canGenerate} onClick={() => onRun(stage, 'generate')}>
             {busy ? copy.busy : copy.actions.generate}
           </Button>
-          <Button variant="ghost" disabled={busy || !canReview} onClick={() => onRun(stage, 'review')}>
-            {busy ? copy.busy : copy.actions.review}
-          </Button>
           <Button disabled={busy || !canAccept} onClick={() => onRun(stage, 'accept')}>
             {busy ? copy.busy : copy.actions.accept}
+          </Button>
+          <Button variant="ghost" disabled={busy || !canReview} onClick={() => onRun(stage, 'review')}>
+            {busy ? copy.busy : copy.actions.review}
           </Button>
           <Button variant="ghost" disabled={!status?.output} onClick={openEdit}>{copy.actions.editJson}</Button>
         </div>
@@ -367,11 +375,9 @@ export function StageWizard({
   materials?: { id: string; images?: string[] }[]
   lessons?: { no: number; images?: string[] }[]
 }) {
-  const { statuses, busy, error, run, runDefaults, setStatuses } = useStageRunner(setId)
+  // 서버가 내려준 초기 상태로 훅을 시작한다 — 클라이언트 로드 전에도 화면과 [기본값으로 진행]이 같은 상태를 본다.
+  const { statuses: effective, busy, error, run, runDefaults, refresh, setStageStatus } = useStageRunner(setId, initialStatuses)
   const [active, setActive] = useState<WizardStage>(2)
-
-  // 서버가 이미 초기 상태를 내려줬으므로, 클라이언트 훅이 아직 로드하지 않았을 때는 그 값을 우선 사용한다.
-  const effective: Partial<Record<WizardStage, StageStatus>> = { ...initialStatuses, ...statuses }
 
   function firstNonAccepted(): WizardStage {
     for (const s of WIZARD_STAGES) {
@@ -388,7 +394,7 @@ export function StageWizard({
   return (
     <div>
       <div className="flex flex-wrap items-center gap-3">
-        <Button variant="accent" disabled={busy} onClick={() => runDefaults(firstNonAccepted())}>
+        <Button variant="accent" disabled={busy} onClick={async () => { const at = await runDefaults(firstNonAccepted()); if (at) setActive(at) }}>
           {busy ? copy.busy : copy.actions.runDefaults}
         </Button>
         {busy && <span className="text-sm text-ink-500">{copy.busy}</span>}
@@ -421,7 +427,8 @@ export function StageWizard({
           prevAccepted={prevAccepted}
           busy={busy}
           onRun={run}
-          onSaved={(stage, status) => setStatuses((prev) => ({ ...prev, [stage]: status }))}
+          // JSON 편집 저장은 하위 단계를 준비 전으로 되돌리므로(saveStageEdit), 고친 단계를 바로 반영한 뒤 전체를 다시 읽는다
+          onSaved={(s, st) => { setStageStatus(s, st); void refresh() }}
         />
         {active === 4 && <Attachments setId={setId} materials={materials} lessons={lessons} />}
         {active === 2 && stage2Accepted && (

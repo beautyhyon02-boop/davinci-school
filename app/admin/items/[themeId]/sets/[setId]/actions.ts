@@ -6,7 +6,9 @@ import { STAGE_SCHEMAS, Materials, LessonDesign, type Stage } from '@/lib/studio
 import { isMaterialsPublicUrl } from '@/lib/studio/upload-rules'
 import { canPublish, buildSnapshot, type DraftLessonQuizzes } from '@/lib/studio/publish'
 import { canEditStage, downstreamResets, keyQuestionAfterStage2 } from '@/lib/studio/edit-rules'
-import { STAGE_ERRORS, type StageErrorCode, type StageStatus } from '@/lib/studio/stages'
+import { STAGE_ERRORS, stageNotes, type StageErrorCode, type StageStatus } from '@/lib/studio/stages'
+import { createSupabaseRepo } from '@/lib/studio/repo'
+import type { Issue } from '@/lib/studio/checks'
 import { app } from '@/content/site'
 
 const errors = app.studio.wizard.errors
@@ -29,6 +31,8 @@ async function assertAdmin() {
 }
 
 type ActionResult = { ok: true } | { ok: false; error: string }
+/** JSON 편집 저장 결과 — 성공하면 저장된 상태(자동 검사 메모 포함)를 돌려주어 화면이 그대로 반영한다. */
+type SaveEditResult = { ok: true; status: StageStatus } | { ok: false; error: string }
 
 // stage별 item_sets 컬럼 매핑 — lib/studio/repo.ts saveOutput과 동일해야 한다
 // (2단계는 reconstruction_detail+reconstruction+learning_goals, 3단계는 unit_plan+lessons, 나머지는 단일 컬럼).
@@ -56,11 +60,26 @@ function stageColumns(stage: Stage, output: unknown): Record<string, unknown> {
 }
 
 /**
- * 2~7단계 출력을 관리자가 JSON으로 직접 수정해 저장한다. zod로 검증 후 저장하고 상태를 generated(model:'edited')로 되돌린다.
+ * 고친 출력의 자동 검사 메모([TS], 참고용). 문맥을 읽지 못하면 메모 없이 저장한다 — 메모는 아무것도 막지 않으므로
+ * 저장을 실패시키지 않는다(대표 결정 2026-09-26: 검토는 참고).
+ */
+async function editNotes(supabase: Awaited<ReturnType<typeof createClient>>, setId: string, stage: Stage, output: unknown): Promise<Issue[] | undefined> {
+  try {
+    const ctx = await createSupabaseRepo(supabase).loadContext(setId)
+    return stageNotes(ctx, stage, output)
+  } catch (e) {
+    console.error('[studio] edit notes failed', { setId, stage, err: e })
+    return undefined
+  }
+}
+
+/**
+ * 2~7단계 출력을 관리자가 JSON으로 직접 수정해 저장한다. zod로 검증 후 저장하고 상태를 generated(model:'edited')로 되돌린다
+ * (고친 출력의 자동 검사 메모를 함께 남긴다 — [확인]은 막지 않는다).
  * 생성과 같은 확정 게이트를 먼저 적용하고(canEditStage), 저장에 성공하면 이 단계를 근거로 삼은 하위 단계(n+1..7)를
  * idle 로 되돌린다 — 그러지 않으면 낡은 근거 위의 출력이 accepted 로 남아 그대로 게시된다.
  */
-export async function saveStageEdit(setId: string, stage: Stage, json: string): Promise<ActionResult> {
+export async function saveStageEdit(setId: string, stage: Stage, json: string): Promise<SaveEditResult> {
   await assertAdmin()
 
   let parsed: unknown
@@ -103,12 +122,14 @@ export async function saveStageEdit(setId: string, stage: Stage, json: string): 
   if (updateErr) return { ok: false, error: errors.saveFailed }
 
   const now = new Date().toISOString()
+  const notes = await editNotes(supabase, setId, stage, r.data)
   const status: StageStatus = {
     state: 'generated',
     attempt: prev.attempt,
     output: r.data,
     updated_at: now,
     model: 'edited',
+    ...(notes ? { notes } : {}),
   }
   const { error: rpcErr } = await supabase.rpc('set_stage_status', {
     p_item_set_id: setId,
@@ -127,10 +148,10 @@ export async function saveStageEdit(setId: string, stage: Stage, json: string): 
   }
 
   revalidatePath(`/admin/items/${itemSet.theme_id}/sets/${setId}`)
-  return { ok: true }
+  return { ok: true, status }
 }
 
-/** 2단계가 확정된 뒤, 그 단계의 핵심질문 후보 중 하나를 세트의 key_question으로 확정한다. */
+/** 2단계를 확인(accepted)한 뒤, 그 단계의 핵심질문 후보 중 하나를 세트의 key_question으로 정한다. */
 export async function chooseKeyQuestion(setId: string, q: string): Promise<ActionResult> {
   await assertAdmin()
 
