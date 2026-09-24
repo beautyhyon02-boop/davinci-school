@@ -1,4 +1,4 @@
-import { readFileSync, existsSync } from 'node:fs'
+import { readFileSync, existsSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 
 export type LevelRecord = { code: string; text: string; scheme: 'A-E' | 'ABC'; levels: Record<string, string>; merged_levels: string[][]; domain: string | null; unit: string | null; school_level: '초' | '중'; subject: string }
@@ -37,6 +37,21 @@ export function getDomainLevels(code: string): DomainLevels | null {
   const file = loadFile(levelFileFor(code)!)!
   const d = file.domain_levels.find((x) => x.domain === r.domain)
   return d ? { domain: d.domain, levels: d.levels } : null
+}
+
+/** 성취기준 원문 대조(성취기준-crosscheck)용: `data/reference/levels/*.json` 전체 파일에서 코드·문장·출처 파일명만 뽑아 평평하게 펼친다. */
+export type FlatLevelRecord = { code: string; text: string; source: string }
+
+export function getAllLevelRecords(): FlatLevelRecord[] {
+  const dir = join(process.cwd(), ...DIR)
+  const files = existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith('.json')) : []
+  const out: FlatLevelRecord[] = []
+  for (const f of files) {
+    const file = loadFile(join(dir, f))
+    if (!file) continue
+    for (const s of file.standards) out.push({ code: s.code, text: s.text, source: f })
+  }
+  return out
 }
 
 export const anchorLevel = (scheme: LevelRecord['scheme']) => (scheme === 'A-E' ? 'C' : 'B') as 'C' | 'B'
