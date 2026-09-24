@@ -9,14 +9,15 @@ import type { Snapshot } from '@/lib/studio/publish'
 import type { Lesson as LessonSchema, QuizItem as QuizItemSchema, Material as MaterialSchema, AssessmentItem as AssessmentItemSchema, Rubric as RubricSchema } from '@/lib/studio/schemas'
 import { getLevels } from '@/lib/reference/levels'
 import { cleanMaterialTitle } from '@/lib/studio/compat'
+import { sortScale } from '@/lib/studio/scale'
 import { lessonAssessments, isAssessmentSession, isUnitAssessmentSession } from '@/lib/studio/assessment-structure'
 import { SHORT_MINUTES, ESSAY_MINUTES } from '@/lib/studio/structure-text'
 import { app } from '@/content/site'
 
 // v2 패키지 화면(스펙 §2.9). 카드 순서 = 표지 → 소개 → 성취기준(+A~E 접이식) → 재구조화 표 → 학습 목표(축 배지) → 핵심질문 →
 // 평가 계획 → 차시 카드(시간·소단계·발문 대본·준비물·유의점·활동지·퀴즈; 마지막 교수 차시 뒤 단원 평가 차시는 레몬 테두리 카드) →
-// 자료(출처 배지) → 문항 카드 2장(서술형·논술형, 옛 판 3장) → 등급표(level_ref) →
-// 피드백 틀 → 교사용 지침서 → 안내장 틀 → 참고한 공개 자료 → 생성 모델(관리자만).
+// 자료(출처 배지) → 문항 카드 2장(서술형·논술형, 옛 판 3장; 문항별 채점표는 카드 안 접이식) →
+// 채점 기준(두 문항 공통 등급표 level_ref·피드백 틀, 접이식 — 2026-09-25) → 교사용 지침서 → 안내장 틀 → 참고한 공개 자료 → 생성 모델(관리자만).
 // 정답·예시답안 같은 채점 자료는 <details> 로 묶는다 — 관리자 미리보기는 펼친 채, 원장 열람(mode='teacher')은 접힌 채로 시작한다.
 // getLevels 가 node:fs 를 쓰므로 서버 컴포넌트에서만 렌더한다(사용처: 관리자 세트 page, 원장 문항 page, 학생 page 의 MaterialsSection).
 type Lesson = z.infer<typeof LessonSchema>
@@ -358,6 +359,7 @@ function LessonCard({ l, showAnswers, open }: { l: Lesson; showAnswers: boolean;
 }
 
 // v2 채점표: 요소마다 0..max 척도(서술형 2~3요소 합 6점 — 옛 판 1~3요소 합 3점, 논술형 4요소 × 0~4). 요소마다 점수·기대 수행·예 표 하나.
+// 척도는 0점부터 오름차순(저장 순서와 무관 — lib/studio/scale.ts, 제작소 5단계 요약·채점 프롬프트와 같은 순서).
 // 총체적 상/중/하는 두 문항 모두(C-15, 대표 2026-09-26) — 옛 판 서술형은 없을 수 있다.
 function RubricView({ rubric }: { rubric: Rubric }) {
   const c = copy.rubric
@@ -376,7 +378,7 @@ function RubricView({ rubric }: { rubric: Rubric }) {
               </tr>
             </thead>
             <tbody>
-              {[...cr.scale].sort((a, b) => b.points - a.points).map((step) => (
+              {sortScale(cr.scale).map((step) => (
                 <tr key={step.points} className="border-b border-ink-50 align-top">
                   <td className="py-1 pr-3">{c.pointLabel(step.points)}</td>
                   <td className="py-1 pr-3">{step.descriptor}</td>
@@ -493,7 +495,6 @@ function AssessmentItemView({ item, no, showAnswers, open }: { item: AssessmentI
 
 function AssessmentSection({ assessment, showAnswers, open }: { assessment: Snapshot['assessment']; showAnswers: boolean; open: boolean }) {
   if (!assessment) return null
-  const gb = copy.gradeBoundaries
   return (
     <>
       <Card print="keep">
@@ -503,9 +504,25 @@ function AssessmentSection({ assessment, showAnswers, open }: { assessment: Snap
         </div>
       </Card>
 
-      <Card>
-        <SectionHeading>{copy.gradeBoundariesHeading}</SectionHeading>
-        <div className="mt-3 overflow-x-auto">
+      {showAnswers && <GradingCriteriaCard assessment={assessment} open={open} />}
+    </>
+  )
+}
+
+/**
+ * 두 문항 공통 채점 기준(등급표 + 피드백 틀) — 문항 카드와 떨어진 칸(오너 요청 2026-09-25, 모든 과목 공통).
+ * 문항별 채점표는 각 문항 카드의 접이식에 그대로 둔다. 채점 자료라 문항 채점표와 같은 접이식(관리자 펼침·원장 접힘,
+ * data-print="omit")에 담는다 — 문제지 인쇄(print="keep" 칸만)에는 원래 나오지 않는다.
+ */
+function GradingCriteriaCard({ assessment, open }: { assessment: NonNullable<Snapshot['assessment']>; open: boolean }) {
+  const gb = copy.gradeBoundaries
+  return (
+    <Card>
+      <SectionHeading>{copy.gradingCriteriaHeading}</SectionHeading>
+      <p className="mt-1 text-sm text-ink-500">{copy.gradingCriteriaNote}</p>
+      <Answers open={open}>
+        <h3 className="font-semibold">{copy.gradeBoundariesHeading}</h3>
+        <div className="overflow-x-auto">
           <table className="w-full min-w-[420px] text-left text-sm">
             <thead>
               <tr className="border-b border-ink-100 text-ink-500">
@@ -521,15 +538,12 @@ function AssessmentSection({ assessment, showAnswers, open }: { assessment: Snap
             </tbody>
           </table>
         </div>
-      </Card>
-
-      <Card>
-        <SectionHeading>{copy.feedbackTemplatesHeading}</SectionHeading>
-        <div className="mt-3 space-y-2 text-sm">
+        <h3 className="pt-2 font-semibold">{copy.feedbackTemplatesHeading}</h3>
+        <div className="space-y-2 text-sm">
           {(['상', '중', '하'] as const).map((lv) => <p key={lv}><span className="font-semibold">{copy.feedbackLevels[lv]}</span>: {assessment.feedback_templates[lv]}</p>)}
         </div>
-      </Card>
-    </>
+      </Answers>
+    </Card>
   )
 }
 

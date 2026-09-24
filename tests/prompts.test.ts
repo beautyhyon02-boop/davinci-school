@@ -78,6 +78,16 @@ describe('prompts v2', () => {
     expect(task).toMatch(/셀 수 있는 분량/)
     expect(task).not.toMatch(/items 1~5개/); expect(task).not.toMatch(/행동 동사 원형/)
   })
+  it('stage 5 (2026-09-25 영어 세트): 선택형 발문은 무엇을 고르는지 구체적으로, 상황 인물은 대주제·자료에서만, 척도는 0점부터, "<조건>에 맞게"는 조건 있는 논술형만', () => {
+    const task = buildPrompt(5, ctx).user.split('과제: ')[1]
+    expect(task).toMatch(/무엇을 고르는지 구체적으로/); expect(task).toMatch(/사실·품목·수치/); expect(task).toMatch(/막연한 표현 금지/)
+    expect(task).toMatch(/role·audience는 대주제·자료에 나오는 사람만/); expect(task).toMatch(/없는 인물을 새로 만들지 않는다/)
+    expect(task).toMatch(/scale은 0점부터 오름차순/)
+    expect(task).toMatch(/"<조건>에 맞게"는 조건\(items\)이 있는 논술형에만/)
+    expect(task).not.toContain('교환학생')   // 금지 예를 이름으로 들어 끌어들이지 않는다
+    const focus = buildReviewPrompt(5, ctx, { items: [] }).user.split('검토 초점: ')[1]
+    expect(focus).toMatch(/무엇을 고르는지 막연하면/); expect(focus).toMatch(/대주제·자료에 나오지 않는 인물이면 other/)
+  })
   it('stage 7 asks for per-lesson notice plan for essay lessons only (owner default) and the fixed footer', () => {
     const u = buildPrompt(7, ctx).user
     expect(u).toMatch(/criteria_phrases/); expect(u).toMatch(/단원 평가 차시만/); expect(u).toContain('본 안내장은 학교생활기록부가 아니며')

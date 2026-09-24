@@ -14,6 +14,7 @@ import { chooseKeyQuestion, saveStageEdit } from './actions'
 import { WIZARD_STAGES, useStageRunner, type WizardStage } from './useStageRunner'
 import { Attachments } from './Attachments'
 import { FieldEditor } from './FieldEditor'
+import { Stage5Summary } from './Stage5Summary'
 
 const copy = app.studio.wizard
 
@@ -62,11 +63,6 @@ type Lesson = {
 type Stage3Output = { lessons: Lesson[] }
 type Material = { id: string; title: string; kind: 'table' | 'text' | 'chart' | 'image'; body: string | null; table: { columns: string[]; rows: (string | number)[][] } | null; images?: string[] }
 type Stage4Output = { materials: Material[] }
-type AssessmentItem = { kind: string; points: number; stem: string; exemplar_answers?: unknown[] }
-type Stage5Output = {
-  items: AssessmentItem[]
-  grade_boundaries: { grade: number; min: number; max: number; band: string }[]
-}
 type Stage6Output = { glossary: { term: string; explanation: string }[]; per_lesson: { no: number; notes: string[] }[] }
 type Stage7Output = { per_lesson?: { lesson_no: number; criteria_phrases: unknown[] | null }[] }
 
@@ -172,35 +168,7 @@ function StageOutput({ stage, output }: { stage: WizardStage; output: unknown })
     )
   }
 
-  if (stage === 5) {
-    const o = output as Stage5Output
-    return (
-      <div className="mt-3 space-y-4">
-        <div>
-          <p className="text-sm font-semibold text-ink-500">{copy.stage5.itemsHeading}</p>
-          <ul className="mt-1 space-y-1 text-sm">
-            {o.items?.map((it, i) => (
-              <li key={i}>[{it.kind}] {it.stem} — {copy.stage5.pointsLabel(it.points)}</li>
-            ))}
-          </ul>
-        </div>
-        <div>
-          <p className="text-sm font-semibold text-ink-500">{copy.stage5.boundariesHeading}</p>
-          <ul className="mt-1 space-y-1 text-sm">
-            {o.grade_boundaries?.map((b, i) => (
-              <li key={i}>{copy.stage5.boundary(b.grade, b.min, b.max, b.band)}</li>
-            ))}
-          </ul>
-        </div>
-        <div>
-          <p className="text-sm font-semibold text-ink-500">{copy.stage5.exemplarsHeading}</p>
-          <ul className="mt-1 space-y-1 text-sm">
-            {o.items?.map((it, i) => <li key={i}>{copy.stage5.exemplarCount(i + 1, it.exemplar_answers?.length ?? 0)}</li>)}
-          </ul>
-        </div>
-      </div>
-    )
-  }
+  if (stage === 5) return <Stage5Summary output={output} />
 
   if (stage === 7) {
     const o = output as Stage7Output

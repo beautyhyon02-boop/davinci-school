@@ -1,6 +1,6 @@
 // tests/checks.test.ts
 import { describe, it, expect } from 'vitest'
-import { staticIssues } from '@/lib/studio/checks'
+import { staticIssues, inventedActors } from '@/lib/studio/checks'
 import { assessmentV2, lessonV2, assessmentSession } from './studio-schemas.test'
 
 const standards = [{ code: '[9수04-02]', text: '자료를 줄기와 잎 그림, 도수분포표, 히스토그램, 도수분포다각형으로 나타내고 해석할 수 있다.' }, { code: '[9수04-03]', text: '상대도수를 구하고, 상대도수의 분포를 표나 그래프로 나타내고 해석할 수 있다.' }]
@@ -103,6 +103,42 @@ describe('staticIssues', () => {
     expect(structure(legacy).map((i) => i.kind)).toEqual(['rubric'])
     const noHolistic = structuredClone(assessmentV2); noHolistic.items[0].rubric.holistic = null
     expect(staticIssues(5, noHolistic, { standards, prior }).some((i) => i.detail.includes('총체적'))).toBe(true)
+  })
+  it('stage 5: 척도는 점수로 읽는다 — 만점부터 적은(내림차순) 채점표도 0점 서술을 찾고, 풀어 쓴 무응답·시도("쓰지 않았거나 …썼지만")는 인정한다(2026-09-25 영어 세트)', () => {
+    const prior = { stage4: { materials }, stage3: { lessons: [] } }
+    const zeroNotes = (a: unknown) => staticIssues(5, a, { standards, prior }).filter((i) => i.detail.includes('0점 서술'))
+    const desc = structuredClone(assessmentV2)
+    for (const it of desc.items) for (const c of it.rubric.criteria) {
+      c.scale = [...c.scale].reverse().map((s) => (s.points === 0 ? { ...s, descriptor: '답을 쓰지 않았거나, 영어 문장을 썼지만 자료 F의 사실을 하나도 담지 않음' } : s))
+      expect(c.scale[0].points).toBe(c.max)   // index 0 = 만점 서술(저장된 영어 세트와 같은 순서)
+    }
+    expect(zeroNotes(desc)).toEqual([])
+    // 무응답만 있고 시도 구분이 없는 0점 서술은 여전히 잡는다(순서와 무관)
+    const noAttempt = structuredClone(desc); noAttempt.items[1].rubric.criteria[2].scale.at(-1)!.descriptor = '답을 쓰지 않음(빈 답안)'
+    expect(zeroNotes(noAttempt).map((i) => i.detail)).toEqual([`문항 2 ${noAttempt.items[1].rubric.criteria[2].name}: 0점 서술에 무응답·시도 구분이 없음`])
+    const neither = structuredClone(desc); neither.items[0].rubric.criteria[0].scale.at(-1)!.descriptor = '자료의 사실을 하나도 담지 않음'
+    expect(zeroNotes(neither)).toHaveLength(1)
+  })
+  it('stage 5: 과제 상황의 인물이 대주제·자료에 없으면 자문(other) — 학교 안 사람은 늘 허용(2026-09-25 영어 세트 "교환학생")', () => {
+    const prior = { stage4: { materials: [{ ...materials[0], title: '축제 부스 일회용컵 개수 (학생회 조사)', body: '부스를 찾은 관람객 수와 컵 개수' }] }, stage3: { lessons: [] } }
+    const theme = { title: '학교 축제, 일회용품을 줄이자' }
+    const actorNotes = (situation: { role: string; audience: string }) => {
+      const a = structuredClone(assessmentV2); Object.assign(a.items[1].situation!, situation)
+      return staticIssues(5, a, { standards, prior, theme }).filter((i) => i.detail.includes('상황의 인물'))
+    }
+    expect(actorNotes({ role: '학생회 환경부원', audience: '우리 학교 학생과 교환학생' })).toEqual([
+      { kind: 'other', detail: '문항 2(논술형): 상황의 인물이 자료·대주제에 없음(교환학생) — role·audience는 대주제·자료에 나오는 사람만 쓴다' },
+    ])
+    expect(actorNotes({ role: '학생회 임원', audience: '부스를 찾는 학생, 교사와 학부모' })).toEqual([])
+    expect(actorNotes({ role: '동아리 부원', audience: '축제 관람객들에게' })).toEqual([])   // 자료에 관람객이 있다
+    expect(actorNotes({ role: '학생', audience: '지역 주민과 외국인 관광객' }).map((i) => i.detail)).toEqual(['문항 2(논술형): 상황의 인물이 자료·대주제에 없음(주민, 외국인, 관광객) — role·audience는 대주제·자료에 나오는 사람만 쓴다'])
+    // 대주제 소개(0단계)에 나오는 사람도 허용
+    const withIntro = { ...prior, stage0: { intro: '축제에는 교환학생도 부스를 운영한다.', subject_ideas: [] } }
+    const a = structuredClone(assessmentV2); a.items[1].situation!.audience = '교환학생'
+    expect(staticIssues(5, a, { standards, prior: withIntro, theme }).filter((i) => i.detail.includes('상황의 인물'))).toEqual([])
+    // 문맥(대주제·자료)이 하나도 없으면 검사하지 않는다
+    expect(inventedActors(['교환학생'], '')).toEqual([])
+    expect(inventedActors(['중학생 어린이'], '축제')).toEqual(['어린이'])
   })
   it('stage 5: criterion names must differ across the two items (the 단원 평가 차시 notice splits them by name)', () => {
     const prior = { stage4: { materials }, stage3: { lessons: [] } }

@@ -111,10 +111,37 @@ describe.each(['수학', '과학'] as const)('PackageView v2 (%s mock snapshot)'
   })
   it('shows the v2 cards in spec order (§2.9)', () => {
     const order = [c.standardsHeading, c.reconstructionHeading, c.learningGoalsHeading, c.keyQuestionHeading, c.unitPlanHeading, c.lessonsHeading,
-      c.materialsHeading, c.assessmentHeading, c.gradeBoundariesHeading, c.feedbackTemplatesHeading, c.noticePlanHeading, c.generatedWithHeading]
+      c.materialsHeading, c.assessmentHeading, c.gradingCriteriaHeading, c.noticePlanHeading, c.generatedWithHeading]
     const at = order.map((h) => html.indexOf(`<h2 class="text-lg font-bold">${h}</h2>`))
     expect(at.every((x) => x >= 0)).toBe(true)
     expect([...at].sort((a, b) => a - b)).toEqual(at)
+  })
+  it('등급표·피드백 틀은 문항 카드 밖의 "채점 기준" 카드 한 장에(두 문항 공통), 채점 자료 접이식 안에 둔다(2026-09-25)', () => {
+    const start = html.indexOf(`<h2 class="text-lg font-bold">${c.gradingCriteriaHeading}</h2>`)
+    const lastItem = html.lastIndexOf('data-print="item"')
+    expect(start).toBeGreaterThan(lastItem)
+    // 예전의 따로 선 등급표·피드백 틀 카드(h2)는 없다 — 채점 기준 카드 안 소제목(h3)
+    expect(html).not.toContain(`<h2 class="text-lg font-bold">${c.gradeBoundariesHeading}</h2>`)
+    expect(html).not.toContain(`<h2 class="text-lg font-bold">${c.feedbackTemplatesHeading}</h2>`)
+    const card = html.slice(start, html.indexOf('<h2 class="text-lg font-bold">', start + 1))
+    expect(card).toContain(`<h3 class="font-semibold">${c.gradeBoundariesHeading}</h3>`)
+    expect(card).toContain(c.feedbackTemplatesHeading)
+    expect(card).toMatch(/<details open="" data-print="omit"/)
+    for (const b of snap.assessment!.grade_boundaries) expect(text(card)).toContain(`${b.grade} ${b.min}~${b.max} ${b.band} ${b.level_ref}`)
+    for (const lv of ['상', '중', '하'] as const) expect(text(card)).toContain(norm(snap.assessment!.feedback_templates[lv]))
+    // 문항 카드 안에는 등급표가 없다
+    expect(html.slice(0, start)).not.toContain(c.gradeBoundariesHeading)
+    // 원장 열람은 접힌 채, 채점 자료를 숨기면(showAnswers=false) 채점 기준 카드도 없다
+    const teacher = render(snap, 'teacher')
+    const tStart = teacher.indexOf(`<h2 class="text-lg font-bold">${c.gradingCriteriaHeading}</h2>`)
+    expect(teacher.slice(tStart, teacher.indexOf('<h2 class="text-lg font-bold">', tStart + 1))).toMatch(/<details data-print="omit"/)
+    const hidden = renderToStaticMarkup(createElement(PackageView, { snapshot: snap, mode: 'teacher', showAnswers: false }))
+    expect(hidden).not.toContain(c.gradingCriteriaHeading)
+  })
+  it('each item rubric lists its scale from 0점 upward', () => {
+    const cr = snap.assessment!.items[1].rubric.criteria[0]
+    const at = (p: number) => t.indexOf(norm(cr.scale.find((s) => s.points === p)!.descriptor))
+    for (let p = 1; p <= cr.max; p++) expect(at(p - 1)).toBeLessThan(at(p))
   })
   it('shows the reconstruction table, unit plan placement, level_ref, teacher guide grading tips and notice plan', () => {
     for (const r of snap.reconstruction_detail) expect(t).toContain(norm(r.reconstructed_text))
@@ -141,11 +168,11 @@ describe.each(['수학', '과학'] as const)('PackageView 문제지 인쇄 표�
   const html = render(snap, 'teacher')
   const items = snap.assessment!.items
   const count = (s: string, needle: string) => s.split(needle).length - 1
-  // 문항 카드 i 의 마크업(다음 문항 카드 또는 등급표 제목 전까지)
+  // 문항 카드 i 의 마크업(다음 문항 카드 또는 채점 기준 제목 전까지)
   const itemSegments = () => {
     const starts: number[] = []
     for (let at = html.indexOf('data-print="item"'); at >= 0; at = html.indexOf('data-print="item"', at + 1)) starts.push(at)
-    const stop = html.indexOf(`<h2 class="text-lg font-bold">${c.gradeBoundariesHeading}</h2>`)
+    const stop = html.indexOf(`<h2 class="text-lg font-bold">${c.gradingCriteriaHeading}</h2>`)
     return starts.map((s, i) => html.slice(s, starts[i + 1] ?? stop))
   }
 

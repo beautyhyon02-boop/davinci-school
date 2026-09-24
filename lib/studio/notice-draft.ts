@@ -1,6 +1,7 @@
 import type { z } from 'zod'
 import { NOTICE_DISCLAIMER, type Lesson, type Assessment, type NoticePlan } from './schemas'
 import { isAssessmentSession, lessonAssessments } from './assessment-structure'
+import { stepAt } from './scale'
 
 type LessonT = z.infer<typeof Lesson>
 type AssessmentT = z.infer<typeof Assessment>
@@ -159,7 +160,7 @@ export function draftNoticePlan(lessons: LessonT[], assessment: AssessmentT | nu
         quiz_notes: l.formative_check.quiz.map((q, k) => ({ quiz_no: k + 1, wrong_note: wrongNote(q) })),
         criteria_phrases: items.length
           ? items.flatMap((item) => item.rubric.criteria.map((c, ci) => {
-              const at = (p: number) => c.scale.find((s) => s.points === p)
+              const at = (p: number) => stepAt(c.scale, p)   // 척도는 점수로 찾는다(배열 순서 아님)
               const top = at(c.max)!; const nearTop = at(Math.max(1, c.max - 1))!
               return { criterion_name: c.name, good: goodPhrases(item, ci, top.descriptor), improve: improvePhrases(nearTop.descriptor) }
             }))
