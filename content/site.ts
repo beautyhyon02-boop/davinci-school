@@ -199,6 +199,14 @@ export const app = {
     theme: {
       backToList: '← 목록으로',
       meta: (level: string, grade: number) => `${level} ${grade}학년`,
+      addSubjects: {
+        heading: '과목 추가',
+        help: '대주제를 만들 때 고르지 않은 과목을 나중에 추가합니다.',
+        submit: '추가',
+        submitting: '추가하는 중…',
+        saved: '과목을 추가했습니다.',
+        nothingToAdd: '추가할 수 있는 과목이 없습니다.',
+      },
     },
     intro: {
       heading: '대주제 소개',

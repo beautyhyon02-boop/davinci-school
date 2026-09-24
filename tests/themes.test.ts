@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseTheme, canCreateSet, validateStandardSelection, validateStandardIds, parseSharedMaterialsInput, sharedMaterialsJson, THEME_FIELDS } from '@/lib/studio/themes'
+import { parseTheme, canCreateSet, validateStandardSelection, validateStandardIds, parseSharedMaterialsInput, sharedMaterialsJson, addThemeSubjects, THEME_FIELDS } from '@/lib/studio/themes'
 
 function fd(o: Record<string, string | string[]>) {
   const f = new FormData()
@@ -198,5 +198,37 @@ describe('parseSharedMaterialsInput / sharedMaterialsJson', () => {
   it('rejects invalid JSON and shapes that are not materials', () => {
     expect(parseSharedMaterialsInput('{').ok).toBe(false)
     expect(parseSharedMaterialsInput(JSON.stringify([{ id: 'AA', title: 'x' }])).ok).toBe(false)
+  })
+})
+
+describe('addThemeSubjects', () => {
+  it('appends new subjects after the existing ones, keeping the existing order', () => {
+    const r = addThemeSubjects(['국어', '수학'], ['영어', '세계사'])
+    expect(r.ok).toBe(true)
+    expect(r.ok && r.subjects).toEqual(['국어', '수학', '영어', '세계사'])
+  })
+
+  it('dedupes an addition that is already in the theme', () => {
+    const r = addThemeSubjects(['국어', '수학'], ['수학', '영어'])
+    expect(r.ok).toBe(true)
+    expect(r.ok && r.subjects).toEqual(['국어', '수학', '영어'])
+  })
+
+  it('dedupes repeated entries within the addition list itself', () => {
+    const r = addThemeSubjects(['국어'], ['영어', '영어'])
+    expect(r.ok).toBe(true)
+    expect(r.ok && r.subjects).toEqual(['국어', '영어'])
+  })
+
+  it('rejects an empty addition list', () => {
+    expect(addThemeSubjects(['국어'], []).ok).toBe(false)
+  })
+
+  it('rejects when every addition is already in the theme (nothing left to add)', () => {
+    expect(addThemeSubjects(['국어', '수학'], ['국어']).ok).toBe(false)
+  })
+
+  it('rejects an unknown subject', () => {
+    expect(addThemeSubjects(['국어'], ['음악']).ok).toBe(false)
   })
 })

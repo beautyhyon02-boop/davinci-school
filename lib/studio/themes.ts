@@ -34,6 +34,27 @@ export function parseTheme(formData: FormData): { ok: true; data: ThemeInput } |
   return { ok: true, data: { title, level, grade, subjects: subjects as Subject[] } }
 }
 
+/**
+ * 대주제 생성 후 과목을 추가한다. toAdd 는 SUBJECTS 안의 값이어야 하고, current(기존 순서)에
+ * 이미 있는 과목은 건너뛴다(중복 방지). toAdd 가 비어 있으면(중복만 보냈거나 아예 안 보냈으면) 저장할 게 없다는 오류를 낸다.
+ */
+export function addThemeSubjects(
+  current: string[],
+  toAdd: string[],
+): { ok: true; subjects: Subject[] } | { ok: false; error: string } {
+  const requested = Array.from(new Set(toAdd.map((s) => s.trim()).filter((s) => s.length > 0)))
+  if (requested.length === 0) return { ok: false, error: errors.subjectsRequired }
+  for (const s of requested) {
+    if (!(SUBJECTS as readonly string[]).includes(s)) return { ok: false, error: errors.subjectInvalid }
+  }
+
+  // 이미 대주제에 있는 과목을 다시 보냈다면 더할 게 없다 — 중복만 있는 요청도 "추가 없음"으로 취급한다.
+  const additions = requested.filter((s) => !current.includes(s))
+  if (additions.length === 0) return { ok: false, error: errors.subjectsRequired }
+
+  return { ok: true, subjects: [...current, ...additions] as Subject[] }
+}
+
 /** subject가 theme.subjects 안에 있고, existingSubjects(이미 세트가 만들어진 과목)와 겹치지 않는지 확인한다. */
 export function canCreateSet(
   theme: { subjects: string[] },

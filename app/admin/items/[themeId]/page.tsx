@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { ThemeIntroPanel } from './ThemeIntroPanel'
 import { SharedMaterialsPanel } from './SharedMaterialsPanel'
+import { AddSubjectsPanel } from './AddSubjectsPanel'
 import { StandardsPicker, type StandardsBySubject } from './StandardsPicker'
 import type { Subject } from '@/lib/studio/schemas'
 import { sharedMaterialsJson, type SharedMaterial } from '@/lib/studio/themes'
@@ -81,9 +82,12 @@ export default async function ThemeDetailPage({ params }: { params: Promise<{ th
     <>
       <Link href="/admin/items" className="text-sm text-mint-700 underline">{app.studio.theme.backToList}</Link>
       <h1 className="mt-2 text-2xl font-bold">{theme.title}</h1>
-      <p className="mt-1 text-ink-500">
-        {app.studio.theme.meta(theme.level, theme.grade)} · {themeSubjects.join(', ')}
-      </p>
+      <p className="mt-1 text-ink-500">{app.studio.theme.meta(theme.level, theme.grade)}</p>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {themeSubjects.map((s) => (
+          <Badge key={s} tone="lavender">{s}</Badge>
+        ))}
+      </div>
 
       <div className="mt-6 grid gap-6">
         <ThemeIntroPanel themeId={themeId} initialStatus={theme.intro_ideas} />
@@ -111,6 +115,8 @@ export default async function ThemeDetailPage({ params }: { params: Promise<{ th
             })}
           </div>
         </Card>
+
+        <AddSubjectsPanel themeId={themeId} themeSubjects={themeSubjects} />
 
         <StandardsPicker themeId={themeId} availableSubjects={availableSubjects} standardsBySubject={standardsBySubject} />
       </div>
