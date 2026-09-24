@@ -1,6 +1,7 @@
 import type { z } from 'zod'
 import { checkReconstructionFidelity } from './fidelity'
 import { levelRefFor } from './level-map'
+import { structureIssues, kindFamily, sessionPlacementIssues, isAssessmentSession, lessonAssessments, ESSAY_MIN_MINUTES } from './assessment-structure'
 import type { Stage, ReviewKind, Reconstruction, LessonDesign, Materials, Assessment, TeacherGuide, NoticePlan } from './schemas'
 
 export type Issue = { kind: ReviewKind; detail: string }
@@ -42,19 +43,21 @@ function lessonIssues(o: LessonDesignT, ctx: CheckCtx): Issue[] {
   const issues: Issue[] = []
   const covered = new Set(o.lessons.flatMap((l) => l.standards))
   for (const s of ctx.standards) if (!covered.has(s.code)) issues.push({ kind: 'coverage', detail: `${s.code}가 어느 차시에도 배정되지 않음` })
-  const placed = o.lessons.filter((l) => l.assessment)
-  const order = placed.map((l) => l.assessment)
-  if (order.join(',') !== '서술형1,서술형2,논술형') issues.push({ kind: 'coverage', detail: `평가 배치 순서가 서술형1→서술형2→논술형이 아님(${order.join(',')})` })
-  if (placed.length && placed[placed.length - 1].no !== o.lessons[o.lessons.length - 1].no) issues.push({ kind: 'coverage', detail: '논술형이 마지막 차시가 아님' })
+  // L-09(대표 2026-09-26 보완): 교수 차시 3~5개 + 마지막 교수 차시 뒤 단원 평가 차시 1개(서술형 → 논술형 함께). zod 도 보지만
+  // 검토는 저장된 출력(옛 판·손으로 고친 판)에도 돌므로 다시 본다(assessment-structure.ts sessionPlacementIssues).
+  for (const m of sessionPlacementIssues(o.lessons)) issues.push({ kind: 'coverage', detail: m })
   for (const l of o.lessons) {
+    const kinds = lessonAssessments(l)
     if (l.mergeable_with !== null) {
       const other = o.lessons.find((x) => x.no === l.mergeable_with)
       if (!other || Math.abs(other.no - l.no) !== 1) issues.push({ kind: 'other', detail: `${l.no}차시 병합 대상이 인접 차시가 아님` })
-      else if (l.assessment && other.assessment) issues.push({ kind: 'other', detail: `${l.no}·${other.no}차시 병합: 둘 다 서·논술형 차시` })
+      else if (isAssessmentSession(l) || isAssessmentSession(other)) issues.push({ kind: 'other', detail: `${l.no}·${other.no}차시 병합: 단원 평가 차시는 병합하지 않는다` })
     }
     if (l.flow.main.length < 2) issues.push({ kind: 'other', detail: `${l.no}차시 전개 소단계가 2개 미만` })
-    // 스펙 §2.3: 논술형 차시는 전개에 "논술형 작성(35분 이상)" 소단계가 있어야 한다(zod 가 아니라 [TS] — 올린 v1 판도 검토로 돌린다)
-    if (l.assessment === '논술형' && !l.flow.main.some((m) => m.step_label.includes('논술형') && m.minutes >= 35)) issues.push({ kind: 'other', detail: `${l.no}차시: 논술형 차시에는 35분 이상 작성 단계가 필요` })
+    // 스펙 §2.3: 논술형을 보는 차시는 전개에 "논술형 작성(35분 이상)" 소단계가 있어야 한다(zod 가 아니라 [TS] — 올린 v1 판도 검토로 돌린다).
+    // 단원 평가 차시는 서술형 작성 소단계도 따로 둔다(ASSESSMENT_SESSION: 서술형 15 + 논술형 35).
+    if (kinds.includes('논술형') && !l.flow.main.some((m) => m.step_label.includes('논술형') && m.minutes >= ESSAY_MIN_MINUTES)) issues.push({ kind: 'other', detail: `${l.no}차시: 논술형을 보는 차시에는 ${ESSAY_MIN_MINUTES}분 이상 논술형 작성 단계가 필요` })
+    if (isAssessmentSession(l) && kinds.includes('서술형') && !l.flow.main.some((m) => m.step_label.includes('서술형'))) issues.push({ kind: 'other', detail: `${l.no}차시: 단원 평가 차시에 서술형 작성 단계가 없음` })
     for (const [i, q] of l.formative_check.quiz.entries()) {
       if (q.type === 'choice' && (!q.choices || !q.choices.includes(q.answer))) issues.push({ kind: 'quiz', detail: `${l.no}차시 퀴즈 ${i + 1}: 정답이 보기에 없음` })
     }
@@ -132,6 +135,9 @@ function conditionIssues(it: AssessmentT['items'][number], i: number, materials:
 
 function assessmentIssues(o: AssessmentT, ctx: CheckCtx): Issue[] {
   const issues: Issue[] = []
+  // 세트 구조(대표 2026-09-26): zod 가 생성 때 거르지만, 검토는 저장된 출력(옛 판·손으로 고친 판)에도 돌므로 다시 본다
+  for (const m of structureIssues(o.items)) issues.push({ kind: 'rubric', detail: `문항 구조: ${m}` })
+  for (const [i, it] of o.items.entries()) if (!it.rubric.holistic) issues.push({ kind: 'rubric', detail: `문항 ${i + 1}(${it.kind}): 총체적 상/중/하가 없음 — 두 문항 모두 분석적 + 총체적 채점표(C-15)` })
   for (const b of o.grade_boundaries) {
     const want = levelRefFor(b.grade)
     if (b.level_ref !== want) issues.push({ kind: 'rubric', detail: `등급 ${b.grade}의 level_ref(${b.level_ref})가 7등급↔수준 대응표(${want})와 다름` })
@@ -161,13 +167,13 @@ function assessmentIssues(o: AssessmentT, ctx: CheckCtx): Issue[] {
 }
 
 /**
- * 문항 lesson_no ↔ 3단계 평가 계획(summative_placement) 대조. 서술형1·2는 둘 다 '서술형' 문항이므로 문항 순서가 아니라
- * 종류+차시로 짝짓는다(두 서술형 문항의 순서가 바뀌어도 차시가 맞으면 통과). 3단계 확정본이 prior에 없으면 건너뛴다.
+ * 문항 lesson_no ↔ 3단계 평가 계획(summative_placement) 대조. 종류+차시로 짝짓는다 — 옛 라벨(서술형1·서술형2)도 '서술형'으로 본다
+ * (kindFamily). 3단계 확정본이 prior에 없으면 건너뛴다.
  */
 function placementIssues(o: AssessmentT, ctx: CheckCtx): Issue[] {
   const plan = (ctx.prior.stage3 as Partial<LessonDesignT> | undefined)?.unit_plan?.assessment_plan?.summative_placement
   if (!Array.isArray(plan) || plan.length === 0) return []
-  const family = (k: string) => (k.startsWith('서술형') ? '서술형' : '논술형')
+  const family = kindFamily
   const issues: Issue[] = []
   for (const [i, it] of o.items.entries()) {
     if (!plan.some((p) => family(p.kind) === it.kind && p.lesson_no === it.lesson_no)) {
@@ -190,6 +196,9 @@ function guideIssues(o: GuideT, ctx: CheckCtx): Issue[] {
     if (lessons.length && la?.mergeable_with !== b && lessons.find((l) => l.no === b)?.mergeable_with !== a) issues.push({ kind: 'other', detail: `병합 안내 ${a}·${b}가 3단계 병합 표시와 다름` })
   }
   if (lessons.length && o.per_lesson.length !== lessons.length) issues.push({ kind: 'other', detail: '차시별 메모 수가 차시 수와 다름' })
+  // 흔한 오답의 문항 번호는 5단계 문항 번호 안(지금 구조 2개) — 5단계 확정본이 prior에 없으면 건너뛴다
+  const itemCount = (ctx.prior.stage5 as Partial<AssessmentT> | undefined)?.items?.length ?? 0
+  for (const e of o.grading_guide.common_errors) if (itemCount && e.item_no > itemCount) issues.push({ kind: 'other', detail: `흔한 오답의 문항 ${e.item_no} — 5단계 문항은 ${itemCount}개` })
   return issues
 }
 

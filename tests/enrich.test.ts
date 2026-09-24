@@ -11,10 +11,11 @@ describe('enrichOutput', () => {
     expect(out.level_anchor[0].statement).toContain('주어진 자료')
   })
   it('stage 5: fills min_competency (E) from the lesson standard when null, keeps a given value', () => {
-    const prior = { stage3: { lessons: [{ no: 2, standards: ['[9수04-02]'] }, { no: 4, standards: ['[9수04-03]'] }, { no: 5, standards: ['[9수04-03]'] }] } }
+    // 문항 2개(서술형 4차시 · 논술형 5차시, 대표 2026-09-26) — 문항마다 그 차시 첫 성취기준의 E 문장
+    const prior = { stage3: { lessons: [{ no: 2, standards: ['[9수04-02]'] }, { no: 4, standards: ['[9수04-03]'] }, { no: 5, standards: ['[9수04-02]'] }] } }
     const out = enrichOutput(5, structuredClone(assessmentV2), { standards, prior }) as typeof assessmentV2
-    expect(out.items[0].min_competency).toContain('부분적으로')
-    expect(out.items[1].min_competency).toContain('상대도수')
+    expect(out.items[0].min_competency).toContain('상대도수')
+    expect(out.items[1].min_competency).toContain('부분적으로')
     const given = structuredClone(assessmentV2); Object.assign(given.items[0], { min_competency: '이미 있음' })
     expect((enrichOutput(5, given, { standards, prior }) as typeof assessmentV2).items[0].min_competency).toBe('이미 있음')
   })
