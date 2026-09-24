@@ -7,6 +7,7 @@ import { checkReconstructionFidelity } from '@/lib/studio/fidelity'
 import { runStage, type Repo, type StageStatus } from '@/lib/studio/stages'
 import { buildPrompt, buildReviewPrompt } from '@/lib/studio/prompts/stages'
 import { buildFixturesV2, serialize } from '@/scripts/upgrade-fixtures-v2'
+import { judgeQuiz } from '@/lib/classroom/quiz'
 
 const STAGES = [2, 3, 4, 5, 6, 7] as const
 const SETS = [{ suffix: '', subject: '수학', standards: 'standards-math.json' }, { suffix: '-과학', subject: '과학', standards: 'standards-science.json' }] as const
@@ -73,6 +74,29 @@ for (const set of SETS) describe(`${set.subject} fixtures (v2)`, () => {
     expect(unit_plan.assessment_plan.summative_placement).toEqual([{ lesson_no: 6, kind: '서술형' }, { lesson_no: 6, kind: '논술형' }])
     const items = (loadFixture(`stage5-generate${set.suffix}`) as { items: { kind: string; lesson_no: number }[] }).items
     expect(items.map((i) => [i.kind, i.lesson_no])).toEqual([['서술형', 6], ['논술형', 6]])
+  })
+  it('퀴즈는 단답형만 (대표 2026-09-26, L-09·L-10): 교수 차시마다 정확히 3문항, 모두 type short·choices null, 답은 낱말·수치·짧은 구, [TS] 통과', () => {
+    type Q = { q: string; type: string; choices: unknown; answer: string; explanation: string }
+    const design = loadFixture(`stage3-generate${set.suffix}`) as { lessons: { no: number; kind: string; formative_check: { quiz: Q[] }; teacher_script: { questions: { expected_answer: string; if_stuck: string }[] } }[] }
+    const teaching = design.lessons.filter((l) => l.kind === 'teaching')
+    const quizzes = teaching.flatMap((l) => l.formative_check.quiz.map((q, i) => ({ where: `${set.subject} ${l.no}차시 퀴즈 ${i + 1}`, ...q })))
+    expect(quizzes).toHaveLength(teaching.length * 3)
+    for (const l of teaching) expect(l.formative_check.quiz, `${l.no}차시`).toHaveLength(3)
+    for (const q of quizzes) {
+      expect([q.type, q.choices], q.where).toEqual(['short', null])
+      // 보기를 고르게 하는 발문이 없다
+      expect(q.q, q.where).not.toMatch(/다음 중|알맞은 것은|고르시오|①/)
+      // 정답 표기(" / "로 나눈 것) 하나하나가 짧다 — 문장 답은 너그러운 채점으로도 맞히기 어렵다
+      for (const k of q.answer.split('/').map((x) => x.trim())) expect(k.length, `${q.where} 정답 "${k}"`).toBeLessThanOrEqual(15)
+      expect(q.explanation.length, q.where).toBeGreaterThanOrEqual(10)
+      // 정답 표기마다 그 표기로 답하면 정답이다(lib/classroom/quiz.ts, 채점은 그대로)
+      for (const k of q.answer.split('/')) expect(judgeQuiz({ type: 'short', answer: q.answer, choices: null }, k), `${q.where} "${k.trim()}"`).toBe(true)
+    }
+    expect(staticIssues(3, design, { standards, prior: {} }).filter((i) => i.kind === 'quiz')).toEqual([])
+    // 발문 힌트(퀴즈에서 만든 것 포함)는 정답 표기 어느 것도 그대로 말하지 않는다(L-06)
+    for (const l of teaching) for (const s of l.teacher_script.questions) {
+      for (const k of s.expected_answer.split('/').map((x) => x.replace(/\s+/g, '')).filter((x) => x.length >= 2)) expect(s.if_stuck.replace(/\s+/g, ''), `${l.no}차시 발문 힌트`).not.toContain(k)
+    }
   })
   it('lesson topics are hand-written short noun phrases (≤20자) and unit_plan.lesson_map carries the same topic per lesson (헤딩 절단 재발 방지)', () => {
     const { lessons, unit_plan } = loadFixture(`stage3-generate${set.suffix}`) as { lessons: { no: number; topic: string }[]; unit_plan: { lesson_map: { lesson_no: number; topic: string }[] } }

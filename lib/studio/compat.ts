@@ -132,10 +132,13 @@ export function topicFromGoal(goal: string): string {
 }
 
 const squash = (s: string) => s.replace(/\s+/g, '')
-/** 막혔을 때 힌트(L-06): v1 퀴즈 해설이 정답을 그대로 담고 있으면 정답을 말하지 않는 중립 힌트로 바꾼다. */
+/**
+ * 막혔을 때 힌트(L-06): v1 퀴즈 해설이 정답을 그대로 담고 있으면 정답을 말하지 않는 중립 힌트로 바꾼다.
+ * 정답 키가 "A / B"(같은 뜻의 다른 표기, judgeQuiz 와 같은 약속)면 표기 하나라도 해설에 있으면 바꾼다.
+ */
 function hintFor(q: QuizV1): string {
-  const answer = squash(q.answer)
-  if (answer.length < 2 || !squash(q.explanation).includes(answer)) return q.explanation
+  const said = squash(q.explanation)
+  if (!q.answer.split('/').map(squash).some((k) => k.length >= 2 && said.includes(k))) return q.explanation
   return q.type === 'choice'
     ? '보기를 하나씩 자료나 배운 뜻과 대조해, 맞지 않는 것부터 지워 보게 한다.'
     : '질문의 핵심 낱말에 밑줄을 긋고, 자료나 배운 뜻에서 같은 낱말이 나오는 곳을 찾아보게 한다.'
