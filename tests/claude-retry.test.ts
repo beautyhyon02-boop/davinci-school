@@ -135,6 +135,14 @@ describe('callStructured (real path, fake client)', () => {
     expect(calls).toHaveLength(1)
     expect(logs).toEqual([])
   })
+  it('400 that is not the grammar-size error → rethrown as-is, no JSON fallback', async () => {
+    const apiErr = new Anthropic.BadRequestError(400, { type: 'error', error: { type: 'invalid_request_error', message: 'messages: field required' } }, undefined, new Headers())
+    const { client, calls } = fakeClient([{ reject: apiErr }, { resolve: { parsed_output: { answer: 4 } } }])
+    setClientForTests(client)
+    await expect(callStructured(base)).rejects.toBe(apiErr)
+    expect(calls).toHaveLength(1)
+    expect(logs).toEqual([])
+  })
   it('non-SDK errors are rethrown without retry', async () => {
     const { client, calls } = fakeClient([{ reject: new TypeError('fetch failed') }, { resolve: { parsed_output: { answer: 4 } } }])
     setClientForTests(client)

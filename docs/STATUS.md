@@ -189,6 +189,7 @@
 - 로컬 서버(`npm run dev`, localhost:3000)는 그 컴퓨터에서만 보임. 다른 사람에게 보여 주려면 Vercel 배포.
 - `@anthropic-ai/sdk` 0.127: `messages.parse`/`stream().finalMessage()`는 JSON·zod 검증 실패 시 `parsed_output: null`이 아니라 **`AnthropicError`를 throw** 한다(`lib/parser.js`). `APIError`도 `AnthropicError`의 하위 클래스이므로 `instanceof APIError`로 먼저 걸러야 한다. zod의 `.length(n)`·`superRefine` 같은 제약은 JSON Schema로 못 넘어가 모델이 어길 수 있다 → 프롬프트에 같은 규칙을 글로 적어 둔다(`rules.ts` [차시]·[평가 문항] JSON 규칙).
 - adaptive thinking 토큰은 `max_tokens`에 포함된다 → 스트리밍 + 48000. `stop_reason==='max_tokens'`는 스트림 스냅샷으로 구분한다(잘린 JSON은 파싱 실패로 먼저 reject 되므로).
+- **큰 스키마 단계는 JSON 모드(2026-09-26 운영 장애 수정)**: 3단계 차시 설계 생성이 API 400 `The compiled grammar is too large`로 막혔다(구조화 출력 `output_config.format`의 문법이 너무 큼). 이제 3·5·6·7단계 생성은 `output_config.format` 없이 시스템 끝 블록에 JSON 스키마(`z.toJSONSchema(schema, {io:'input'})`, 3단계 4,808자·5단계 4,666자)를 붙이고 응답 텍스트를 zod로 검증한다(`lib/studio/stages.ts` `STAGE_OUTPUT_MODE`, `lib/ai/claude.ts` `mode`). 0·1·2·4단계·검토·채점·안내문은 structured 그대로이고, structured가 같은 400을 받으면 같은 시도 안에서 JSON 모드로 자동 대체하고 그 스키마는 프로세스가 살아 있는 동안 JSON 모드로 기억한다(로그 `grammar-too-large → json`).
 - `AI_MOCK`: `1`이면 강제 fixture. 비워 두면 키 유무로 판정. `.env.example`을 복사해 `.env.local`을 만들면 `AI_MOCK=`(빈 값)이므로 키만 넣으면 실제 호출된다.
 - 재구성 원문 이탈 검사는 어미·조사(`함으로써`, `었으며` 등)를 뗀 뒤 접두 일치로 판정한다. `통계청`처럼 원문 어휘의 접두를 공유하는 새 개념은 못 잡는다 — 검토 AI가 두 번째 관문.
 

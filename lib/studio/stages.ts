@@ -2,7 +2,7 @@ import { STAGE_SCHEMAS, Review, type Stage, type ReviewT } from './schemas'
 import { buildPrompt, buildReviewPrompt, type Ctx } from './prompts/stages'
 import { staticIssues, type Issue } from './checks'
 import { enrichOutput } from './enrich'
-import { callStructured } from '@/lib/ai/claude'
+import { callStructured, type OutputMode } from '@/lib/ai/claude'
 import { MAX_ATTEMPTS, EXHAUSTED_ERROR } from './max-attempts'
 import type { ZodType } from 'zod'
 
@@ -19,6 +19,15 @@ export const STAGE_ERRORS = {
   INTRO_ACTION_NOT_SUPPORTED: 'theme-intro-action-not-supported',
 } as const
 export type StageErrorCode = (typeof STAGE_ERRORS)[keyof typeof STAGE_ERRORS]
+
+/**
+ * 단계별 생성 출력 방식(lib/ai/claude.ts OutputMode). 3·5·6·7단계 스키마는 커서 문법 제약 구조화 출력이
+ * "compiled grammar is too large"(400)로 거절된다(2026-09-26 운영) — 이 단계들은 JSON 모드(스키마를 프롬프트에 붙이고 zod 로 검증)로 보낸다.
+ * 나머지는 structured. structured 가 같은 400 을 받으면 claude.ts 가 자동으로 JSON 모드로 대체한다. 검토(Review)·채점·안내문은 structured.
+ */
+export const STAGE_OUTPUT_MODE: Record<Stage, OutputMode> = {
+  0: 'structured', 1: 'structured', 2: 'structured', 3: 'json', 4: 'structured', 5: 'json', 6: 'json', 7: 'json',
+}
 
 export class StageError extends Error {
   code: StageErrorCode
@@ -195,7 +204,7 @@ export async function runStage({ itemSetId, stage, action, repo }: { itemSetId: 
     let status: StageStatus
     try {
       const r = await callStructured({ stage, role: 'generate', schema: STAGE_SCHEMAS[stage] as ZodType<unknown>, system: p.system, user: p.user,
-        effort: stage === 5 ? 'xhigh' : 'high', fixtureKey: p.fixtureKey,
+        effort: stage === 5 ? 'xhigh' : 'high', mode: STAGE_OUTPUT_MODE[stage], fixtureKey: p.fixtureKey,
         log: e => repo.log({ itemSetId, stage, role: 'generate', attempt, ...e }) })
       // 서버가 채우는 값(2단계 level_anchor, 5단계 min_competency)을 넣은 뒤 저장한다 — 모델 원출력이 아니라 이것이 검사·확인·게시의 대상
       const data = enrichOutput(stage, r.data, { standards: ctx.standards, prior: ctx.prior })
