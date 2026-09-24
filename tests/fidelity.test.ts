@@ -46,11 +46,13 @@ describe('checkReconstructionFidelity', () => {
     const r = checkReconstructionFidelity('축제 자료를 도수분포표로 나타내고 해석할 수 있다.', STD)
     expect(r.unknownTokens).toEqual(['축제'])
   })
-  it('documents a known false negative: 통계청 passes on the 통계 prefix (AI reviewer is the second gate)', () => {
-    // '통계청'은 뗄 어미가 없고 접두 '통계'(len-1)가 원문 '통계적'에 있어 통과한다. 이런 새 개념 삽입은
-    // 순수 검사가 못 잡으므로 stage 2 의 검토 AI(fidelity 초점)가 두 번째 관문이다.
+  it('no longer passes 통계청 on the 통계 prefix(2026-09-24 라운드 2에서 닫은 구멍): 같은 길이 낱말이 접두만 겹치면 반려한다', () => {
+    // 예전에는 전체 원문 문자열에서 (길이-1)자 접두를 아무 데서나 찾아 통과시켰다 — '통계청'과 '통계적'은
+    // 길이가 같고 마지막 글자만 다른데(어미·조사 차이가 아님) 접두 2자가 겹친다는 이유로 통과했다.
+    // 이제는 낱말 단위로 대조하고, 접두 관계라도 그 차이가 어미·조사이거나 1음절 이하여야만 통과한다.
     const r = checkReconstructionFidelity('통계청 자료를 도수분포표로 나타내고 해석할 수 있다.', STD)
-    expect(r.ok).toBe(true)
+    expect(r.ok).toBe(false)
+    expect(r.unknownTokens).toContain('통계청')
   })
 
   it('fails a wholly unrelated sentence', () => {
@@ -95,6 +97,56 @@ describe('checkReconstructionFidelity: L-02 문장 틀·일반 결과물 명사�
 
   it('조사만 다른 차이는 계속 통과한다(느슨해진 규칙이 본래 하던 일을 깨지 않는다)', () => {
     expect(checkReconstructionFidelity('자료가 도수분포표로 나타내고 해석할 수 있다.', STD).ok).toBe(true)
+  })
+})
+
+// 코드 리뷰 라운드 2(2026-09-24): (1) stem()이 "-하다/-되다" 활용을 어간(하/되) 보존 없이 통째로 지워
+// "말하기를"(어간 보존)과 "말한다"(어간까지 삭제)가 서로 다른 값이 돼 반려됐다. (2) stemMatches가 원문을
+// 하나로 이어붙인 문자열에서 (길이-1)자 접두를 아무 데서나 찾아 "히스토리"가 "히스토그램"의 앞부분과
+// 우연히 겹쳐 통과했다. 두 결함을 normalizeHada(어간 보존)와 낱말 단위 대조(sourceMatches)로 고쳤다.
+describe('checkReconstructionFidelity: -하다/되다 어간 보존과 낱말 단위 대조(코드 리뷰 라운드 2, 2026-09-24)', () => {
+  it('"말한다"(원문) ↔ "말하기를"(재구조화) — 둘 다 어간 "말하"로 만나야 한다', () => {
+    const r = checkReconstructionFidelity('학생은 자료를 가지고 말하기를 해서 발표를 할 수 있다.', ['자료에 대해 말한다.'])
+    expect(r.unknownTokens).toEqual([])
+    expect(r.ok).toBe(true)
+  })
+
+  it('"설명한다"(원문) ↔ "설명하기"(재구조화) — 어간 "설명하"로 만난다', () => {
+    const r = checkReconstructionFidelity('학생은 자료를 가지고 설명하기를 해서 답을 할 수 있다.', ['자료를 보고 설명한다.'])
+    expect(r.ok).toBe(true)
+  })
+
+  it('"준수한다"(원문) ↔ "준수하며"(재구조화) — 어간 "준수하"로 만난다', () => {
+    const r = checkReconstructionFidelity('학생은 절차를 가지고 준수하며 결과를 낼 수 있다.', ['절차를 준수한다.'])
+    expect(r.ok).toBe(true)
+  })
+
+  it('"히스토리"는 더 이상 "히스토그램"의 앞부분과 겹쳐 통과하지 않는다(뒷부분이 완전히 다른 낱말)', () => {
+    const r = checkReconstructionFidelity('히스토리 자료를 나타낸다.', ['히스토그램으로 자료를 나타낸다.'])
+    expect(r.ok).toBe(false)
+    expect(r.unknownTokens).toContain('히스토리')
+  })
+
+  it('"도수분포다각형으로"(재구조화) ↔ 원문의 "도수분포다각형"(조사 없이) — 같은 낱말, 조사 차이만', () => {
+    const r = checkReconstructionFidelity('자료를 도수분포다각형으로 나타낸다.', ['자료를 도수분포다각형 그래프로 나타낸다.'])
+    expect(r.ok).toBe(true)
+  })
+
+  it('"나타내서"(재구조화) ↔ 원문의 "나타내고" — 연결어미 차이만', () => {
+    const r = checkReconstructionFidelity('자료를 나타내서 해석한다.', ['자료를 나타내고 해석한다.'])
+    expect(r.ok).toBe(true)
+  })
+
+  it('표준편차는 GENERIC_PRODUCT_WORDS의 "표" 접두와 우연히 겹쳐도 허용되지 않는다(합성어 꼬리표가 아니므로)', () => {
+    const r = checkReconstructionFidelity('학생은 자료를 가지고 표준편차를 구해서 답을 할 수 있다.', STD)
+    expect(r.ok).toBe(false)
+    expect(r.unknownTokens).toContain('표준편차를')
+  })
+
+  it('글자는 "글" + 활동 꼬리표(쓰기 등) 합성어가 아니므로 계속 반려된다', () => {
+    const r = checkReconstructionFidelity('학생은 자료를 가지고 글자를 세어서 답을 할 수 있다.', STD)
+    expect(r.ok).toBe(false)
+    expect(r.unknownTokens).toContain('글자를')
   })
 })
 

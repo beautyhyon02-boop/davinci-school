@@ -32,11 +32,14 @@ const PARTICLES = [
   '까지', '부터', '에는', '에도', '만을', '들을', '들이', '들은', '처럼', '이나',
   '을', '를', '은', '는', '이', '가', '의', '에', '와', '과', '도', '만', '로', '나',
 ]
-// 어미류(동사·형용사 활용): 하다→하, 쓰다→쓰 같은 1음절 어간도 정당하므로 1자까지 허용한다.
-// stemMatches/looseMatches 쪽에서 1음절 어간은 정확히 같아야 통과하게 해 과다 매칭을 막는다.
+/**
+ * 어미류(동사·형용사 활용): 하다→하, 쓰다→쓰 같은 1음절 어간도 정당하므로 1자까지 허용한다.
+ * "-하다/-되다"에 바로 붙는 어미(하며·하고·하는·한다 등)는 여기 두지 않는다 — 그 어미까지 통째로 떼면
+ * "하"/"되"가 사라져 "말하기"(어간 보존)와 "말한다"(통째 제거)가 서로 다른 값이 된다. 대신 "다·는·며·고·기"
+ * 같은 낱조각만 떼고, 남은 "한/할/해/된/될/돼" 는 stem() 끝에서 normalizeHada가 "하/되"로 되돌린다.
+ */
 const VERB_ENDINGS = [
-  '하며', '하고', '하여', '해서', '하는', '하기', '하면', '되며', '되고', '되어', '이며', '이고',
-  '한다', '된다', '되는', '한', '된', '기를', '기에', '기', '게', '고', '며', '면', '거나', '니다', '습니다', '다',
+  '기를', '기에', '기', '게', '고', '며', '면', '서', '거나', '니다', '습니다', '다',
 ]
 
 type SuffixRule = { suf: string; min: number }
@@ -45,6 +48,15 @@ const SUFFIX_RULES: SuffixRule[] = [
   ...PARTICLES.map((suf) => ({ suf, min: 2 })),
   ...VERB_ENDINGS.map((suf) => ({ suf, min: 1 })),
 ].sort((a, b) => b.suf.length - a.suf.length)
+
+/** "-하다/-되다" 활용의 받침·축약형을 어간 "하/되"로 되돌린다(말한다→말하, 해석할→해석하, 준수돼→준수되). */
+const HADA_NORMALIZE: Record<string, string> = { 한: '하', 할: '하', 함: '하', 해: '하', 된: '되', 될: '되', 됨: '되', 돼: '되' }
+function normalizeHada(s: string): string {
+  if (s.length === 0) return s
+  const last = s[s.length - 1]
+  const mapped = HADA_NORMALIZE[last]
+  return mapped ? s.slice(0, -1) + mapped : s
+}
 
 function tokens(s: string): string[] {
   return s.replace(SPLIT_RE, ' ').split(/\s+/).map(t => t.trim()).filter(t => t.length >= 2 && !STOP.has(t))
@@ -57,9 +69,9 @@ function rawWords(s: string): string[] {
 /** 토큰 끝의 어미·조사 하나를 떼어 낸 어간. 조사는 남는 어간이 2자 미만이면 떼지 않지만, 어미(하다·쓰다류)는 1자까지 허용한다. */
 export function stem(token: string): string {
   for (const { suf, min } of SUFFIX_RULES) {
-    if (token.length - suf.length >= min && token.endsWith(suf)) return token.slice(0, -suf.length)
+    if (token.length - suf.length >= min && token.endsWith(suf)) return normalizeHada(token.slice(0, -suf.length))
   }
-  return token
+  return normalizeHada(token)
 }
 
 /** GENERIC_PRODUCT_WORDS 판정 전용: 조사를 1자 남을 때까지도 떼어 낸다("글을"→"글"). 새 내용어 판정(stem)에는 쓰지 않는다. */
@@ -78,7 +90,7 @@ function stripBatchim(syllable: string): string {
   return jong === 0 ? syllable : String.fromCharCode(code - jong)
 }
 
-/** 어간 끝 음절의 받침만 지운 "느슨한" 어간. '쓴'→'쓰', '관한'→'관하'(둘 다 들어 있으면 뒤엣것도 후보로 쓴다). */
+/** 어간 끝 음절의 받침만 지운 "느슨한" 어간(쓴→쓰). 이미 stem()의 -하다 정규화를 거친 값을 한 번 더 다듬는다. */
 function looseForms(word: string): string[] {
   const st = stem(word)
   if (st.length === 0) return [st]
@@ -98,47 +110,46 @@ function isGenericProduct(token: string): boolean {
   return false
 }
 
-/** 1) 어미·조사를 떼고 2) 남은 어간의 접두(길이-1 이상, 최소 2)가 원문 전체 문자열에 있으면 통과. */
-function stemMatches(token: string, source: string): boolean {
-  const st = stem(token)
-  const minLen = Math.max(2, st.length - 1)
-  for (let len = st.length; len >= minLen; len--) {
-    if (source.includes(st.slice(0, len))) return true
-  }
-  return false
+/**
+ * 두 어간이 "같은 낱말"인지: 정확히 같거나(받침 변화 포함, looseForms가 이미 처리), 한쪽이 다른 쪽의 접두이고
+ * 그 차이가 어미·조사 하나(또는 1음절 이하)뿐일 때만 통과한다. 접두이기만 하면 통과하던 예전 규칙은
+ * "히스토리"↔"히스토그램"처럼 뒷부분이 완전히 다른 낱말도 접두 한 조각만 겹치면 통과시켰다(제거 대상).
+ */
+function formsCompatible(a: string, b: string): boolean {
+  if (a === b) return true
+  if (a.length < 2 || b.length < 2) return false // 1음절 어간은 정확히 같아야 한다(위에서 걸러졌으면 여기 안 옴)
+  const [shorter, longer] = a.length <= b.length ? [a, b] : [b, a]
+  if (!longer.startsWith(shorter)) return false
+  const diff = longer.slice(shorter.length)
+  return diff.length <= 1 || PARTICLES.includes(diff) || VERB_ENDINGS.includes(diff)
 }
 
 /**
- * 받침만 다른 어미 변화(쓰기↔쓴다 등)를 원문의 단어별 어간과 대조해 허용하는 2차 검사.
- * 1음절 어간은 정확히 같아야 통과한다(과다 매칭 방지) — 그래서 '관한'(→관하/관)과 '관해'(→관해)처럼
- * 모음까지 달라지는 짝은 여기서 못 잡고, TEMPLATE_WORDS가 대신 허용한다.
+ * 재구조화 토큰의 어간을 원문의 "낱말별" 어간과 대조한다(전체 원문 문자열에서 부분 문자열을 찾던 예전 방식은
+ * "히스토리"가 "히스토그램"의 앞 3글자와 우연히 겹쳐 통과하는 구멍이 있었다 — 이제 낱말 단위로만 비교한다).
+ * '관한'(→관하/관)과 '관해'(→관해)처럼 모음까지 달라지는 짝은 여기서 못 잡고, TEMPLATE_WORDS가 대신 허용한다.
  */
-function looseMatches(token: string, sourceWords: string[]): boolean {
+function sourceMatches(token: string, sourceWords: string[]): boolean {
   const tokenForms = looseForms(token)
   for (const raw of sourceWords) {
     const sourceForms = looseForms(raw)
     for (const tf of tokenForms) {
       if (!tf) continue
       for (const sf of sourceForms) {
-        if (!sf) continue
-        if (tf.length === 1 || sf.length === 1) { if (tf === sf) return true; continue }
-        const [shortF, longF] = tf.length <= sf.length ? [tf, sf] : [sf, tf]
-        if (longF.includes(shortF)) return true
+        if (sf && formsCompatible(tf, sf)) return true
       }
     }
   }
   return false
 }
 
-function isKnown(token: string, source: string, sourceWords: string[]): boolean {
-  if (isGenericProduct(token)) return true
-  if (stemMatches(token, source)) return true
-  return looseMatches(token, sourceWords)
+function isKnown(token: string, sourceWords: string[]): boolean {
+  return isGenericProduct(token) || sourceMatches(token, sourceWords)
 }
 
 export function checkReconstructionFidelity(reconstruction: string, standards: string[]) {
   const source = standards.join(' ').replace(SOURCE_RE, ' ')
   const sourceWords = rawWords(source)
-  const unknownTokens = tokens(reconstruction).filter(t => !isKnown(t, source, sourceWords))
+  const unknownTokens = tokens(reconstruction).filter(t => !isKnown(t, sourceWords))
   return { ok: unknownTokens.length === 0, unknownTokens }
 }
