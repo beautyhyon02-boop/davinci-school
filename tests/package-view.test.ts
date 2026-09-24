@@ -259,3 +259,12 @@ describe('MaterialsSection (student lesson panel)', () => {
     expect(renderToStaticMarkup(createElement(MaterialsSection, { materials: [] }))).toBe('')
   })
 })
+
+describe('mergedLevelRows — 묶인 성취수준은 한 줄로', () => {
+  it('A·B / C·D 묶음은 한 번만, 나머지는 수준별로', async () => {
+    const { mergedLevelRows } = await import('@/components/studio/PackageView')
+    const rows = mergedLevelRows({ A: '가', B: '가', C: '나', D: '나', E: '다' }, [['A', 'B'], ['C', 'D']])
+    expect(rows).toEqual([{ label: 'A·B', text: '가' }, { label: 'C·D', text: '나' }, { label: 'E', text: '다' }])
+    expect(mergedLevelRows({ A: '가', B: '나' }, [])).toEqual([{ label: 'A', text: '가' }, { label: 'B', text: '나' }])
+  })
+})

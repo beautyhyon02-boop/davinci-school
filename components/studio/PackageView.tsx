@@ -94,6 +94,21 @@ function MaterialChart({ material }: { material: Material }) {
   return <div className="mx-auto mt-3 w-full max-w-[480px]"><RelativeFreqBars rows={spec.rows} columns={spec.columns} title={spec.title} /></div>
 }
 
+/** 성취수준 표시 행: 묶인 수준(merged_levels)은 "A·B" 한 줄, 나머지는 수준별 한 줄. 순서는 levels 의 키 순서를 따른다. */
+export function mergedLevelRows(levels: Record<string, string>, merged: string[][]): { label: string; text: string }[] {
+  const groupOf = new Map<string, string[]>()
+  for (const g of merged) for (const lv of g) groupOf.set(lv, g)
+  const seen = new Set<string>()
+  const rows: { label: string; text: string }[] = []
+  for (const [k, v] of Object.entries(levels)) {
+    if (seen.has(k)) continue
+    const g = groupOf.get(k)
+    if (g) { for (const lv of g) seen.add(lv); rows.push({ label: g.join('·'), text: v }) }
+    else rows.push({ label: k, text: v })
+  }
+  return rows
+}
+
 export function MaterialsSection({ materials }: { materials: Material[] }) {
   if (materials.length === 0) return null
   const c = copy.materials
@@ -142,7 +157,8 @@ function StandardsSection({ standards }: { standards: Snapshot['standards'] }) {
                 <details className="mt-1 rounded-lg bg-ink-100/40 p-2">
                   <summary className="cursor-pointer text-ink-500">{copy.levelsToggle}</summary>
                   <ul className="mt-1 space-y-0.5">
-                    {Object.entries(lv.levels).map(([k, v]) => <li key={k}><span className="font-semibold">{k}</span> {v}</li>)}
+                    {/* 평가원 표에서 두 수준이 한 칸으로 묶인 경우(merged_levels)는 "A·B"로 한 번만 보인다 — 같은 문장이 두 줄로 반복돼 오류처럼 보이지 않게 */}
+                    {mergedLevelRows(lv.levels, lv.merged_levels).map((row) => <li key={row.label}><span className="font-semibold">{row.label}</span> {row.text}</li>)}
                   </ul>
                 </details>
               )}
