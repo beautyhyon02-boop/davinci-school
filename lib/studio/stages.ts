@@ -15,6 +15,8 @@ export const STAGE_ERRORS = {
   NOTHING_TO_REVIEW: 'nothing-to-review',
   ACCEPT_REQUIRES_REVIEW: 'accept-requires-review',
   INVALID_EDIT: 'invalid-edit',
+  // 대주제 소개(0단계) 전용 — 2026-09-24 오너 결정으로 검토·확정 관문이 없어졌다. 'review'/'accept'가 오면 이 코드로 막는다.
+  INTRO_ACTION_NOT_SUPPORTED: 'theme-intro-action-not-supported',
 } as const
 export type StageErrorCode = (typeof STAGE_ERRORS)[keyof typeof STAGE_ERRORS]
 
@@ -52,12 +54,13 @@ export type ThemeRepo = {
   log(entry: ThemeLogRow): Promise<void>
 }
 
-export type ThemeIntroAction = 'generate' | 'review' | 'accept' | 'edit'
+export type ThemeIntroAction = 'generate' | 'save'
 export type ThemeIntroOutput = { intro: string; subject_ideas: { subject: string; idea: string }[] }
 
 /**
- * 관리자가 직접 고친 소개(action 'edit')를 다듬고 검증한다. 앞뒤 공백을 걷어 낸 뒤 STAGE_SCHEMAS[0]으로 검사하고,
- * 대주제에 없는 과목의 아이디어는 받지 않는다. 실패하면 INVALID_EDIT(화면이 content/site.ts 문구로 바꿔 보여 준다).
+ * 저장할 소개(action 'save': AI 초안을 고친 것이든 손으로 처음부터 쓴 것이든)를 다듬고 검증한다. 앞뒤 공백을 걷어 낸 뒤
+ * STAGE_SCHEMAS[0]으로 검사하고, 대주제에 없는 과목의 아이디어는 받지 않는다. 실패하면 INVALID_EDIT(화면이
+ * content/site.ts 문구로 바꿔 보여 준다) — 아무것도 저장하지 않는다.
  */
 function parseIntroEdit(edit: unknown, subjects: string[]): ThemeIntroOutput {
   const raw = (edit ?? {}) as { intro?: unknown; subject_ideas?: unknown }
@@ -80,64 +83,52 @@ function parseIntroEdit(edit: unknown, subjects: string[]): ThemeIntroOutput {
   return out
 }
 
+/**
+ * 대주제 소개(0단계)는 검토 관문이 없다(2026-09-24 오너 결정) — 배경 정보일 뿐 세트 품질을 좌우하는 관문이 아니기 때문이다.
+ * 두 동작만 있다: 'generate'(AI 초안 한 번, 저장하지 않고 화면에만 채운다), 'save'(관리자가 고친/직접 쓴 내용을 검증해
+ * 바로 확정 상태로 저장 — themes.intro_ideas 와 themes.intro 모두). 'review'/'accept'는 더는 없고, 혹시 들어오면
+ * INTRO_ACTION_NOT_SUPPORTED 로 막는다(타입은 이미 두 동작만 허용하지만, API 라우트를 거치지 않고 부르는 코드를 대비한 방어).
+ */
 export async function runThemeIntro({ themeId, action, repo, edit }: { themeId: string; action: ThemeIntroAction; repo: ThemeRepo; edit?: unknown }) {
+  if (action !== 'generate' && action !== 'save') {
+    throw new StageError(STAGE_ERRORS.INTRO_ACTION_NOT_SUPPORTED, `대주제 소개는 생성·저장만 있습니다(검토·확정 관문 없음): ${action}`)
+  }
   const theme = await repo.loadTheme(themeId)
   const prev = theme.intro_ideas ?? { state: 'idle', attempt: 0, updated_at: '' }
   const now = () => new Date().toISOString()
-  const ctx: Ctx = { theme: { title: theme.title, level: theme.level, grade: theme.grade, subjects: theme.subjects }, subject: '', standards: [], prior: {} }
 
-  // 직접 수정: 검토 AI를 거치지 않고 관리자가 고친 내용을 그대로 확정한다(검토 한도에 닿아도 막히지 않도록).
-  // 시도 횟수는 그대로 두고, 확정본은 themes.intro 에도 저장한다.
-  if (action === 'edit') {
+  // 저장: AI 초안을 고쳤든 처음부터 손으로 썼든 검증만 통과하면 바로 확정한다. 화면에 있는 초안과(대주제 과목 범위에서)
+  // 글자 그대로 같고 그 초안이 AI가 만든 것이면(model이 'manual'이 아니면) 그 모델명을 남기고, 아니면 'manual'로 남긴다.
+  // 초안에 대주제에 없는 과목의 아이디어가 섞여 있어도(예시 fixture) 화면은 대주제 과목만 저장하므로, 비교도 그 범위로 좁힌다.
+  if (action === 'save') {
     const output = parseIntroEdit(edit, theme.subjects)
-    const status: StageStatus = { state: 'accepted', attempt: prev.attempt, output, review: { pass: true, issues: [] }, model: 'manual', updated_at: now() }
+    const prevDraft = prev.output as ThemeIntroOutput | undefined
+    const prevInScope = prevDraft && { intro: prevDraft.intro, subject_ideas: prevDraft.subject_ideas.filter((i) => theme.subjects.includes(i.subject)) }
+    const unedited = prev.model !== undefined && prev.model !== 'manual' && prevInScope !== undefined
+      && JSON.stringify(prevInScope) === JSON.stringify(output)
+    const status: StageStatus = {
+      state: 'accepted', attempt: prev.attempt, output,
+      model: unedited ? prev.model : 'manual',
+      review: { pass: true, issues: [] }, updated_at: now(),
+    }
     await repo.saveThemeIntro(themeId, status, output)
     return { status }
   }
 
-  // 생성은 검토 한도에 닿은 뒤에도 언제든 다시 할 수 있다 — 한도 표지(EXHAUSTED_ERROR)는 안내일 뿐 잠금이 아니다.
-  // 시도 횟수는 계속 늘고, 새 상태에는 error 가 없으므로 한도 표지는 지워진다.
-  if (action === 'generate') {
-    const attempt = prev.attempt + 1
-    const p = buildPrompt(0, ctx)
-    try {
-      const r = await callStructured({ stage: 0, role: 'generate', schema: STAGE_SCHEMAS[0] as ZodType<unknown>, system: p.system, user: p.user,
-        effort: 'high', fixtureKey: p.fixtureKey,
-        log: e => repo.log({ themeId, stage: 0, role: 'generate', attempt, ...e }) })
-      const status: StageStatus = { state: 'generated', attempt, output: r.data, model: r.model, updated_at: now() }
-      await repo.saveThemeIntro(themeId, status); return { status }
-    } catch (e) {
-      const status: StageStatus = { state: 'failed', attempt, error: (e as Error).message, updated_at: now() }
-      await repo.saveThemeIntro(themeId, status); return { status }
-    }
-  }
-
-  const output = prev.output
-  if (output === undefined) throw new StageError(STAGE_ERRORS.NOTHING_TO_REVIEW, 'nothing to review: generate first')
-
-  if (action === 'review') {
-    const p = buildReviewPrompt(0, ctx, output)
-    let pending: ThemeLogRow | null = null
-    const r = await callStructured({ stage: 0, role: 'review', schema: Review, system: p.system, user: p.user, fixtureKey: p.fixtureKey,
-      log: async e => {
-        const row: ThemeLogRow = { themeId, stage: 0, role: 'review', attempt: prev.attempt, ...e }
-        if (e.ok) pending = row; else await repo.log(row)
-      } })
-    const review = r.data
-    if (pending) await repo.log({ ...(pending as ThemeLogRow), issues: { pass: review.pass, issues: review.issues } })
-    const exhausted = !review.pass && prev.attempt >= (MAX_ATTEMPTS[0] ?? 1)
-    const status: StageStatus = { state: 'reviewed', attempt: prev.attempt, output, review, updated_at: now(),
-      ...(prev.model ? { model: prev.model } : {}),
-      ...(exhausted ? { error: EXHAUSTED_ERROR } : {}) }
+  // 생성(AI 초안): 몇 번을 다시 받아도 잠기지 않는다. 화면에 채워 보여 줄 뿐, 관리자가 [저장]을 눌러야 확정된다.
+  const attempt = prev.attempt + 1
+  const ctx: Ctx = { theme: { title: theme.title, level: theme.level, grade: theme.grade, subjects: theme.subjects }, subject: '', standards: [], prior: {} }
+  const p = buildPrompt(0, ctx)
+  try {
+    const r = await callStructured({ stage: 0, role: 'generate', schema: STAGE_SCHEMAS[0] as ZodType<unknown>, system: p.system, user: p.user,
+      effort: 'high', fixtureKey: p.fixtureKey,
+      log: e => repo.log({ themeId, stage: 0, role: 'generate', attempt, ...e }) })
+    const status: StageStatus = { state: 'generated', attempt, output: r.data, model: r.model, updated_at: now() }
+    await repo.saveThemeIntro(themeId, status); return { status }
+  } catch (e) {
+    const status: StageStatus = { state: 'failed', attempt, error: (e as Error).message, updated_at: now() }
     await repo.saveThemeIntro(themeId, status); return { status }
   }
-
-  // accept
-  if (prev.state !== 'reviewed' || !prev.review?.pass) throw new StageError(STAGE_ERRORS.ACCEPT_REQUIRES_REVIEW, 'accept requires a passing review')
-  const status: StageStatus = { ...prev, state: 'accepted', updated_at: now() }
-  const accepted = output as ThemeIntroOutput
-  await repo.saveThemeIntro(themeId, status, accepted)
-  return { status }
 }
 
 /**

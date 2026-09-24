@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest'
-import { runStage, runThemeIntro, StageError, STAGE_ERRORS, EXHAUSTED_ERROR, type Repo, type ThemeRepo, type StageStatus, type ThemeLogRow } from '@/lib/studio/stages'
+import { runStage, runThemeIntro, StageError, STAGE_ERRORS, type Repo, type ThemeRepo, type StageStatus, type ThemeLogRow, type ThemeIntroAction } from '@/lib/studio/stages'
 import { buildStatuses } from '@/lib/studio/repo'
 import { buildPrompt } from '@/lib/studio/prompts/stages'
 
@@ -25,83 +25,91 @@ function fakeThemeRepo(initial: StageStatus | null = null): FakeThemeRepo {
   } as FakeThemeRepo
 }
 
+// 대주제 소개(0단계)는 검토 관문이 없다(2026-09-24 오너 결정) — 생성(AI 초안)·저장 두 동작뿐이다.
 describe('runThemeIntro', () => {
-  it('generate → review → accept persists theme.intro', async () => {
+  it('generate makes a draft and does not save theme.intro', async () => {
     const repo = fakeThemeRepo()
     const g = await runThemeIntro({ themeId: 't1', action: 'generate', repo })
     expect(g.status.state).toBe('generated')
     expect(g.status.model).toBe('mock')
+    expect(g.status.output).toBeTruthy()
     expect(repo.intro).toBeNull()
-
-    const r = await runThemeIntro({ themeId: 't1', action: 'review', repo })
-    expect(r.status.state).toBe('reviewed')
-    expect(r.status.review?.pass).toBe(true)
-
-    const a = await runThemeIntro({ themeId: 't1', action: 'accept', repo })
-    expect(a.status.state).toBe('accepted')
-    expect(repo.intro).not.toBeNull()
-    expect(typeof repo.intro).toBe('string')
   })
 
-  it('refuses to accept before review passes', async () => {
+  it('generate can be repeated freely — there is no review limit to block it', async () => {
     const repo = fakeThemeRepo()
-    await runThemeIntro({ themeId: 't1', action: 'generate', repo })
-    await expect(runThemeIntro({ themeId: 't1', action: 'accept', repo })).rejects.toThrow(/review/)
+    for (let i = 0; i < 5; i++) {
+      const g = await runThemeIntro({ themeId: 't1', action: 'generate', repo })
+      expect(g.status.state).toBe('generated')
+      expect(g.status.error).toBeUndefined()
+    }
+    expect(repo.intro).toBeNull()
   })
 
-  it('refuses to review before generate', async () => {
+  it('save validates and stores an accepted intro immediately (no review step)', async () => {
     const repo = fakeThemeRepo()
-    await expect(runThemeIntro({ themeId: 't1', action: 'review', repo })).rejects.toThrow(/generate first/)
-  })
-})
-
-// 검토 반복 한도에 닿아 막힌 소개를 푸는 두 길: 다시 생성(한도 표지는 잠금이 아님), 직접 수정 → 확정(2026-09-24)
-describe('runThemeIntro after the review limit', () => {
-  const OLD = { intro: '예전에 만든 소개문입니다. 두 번째 문장입니다.', subject_ideas: [{ subject: '수학', idea: '예전 수학 아이디어' }] }
-  const exhaustedStatus = (): StageStatus => ({
-    state: 'reviewed', attempt: 3, output: OLD, model: 'claude',
-    review: { pass: false, issues: [{ kind: 'grade_level', detail: '중1 범위를 넘는다' }] },
-    error: EXHAUSTED_ERROR, updated_at: '2026-09-24T00:00:00.000Z',
-  })
-
-  it('generate after exhaustion makes a new draft, keeps counting attempts and clears the limit marker', async () => {
-    const repo = fakeThemeRepo(exhaustedStatus())
-    const g = await runThemeIntro({ themeId: 't1', action: 'generate', repo })
-    expect(g.status.state).toBe('generated')
-    expect(g.status.attempt).toBe(4)
-    expect(g.status.error).toBeUndefined()
-    expect(g.status.review).toBeUndefined()
-  })
-
-  it('edit saves the admin text as accepted (manual, attempt kept, passing review) and stores theme.intro', async () => {
-    const repo = fakeThemeRepo(exhaustedStatus())
     const intro = '학교 축제에서 나오는 일회용품을 살펴본다. 과목마다 중1 수준에서 할 수 있는 활동을 찾는다. 결론은 학생이 직접 내린다.'
-    const e = await runThemeIntro({ themeId: 't1', action: 'edit', repo, edit: {
-      intro: `  ${intro}  `,
-      subject_ideas: [{ subject: '수학', idea: ' 설문 결과를 도수분포표로 정리한다 ' }, { subject: '과학', idea: '플라스틱의 성질을 관찰한다' }],
+    const s = await runThemeIntro({ themeId: 't1', action: 'save', repo, edit: {
+      intro,
+      subject_ideas: [{ subject: '수학', idea: '설문 결과를 도수분포표로 정리한다' }, { subject: '과학', idea: '플라스틱의 성질을 관찰한다' }],
     } })
-    expect(e.status).toMatchObject({ state: 'accepted', attempt: 3, model: 'manual', review: { pass: true, issues: [] } })
-    expect(e.status.error).toBeUndefined()
-    expect(e.status.output).toEqual({ intro, subject_ideas: [{ subject: '수학', idea: '설문 결과를 도수분포표로 정리한다' }, { subject: '과학', idea: '플라스틱의 성질을 관찰한다' }] })
+    expect(s.status.state).toBe('accepted')
+    expect(s.status.model).toBe('manual')
+    expect(s.status.review).toEqual({ pass: true, issues: [] })
     expect(repo.intro).toBe(intro)
   })
 
-  it('edit with an empty intro is refused with a clear invalid-edit error and saves nothing', async () => {
-    const repo = fakeThemeRepo(exhaustedStatus())
-    const p = runThemeIntro({ themeId: 't1', action: 'edit', repo, edit: { intro: '   ', subject_ideas: [{ subject: '수학', idea: '설문 결과를 정리한다' }] } })
+  // 화면(ThemeIntroPanel)은 대주제 과목(수학·과학)의 아이디어만 저장 요청에 담는다 — 초안에 다른 과목 아이디어가
+  // 섞여 있어도(fixture가 5과목 데모용이라 그렇다) 그 과목들은 화면에 칸이 없어 저장되지 않는다.
+  function pickThemeSubjectIdeas(output: { intro: string; subject_ideas: { subject: string; idea: string }[] }) {
+    return {
+      intro: output.intro,
+      subject_ideas: ['수학', '과학'].map((subject) => ({ subject, idea: output.subject_ideas.find((i) => i.subject === subject)?.idea ?? '' })),
+    }
+  }
+
+  it('save right after a generate keeps the AI model name when the saved text matches the draft exactly', async () => {
+    const repo = fakeThemeRepo()
+    const g = await runThemeIntro({ themeId: 't1', action: 'generate', repo })
+    const draft = g.status.output as { intro: string; subject_ideas: { subject: string; idea: string }[] }
+    const s = await runThemeIntro({ themeId: 't1', action: 'save', repo, edit: pickThemeSubjectIdeas(draft) })
+    expect(s.status.model).toBe(g.status.model)
+    expect(s.status.model).not.toBe('manual')
+  })
+
+  it('save with an edited draft is recorded as manual', async () => {
+    const repo = fakeThemeRepo()
+    const g = await runThemeIntro({ themeId: 't1', action: 'generate', repo })
+    const draft = g.status.output as { intro: string; subject_ideas: { subject: string; idea: string }[] }
+    const picked = pickThemeSubjectIdeas(draft)
+    const s = await runThemeIntro({ themeId: 't1', action: 'save', repo, edit: { ...picked, intro: `${picked.intro} 조금 고쳤다.` } })
+    expect(s.status.model).toBe('manual')
+  })
+
+  it('save with an empty intro is refused with a clear invalid-edit error and saves nothing', async () => {
+    const repo = fakeThemeRepo()
+    const p = runThemeIntro({ themeId: 't1', action: 'save', repo, edit: { intro: '   ', subject_ideas: [{ subject: '수학', idea: '설문 결과를 정리한다' }] } })
     await expect(p).rejects.toBeInstanceOf(StageError)
     await expect(p).rejects.toMatchObject({ code: STAGE_ERRORS.INVALID_EDIT, message: expect.stringMatching(/intro/) })
     expect(repo.intro).toBeNull()
-    expect((await repo.loadTheme('t1')).intro_ideas?.state).toBe('reviewed')
   })
 
-  it('edit refuses ideas for a subject that is not in the theme, and an empty idea', async () => {
+  it('save refuses ideas for a subject that is not in the theme, and an empty idea', async () => {
     const repo = fakeThemeRepo()
     const intro = '학교 축제에서 나오는 일회용품을 살펴보는 대주제입니다.'
-    await expect(runThemeIntro({ themeId: 't1', action: 'edit', repo, edit: { intro, subject_ideas: [{ subject: '영어', idea: '영어 설문을 만든다' }] } }))
+    await expect(runThemeIntro({ themeId: 't1', action: 'save', repo, edit: { intro, subject_ideas: [{ subject: '영어', idea: '영어 설문을 만든다' }] } }))
       .rejects.toMatchObject({ code: STAGE_ERRORS.INVALID_EDIT })
-    await expect(runThemeIntro({ themeId: 't1', action: 'edit', repo, edit: { intro, subject_ideas: [{ subject: '수학', idea: '' }] } }))
+    await expect(runThemeIntro({ themeId: 't1', action: 'save', repo, edit: { intro, subject_ideas: [{ subject: '수학', idea: '' }] } }))
       .rejects.toMatchObject({ code: STAGE_ERRORS.INVALID_EDIT })
+  })
+
+  it('review and accept are no longer supported actions', async () => {
+    const repo = fakeThemeRepo()
+    await expect(runThemeIntro({ themeId: 't1', action: 'review' as ThemeIntroAction, repo }))
+      .rejects.toMatchObject({ code: STAGE_ERRORS.INTRO_ACTION_NOT_SUPPORTED })
+    await expect(runThemeIntro({ themeId: 't1', action: 'accept' as ThemeIntroAction, repo }))
+      .rejects.toMatchObject({ code: STAGE_ERRORS.INTRO_ACTION_NOT_SUPPORTED })
+    expect(repo.intro).toBeNull()
   })
 })
 
@@ -149,16 +157,16 @@ describe('accepted theme intro reaches stage 2~6 prompts', () => {
     expect(buildStatuses({}, null)[0]).toBeUndefined()
   })
 
-  it('stage 2 prompt carries the accepted intro text', async () => {
+  it('stage 2 prompt carries the accepted (saved) intro text', async () => {
     const ctx = await ctxAfterStage2Generate(introStatus('accepted'))
     expect(ctx.prior.stage0).toEqual(INTRO_OUTPUT)
     expect(buildPrompt(2, ctx).user).toContain(INTRO_TEXT)
   })
 
-  it('stage 2 prompt omits an intro that is only reviewed (not accepted), and one that does not exist', async () => {
-    const reviewed = await ctxAfterStage2Generate(introStatus('reviewed'))
-    expect(reviewed.prior.stage0).toBeUndefined()
-    expect(buildPrompt(2, reviewed).user).not.toContain(INTRO_TEXT)
+  it('stage 2 prompt omits an intro that is only a draft (not saved), and one that does not exist', async () => {
+    const drafted = await ctxAfterStage2Generate(introStatus('generated'))
+    expect(drafted.prior.stage0).toBeUndefined()
+    expect(buildPrompt(2, drafted).user).not.toContain(INTRO_TEXT)
 
     const none = await ctxAfterStage2Generate(null)
     expect(buildPrompt(2, none).user).not.toContain(INTRO_TEXT)

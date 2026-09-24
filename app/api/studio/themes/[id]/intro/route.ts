@@ -6,7 +6,7 @@ import { createSupabaseThemeRepo } from '@/lib/studio/repo'
 
 export const maxDuration = 300
 
-const ACTIONS: ThemeIntroAction[] = ['generate', 'review', 'accept', 'edit']
+const ACTIONS: ThemeIntroAction[] = ['generate', 'save']
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const s = await getSessionProfileOrNull()
@@ -14,7 +14,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (s.role !== 'admin') return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   const { id } = await params
   let action: ThemeIntroAction
-  // 'edit'(직접 수정)일 때만 쓰는 값: { intro, subject_ideas } — 검증은 runThemeIntro 가 한다
+  // 'save'일 때만 쓰는 값: { intro, subject_ideas } — 검증은 runThemeIntro 가 한다
   let output: unknown
   try {
     ;({ action, output } = await req.json() as { action: ThemeIntroAction; output?: unknown })

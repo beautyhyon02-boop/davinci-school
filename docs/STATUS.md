@@ -42,13 +42,14 @@
 - 2026-09-26 대표님(세트 구조): 매 교수 차시 끝 = 이해 점검 퀴즈 3문항(그대로, 마지막 교수 차시 포함). 세트(단원 = 교수 차시 3~5개, 시연 세트 5개) 끝 = **서술형 1문항 + 논술형 1문항, 정확히 2문항**을 5차시 뒤 **6차시 단원 평가**(60분 = 안내 5 · 서술형 15 · 논술형 35 · 정리 5, 퀴즈 없음)에서 함께 본다. 두 문항 모두 분석적 루브릭(요소별) + 총체적 루브릭(상/중/하). **배점 가정(본사, 대표님이 바꿀 수 있음): 서술형 6점(요소 2~3개) + 논술형 16점(4요소 × 4) = 22점** — 7등급표·`level_ref`는 그대로. 바꾸는 순서: ① `lib/studio/assessment-structure.ts`의 숫자(`SET_ITEMS`·`ASSESSMENT_SESSION`, 총점이 22가 아니면 `lib/studio/level-map.ts` `GRADE_TABLE_22`도) → 스키마·[TS]·5단계 프롬프트·검토 초점·화면 문구·규칙 문장(C-14·C-31·L-09·S-수-02, `lib/studio/structure-text.ts`가 만든다)이 따라 바뀐다 ② `npx vitest run tests/rules.test.ts`가 알려 주는 새 문장으로 스펙 부록 A의 C-14·C-31·L-09·S-수-02 행을 고친다 ③ 시연 fixture의 서술형 채점표(`scripts/upgrade-fixtures-v2.ts` PATCHES, 3요소 × 0~2)를 새 배점에 맞게 다시 쓰고 스크립트를 돌린다(배점이 안 맞으면 스크립트가 멈춘다). 평가 문항 수준 목표: 평가원·교육청 공개 예시 문항과 같은 수준·형식(5단계 프롬프트, 참고 카드 서술형 2 + 논술형 3). 옛 구조로 게시된 판(서술형 3+3 + 논술형)은 학생 답안·채점이 묶여 있어 그대로 둔다. 시연 세트: 수학은 상대도수 서술형을, 과학은 재활용이 어려운 이유 서술형을 남겼다(수학의 종이 답안 도수분포표 문항을 빼서 시연 세트에 종이 답안 문항이 없다).
 - 2026-09-26 대표님: **퀴즈는 단답형만(객관식 폐지)** — 서논술 과정이라 어디에도 객관식이 없다. 교수 차시 마무리 퀴즈 3문항은 모두 학생이 낱말·수치·짧은 구를 직접 쓰는 단답형(선택지 없음, 정답·한두 줄 해설)이고, 채점은 기존 `lib/classroom/quiz.ts`의 너그러운 비교 그대로다(정답 표기가 여럿이면 " / "로). 새 세트는 zod(`LessonDesign`)와 [TS]("퀴즈는 단답형만(선택지 금지)")가 선택형을 막고(규칙 L-09·L-10), 이미 게시된 옛 판의 선택형 퀴즈는 바꾸지 않고 보기 단추로 그대로 보이고 채점된다(보기에 기대는 발문이 있어 기계 변환하지 않는다). 시연 fixture 20문항(수학 7·과학 13)을 단답형으로 다시 썼다(`scripts/upgrade-fixtures-v2.ts` PATCHES).
 - 2026-09-26 대표님: 조건은 지침이지 풀이 힌트가 아니다(계산식·풀이 순서·자료 수치·결론 금지) — 조건은 논술형에만 2~4개, 서술형은 조건 없이 분량·형식만(규칙 C-32, [TS] 검사).
+- 2026-09-24 오너 결정: 대주제 소개(0단계)는 검토 관문이 없다 — 세트 품질을 좌우하는 관문이 아니라 배경 정보이기 때문. `ThemeIntroPanel`은 이제 [AI 초안 받기]·[저장] 두 버튼뿐이고(검토·확정·시도 횟수 표시 삭제), 저장하면 검증만 거쳐 바로 확정 상태(`themes.intro`)로 저장된다(`lib/studio/stages.ts` `runThemeIntro`: `generate`|`save`, `review`/`accept`는 `STAGE_ERRORS.INTRO_ACTION_NOT_SUPPORTED`로 막힌다).
 
 ## 2주차-B 완료 (2026-09-21)
 브랜치 `week2b-studio-ui`. 제작소 화면과 원장 열람 화면이 모두 붙었다.
 
 **화면·라우트**
 - `/admin/items` 대주제 목록 · `/admin/items/new` 대주제 생성
-- `/admin/items/[themeId]` 대주제 소개(0단계, `ThemeIntroPanel`) 생성/검토/확정, 공유 자료 A~D(`SharedMaterialsPanel`), 성취기준 선택(`StandardsPicker`)으로 세트 생성
+- `/admin/items/[themeId]` 대주제 소개(0단계, `ThemeIntroPanel`) 생성/검토/확정(**2026-09-24 결정으로 검토·확정 관문 삭제 — 위 "대표님이 결정한 것" 절**), 공유 자료 A~D(`SharedMaterialsPanel`), 성취기준 선택(`StandardsPicker`)으로 세트 생성
 - `/admin/items/[themeId]/sets/[setId]` 세트 마법사(`StageWizard`/`useStageRunner`, 2~6단계 생성→검토→[다음]=accept, "기본값으로 진행"), 핵심질문 선택, 이미지 첨부(`Attachments`), 게시(`PublishPanel`, `item_set_versions` 스냅샷)
 - `/admin/standards` 성취기준 검증(과목·학교급 필터, `verified_at` 체크) — PDF 쪽 입력은 이번 범위 밖
 - `/teacher/items` 문항(세트) 목록 · `/teacher/items/[setId]` 게시된 세트 열람(검증된 성취기준·확정 자료만 노출)
