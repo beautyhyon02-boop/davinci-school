@@ -54,8 +54,26 @@ export function downstreamResets(
 /**
  * 2단계가 다시 만들어지거나 수정되면 핵심질문 후보가 달라진다 — 이미 고른 핵심질문이 새 후보에 없으면 비운다.
  * 비교 키는 선택 UI(chooseKeyQuestion)와 같은 후보 문자열 그 자체다.
+ * previousCandidates(수정 전 후보)를 주면(관리자 직접 수정 경로), 핵심질문이 옛 후보에도 없던 문장 — 관리자가 고쳐 쓴 핵심질문 —
+ * 은 후보가 바뀌어도 그대로 둔다(대표 2026-09-26: 핵심질문 수정 칸). 다시 생성(repo.saveOutput)은 넘기지 않으므로 늘 비운다.
  */
-export function keyQuestionAfterStage2(current: string | null | undefined, candidates: string[]): string | null {
+export function keyQuestionAfterStage2(current: string | null | undefined, candidates: string[], previousCandidates?: string[]): string | null {
   if (!current) return null
-  return candidates.includes(current) ? current : null
+  if (candidates.includes(current)) return current
+  if (previousCandidates && !previousCandidates.includes(current)) return current
+  return null
+}
+
+/** 핵심질문 문장 길이(글자, 앞뒤 공백 제외). 최소는 2단계 후보(key_question_candidates min 5)와 같다. */
+export const KEY_QUESTION_LIMITS = { min: 5, max: 200 } as const
+
+/**
+ * 관리자가 고쳐 쓴 핵심질문(후보를 고른 뒤 수정 칸에서 고친 문장)을 저장 전에 다듬는다 — 앞뒤 공백을 지우고 줄바꿈·연속 공백을
+ * 한 칸으로 모은 뒤 길이를 본다. 후보 문장과 같을 필요는 없다(대표 2026-09-26).
+ */
+export function normalizeKeyQuestion(text: string): { ok: true; value: string } | { ok: false; code: 'tooShort' | 'tooLong' } {
+  const value = text.replace(/\s+/g, ' ').trim()
+  if (value.length < KEY_QUESTION_LIMITS.min) return { ok: false, code: 'tooShort' }
+  if (value.length > KEY_QUESTION_LIMITS.max) return { ok: false, code: 'tooLong' }
+  return { ok: true, value }
 }

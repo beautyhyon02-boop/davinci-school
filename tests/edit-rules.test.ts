@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { canEditStage, downstreamResets, keyQuestionAfterStage2, EDITABLE_STAGES } from '@/lib/studio/edit-rules'
+import { canEditStage, downstreamResets, keyQuestionAfterStage2, normalizeKeyQuestion, KEY_QUESTION_LIMITS, EDITABLE_STAGES } from '@/lib/studio/edit-rules'
 import { WIZARD_STAGES } from '@/lib/studio/wizard-stages'
 import { STAGE_ERRORS, type StageStatus } from '@/lib/studio/stages'
 
@@ -98,5 +98,31 @@ describe('keyQuestionAfterStage2', () => {
     expect(keyQuestionAfterStage2(null, candidates)).toBeNull()
     expect(keyQuestionAfterStage2(undefined, candidates)).toBeNull()
     expect(keyQuestionAfterStage2('', candidates)).toBeNull()
+  })
+})
+
+// 대표 2026-09-26: 핵심질문 수정 칸 — 후보를 고른 뒤 고쳐 쓴 문장을 그대로 저장한다.
+describe('핵심질문 수정 칸', () => {
+  const candidates = ['왜 일회용품은 줄이기 어려울까?', '축제 쓰레기는 어디로 갈까?']
+
+  it('normalizeKeyQuestion trims and collapses whitespace; an edited sentence need not be a candidate', () => {
+    expect(normalizeKeyQuestion('  우리 축제의 일회용품은\n 왜 줄지 않을까?  ')).toEqual({ ok: true, value: '우리 축제의 일회용품은 왜 줄지 않을까?' })
+    expect(normalizeKeyQuestion(candidates[0])).toEqual({ ok: true, value: candidates[0] })
+  })
+
+  it('normalizeKeyQuestion refuses too short or too long text', () => {
+    expect(normalizeKeyQuestion('   왜?  ')).toEqual({ ok: false, code: 'tooShort' })
+    expect(normalizeKeyQuestion('가'.repeat(KEY_QUESTION_LIMITS.max + 1))).toEqual({ ok: false, code: 'tooLong' })
+    expect(normalizeKeyQuestion('가'.repeat(KEY_QUESTION_LIMITS.max)).ok).toBe(true)
+  })
+
+  it('a stage 2 hand edit keeps an admin-edited key question (it was not a candidate before either)', () => {
+    const edited = '우리 축제의 일회용품은 왜 줄지 않을까?'
+    expect(keyQuestionAfterStage2(edited, ['새 후보 하나입니다', '새 후보 둘입니다'], candidates)).toBe(edited)
+  })
+
+  it('a stage 2 hand edit still clears a chosen candidate that the edit changed; regeneration (no previous list) clears edits', () => {
+    expect(keyQuestionAfterStage2(candidates[0], ['바뀐 후보 문장입니다', candidates[1]], candidates)).toBeNull()
+    expect(keyQuestionAfterStage2('우리 축제의 일회용품은 왜 줄지 않을까?', candidates)).toBeNull()
   })
 })

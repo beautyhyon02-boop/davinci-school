@@ -236,7 +236,8 @@ function AdvisoryList({ heading, none, issues }: { heading: string; none: string
 }
 
 function KeyQuestionPicker({ setId, candidates, current }: { setId: string; candidates: string[]; current: string | null }) {
-  const [selected, setSelected] = useState(current ?? candidates[0] ?? '')
+  // 수정 칸(대표 2026-09-26): 후보를 고르면 그 문장이 채워지고, 고쳐 쓴 문장을 그대로 저장한다. 고친 문장은 어느 후보와도 같지 않다.
+  const [text, setText] = useState(current ?? candidates[0] ?? '')
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
@@ -247,7 +248,7 @@ function KeyQuestionPicker({ setId, candidates, current }: { setId: string; cand
     setError(null)
     setSaved(false)
     startTransition(async () => {
-      const res = await chooseKeyQuestion(setId, selected)
+      const res = await chooseKeyQuestion(setId, text)
       if (res.ok) setSaved(true)
       else setError(res.error)
     })
@@ -260,15 +261,25 @@ function KeyQuestionPicker({ setId, candidates, current }: { setId: string; cand
       <ul className="mt-2 space-y-2">
         {candidates.map((q) => (
           <li key={q} className="flex items-start gap-2 text-sm">
-            <input type="radio" name="key-question" checked={selected === q} onChange={() => setSelected(q)} className="mt-1" />
+            <input type="radio" name="key-question" checked={text === q} onChange={() => setText(q)} className="mt-1" />
             <span>{q}</span>
           </li>
         ))}
       </ul>
+      <label className="mt-3 block text-sm font-semibold text-ink-500">
+        {copy.keyQuestion.editLabel}
+        <textarea
+          value={text}
+          onChange={(e) => { setText(e.target.value); setSaved(false) }}
+          rows={2}
+          className="mt-1 w-full rounded-xl border border-ink-300 p-2 text-sm font-normal text-ink-900"
+        />
+      </label>
+      {text.trim() !== '' && !candidates.includes(text) && <p className="mt-1 text-xs text-ink-500">{copy.keyQuestion.editedHint}</p>}
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
       {saved && <p className="mt-2 text-sm text-mint-700">{copy.keyQuestion.saved}</p>}
       <div className="mt-3">
-        <Button variant="ghost" disabled={pending || !selected} onClick={submit}>{copy.keyQuestion.select}</Button>
+        <Button variant="ghost" disabled={pending || !text.trim()} onClick={submit}>{copy.keyQuestion.select}</Button>
       </div>
     </Card>
   )

@@ -343,7 +343,10 @@ export const app = {
       keyQuestion: {
         heading: '핵심질문 선택',
         empty: '2단계를 확인하면 후보가 표시됩니다.',
-        select: '선택',
+        // 후보를 고르면 아래 칸에 그 문장이 채워지고, 고쳐 쓴 뒤 저장할 수 있다(대표 2026-09-26)
+        editLabel: '핵심질문 문장 (후보를 고른 뒤 고쳐 쓸 수 있습니다)',
+        editedHint: '후보를 고쳐 쓴 문장입니다.',
+        select: '이 문장으로 저장',
         current: (q: string) => `현재 핵심질문: ${q}`,
         saved: '핵심질문을 저장했습니다.',
       },
@@ -389,7 +392,9 @@ export const app = {
       errors: {
         invalidJson: 'JSON 형식을 확인하세요.',
         invalidShape: (msg: string) => `형식이 올바르지 않습니다: ${msg}`,
-        keyQuestionInvalid: '핵심질문 후보 중에서 선택하세요. (2단계를 먼저 확인해야 합니다)',
+        keyQuestionInvalid: '2단계를 먼저 확인해야 핵심질문을 정할 수 있습니다.',
+        keyQuestionTooShort: (n: number) => `핵심질문은 ${n}자 이상으로 쓰세요.`,
+        keyQuestionTooLong: (n: number) => `핵심질문은 ${n}자 이하로 쓰세요.`,
         prevNotAccepted: '이전 단계를 먼저 확인해야 이 단계를 수정할 수 있습니다.',
         tooFewStandards: '세트에 성취기준이 2개 이상 연결되어야 합니다.',
         saveFailed: '저장 중 오류가 났습니다. 잠시 후 다시 시도해 주세요.',

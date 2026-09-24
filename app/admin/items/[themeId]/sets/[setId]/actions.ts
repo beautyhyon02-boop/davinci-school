@@ -5,7 +5,7 @@ import { getSessionProfile } from '@/lib/auth/session'
 import { STAGE_SCHEMAS, Materials, LessonDesign, type Stage } from '@/lib/studio/schemas'
 import { isMaterialsPublicUrl } from '@/lib/studio/upload-rules'
 import { canPublish, buildSnapshot, type DraftLessonQuizzes } from '@/lib/studio/publish'
-import { canEditStage, downstreamResets, keyQuestionAfterStage2 } from '@/lib/studio/edit-rules'
+import { canEditStage, downstreamResets, keyQuestionAfterStage2, normalizeKeyQuestion, KEY_QUESTION_LIMITS } from '@/lib/studio/edit-rules'
 import { STAGE_ERRORS, stageNotes, type StageErrorCode, type StageStatus } from '@/lib/studio/stages'
 import { createSupabaseRepo } from '@/lib/studio/repo'
 import type { Issue } from '@/lib/studio/checks'
@@ -115,10 +115,12 @@ export async function saveStageEdit(setId: string, stage: Stage, json: string): 
   if (!gate.ok) return { ok: false, error: EDIT_ERROR_COPY[gate.code] }
 
   const columns = stageColumns(stage, r.data)
-  // 2단계를 고치면 핵심질문 후보가 바뀐다 — 이미 고른 핵심질문이 새 후보에 없으면 함께 비운다.
+  // 2단계를 고치면 핵심질문 후보가 바뀐다 — 이미 고른 핵심질문이 새 후보에 없으면 함께 비운다
+  // (관리자가 고쳐 쓴 핵심질문 — 옛 후보에도 없던 문장 — 은 그대로 둔다).
   if (stage === 2) {
     const candidates = (r.data as { key_question_candidates?: string[] }).key_question_candidates ?? []
-    columns.key_question = keyQuestionAfterStage2(itemSet.key_question as string | null, candidates)
+    const previous = (prev.output as { key_question_candidates?: string[] } | undefined)?.key_question_candidates ?? []
+    columns.key_question = keyQuestionAfterStage2(itemSet.key_question as string | null, candidates, previous)
   }
   const { error: updateErr } = await supabase.from('item_sets').update(columns).eq('id', setId)
   if (updateErr) return { ok: false, error: errors.saveFailed }
@@ -153,9 +155,16 @@ export async function saveStageEdit(setId: string, stage: Stage, json: string): 
   return { ok: true, status }
 }
 
-/** 2단계를 확인(accepted)한 뒤, 그 단계의 핵심질문 후보 중 하나를 세트의 key_question으로 정한다. */
-export async function chooseKeyQuestion(setId: string, q: string): Promise<ActionResult> {
+/**
+ * 2단계를 확인(accepted)한 뒤 세트의 key_question을 정한다. 화면은 후보를 고르면 그 문장을 수정 칸에 채우고, 관리자가 고친
+ * 문장을 그대로 보낸다(대표 2026-09-26: 핵심질문 수정 칸) — 후보와 같을 필요는 없고 길이만 본다(normalizeKeyQuestion).
+ */
+export async function chooseKeyQuestion(setId: string, text: string): Promise<ActionResult> {
   await assertAdmin()
+  const normalized = normalizeKeyQuestion(text)
+  if (!normalized.ok) {
+    return { ok: false, error: normalized.code === 'tooShort' ? errors.keyQuestionTooShort(KEY_QUESTION_LIMITS.min) : errors.keyQuestionTooLong(KEY_QUESTION_LIMITS.max) }
+  }
 
   const supabase = await createClient()
   const { data: itemSet, error: fetchErr } = await supabase
@@ -168,11 +177,11 @@ export async function chooseKeyQuestion(setId: string, q: string): Promise<Actio
   const stageStatus = (itemSet.stage_status ?? {}) as Record<string, StageStatus>
   const stage2 = stageStatus.stage2
   const candidates = (stage2?.output as { key_question_candidates?: string[] } | undefined)?.key_question_candidates ?? []
-  if (stage2?.state !== 'accepted' || !candidates.includes(q)) {
+  if (stage2?.state !== 'accepted' || candidates.length === 0) {
     return { ok: false, error: errors.keyQuestionInvalid }
   }
 
-  const { error: updateErr } = await supabase.from('item_sets').update({ key_question: q }).eq('id', setId)
+  const { error: updateErr } = await supabase.from('item_sets').update({ key_question: normalized.value }).eq('id', setId)
   if (updateErr) return { ok: false, error: errors.saveFailed }
 
   revalidatePath(`/admin/items/${itemSet.theme_id}/sets/${setId}`)
