@@ -365,7 +365,7 @@ export const app = {
         noAssessment: '-',
       },
       stage4: {
-        idLabel: 'ID',
+        idLabel: '자료',
         kindLabel: '종류',
         previewHeading: '표 미리보기(상위 5행)',
       },
