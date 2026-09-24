@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getSessionProfile } from '@/lib/auth/session'
 import { loadAssignmentSnapshot } from '@/lib/classroom/snapshot'
 import { itemNosForLesson, itemLabel, materialIdsForLesson, studentConditions } from '@/lib/classroom/lessons'
-import { isAssessmentSession } from '@/lib/studio/assessment-structure'
+import { isUnitAssessmentSession } from '@/lib/studio/assessment-structure'
 import { MaterialsSection } from '@/components/studio/PackageView'
 import { overallFor, gradeFor } from '@/lib/classroom/scoring'
 import { LessonTabs } from './LessonTabs'
@@ -59,7 +59,7 @@ export default async function StudentAssignmentPage({ params }: { params: Promis
           <p className="text-sm font-semibold text-ink-500">{copy.keyQuestion}</p>
           <p className="mt-1 text-xl font-bold">{lesson.key_question}</p>
           <p className="mt-2">{lesson.goal}</p>
-          {isAssessmentSession(lesson) && <p className="mt-2 rounded-xl bg-lemon-100 p-3 text-sm">{copy.assessmentIntro}</p>}
+          {isUnitAssessmentSession(lesson) && <p className="mt-2 rounded-xl bg-lemon-100 p-3 text-sm">{copy.assessmentIntro}</p>}
         </section>
         {/* 이 차시가 쓰는 자료(표·자동 그래프·설명글) — 결석생도 앱만 보고 풀 수 있어야 한다(스펙 §5.2). */}
         <MaterialsSection materials={snapshot.materials.filter((m) => materialIds.includes(m.id))} />
@@ -103,7 +103,7 @@ export default async function StudentAssignmentPage({ params }: { params: Promis
       {grade && <p className="mt-2 inline-block rounded-full bg-lemon-100 px-4 py-1 font-bold">{copy.result.overall(overall.total, overall.max, grade.grade, grade.band)}</p>}
       <div className="mt-6">
         <LessonTabs lessons={lessonNos} openLessons={assignment.open_lessons} initial={initial} panels={panels}
-          labels={Object.fromEntries(snapshot.lessons.filter(isAssessmentSession).map((l) => [l.no, copy.assessmentTab(l.no)]))} />
+          labels={Object.fromEntries(snapshot.lessons.filter(isUnitAssessmentSession).map((l) => [l.no, copy.assessmentTab(l.no)]))} />
       </div>
     </>
   )

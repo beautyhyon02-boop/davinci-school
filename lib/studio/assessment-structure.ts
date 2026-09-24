@@ -10,7 +10,7 @@
  */
 export const SET_ITEMS = { 서술형: { count: 1, points: 6 }, 논술형: { count: 1, points: 16 } } as const
 export type ItemKind = keyof typeof SET_ITEMS
-/** 문항 순서(= 문항 번호 1, 2). 세트 중후반 차시에 서술형, 마지막 차시에 논술형(L-09). */
+/** 문항 순서(= 문항 번호 1, 2). 둘 다 마지막 교수 차시 뒤 단원 평가 차시에서 서술형 → 논술형 순으로 본다(L-09). */
 export const SET_ORDER = ['서술형', '논술형'] as const satisfies readonly ItemKind[]
 
 const sum = (xs: number[]) => xs.reduce((s, x) => s + x, 0)
@@ -108,6 +108,11 @@ export function lessonAssessments(l: { assessment?: unknown }): string[] {
   return typeof a === 'string' ? [a] : []
 }
 export const isAssessmentSession = (l: { kind?: string }) => l.kind === 'assessment'
+/**
+ * 지금 구조의 단원 평가 차시(서술형 → 논술형을 함께 담은 평가 차시). 옛 판의 논술형 차시(kind 'assessment', ['논술형'])와 가른다 —
+ * 화면의 "단원 평가" 탭 이름·안내 문구·레몬 카드는 이것에만 붙인다.
+ */
+export const isUnitAssessmentSession = (l: { kind?: string; assessment?: unknown }) => isAssessmentSession(l) && lessonAssessments(l).join(',') === SET_ORDER.join(',')
 
 /**
  * 지금 구조의 배치(zod LessonDesign 과 [TS] lessonIssues 가 같이 쓴다): 단원 평가 차시가 정확히 1개이고 마지막 번호이며

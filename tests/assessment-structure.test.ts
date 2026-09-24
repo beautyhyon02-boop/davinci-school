@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   SET_ITEMS, SET_ORDER, SET_ITEM_COUNT, SET_TOTAL, SHORT_POINTS, ESSAY_POINTS, SHORT_TOTAL, LEGACY_SET_ITEMS,
   structureOf, structureIssues, itemLabels, isShortKind,
-  LESSON_KINDS, TEACHING_LESSONS, ASSESSMENT_SESSION, ESSAY_MIN_MINUTES, sessionPlacementIssues, lessonAssessments, isAssessmentSession,
+  LESSON_KINDS, TEACHING_LESSONS, ASSESSMENT_SESSION, ESSAY_MIN_MINUTES, sessionPlacementIssues, lessonAssessments, isAssessmentSession, isUnitAssessmentSession,
 } from '@/lib/studio/assessment-structure'
 import { GRADE_TABLE_22 } from '@/lib/studio/level-map'
 
@@ -70,5 +70,9 @@ describe('단원 평가 차시 (대표 2026-09-26 보완: 서·논술형은 마�
     expect(lessonAssessments({ assessment: '서술형1' })).toEqual(['서술형1'])
     expect(lessonAssessments({ assessment: null })).toEqual([])
     expect(isAssessmentSession({ kind: 'assessment' })).toBe(true); expect(isAssessmentSession({})).toBe(false)
+    // "단원 평가" 표시는 서술형 → 논술형을 함께 담은 평가 차시에만(옛 판 논술형 차시는 아님)
+    expect(isUnitAssessmentSession({ kind: 'assessment', assessment: ['서술형', '논술형'] })).toBe(true)
+    expect(isUnitAssessmentSession({ kind: 'assessment', assessment: ['논술형'] })).toBe(false)
+    expect(isUnitAssessmentSession({ kind: 'teaching', assessment: ['서술형', '논술형'] })).toBe(false)
   })
 })

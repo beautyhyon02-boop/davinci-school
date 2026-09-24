@@ -1,7 +1,7 @@
 import type { z } from 'zod'
 import { Lesson, Material, Assessment, TeacherGuide, AssessmentItem, type ReconstructedStandard, type LearningGoal, type UnitPlan, type NoticePlan, type Reconstruction, type AXES } from './schemas'
 import { levelMapFor, levelRefFor } from './level-map'
-import { lessonAssessments, kindFamily, isAssessmentSession, SET_ORDER, type ItemKind } from './assessment-structure'
+import { lessonAssessments, kindFamily, isUnitAssessmentSession, type ItemKind } from './assessment-structure'
 
 type LessonT = z.infer<typeof Lesson>
 type MaterialT = z.infer<typeof Material>
@@ -337,7 +337,7 @@ export function unitPlanFrom(title: string, keyQuestion: string, lessons: Lesson
     set_title: title, set_key_question: keyQuestion || lessons[0]?.key_question || title,
     lesson_map: lessons.map((l) => ({ lesson_no: l.no, standards: l.standards, topic: l.topic })),
     assessment_plan: {
-      formative: lessons.some((l) => isAssessmentSession(l) && lessonAssessments(l).join(',') === SET_ORDER.join(','))
+      formative: lessons.some(isUnitAssessmentSession)
         ? '교수 차시마다 마무리 퀴즈 3문항(단원 평가 차시는 0문항)'
         : '차시별 마무리 퀴즈 3문항(논술형 차시는 0문항)',
       summative_placement: lessons.flatMap((l) => lessonAssessments(l).map((kind) => ({ lesson_no: l.no, kind: kindFamily(kind) }))),
