@@ -13,6 +13,7 @@ import { lessonAssessments } from '@/lib/studio/assessment-structure'
 import { chooseKeyQuestion, saveStageEdit } from './actions'
 import { WIZARD_STAGES, useStageRunner, type WizardStage } from './useStageRunner'
 import { Attachments } from './Attachments'
+import { FieldEditor } from './FieldEditor'
 
 const copy = app.studio.wizard
 
@@ -290,6 +291,7 @@ function StagePanel({
   stage,
   status,
   prevAccepted,
+  laterStages,
   busy,
   onRun,
   onSaved,
@@ -298,6 +300,8 @@ function StagePanel({
   stage: WizardStage
   status: StageStatus | undefined
   prevAccepted: boolean
+  /** 이 단계 뒤의, 준비 전이 아닌 단계 — 이 단계를 고쳐 저장하면 초기화된다(문장 고치기가 확인을 받는다). */
+  laterStages: number[]
   busy: boolean
   onRun: (stage: WizardStage, action: 'generate' | 'review' | 'accept') => void
   onSaved: (stage: WizardStage, status: StageStatus) => void
@@ -306,6 +310,9 @@ function StagePanel({
   const [draft, setDraft] = useState('')
   const [editError, setEditError] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
+  // 문장 고치기 저장 직후 안내 — 저장된 상태(updated_at)가 그대로일 때만 보인다(다시 생성·확인하면 사라진다).
+  // FieldEditor 는 새 출력마다 다시 그려지므로(key) 안내를 여기서 들고 있는다.
+  const [fieldSavedAt, setFieldSavedAt] = useState<string | null>(null)
 
   const state = status?.state ?? 'idle'
 
@@ -363,6 +370,24 @@ function StagePanel({
         </div>
       ) : (
         <StageOutput stage={stage} output={status?.output} />
+      )}
+
+      {/* 문장 고치기(대표 2026-09-26): 기본은 접혀 있고, 구조를 바꿀 때는 아래 [JSON 편집]을 쓴다 */}
+      {!editing && status?.output != null && (
+        <details className="mt-4 rounded-xl border border-ink-100 p-3">
+          <summary className="cursor-pointer text-sm font-semibold">{copy.fieldEditor.heading}</summary>
+          <FieldEditor
+            key={`${status.updated_at}:${status.model ?? ''}`}
+            setId={setId}
+            stage={stage}
+            output={status.output}
+            laterStages={laterStages}
+            onSaved={(st) => { setFieldSavedAt(st.updated_at); onSaved(stage, st) }}
+          />
+        </details>
+      )}
+      {!editing && fieldSavedAt !== null && fieldSavedAt === status?.updated_at && (
+        <p className="mt-2 text-sm text-mint-700">{copy.fieldEditor.saved}</p>
       )}
 
       {status?.notes && !editing && <AdvisoryList heading={copy.notesHeading} none={copy.notesNone} issues={status.notes} />}
@@ -453,6 +478,7 @@ export function StageWizard({
           stage={active}
           status={activeStatus}
           prevAccepted={prevAccepted}
+          laterStages={WIZARD_STAGES.filter((s) => s > active && (effective[s]?.state ?? 'idle') !== 'idle')}
           busy={busy}
           onRun={run}
           // JSON 편집 저장은 하위 단계를 준비 전으로 되돌리므로(saveStageEdit), 고친 단계를 바로 반영한 뒤 전체를 다시 읽는다

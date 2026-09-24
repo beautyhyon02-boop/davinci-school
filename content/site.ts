@@ -90,6 +90,11 @@ const levelGradeShort = (level: string, grade: number | null) => {
   return b ? `${b.short} · ${b.band}` : level
 }
 /** "중 1학년" / 학년 없음 → "중학교(1~3학년군)" (세트 표지·문제지) */
+/** 문장 고치기 칸 라벨의 두 번째 인자 — 그 문장을 담은 객체(lib/studio/editable-fields.ts EditableField.parent). */
+type FieldParent = Record<string, unknown>
+/** i번째(0부터) → 사람이 읽는 번호. */
+const nth = (i: number | undefined) => (i ?? 0) + 1
+
 const levelGradeLong = (level: string, grade: number | null) => {
   if (grade != null) return `${level} ${grade}학년`
   const b = GRADE_BAND[level]
@@ -349,6 +354,96 @@ export const app = {
         select: '이 문장으로 저장',
         current: (q: string) => `현재 핵심질문: ${q}`,
         saved: '핵심질문을 저장했습니다.',
+      },
+      // 문장 고치기(대표 2026-09-26): 단계 출력의 문장만 칸으로 고친다. labels 키 = lib/studio/editable-fields.ts 의 경로(ix = 배열 번호들, 0부터)
+      fieldEditor: {
+        heading: '문장 고치기',
+        description: '단계 결과의 문장만 칸에서 고칩니다. 저장하면 형식을 검사한 뒤 저장하고, 이 단계는 다시 [확인]해야 합니다. (구조를 바꾸려면 JSON 편집)',
+        empty: '고칠 문장이 없습니다.',
+        changedCount: (n: number) => `고친 칸 ${n}개`,
+        save: '저장',
+        saving: '저장 중…',
+        saved: '저장했습니다. 이 단계를 다시 읽고 [확인]하세요.',
+        reset: '고친 것 되돌리기',
+        resetWarning: (from: number) => `${from}~7단계가 초기화됩니다. 계속할까요?`,
+        resetConfirm: '네, 뒤 단계를 초기화하고 저장합니다',
+        fieldError: (label: string, message: string) => `${label}: ${message}`,
+        groups: {
+          reconstruction: () => '세트 재구성 문장',
+          standards: (tag: string) => `성취기준 ${tag}`,
+          learning_goals: () => '학습 목표',
+          key_question_candidates: () => '핵심질문 후보',
+          lessons: (tag: string) => `${tag}차시`,
+          materials: (tag: string) => `자료 ${tag}`,
+          items: (tag: string) => `${tag}번 문항`,
+          feedback_templates: () => '피드백 문구',
+          general: () => '세트 안내',
+          glossary: () => '용어 풀이',
+          merge_guide: () => '두 차시 합치기',
+          grading_guide: () => '채점 안내',
+          per_lesson: (tag: string) => `${tag}차시`,
+        } as Record<string, (tag: string) => string>,
+        labels: {
+          // 2단계
+          'reconstruction': () => '재구성 문장',
+          'standards[].reconstructed_text': () => '재구성 문장',
+          'learning_goals[].text': (ix: number[], p: FieldParent) => `학습 목표 ${nth(ix[0])} (${String(p.axis ?? '')})`,
+          'key_question_candidates[]': (ix: number[]) => `후보 ${nth(ix[0])}`,
+          // 3단계
+          'lessons[].topic': () => '주제',
+          'lessons[].goal': () => '목표',
+          'lessons[].key_question': () => '차시 핵심질문',
+          'lessons[].flow.intro[]': (ix: number[]) => `도입 ${nth(ix[1])}`,
+          'lessons[].flow.main[].activities[]': (ix: number[]) => `전개 ${nth(ix[1])} · 활동 ${nth(ix[2])}`,
+          'lessons[].flow.wrapup[]': (ix: number[]) => `정리 ${nth(ix[1])}`,
+          'lessons[].teacher_script.questions[].prompt': (ix: number[]) => `발문 ${nth(ix[1])}`,
+          'lessons[].teacher_script.questions[].expected_answer': (ix: number[]) => `발문 ${nth(ix[1])} 예상 답`,
+          'lessons[].teacher_script.questions[].if_stuck': (ix: number[]) => `발문 ${nth(ix[1])} 막힐 때`,
+          'lessons[].caution_notes[]': (ix: number[]) => `유의점 ${nth(ix[1])}`,
+          'lessons[].worksheet.tasks[].prompt': (ix: number[], p: FieldParent) => `활동지 과제 ${nth(ix[1])} (${String(p.tier ?? '')})`,
+          'lessons[].worksheet.tasks[].expected': (ix: number[]) => `활동지 과제 ${nth(ix[1])} 예상 답`,
+          'lessons[].worksheet.self_check[]': (ix: number[]) => `자기평가 ${nth(ix[1])}`,
+          'lessons[].formative_check.quiz[].q': (ix: number[]) => `퀴즈 ${nth(ix[1])} 문제`,
+          'lessons[].formative_check.quiz[].answer': (ix: number[]) => `퀴즈 ${nth(ix[1])} 정답`,
+          'lessons[].formative_check.quiz[].explanation': (ix: number[]) => `퀴즈 ${nth(ix[1])} 해설`,
+          // 4단계
+          'materials[].title': () => '제목',
+          'materials[].body': () => '본문',
+          // 5단계
+          'items[].stem': (_ix: number[], p: FieldParent) => `문두 (${String(p.kind ?? '')})`,
+          'items[].conditions.items[].text': (ix: number[]) => `조건 ${nth(ix[1])}`,
+          'items[].conditions.length': () => '분량',
+          'items[].conditions.format': () => '형식',
+          'items[].rubric.criteria[].name': (ix: number[]) => `채점 요소 ${nth(ix[1])} 이름`,
+          'items[].rubric.criteria[].scale[].descriptor': (ix: number[], p: FieldParent) => `채점 요소 ${nth(ix[1])} · ${String(p.points ?? '')}점 기준`,
+          'items[].rubric.holistic.상': () => '총체적 기준 상',
+          'items[].rubric.holistic.중': () => '총체적 기준 중',
+          'items[].rubric.holistic.하': () => '총체적 기준 하',
+          'items[].rubric.notes[]': (ix: number[]) => `채점 유의점 ${nth(ix[1])}`,
+          'items[].exemplar_answers[].text': (ix: number[], p: FieldParent) => `예시답안 ${nth(ix[1])} (${p.level ? String(p.level) : `${String(p.points ?? '')}점`})`,
+          'feedback_templates.상': () => '상',
+          'feedback_templates.중': () => '중',
+          'feedback_templates.하': () => '하',
+          // 6단계
+          'general.purpose': () => '목적',
+          'general.schedule_note': () => '일정 안내',
+          'general.materials[]': (ix: number[]) => `준비물 ${nth(ix[0])}`,
+          'glossary[].term': (ix: number[]) => `용어 ${nth(ix[0])}`,
+          'glossary[].explanation': (ix: number[]) => `용어 ${nth(ix[0])} 풀이`,
+          'merge_guide[].skip_activities[]': (ix: number[], p: FieldParent) => `${Array.isArray(p.lessons) ? p.lessons.join('·') : nth(ix[0])}차시 합칠 때 건너뛸 활동 ${nth(ix[1])}`,
+          'grading_guide.common_errors[].error': (ix: number[], p: FieldParent) => `흔한 오답 ${nth(ix[0])} (${String(p.item_no ?? '')}번 문항)`,
+          'grading_guide.common_errors[].how_to_read': (ix: number[]) => `흔한 오답 ${nth(ix[0])} 읽는 법`,
+          'grading_guide.review_tips[]': (ix: number[]) => `검수 요령 ${nth(ix[0])}`,
+          'grading_guide.retry_guidance': () => '재도전 안내',
+          'per_lesson[].notes[]': (ix: number[]) => `메모 ${nth(ix[1])}`,
+          // 7단계
+          'per_lesson[].topic_summary': () => '배운 것 (60자 이내)',
+          'per_lesson[].preview': () => '다음 차시 예고 (50자 이내)',
+          'per_lesson[].home_study_suggestion': () => '가정 학습 제안 (60자 이내)',
+          'per_lesson[].quiz_notes[].wrong_note': (_ix: number[], p: FieldParent) => `퀴즈 ${String(p.quiz_no ?? '')} 틀렸을 때 (40자 이내)`,
+          'per_lesson[].criteria_phrases[].good[]': (ix: number[], p: FieldParent) => `${String(p.criterion_name ?? '')} · 잘한 점 ${nth(ix[2])}`,
+          'per_lesson[].criteria_phrases[].improve[]': (ix: number[], p: FieldParent) => `${String(p.criterion_name ?? '')} · 더 할 점 ${nth(ix[2])}`,
+        } as Record<string, (ix: number[], p: FieldParent) => string>,
       },
       stage2: {
         reconstructionLabel: '재구성 문장',
