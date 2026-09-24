@@ -78,6 +78,12 @@ describe('staticIssues', () => {
     const pub = { materials: [{ ...materials[0], source: { kind: '공개', attribution: '통계청', ai_assisted: true } }] }
     expect(staticIssues(4, pub, { standards, prior: {} }).some((i) => i.kind === 'source')).toBe(true)
   })
+  it('stage 4: 제목에 자작·가상 같은 출처 표기가 남아 있으면 자문(kind other)만 남긴다 — 반려하지 않는다(대표 2026-09-26)', () => {
+    const marked = { materials: [{ ...materials[0], title: '학생 설문 결과 (학생회 조사, 가상)' }] }
+    const issues = staticIssues(4, marked, { standards, prior: {} })
+    expect(issues).toEqual([{ kind: 'other', detail: '자료 A: 제목에 출처 표기("학생 설문 결과 (학생회 조사, 가상)")가 남아 있음 — 출처는 source 필드에만' }])
+    expect(staticIssues(4, { materials }, { standards, prior: {} })).toEqual([])
+  })
   it('stage 5: materials referenced must exist and include raw; adverb-only scale steps are flagged; 서술형 needs a partial exemplar', () => {
     const prior = { stage4: { materials }, stage3: { lessons: [] } }
     expect(staticIssues(5, assessmentV2, { standards, prior })).toEqual([])

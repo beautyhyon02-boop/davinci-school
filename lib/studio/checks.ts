@@ -4,6 +4,7 @@ import { levelRefFor } from './level-map'
 import { structureIssues, kindFamily, sessionPlacementIssues, isAssessmentSession, lessonAssessments, ESSAY_MIN_MINUTES } from './assessment-structure'
 import type { Stage, ReviewKind, Reconstruction, LessonDesign, Materials, Assessment, TeacherGuide, NoticePlan } from './schemas'
 import { QUIZ_SHORT_ONLY, isShortQuiz } from './schemas'
+import { titleHasSourceMarker } from './materials'
 
 export type Issue = { kind: ReviewKind; detail: string }
 export type CheckCtx = {
@@ -96,6 +97,8 @@ function materialIssues(o: MaterialsT): Issue[] {
     if (m.source.kind === '공개') issues.push({ kind: 'source', detail: `자료 ${m.id}: 공개 자료(${m.source.attribution}) — 확정 전 출처 확인 필요` })
     if (m.source.ai_assisted) issues.push({ kind: 'source', detail: `자료 ${m.id}: AI 보조 자료 — 원장 확인 필요` })
     if (m.body && /(따라서|그러므로|결론적으로|가장 먼저 줄여야)/.test(m.body)) issues.push({ kind: 'other', detail: `자료 ${m.id}: 본문에 결론 문장이 있음` })
+    // 오너 지시(2026-09-26): 자료 제목에 자작·가상 같은 출처 표기를 쓰지 않는다(출처는 source 필드에만) — 참고용 자문일 뿐 반려하지 않는다.
+    if (titleHasSourceMarker(m.title)) issues.push({ kind: 'other', detail: `자료 ${m.id}: 제목에 출처 표기("${m.title}")가 남아 있음 — 출처는 source 필드에만` })
   }
   return issues
 }

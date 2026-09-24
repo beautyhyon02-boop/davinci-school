@@ -92,6 +92,10 @@ describe('prompts v2', () => {
     expect(u).toContain('A, B'); expect(u).toMatch(/C부터 이어서/); expect(u).toMatch(/source\.kind는 "자작"/)
     expect(buildPrompt(3, { ...ctx, prior: { shared_materials: shared } }).user).not.toMatch(/이어서 붙여라/)
   })
+  it('stage 4 task tells the model not to put source markers (자작·가상 등) in material titles — 출처는 source 필드에만(대표 2026-09-26)', () => {
+    const task = buildPrompt(4, ctx).user.split('과제: ')[1]
+    expect(task).toContain('자료 제목에는 자작·가상·본사·공개 자료 같은 출처 표기를 쓰지 않는다(출처는 source 필드에만)')
+  })
   it('review prompt keeps rules as the first block', () => {
     const r = buildReviewPrompt(5, ctx, { items: [] })
     expect(r.system[0]).toBe(rulesFor('수학')); expect(r.system[1]).toMatch(/검토자/); expect(r.fixtureKey).toBe('stage5-review-수학')

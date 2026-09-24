@@ -12,6 +12,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { basename, join } from 'node:path'
 import type { z } from 'zod'
 import { buildReconstructionV2, upgradeLessonV1, upgradeMaterialV1, upgradeAssessmentV1, upgradeTeacherGuideV1, unitPlanFrom } from '../lib/studio/compat'
+import { cleanMaterialTitle } from '../lib/studio/materials'
 import { draftNoticePlan } from '../lib/studio/notice-draft'
 import { enrichOutput } from '../lib/studio/enrich'
 import { STAGE_SCHEMAS, type Lesson, type Material, type Assessment } from '../lib/studio/schemas'
@@ -575,8 +576,8 @@ export function convertSet(set: SetDef): { files: Record<string, unknown>; probl
   set.patchAssessment?.(assessment)
   if (set.session) { clearLessonAssessments(lessons); appendAssessmentSession(lessons, assessment, set.session) }
   const stage3 = { unit_plan: unitPlanFrom(set.title, input.s2.key_question_candidates[0], lessons, assessment), lessons }
-  // 대표님 지시(2026-09-26): 자료 제목의 '본사 자작' 같은 내부 표기는 지운다.
-  const materials = input.s4.materials.map(upgradeMaterialV1).map((m) => ({ ...m, title: m.title.replace(/\s*\((?:[^()]*?,\s*)?본사 자작\)/g, '') }))
+  // 대표님 지시(2026-09-26): 자료 제목의 '본사 자작'·'가상' 같은 내부 표기는 지운다(lib/studio/materials.ts cleanMaterialTitle).
+  const materials = input.s4.materials.map(upgradeMaterialV1).map((m) => ({ ...m, title: cleanMaterialTitle(m.title) }))
   const stage4 = { materials: set.patchMaterials ? set.patchMaterials(materials) : materials }
   ctx.prior = { stage2, stage3, stage4 }
   const stage5 = enrichOutput(5, assessment, ctx)

@@ -368,6 +368,8 @@ export const app = {
         idLabel: '자료',
         kindLabel: '종류',
         previewHeading: '표 미리보기(상위 5행)',
+        bodyPreviewHeading: '본문 미리보기',
+        imagesCount: (n: number) => `이미지 ${n}장`,
       },
       stage5: {
         itemsHeading: '문항',

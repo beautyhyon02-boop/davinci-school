@@ -8,6 +8,7 @@ import { detectChart } from '@/lib/studio/charts'
 import type { Snapshot } from '@/lib/studio/publish'
 import type { Lesson as LessonSchema, QuizItem as QuizItemSchema, Material as MaterialSchema, AssessmentItem as AssessmentItemSchema, Rubric as RubricSchema } from '@/lib/studio/schemas'
 import { getLevels } from '@/lib/reference/levels'
+import { cleanMaterialTitle } from '@/lib/studio/compat'
 import { lessonAssessments, isAssessmentSession, isUnitAssessmentSession } from '@/lib/studio/assessment-structure'
 import { SHORT_MINUTES, ESSAY_MINUTES } from '@/lib/studio/structure-text'
 import { app } from '@/content/site'
@@ -121,7 +122,7 @@ export function MaterialsSection({ materials }: { materials: Material[] }) {
             {/* 자료마다 큰 라벨(자료 A/B…)로 구분이 한눈에 보이게. 공개 자료 출처만 배지로(스펙 §2.4, 2026-09-26 수정). */}
             <div className="flex flex-wrap items-center gap-2">
               <span className="rounded-full bg-mint-500 px-3 py-1 text-sm font-bold text-white">{c.idLabel} {m.id}</span>
-              <p className="text-base font-bold">{m.title}</p>
+              <p className="text-base font-bold">{cleanMaterialTitle(m.title)}</p>
               {/* 대표님 지시(2026-09-26): 자작·원자료 같은 내부 표지는 화면에 내지 않는다. 공개 자료의 출처만 남긴다(공공누리 표기 의무). */}
               {m.source.kind === '공개' && m.source.attribution && <Badge tone="gray">{c.sourceLabel.공개} · {m.source.attribution}</Badge>}
             </div>

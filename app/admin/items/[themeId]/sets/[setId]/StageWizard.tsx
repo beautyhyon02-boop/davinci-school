@@ -8,12 +8,21 @@ import { canAccept as canAcceptStage, canGenerate as canGenerateStage, canReview
 import type { StageStatus } from '@/lib/studio/stages'
 import type { Issue } from '@/lib/studio/checks'
 import { EXHAUSTED_ERROR } from '@/lib/studio/max-attempts'
+import { cleanMaterialTitle } from '@/lib/studio/compat'
 import { lessonAssessments } from '@/lib/studio/assessment-structure'
 import { chooseKeyQuestion, saveStageEdit } from './actions'
 import { WIZARD_STAGES, useStageRunner, type WizardStage } from './useStageRunner'
 import { Attachments } from './Attachments'
 
 const copy = app.studio.wizard
+
+// 4단계 요약의 글 자료 본문 미리보기 길이 — 오너 지적(2026-09-26): 글 자료(F·H 등)는 제목만 보여서 미리보기를 열지 않으면
+// 본문을 읽을 수 없었다. 표는 그대로 표 미리보기(위 5행)를 쓰고, 표가 없는 자료(text·chart·image)만 본문을 자른다.
+const BODY_PREVIEW_LIMIT = 240
+/** 본문을 BODY_PREVIEW_LIMIT 자로 자르고, 잘렸으면 "…"를 붙인다. */
+function previewBody(body: string): string {
+  return body.length > BODY_PREVIEW_LIMIT ? `${body.slice(0, BODY_PREVIEW_LIMIT)}…` : body
+}
 
 /** AI 출력 형식 검사 실패(lib/ai/claude.ts의 최종 에러 문구)인지 — 맞으면 안내 문구를 앞에 두고 원문은 작게 보여 준다. */
 const isParseError = (message: string) => /^AI output could not be parsed after \d+ attempts/.test(message)
@@ -50,7 +59,7 @@ type Lesson = {
   mergeable_with: number | null
 }
 type Stage3Output = { lessons: Lesson[] }
-type Material = { id: string; title: string; kind: 'table' | 'text' | 'chart'; table: { columns: string[]; rows: (string | number)[][] } | null }
+type Material = { id: string; title: string; kind: 'table' | 'text' | 'chart' | 'image'; body: string | null; table: { columns: string[]; rows: (string | number)[][] } | null; images?: string[] }
 type Stage4Output = { materials: Material[] }
 type AssessmentItem = { kind: string; points: number; stem: string; exemplar_answers?: unknown[] }
 type Stage5Output = {
@@ -127,8 +136,16 @@ function StageOutput({ stage, output }: { stage: WizardStage; output: unknown })
         {o.materials?.map((m) => (
           <div key={m.id} className="rounded-xl border border-ink-100 p-3">
             <p className="text-sm font-semibold">
-              {copy.stage4.idLabel} {m.id} · {m.title} · {copy.stage4.kindLabel}: {m.kind}
+              {copy.stage4.idLabel} {m.id} · {cleanMaterialTitle(m.title)} · {copy.stage4.kindLabel}: {m.kind}
+              {(m.images?.length ?? 0) > 0 && <> · {copy.stage4.imagesCount(m.images!.length)}</>}
             </p>
+            {/* 표 자료는 표 미리보기, 그 밖의 자료(글·차트·이미지)는 본문을 미리 보여 준다(오너 지적 2026-09-26: 미리보기를 열지 않으면 읽을 수 없었다) */}
+            {!m.table && m.body && (
+              <div className="mt-2">
+                <p className="text-xs text-ink-500">{copy.stage4.bodyPreviewHeading}</p>
+                <p className="mt-1 whitespace-pre-wrap text-xs">{previewBody(m.body)}</p>
+              </div>
+            )}
             {m.table && (
               <div className="mt-2 overflow-x-auto">
                 <p className="text-xs text-ink-500">{copy.stage4.previewHeading}</p>

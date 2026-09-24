@@ -1,7 +1,7 @@
 // tests/compat.test.ts
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { upgradeSnapshot, isV1Snapshot, statesAnswer, upgradeLessonV1, upgradeAssessmentV1, splitMainV1, axisOf, buildReconstructionV2, upgradeTeacherGuideV1, splitMaterialsV1, evaluationElement, topicFromGoal, normalizeSnapshotV2, unitPlanFrom } from '@/lib/studio/compat'
+import { upgradeSnapshot, isV1Snapshot, statesAnswer, upgradeLessonV1, upgradeAssessmentV1, splitMainV1, axisOf, buildReconstructionV2, upgradeTeacherGuideV1, splitMaterialsV1, evaluationElement, topicFromGoal, normalizeSnapshotV2, unitPlanFrom, cleanMaterialTitle } from '@/lib/studio/compat'
 import { Reconstruction } from '@/lib/studio/schemas'
 import { Lesson, Assessment, PublishedAssessment, PublishedLessonDesign, Materials, TeacherGuide } from '@/lib/studio/schemas'
 import { structureOf } from '@/lib/studio/assessment-structure'
@@ -343,5 +343,22 @@ describe('옛 판 조건 정리 — 풀이 힌트 제거(C-32)', () => {
       '계급·도수·상대도수 용어를 바르게 쓴다',
     ])
     expect(essay.conditions.items.map((c) => c.no)).toEqual([1, 2, 3])
+  })
+})
+
+// 대표 지시(2026-09-26): 자료 제목의 자작·가상 같은 출처 표기는 화면 어디에도 보이지 않는다(출처는 source 필드에만) — 보여 줄 때 지운다.
+describe('cleanMaterialTitle (자료 제목의 출처 표기 정리)', () => {
+  it('단독 표기 낱말을 담은 괄호는 통째로 지운다', () => {
+    expect(cleanMaterialTitle('영어권 중학교 축제 친환경 안내문 (가상)')).toBe('영어권 중학교 축제 친환경 안내문')
+    expect(cleanMaterialTitle('학생회 설문 결과표(자작)')).toBe('학생회 설문 결과표')
+    expect(cleanMaterialTitle('부스 운영 계획 (본사 자작)')).toBe('부스 운영 계획')
+    expect(cleanMaterialTitle('공공누리 통계 자료 (공개 자료)')).toBe('공공누리 통계 자료')
+  })
+  it('표기 낱말과 설명이 함께 있으면 설명만 남긴다', () => {
+    expect(cleanMaterialTitle('학생 설문 결과 (학생회 조사, 가상)')).toBe('학생 설문 결과 (학생회 조사)')
+  })
+  it('표기 낱말이 없는 제목은 그대로 둔다', () => {
+    expect(cleanMaterialTitle('학생회 설문 결과')).toBe('학생회 설문 결과')
+    expect(cleanMaterialTitle('일회용품 사용량 (2024년 기준)')).toBe('일회용품 사용량 (2024년 기준)')
   })
 })

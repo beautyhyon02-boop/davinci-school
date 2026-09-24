@@ -57,6 +57,10 @@ export function isV1Snapshot(raw: unknown): boolean {
   return s?.schema_version === undefined
 }
 
+// 자료 제목의 출처 표기(자작·가상 등) 정리는 lib/studio/materials.ts에 있다(compat.ts → checks.ts 참조와의 순환 참조를 피하려
+// 별도 파일에 두고 여기서는 기존 import 경로(@/lib/studio/compat)를 그대로 쓸 수 있게 다시 내보낸다).
+export { cleanMaterialTitle } from './materials'
+
 const PAPER_PREFIX = /^\[종이 답안\]\s*/
 const MATERIAL_ID = /(?:^|[^A-Z])([A-Z])(?![A-Z])/g
 
