@@ -150,12 +150,49 @@ describe('checkReconstructionFidelity: -하다/되다 어간 보존과 낱말 �
   })
 })
 
+// owner 사례 2(2026-09-24 두 번째 스크린샷): "~하는 것을 해서", "매체 활용을 해서", "쓰는 것을 할 수 있다"가 반려됐다 —
+// 의존 명사 "것"(것을)·"-하여"↔"-을" 명사형("활용하여"↔"활용을")·관형사형 "-는"("쓴다"↔"쓰는")은 새 내용어가 아니다.
+describe('checkReconstructionFidelity: 기능어·"-하여"·관형사형 허용(오너 사례 2, 2026-09-24)', () => {
+  const S0203 = '친숙한 주제에 관해 사실적 정보를 설명한다.'
+  const S0102 = '친숙한 주제에 관한 담화나 글에서 세부 정보를 파악한다.'
+  const S0209 = '적절한 매체를 활용하여 정보 윤리를 준수하며 말하거나 쓴다.'
+  const R0203 = '학생은 친숙한 주제에 관한 안내문을 가지고 사실적 정보를 파악하는 것을 해서 설명하는 글을 쓸 수 있다.'
+
+  it('[9영02-09] 원문만으로 "활용을"·"쓰는"·"것을"이 통과한다', () => {
+    const r = checkReconstructionFidelity('학생은 적절한 매체를 가지고 정보 윤리를 준수하며 매체 활용을 해서 말하거나 쓰는 것을 할 수 있다.', [S0209])
+    expect(r.unknownTokens).toEqual([])
+    expect(r.ok).toBe(true)
+  })
+  it('[9영02-03]: "것을"·"안내문을"(일반 자료 명사)은 통과하고, 원문에 없는 수행 "파악하는"만 남는다(L-02: 새 수행 금지)', () => {
+    expect(checkReconstructionFidelity(R0203, [S0203]).unknownTokens).toEqual(['파악하는'])
+  })
+  it('[9영02-03]을 "파악한다"가 있는 [9영01-02]와 통합(merged_with)하면 같은 문장이 통과한다', () => {
+    const r = checkReconstructionFidelity(R0203, [S0203, S0102])
+    expect(r.unknownTokens).toEqual([])
+    expect(r.ok).toBe(true)
+  })
+  it('기능어 목록(것·때·경우·위해·통해·바탕으로·사용해 등)은 원문에 없어도 허용한다', () => {
+    const r = checkReconstructionFidelity('학생은 필요한 경우 적절한 매체를 사용해 정보 윤리를 준수하기 위해 말하는 것과 쓰는 것을 할 수 있다.', [S0209])
+    expect(r.unknownTokens).toEqual(['필요한'])
+  })
+  it('축제·일회용품 같은 대주제 상황 낱말은 여전히 반려된다', () => {
+    const r = checkReconstructionFidelity('학생은 학교 축제의 일회용품 줄이기를 다룬 안내문을 가지고 사실적 정보를 설명할 수 있다.', [S0203])
+    expect(r.unknownTokens).toEqual(expect.arrayContaining(['학교', '축제의', '일회용품', '줄이기를', '다룬']))
+  })
+})
+
 describe('stem', () => {
   it('strips the longest matching suffix only', () => {
     expect(stem('설정함으로써')).toBe('설정')
     expect(stem('나타내었으며')).toBe('나타내')
     expect(stem('그래프로')).toBe('그래프')
     expect(stem('자료를')).toBe('자료')
+  })
+  it('"-하여"는 "하"로, 관형사형 "-는"은 1음절 어간까지 뗀다(활용하여→활용하, 쓰는→쓰)', () => {
+    expect(stem('활용하여')).toBe('활용하')
+    expect(stem('활용을')).toBe('활용')
+    expect(stem('쓰는')).toBe('쓰')
+    expect(stem('파악하는')).toBe('파악하')
   })
   it('does not strip when the remaining stem would be shorter than 2', () => {
     expect(stem('표를')).toBe('표를')

@@ -16,6 +16,29 @@ describe('staticIssues', () => {
     expect(issues.some((i) => i.kind === 'fidelity' && i.detail.includes('[9수04-03]'))).toBe(true)
     expect(issues.some((i) => i.detail.includes('원문 불일치'))).toBe(true)
   })
+  it('stage 2: 대주제 제목의 낱말이 섞이면 사유 앞에 "대주제 상황(…)을 재구성 문장에 넣었음 — 학습 목표·차시에만 쓴다"를 붙인다', () => {
+    const en = [{ code: '[9영02-03]', text: '친숙한 주제에 관해 사실적 정보를 설명한다.' }, { code: '[9영02-09]', text: '적절한 매체를 활용하여 정보 윤리를 준수하며 말하거나 쓴다.' }]
+    const row = (i: number, reconstructed_text: string) => ({ code: en[i].code, original_text: en[i].text, reconstruction_type: '재조정', reconstructed_text, reason: ['학원 60분 최적화'], merged_with: [], learning_elements: ['x'] })
+    const out = { standards: [
+      row(0, '학생은 학교 축제의 안내문을 가지고 사실적 정보를 설명하는 글을 쓸 수 있다.'),
+      row(1, '학생은 적절한 매체를 가지고 정보 윤리를 준수하며 매체 활용을 해서 말하거나 쓰는 것을 할 수 있다.') ],
+      reconstruction: '학생은 학교 축제의 일회용품 줄이기를 다룬 영어 안내문과 도표 자료를 가지고 사실적 정보를 설명할 수 있다.', learning_goals: [], level_anchor: [], key_question_candidates: [] }
+    const theme = { title: '학교 축제 일회용품 줄이기' }
+    const details = staticIssues(2, out, { standards: en, prior: {}, theme }).map((i) => i.detail)
+    expect(details).toEqual([
+      '대주제 상황(학교, 축제의)을 재구성 문장에 넣었음 — 학습 목표·차시에만 쓴다: [9영02-03]: 원문에 없는 표현 학교, 축제의',
+      '대주제 상황(학교, 축제의, 일회용품, 줄이기를)을 재구성 문장에 넣었음 — 학습 목표·차시에만 쓴다: 통합 문장: 원문에 없는 표현 학교, 축제의, 일회용품, 줄이기를, 다룬, 영어',
+    ])
+    // 판정은 그대로다 — 대주제가 없으면 사유 앞머리만 빠진다
+    expect(staticIssues(2, out, { standards: en, prior: {} }).map((i) => i.detail)).toEqual([
+      '[9영02-03]: 원문에 없는 표현 학교, 축제의',
+      '통합 문장: 원문에 없는 표현 학교, 축제의, 일회용품, 줄이기를, 다룬, 영어',
+    ])
+  })
+  it('stage 2: 대주제 낱말이 아닌 새 내용어에는 앞머리를 붙이지 않는다', () => {
+    const out = { standards: [], reconstruction: '학생은 통계청 자료를 가지고 상대도수를 구할 수 있다.', learning_goals: [], level_anchor: [], key_question_candidates: [] }
+    expect(staticIssues(2, out, { standards, prior: {}, theme: { title: '학교 축제 일회용품 줄이기' } }).map((i) => i.detail)).toEqual(['통합 문장: 원문에 없는 표현 통계청'])
+  })
   it('stage 3: coverage, placement, mergeable adjacency, quiz answer in choices, main ≥ 2 steps', () => {
     const lessons = [1, 2, 3, 4, 5].map((no) => ({ ...lessonV2, no, standards: ['[9수04-02]'], mergeable_with: no === 1 ? 4 : null })).concat({ ...assessmentSession(6), standards: ['[9수04-02]'], mergeable_with: null })
     const out = { unit_plan: { set_title: 't', set_key_question: 'q?', lesson_map: [], assessment_plan: { formative: 'f', summative_placement: [{ lesson_no: 6, kind: '서술형' }, { lesson_no: 6, kind: '논술형' }], rubric_note: { 상: 'a', 중: 'b', 하: 'c' } } }, lessons }

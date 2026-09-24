@@ -144,9 +144,9 @@ export async function runThemeIntro({ themeId, action, repo, edit }: { themeId: 
  * staticIssues 를 부른다. 검사는 zod 를 통과한 v2 출력을 전제하므로, 형식이 다른 출력(v2 이전에 저장된 판, 손으로 고친 판)에서
  * 던지면 500 대신 '다시 생성' 이슈 하나로 돌려 검토 AI 호출 없이 반려한다.
  */
-function staticCheck(stage: Stage, output: unknown, ctx: { standards: { code: string; text: string }[]; prior: Record<string, unknown> }): Issue[] {
+function staticCheck(stage: Stage, output: unknown, ctx: { standards: { code: string; text: string }[]; prior: Record<string, unknown>; theme?: { title: string } }): Issue[] {
   try {
-    return staticIssues(stage, output, { standards: ctx.standards, prior: ctx.prior })
+    return staticIssues(stage, output, { standards: ctx.standards, prior: ctx.prior, ...(ctx.theme ? { theme: { title: ctx.theme.title } } : {}) })
   } catch (e) {
     // 옛 데이터가 아니라 checks.ts 회귀일 수도 있으므로 서버 로그에 흔적을 남긴다
     console.error('[studio] staticIssues threw', { stage, err: e })

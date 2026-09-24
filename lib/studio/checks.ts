@@ -1,11 +1,16 @@
 import type { z } from 'zod'
-import { checkReconstructionFidelity } from './fidelity'
+import { checkReconstructionFidelity, tokensFoundIn } from './fidelity'
 import { levelRefFor } from './level-map'
 import { structureIssues, kindFamily, sessionPlacementIssues, isAssessmentSession, lessonAssessments, ESSAY_MIN_MINUTES } from './assessment-structure'
 import type { Stage, ReviewKind, Reconstruction, LessonDesign, Materials, Assessment, TeacherGuide, NoticePlan } from './schemas'
 
 export type Issue = { kind: ReviewKind; detail: string }
-export type CheckCtx = { standards: { code: string; text: string }[]; prior: Record<string, unknown> }
+export type CheckCtx = {
+  standards: { code: string; text: string }[]
+  prior: Record<string, unknown>
+  /** 대주제(선택) — 2단계 재구성 문장에 대주제 상황 낱말이 섞였을 때 반려 사유를 알아보기 쉽게 적는 데만 쓴다(판정은 바꾸지 않는다). */
+  theme?: { title: string }
+}
 type ReconstructionT = z.infer<typeof Reconstruction>; type LessonDesignT = z.infer<typeof LessonDesign>; type MaterialsT = z.infer<typeof Materials>
 type AssessmentT = z.infer<typeof Assessment>; type GuideT = z.infer<typeof TeacherGuide>; type NoticePlanT = z.infer<typeof NoticePlan>
 
@@ -23,6 +28,17 @@ export const NOTICE_FORBIDDEN: [RegExp, string][] = [
 /** 청유형 종결(N-12). lib/classroom/notice-lint.ts 도 같은 규칙을 쓴다. */
 export const SUGGEST_ENDINGS = /(봅시다|하세요|해요|하기 바랍니다|보세요)[.!]?$/
 
+/**
+ * 원문에 없는 표현 가운데 대주제 제목의 낱말이 있으면(L-02: 특정 과제 상황 금지) 사유 앞에 무엇을 어디로 옮길지 적는다 —
+ * 재생성하는 AI와 화면을 보는 관리자가 둘 다 "대주제 상황을 재구성 문장에서 빼야 한다"를 바로 알게 한다.
+ */
+function themeHint(unknownTokens: string[], ctx: CheckCtx): string {
+  const title = ctx.theme?.title?.trim()
+  if (!title) return ''
+  const hits = tokensFoundIn(unknownTokens, title)
+  return hits.length ? `대주제 상황(${hits.join(', ')})을 재구성 문장에 넣었음 — 학습 목표·차시에만 쓴다: ` : ''
+}
+
 function reconstructionIssues(o: ReconstructionT, ctx: CheckCtx): Issue[] {
   const issues: Issue[] = []
   const byCode = new Map(ctx.standards.map((s) => [s.code, s.text]))
@@ -32,10 +48,10 @@ function reconstructionIssues(o: ReconstructionT, ctx: CheckCtx): Issue[] {
     if (norm(original) !== norm(s.original_text)) issues.push({ kind: 'fidelity', detail: `${s.code}: 원문 불일치` })
     const sources = [original, ...s.merged_with.map((c) => byCode.get(c) ?? '')]
     const f = checkReconstructionFidelity(s.reconstructed_text, sources)
-    if (!f.ok) issues.push({ kind: 'fidelity', detail: `${s.code}: 원문에 없는 표현 ${f.unknownTokens.join(', ')}` })
+    if (!f.ok) issues.push({ kind: 'fidelity', detail: `${themeHint(f.unknownTokens, ctx)}${s.code}: 원문에 없는 표현 ${f.unknownTokens.join(', ')}` })
   }
   const all = checkReconstructionFidelity(o.reconstruction, ctx.standards.map((s) => s.text))
-  if (!all.ok) issues.push({ kind: 'fidelity', detail: `통합 문장: 원문에 없는 표현 ${all.unknownTokens.join(', ')}` })
+  if (!all.ok) issues.push({ kind: 'fidelity', detail: `${themeHint(all.unknownTokens, ctx)}통합 문장: 원문에 없는 표현 ${all.unknownTokens.join(', ')}` })
   return issues
 }
 

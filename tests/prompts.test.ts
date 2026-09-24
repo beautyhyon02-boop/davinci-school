@@ -96,6 +96,24 @@ describe('prompts v2', () => {
   })
 })
 
+describe('stage 2: 재구성 문장에는 대주제 상황을 쓰지 않는다(L-02, 오너 사례 2026-09-24)', () => {
+  const task = buildPrompt(2, ctx).user.split('과제: ')[1]
+  it('task says BOTH reconstructed_text and the 통합 reconstruction use only the originals + template words', () => {
+    expect(task).toContain('재구성 문장 두 가지(성취기준마다의 reconstructed_text와 통합 문장 reconstruction)는 모두 성취기준 원문의 낱말과 문장 틀 낱말')
+    expect(task).toMatch(/reconstruction, 같은 틀로 세트 성취기준 원문에 있는 어휘만 쓴다/)
+  })
+  it('task sends the 대주제 상황 to learning_goals·핵심질문·차시, not to the reconstruction', () => {
+    expect(task).toMatch(/학교 축제·일회용품/)
+    expect(task).toContain('재구성 문장에 쓰지 않고, 학습 목표(learning_goals)·세트 핵심질문 후보와 3단계 차시에서만 쓴다')
+  })
+  it('review focus flags 대주제 상황 in either reconstruction sentence as fidelity, but not in learning_goals', () => {
+    const focus = buildReviewPrompt(2, ctx, {}).user.split('검토 초점: ')[1].split('\n\n생성 결과')[0]
+    expect(focus).toContain('재구성 문장 두 가지(성취기준마다의 reconstructed_text와 통합 문장 reconstruction)')
+    expect(focus).toMatch(/대주제 상황\(위 대주제 제목의 낱말, 축제·일회용품 등\)이 재구성 문장에 섞였으면 fidelity/)
+    expect(focus).toMatch(/학습 목표\(learning_goals\)·핵심질문 후보에 있어야 정상이므로 그것은 반려하지 않는다/)
+  })
+})
+
 describe('review focus v2', () => {
   it('stage 0 review checks only grade level, subject grade range and spoilers — not standards/sources/materials/grading', () => {
     const c0 = { theme: { title: 't', level: '중', grade: 1, subjects: ['과학', '세계사'] }, subject: '', standards: [], prior: {} }

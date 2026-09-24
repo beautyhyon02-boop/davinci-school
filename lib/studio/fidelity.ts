@@ -10,10 +10,12 @@ export const TEMPLATE_WORDS = new Set([
   '이용해', '이용하여', '이용한', '활용해', '활용하여', '활용한', '위해', '위하여', '위한',
   '의해', '의하여', '의한', '따라', '따른', '인해', '인한',
   '그리고', '또는', '또한', '및', '등', '각', '한', '두', '세', '이를', '그',
+  // 기능어·의존 명사(2026-09-24 오너 사례: "~하는 것을 할 수 있다"의 "것을"이 새 내용어로 걸렸다) — 뜻을 더하지 않는 문법 낱말
+  '것', '것을', '것이', '것은', '것과', '때', '경우', '사용해', '사용하여', '사용한',
 ])
 
 /** 문장 틀의 [자료]·[결과물] 칸이 으레 쓰는 일반 명사. 원문에 없어도 허용한다(원문에 실제로 있으면 더 좋다). */
-export const GENERIC_PRODUCT_WORDS = ['글', '표', '그래프', '그림', '문장', '문단', '보고서', '발표', '자료', '도표', '답', '의견', '설명', '편지', '포스터', '제안서', '기사', '요약', '목록', '결과', '과정']
+export const GENERIC_PRODUCT_WORDS = ['글', '표', '그래프', '그림', '문장', '문단', '보고서', '발표', '자료', '도표', '답', '의견', '설명', '편지', '안내문', '포스터', '제안서', '기사', '요약', '목록', '결과', '과정']
 
 /** GENERIC_PRODUCT_WORDS + 이 활동성 꼬리표(쓰기·말하기 등)의 합성어도 허용한다("글쓰기" = 글 + 쓰기). */
 const GENERIC_TAILS = ['쓰기', '쓰', '말하기', '만들기', '그리기', '짓기', '풀기', '세우기']
@@ -40,13 +42,22 @@ const PARTICLES = [
  */
 const VERB_ENDINGS = [
   '기를', '기에', '기', '게', '고', '며', '면', '서', '거나', '니다', '습니다', '다',
+  // 관형사형 "-는": 조사 '는'(어간 2자 이상)과 같은 글자지만, 여기서는 1음절 동사 어간("쓰는"→"쓰", 원문 "쓴다"→"쓰")을 위해 1자까지 뗀다
+  '는',
 ]
 
-type SuffixRule = { suf: string; min: number }
+/**
+ * "-하여/-되어"는 모음이 바뀌는 활용이라 한 글자만 떼면 "하"가 사라지거나("활용하" 대신 "활용하여" 그대로) 남는다 —
+ * 그래서 통째로 "하/되"로 바꾼다(활용하여→활용하, 원문 "활용하여"와 재구조화 "활용을"(→활용)이 "하" 한 음절 차이로 맞는다).
+ */
+const HADA_CONNECTIVE: [string, string][] = [['하여', '하'], ['되어', '되']]
+
+type SuffixRule = { suf: string; min: number; to?: string }
 // 긴 것부터 떼어 내야 '함으로써'가 '로써'나 '써'로 잘못 잘리지 않는다.
 const SUFFIX_RULES: SuffixRule[] = [
   ...PARTICLES.map((suf) => ({ suf, min: 2 })),
   ...VERB_ENDINGS.map((suf) => ({ suf, min: 1 })),
+  ...HADA_CONNECTIVE.map(([suf, to]) => ({ suf, min: 1, to })),
 ].sort((a, b) => b.suf.length - a.suf.length)
 
 /** "-하다/-되다" 활용의 받침·축약형을 어간 "하/되"로 되돌린다(말한다→말하, 해석할→해석하, 준수돼→준수되). */
@@ -68,8 +79,8 @@ function rawWords(s: string): string[] {
 
 /** 토큰 끝의 어미·조사 하나를 떼어 낸 어간. 조사는 남는 어간이 2자 미만이면 떼지 않지만, 어미(하다·쓰다류)는 1자까지 허용한다. */
 export function stem(token: string): string {
-  for (const { suf, min } of SUFFIX_RULES) {
-    if (token.length - suf.length >= min && token.endsWith(suf)) return normalizeHada(token.slice(0, -suf.length))
+  for (const { suf, min, to } of SUFFIX_RULES) {
+    if (token.length - suf.length >= min && token.endsWith(suf)) return normalizeHada(token.slice(0, -suf.length) + (to ?? ''))
   }
   return normalizeHada(token)
 }
@@ -152,4 +163,13 @@ export function checkReconstructionFidelity(reconstruction: string, standards: s
   const sourceWords = rawWords(source)
   const unknownTokens = tokens(reconstruction).filter(t => !isKnown(t, sourceWords))
   return { ok: unknownTokens.length === 0, unknownTokens }
+}
+
+/**
+ * 원문에 없는 토큰(unknownTokens) 가운데 주어진 글(대주제 제목 등)의 낱말과 같은 것만 골라낸다 — 같은 낱말 판정은
+ * 원문 대조와 똑같다(어미·조사·받침 변화 허용). 검사 결과를 바꾸지 않고, 반려 사유를 알아보기 쉽게 적을 때만 쓴다.
+ */
+export function tokensFoundIn(unknownTokens: string[], text: string): string[] {
+  const words = rawWords(text.replace(SOURCE_RE, ' '))
+  return unknownTokens.filter((t) => sourceMatches(t, words))
 }
