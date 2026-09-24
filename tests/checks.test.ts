@@ -39,14 +39,20 @@ describe('staticIssues', () => {
     const out = { standards: [], reconstruction: '학생은 통계청 자료를 가지고 상대도수를 구할 수 있다.', learning_goals: [], level_anchor: [], key_question_candidates: [] }
     expect(staticIssues(2, out, { standards, prior: {}, theme: { title: '학교 축제 일회용품 줄이기' } }).map((i) => i.detail)).toEqual(['통합 문장: 원문에 없는 표현 통계청'])
   })
-  it('stage 3: coverage, placement, mergeable adjacency, quiz answer in choices, main ≥ 2 steps', () => {
+  it('stage 3: coverage, placement, mergeable adjacency, short-only quiz, main ≥ 2 steps', () => {
     const lessons = [1, 2, 3, 4, 5].map((no) => ({ ...lessonV2, no, standards: ['[9수04-02]'], mergeable_with: no === 1 ? 4 : null })).concat({ ...assessmentSession(6), standards: ['[9수04-02]'], mergeable_with: null })
     const out = { unit_plan: { set_title: 't', set_key_question: 'q?', lesson_map: [], assessment_plan: { formative: 'f', summative_placement: [{ lesson_no: 6, kind: '서술형' }, { lesson_no: 6, kind: '논술형' }], rubric_note: { 상: 'a', 중: 'b', 하: 'c' } } }, lessons }
     const issues = staticIssues(3, out, { standards, prior: {} })
     expect(issues.some((i) => i.kind === 'coverage' && i.detail.includes('[9수04-03]'))).toBe(true)
     expect(issues.some((i) => i.detail.includes('병합'))).toBe(true)
-    const wrongQuiz = { ...out, lessons: out.lessons.map((l) => l.no === 1 ? { ...l, mergeable_with: 2, formative_check: { quiz: l.formative_check.quiz.map((q) => ({ ...q, answer: '없는 보기' })) } } : l) }
-    expect(staticIssues(3, wrongQuiz, { standards, prior: {} }).some((i) => i.kind === 'quiz')).toBe(true)
+    // 대표 2026-09-26(L-09): 퀴즈는 단답형만 — 선택형이거나 선택지를 단 문항은 걸린다, 단답형(lessonV2)은 걸리지 않는다
+    expect(issues.filter((i) => i.kind === 'quiz')).toEqual([])
+    const withQuiz = (quiz: (typeof lessonV2.formative_check.quiz)[number]) => ({ ...out, lessons: out.lessons.map((l) => l.no === 1 ? { ...l, mergeable_with: 2, formative_check: { quiz: [quiz, ...l.formative_check.quiz.slice(1)] } } : l) })
+    const quizIssues = (o: unknown) => staticIssues(3, o, { standards, prior: {} }).filter((i) => i.kind === 'quiz').map((i) => i.detail)
+    const first = lessonV2.formative_check.quiz[0]
+    expect(quizIssues(withQuiz({ ...first, type: 'choice', choices: ['6', '7'] }))).toEqual(['1차시 퀴즈 1: 퀴즈는 단답형만(선택지 금지)'])
+    expect(quizIssues(withQuiz({ ...first, choices: ['6', '7'] }))).toEqual(['1차시 퀴즈 1: 퀴즈는 단답형만(선택지 금지)'])
+    expect(quizIssues(withQuiz({ ...first, type: 'choice', choices: null }))).toEqual(['1차시 퀴즈 1: 퀴즈는 단답형만(선택지 금지)'])
     expect(staticIssues(3, out, { standards, prior: {} }).filter((i) => i.detail.includes('단원 평가') || i.detail.includes('교수 차시'))).toEqual([])
     // 단원 평가 차시는 병합하지 않는다
     const mergedSession = { ...out, lessons: out.lessons.map((l) => (l.no === 5 ? { ...l, mergeable_with: 6 } : l)) }

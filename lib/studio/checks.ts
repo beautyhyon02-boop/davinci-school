@@ -3,6 +3,7 @@ import { checkReconstructionFidelity, tokensFoundIn } from './fidelity'
 import { levelRefFor } from './level-map'
 import { structureIssues, kindFamily, sessionPlacementIssues, isAssessmentSession, lessonAssessments, ESSAY_MIN_MINUTES } from './assessment-structure'
 import type { Stage, ReviewKind, Reconstruction, LessonDesign, Materials, Assessment, TeacherGuide, NoticePlan } from './schemas'
+import { QUIZ_SHORT_ONLY, isShortQuiz } from './schemas'
 
 export type Issue = { kind: ReviewKind; detail: string }
 export type CheckCtx = {
@@ -74,8 +75,10 @@ function lessonIssues(o: LessonDesignT, ctx: CheckCtx): Issue[] {
     // 단원 평가 차시는 서술형 작성 소단계도 따로 둔다(ASSESSMENT_SESSION: 서술형 15 + 논술형 35).
     if (kinds.includes('논술형') && !l.flow.main.some((m) => m.step_label.includes('논술형') && m.minutes >= ESSAY_MIN_MINUTES)) issues.push({ kind: 'other', detail: `${l.no}차시: 논술형을 보는 차시에는 ${ESSAY_MIN_MINUTES}분 이상 논술형 작성 단계가 필요` })
     if (isAssessmentSession(l) && kinds.includes('서술형') && !l.flow.main.some((m) => m.step_label.includes('서술형'))) issues.push({ kind: 'other', detail: `${l.no}차시: 단원 평가 차시에 서술형 작성 단계가 없음` })
+    // L-09(대표 2026-09-26): 서논술 과정이라 객관식이 없다 — 퀴즈는 낱말·수치·짧은 구를 직접 쓰는 단답형만(type 'short', choices null).
+    // zod(LessonDesign)도 보지만 검토는 저장된 출력(2026-09-26 이전 초안·손으로 고친 판)에도 돌므로 다시 본다.
     for (const [i, q] of l.formative_check.quiz.entries()) {
-      if (q.type === 'choice' && (!q.choices || !q.choices.includes(q.answer))) issues.push({ kind: 'quiz', detail: `${l.no}차시 퀴즈 ${i + 1}: 정답이 보기에 없음` })
+      if (!isShortQuiz(q)) issues.push({ kind: 'quiz', detail: `${l.no}차시 퀴즈 ${i + 1}: ${QUIZ_SHORT_ONLY}` })
     }
     for (const q of l.teacher_script.questions) if (norm(q.if_stuck) === norm(q.expected_answer)) issues.push({ kind: 'other', detail: `${l.no}차시 발문 힌트가 정답과 같음` })
   }

@@ -51,6 +51,11 @@ export const Reconstruction = z.object({
 })
 
 // ── 3단계 ──────────────────────────────────────────────────────────────
+/**
+ * 마무리 퀴즈 한 문항. 대표 2026-09-26: 서논술 과정이라 객관식은 없다 — 새 세트(LessonDesign = STAGE_SCHEMAS[3])는
+ * type 'short'·choices null 만 받는다(lessonDesignOf superRefine, [TS] checks.ts). 'choice'는 그 전에 게시된 판을
+ * 읽을 때(PublishedLessonDesign·학생 화면·채점)만 남겨 둔다 — 옛 판의 선택형 퀴즈는 바꾸지 않는다(발문이 보기에 기대기도 한다).
+ */
 export const QuizItem = z.object({
   q: z.string().min(3),
   type: z.enum(['choice', 'short']),
@@ -58,6 +63,10 @@ export const QuizItem = z.object({
   answer: z.string().min(1),
   explanation: z.string().min(3),
 })
+/** 새 세트 퀴즈 규칙(L-09) 위반 사유 — zod(LessonDesign)와 [TS](checks.ts)가 같은 문장을 쓴다. */
+export const QUIZ_SHORT_ONLY = '퀴즈는 단답형만(선택지 금지)'
+/** 단답형(type 'short', choices null)인가. 새 세트의 퀴즈는 모두 이래야 한다. */
+export const isShortQuiz = (q: { type: string; choices: unknown }) => q.type === 'short' && q.choices === null
 // 설계(§2.3)는 expected_answer min(2) — 한 글자 정답('10' 아닌 '4' 같은 수·기호)을 받으려고 min(1)로 완화했다
 export const ScriptQuestion = z.object({ prompt: z.string().min(5), expected_answer: z.string().min(1), if_stuck: z.string().min(2) })
 export const WorksheetTask = z.object({
@@ -139,9 +148,13 @@ const lessonDesignOf = (legacy: boolean) => z.object({
   if (kinds !== SET_ORDER.join(',') && !(legacy && kinds === LEGACY_PLACEMENT)) issue(ctx, `평가 배치는 ${SET_ORDER.join(' → ')} 각 1개(지금 ${kinds || '없음'})`)
   if (!legacy || kinds === SET_ORDER.join(',')) for (const m of sessionPlacementIssues(d.lessons)) issue(ctx, m)
   if (d.unit_plan.lesson_map.length !== d.lessons.length) issue(ctx, 'lesson_map 수가 차시 수와 다름')
+  // L-09(대표 2026-09-26): 새 세트의 퀴즈는 단답형만. 게시 판 읽기(legacy)는 옛 선택형을 그대로 받는다.
+  if (!legacy) for (const l of d.lessons) {
+    for (const [i, q] of l.formative_check.quiz.entries()) if (!isShortQuiz(q)) issue(ctx, `${l.no}차시 퀴즈 ${i + 1}: ${QUIZ_SHORT_ONLY}`)
+  }
 })
 export const LessonDesign = lessonDesignOf(false)
-/** 게시 판(item_set_versions)에 실린 3단계 모양 — 2026-09-26 이전 판(서술형 2개)까지. 생성·검토에는 LessonDesign 을 쓴다. */
+/** 게시 판(item_set_versions)에 실린 3단계 모양 — 2026-09-26 이전 판(서술형 2개, 선택형 퀴즈)까지. 생성·검토에는 LessonDesign 을 쓴다. */
 export const PublishedLessonDesign = lessonDesignOf(true)
 /** 기존 import 호환(`Lessons`). 3단계 출력은 이제 { unit_plan, lessons } 다. */
 export const Lessons = LessonDesign

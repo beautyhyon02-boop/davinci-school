@@ -34,6 +34,18 @@ describe('prompts v2', () => {
     expect(task).toMatch(/\["서술형", "논술형"\]/); expect(task).toMatch(/summative_placement 2건/)
     expect(task).not.toMatch(/서술형1|서술형2|논술형을 배치한 차시는 0문항/)
   })
+  it('stage 3 (대표 2026-09-26): 퀴즈는 단답형만 — type "short"·choices null, 선택지·객관식 금지; 검토는 객관식을 other 로 잡는다', () => {
+    const task = buildPrompt(3, ctx).user.split('과제: ')[1]
+    expect(task).toMatch(/모두 단답형: type "short"·choices null/); expect(task).toMatch(/낱말·수치·짧은 구/)
+    expect(task).toMatch(/선택지·"다음 중 알맞은 것은" 꼴 객관식은 쓰지 않는다/)
+    expect(task).not.toMatch(/선택형/)
+    const review = buildReviewPrompt(3, ctx, {}).user.split('검토 초점: ')[1]
+    expect(review).toMatch(/퀴즈가 모두 단답형\(type "short", choices null\)인지/); expect(review).toMatch(/객관식 문항이 있으면 other/)
+    // 규칙 블록(시스템)의 L-09·L-10 도 단답형만을 말한다
+    const rules = buildPrompt(3, ctx).system
+    expect(rules).toMatch(/L-09 .*모두 단답형 — 낱말·수치·짧은 구를 직접 쓰는 문항, 선택지 없음/); expect(rules).toMatch(/L-10 .*답은 낱말·수치·짧은 구/)
+    expect(rules).not.toMatch(/선택형\/단답형/)
+  })
   it('stage 5 asks for the item card fields, injects A~E and exemplars, and forbids copying', () => {
     const u = buildPrompt(5, ctx).user
     for (const f of ['evaluation_elements', 'situation', 'condition_nos', 'answer_mode', 'exemplar_answers', 'level_map', 'holistic', 'notes', 'references', 'assumed_short_points', 'lesson_no']) expect(u).toContain(f)

@@ -40,14 +40,18 @@ describe('rules v2', () => {
     const l09 = text('L-09').text
     expect(l09).toMatch(/마지막 교수 차시까지 모두/); expect(l09).toMatch(/단원 평가 차시/); expect(l09).toMatch(/서술형 작성 15/); expect(l09).toMatch(/논술형 작성 35/)
     expect(l09).not.toMatch(/서술형1·2|논술형을 배치한 차시는 마무리 퀴즈 0문항/)
+    // 대표 2026-09-26: 서논술 과정이라 객관식은 없다 — 퀴즈는 단답형만(L-09·L-10), 어느 규칙도 선택형 퀴즈를 말하지 않는다
+    expect(l09).toMatch(/모두 단답형 — 낱말·수치·짧은 구를 직접 쓰는 문항, 선택지 없음/); expect(l09).not.toMatch(/선택형/)
+    expect(text('L-10').text).toMatch(/답은 낱말·수치·짧은 구; 정답과 한두 줄 해설/)
     // 필수 용어는 문두(전제문·발문)에 — 조건에 쓰지 않는다(C-32와 충돌 해소, 리드 판정 2026-09-26)
     expect(text('S-과-03').text).toMatch(/문두/); expect(text('S-과-03').text).toMatch(/조건에는 쓰지 않/)
     expect(text('S-영-05').text).toMatch(/C-32/)
     expect(text('S-수-02').text).not.toMatch(/저배점\(3점\)/)
     const all = [...COMMON_RULES, ...LESSON_RULES, ...Object.values(SUBJECT_RULES).flat()].map((r) => r.text).join('\n')
     expect(all).not.toMatch(/서술형 2개|서술형1|서술형2|서술형 두 문항/)
+    expect(all).not.toMatch(/선택형\/단답형|선택형 퀴즈/)
     const spec = readFileSync('docs/superpowers/specs/2026-09-25-item-studio-v2-design.md', 'utf8')
-    for (const id of ['C-14', 'C-15', 'C-31', 'L-05', 'L-09', 'S-수-01', 'S-수-02', 'S-과-03', 'S-영-05']) {
+    for (const id of ['C-14', 'C-15', 'C-31', 'L-05', 'L-09', 'L-10', 'S-수-01', 'S-수-02', 'S-과-03', 'S-영-05']) {
       const r = text(id)
       const row = spec.split('\n').find((line) => line.startsWith(`| ${id} |`))!
       // 이번에 고친 행은 스펙 부록 A 문장이 코드 문장과 글자까지 같다
