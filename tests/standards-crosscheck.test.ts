@@ -14,6 +14,15 @@ describe('normalizeStandardText', () => {
     expect(normalizeStandardText('자연수를 소인수분해 할 수 있다.')).toBe(normalizeStandardText('자연수를 소인수분해 할 수 있다'))
     expect(normalizeStandardText('자연수를 소인수분해 할 수 있다。')).toBe(normalizeStandardText('자연수를 소인수분해 할 수 있다'))
   })
+  it('treats a PDF line-wrap space as equivalent to no space at all (2026-09-26 재검토: 실측 불일치 82건 중 76건이 이 유형)', () => {
+    expect(normalizeStandardText('비교 할 수 있다.')).toBe(normalizeStandardText('비교할 수 있다.'))
+  })
+  it('does NOT equate a real wording difference just because it also differs in spacing (조사 유무)', () => {
+    expect(normalizeStandardText('세계의 여러 지역')).not.toBe(normalizeStandardText('세계 여러 지역'))
+  })
+  it('does NOT equate a genuine middle-dot-vs-space difference', () => {
+    expect(normalizeStandardText('사회⋅문화적')).not.toBe(normalizeStandardText('사회 문화적'))
+  })
 })
 
 describe('crosscheckStandards', () => {

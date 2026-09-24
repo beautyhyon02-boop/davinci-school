@@ -23,7 +23,7 @@
 - **DB**: 마이그레이션 0001~0007 호스팅 DB에 적용됨. 0006 = `subject` enum에 `세계사`, `standards.verified_at/verified_by/source_page`, `item_sets` 단계별 열(`learning_goals`·`key_question`·`lessons`·`materials`·`assessment`·`teacher_guide`·`stage_status`), `item_set_versions`, `generation_log`. 0007 = `teacher_guide` jsonb, `set_stage_status()` 원자적 병합 함수.
 - **성취기준 1,814건** DB 투입(국·영·수·과·사·한국사·세계사). 수학 435는 별책8 정본. 역사는 한국사 46 / 세계사 59로 분리(`data/standards/README.md` "역사 분리"). 파일은 갱신됐지만 DB의 `subject` 갱신은 `scripts/reclassify-history.ts`(update-db 모드) 한 번 더 실행해야 한다(59행).
 - **성취기준 검증 화면** `/admin/standards`: 과목·학교급 필터, 원문 확인 체크(`verified_at`), PDF 쪽 입력은 2B에서.
-- **성취기준 원문 자동 대조(2026-09-26)**: `/admin/standards`의 "원문 자동 대조" 버튼이 평가원 성취수준 원문(`data/reference/levels/*.json`)과 코드 기준으로 대조해(`lib/standards/crosscheck.ts`) 일치하는 행만 자동 검증 처리한다 — 오프라인 집계는 `data/standards/crosscheck-2026-09-26.md`(검증됨 648 / 불일치 82 / 대조 불가 1,084, 합계 1,814), 방법은 `data/standards/README.md` "원문 대조 (2026-09-26)" 절.
+- **성취기준 원문 자동 대조(2026-09-26)**: `/admin/standards`의 "원문 자동 대조" 버튼이 평가원 성취수준 원문(`data/reference/levels/*.json`)과 코드 기준으로 대조해(`lib/standards/crosscheck.ts`, 공백은 한 칸으로 접지 않고 전부 제거 — PDF 줄바꿈 공백 아티팩트 대응) 일치하는 행만 자동 검증 처리한다 — 오프라인 집계는 `data/standards/crosscheck-2026-09-26.md`(검증됨 724 / 불일치 6 / 대조 불가 1,084, 합계 1,814, 남은 6건은 전부 실제 표기 차이), 방법은 `data/standards/README.md` "원문 대조 (2026-09-26)" 절.
 - **제작소 파이프라인(백엔드)**:
   - `lib/studio/schemas.ts` 단계 0~6 zod 스키마(단일 출처), `lib/studio/prompts/{rules,stages}.ts` 프롬프트(규칙 블록은 캐시), `lib/studio/fidelity.ts` 재구성 원문 이탈 검사, `lib/studio/stages.ts` 단계 실행기(generate → review → accept), `lib/studio/repo.ts` Supabase 저장소.
   - API `POST/GET /api/studio/item-sets/[id]/stages/[stage]` (`{action:'generate'|'review'|'accept'}`; 관리자만, 비로그인 401). 한 요청 = Claude 호출 1회.

@@ -50,7 +50,7 @@ function buildReport(dbRows: DbStandardRow[], result: CrosscheckResult): string 
     '`data/standards/*.json`(별책 PDF에서 정규식으로 추출)을 `data/reference/levels/*.json`' +
       '(평가원 성취수준 PDF를 `scripts/parse_levels.py`로 독립 파싱한 원문)과 코드 기준으로 대조한 결과다.' +
       ' 방법: `lib/standards/crosscheck.ts`의 `crosscheckStandards()` — 같은 코드의 문장을' +
-      ' `normalizeStandardText()`(공백 정리·가운뎃점 통일·후행 마침표 제거)로 정규화한 뒤 비교한다.' +
+      ' `normalizeStandardText()`(공백 전부 제거·가운뎃점 통일·후행 마침표 제거)로 정규화한 뒤 비교한다.' +
       ' 생성: `npx tsx scripts/crosscheck_standards.ts`.',
   )
   lines.push('')
