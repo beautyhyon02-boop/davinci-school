@@ -8,6 +8,7 @@ import { runStage, type Repo, type StageStatus } from '@/lib/studio/stages'
 import { buildPrompt, buildReviewPrompt } from '@/lib/studio/prompts/stages'
 import { buildFixturesV2, serialize } from '@/scripts/upgrade-fixtures-v2'
 import { judgeQuiz } from '@/lib/classroom/quiz'
+import { statesAnswer } from '@/lib/studio/compat'
 
 const STAGES = [2, 3, 4, 5, 6, 7] as const
 const SETS = [{ suffix: '', subject: '수학', standards: 'standards-math.json' }, { suffix: '-과학', subject: '과학', standards: 'standards-science.json' }] as const
@@ -93,9 +94,10 @@ for (const set of SETS) describe(`${set.subject} fixtures (v2)`, () => {
       for (const k of q.answer.split('/')) expect(judgeQuiz({ type: 'short', answer: q.answer, choices: null }, k), `${q.where} "${k.trim()}"`).toBe(true)
     }
     expect(staticIssues(3, design, { standards, prior: {} }).filter((i) => i.kind === 'quiz')).toEqual([])
-    // 발문 힌트(퀴즈에서 만든 것 포함)는 정답 표기 어느 것도 그대로 말하지 않는다(L-06)
+    // 발문 힌트(퀴즈에서 만든 것 포함)는 정답 표기 어느 것도 그대로 말하지 않는다(L-06) — 수는 한 글자라도("1", "6"),
+    // 여러 값을 나열한 정답("1, 2, 4, 5, 7")은 값 하나하나를 본다
     for (const l of teaching) for (const s of l.teacher_script.questions) {
-      for (const k of s.expected_answer.split('/').map((x) => x.replace(/\s+/g, '')).filter((x) => x.length >= 2)) expect(s.if_stuck.replace(/\s+/g, ''), `${l.no}차시 발문 힌트`).not.toContain(k)
+      for (const k of s.expected_answer.split(/\s*\/\s*|,\s+/)) expect(statesAnswer(s.if_stuck, k), `${l.no}차시 발문 힌트 "${s.if_stuck}"가 정답 "${k}"를 말함`).toBe(false)
     }
   })
   it('lesson topics are hand-written short noun phrases (≤20자) and unit_plan.lesson_map carries the same topic per lesson (헤딩 절단 재발 방지)', () => {

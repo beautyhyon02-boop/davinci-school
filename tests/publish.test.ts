@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { z } from 'zod'
-import { canPublish, buildSnapshot, collectReferences } from '@/lib/studio/publish'
+import { canPublish, buildSnapshot, collectReferences, upgradeSnapshot } from '@/lib/studio/publish'
 import type { Material } from '@/lib/studio/schemas'
 import type { StageStatus } from '@/lib/studio/stages'
 
@@ -65,6 +65,32 @@ describe('canPublish', () => {
     expect(canPublish({ statuses: allAccepted, standards: [], keyQuestion: null }).blockers).toContain('noKeyQuestion')
     expect(canPublish({ statuses: allAccepted, standards: [], keyQuestion: '' }).blockers).toContain('noKeyQuestion')
     expect(canPublish({ statuses: allAccepted, standards: [], keyQuestion: '   ' }).blockers).toContain('noKeyQuestion')
+  })
+
+  it('blocks with quizChoice:<lesson no> when a draft still carries a choice quiz (대표 2026-09-26: 퀴즈는 단답형만)', () => {
+    const short = { type: 'short', choices: null }
+    const choice = { type: 'choice', choices: ['①', '②', '③'] }
+    const lesson = (no: number, quiz: { type: string; choices: unknown }[]) => ({ no, formative_check: { quiz } })
+    const base = { statuses: allAccepted, standards: [], keyQuestion: 'q' }
+    // 3단계를 2026-09-26 이전에 확정한 초안: 선택형이 남은 차시마다 하나씩(선택지 달린 단답형도 막는다)
+    const r = canPublish({ ...base, lessons: [lesson(1, [short, short, short]), lesson(2, [short, choice, choice]), lesson(3, [short, short, { type: 'short', choices: ['6', '7'] }]), lesson(6, [])] })
+    expect(r).toEqual({ ok: false, blockers: ['quizChoice:2', 'quizChoice:3'] })
+    // 단답형만이면 막지 않는다 — 단원 평가 차시(퀴즈 0)와 퀴즈 칸이 없는 차시도
+    expect(canPublish({ ...base, lessons: [lesson(1, [short, short, short]), lesson(6, []), { no: 7 }] })).toEqual({ ok: true, blockers: [] })
+    // 초안 차시가 없거나(null) 배열이 아니면 검사를 건너뛴다(3단계 미확정은 stageNotAccepted 가 막는다)
+    expect(canPublish({ ...base, lessons: null })).toEqual({ ok: true, blockers: [] })
+    expect(canPublish({ ...base, lessons: {} as never })).toEqual({ ok: true, blockers: [] })
+  })
+
+  it('does not touch published snapshots: an old published 판 with choice quizzes still reads back unchanged', () => {
+    // 검사는 초안(item_sets.lessons)에만 돈다 — 게시 판 읽기(upgradeSnapshot)는 옛 선택형 퀴즈를 그대로 돌려준다
+    const quiz = { q: '다음 중 알맞은 것은?', type: 'choice', choices: ['①', '②'], answer: '②', explanation: '옛 판의 선택형 퀴즈이다.' }
+    const lessons = [{ no: 1, kind: 'teaching', assessment: [], formative_check: { quiz: [quiz] } }]
+    const raw = { schema_version: 2, cover: { title: 'T', subject: '수학', level: '중', grade: 1, version: 1, published_at: '' }, standards: [], intro: '', reconstruction: '',
+      reconstruction_detail: [], learning_goals: [], key_question: '', unit_plan: null, lessons, materials: [], assessment: null, teacher_guide: null,
+      notice_plan: null, references: [], generated_with: { models: [] } }
+    const s = upgradeSnapshot(raw)
+    expect(s.lessons[0].formative_check.quiz[0]).toEqual(quiz)
   })
 
   it('can report multiple blockers at once', () => {

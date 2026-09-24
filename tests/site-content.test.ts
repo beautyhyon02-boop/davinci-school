@@ -275,6 +275,7 @@ describe('site content', () => {
     expect(app.studio.publish.blockers.stageNotAccepted(3)).toContain('3')
     expect(app.studio.publish.blockers.unverifiedStandard('[9수04-02]')).toContain('[9수04-02]')
     expect(app.studio.publish.blockers.noKeyQuestion).toBeTruthy()
+    expect(app.studio.publish.blockers.quizChoice(2)).toMatch(/2차시 퀴즈에 선택지가 남아 있습니다 — 3단계를 다시 생성하세요/)
     expect(app.studio.publish.blockers.unknown).toBeTruthy()
     expect(app.studio.publish.errors.forbidden).toBeTruthy()
     expect(app.studio.publish.errors.saveFailed).toBeTruthy()

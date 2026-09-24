@@ -12,6 +12,7 @@ function blockerLabel(blocker: string): string {
   if (blocker === 'saveFailed') return copy.errors.saveFailed
   if (blocker.startsWith('stageNotAccepted:')) return copy.blockers.stageNotAccepted(Number(blocker.slice('stageNotAccepted:'.length)))
   if (blocker.startsWith('unverifiedStandard:')) return copy.blockers.unverifiedStandard(blocker.slice('unverifiedStandard:'.length))
+  if (blocker.startsWith('quizChoice:')) return copy.blockers.quizChoice(Number(blocker.slice('quizChoice:'.length)))
   return copy.blockers.unknown
 }
 

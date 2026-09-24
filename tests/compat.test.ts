@@ -1,7 +1,7 @@
 // tests/compat.test.ts
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { upgradeSnapshot, isV1Snapshot, upgradeLessonV1, upgradeAssessmentV1, splitMainV1, axisOf, buildReconstructionV2, upgradeTeacherGuideV1, splitMaterialsV1, evaluationElement, topicFromGoal, normalizeSnapshotV2, unitPlanFrom } from '@/lib/studio/compat'
+import { upgradeSnapshot, isV1Snapshot, statesAnswer, upgradeLessonV1, upgradeAssessmentV1, splitMainV1, axisOf, buildReconstructionV2, upgradeTeacherGuideV1, splitMaterialsV1, evaluationElement, topicFromGoal, normalizeSnapshotV2, unitPlanFrom } from '@/lib/studio/compat'
 import { Reconstruction } from '@/lib/studio/schemas'
 import { Lesson, Assessment, PublishedAssessment, PublishedLessonDesign, Materials, TeacherGuide } from '@/lib/studio/schemas'
 import { structureOf } from '@/lib/studio/assessment-structure'
@@ -227,6 +227,18 @@ describe('compat v1 업그레이드 흔적 없애기 (fix wave I3)', () => {
         }
       }
     }
+  })
+})
+
+describe('statesAnswer (L-06: 힌트가 정답을 그대로 말하는가)', () => {
+  it('수는 한 글자라도 낱개로 나오면 말한 것, 다른 수의 일부는 아니다; 글자는 공백을 빼고 두 글자 이상', () => {
+    expect(statesAnswer('상대도수는 도수 ÷ 도수의 총합이며, 그 총합은 항상 1이다.', '1')).toBe(true)
+    expect(statesAnswer('계급의 크기 10일 때 도수는 30~40: 6으로 주어져 있다.', '6')).toBe(true)
+    expect(statesAnswer('자료 A의 40번대 값 41·42·44·45·47', '1')).toBe(false)
+    expect(statesAnswer('70 − 10 = 60을 5씩 나누면 60 ÷ 5 = 12개이다.', '12개')).toBe(true)
+    expect(statesAnswer('240 ÷ 1,350 을 계산한 값이다.', '0.18')).toBe(false)
+    expect(statesAnswer('자료 수집으로 가설을 확인한다.', '자료수집')).toBe(true)
+    expect(statesAnswer('가설에 해당한다.', '가')).toBe(false)
   })
 })
 

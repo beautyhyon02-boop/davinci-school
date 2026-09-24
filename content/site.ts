@@ -406,6 +406,7 @@ export const app = {
         stageNotAccepted: (stage: number) => `${stage}단계가 아직 확정되지 않았습니다.`,
         unverifiedStandard: (code: string) => `성취기준 ${code}이(가) 원문 검증되지 않았습니다.`,
         noKeyQuestion: '핵심질문이 아직 선택되지 않았습니다.',
+        quizChoice: (n: number) => `${n}차시 퀴즈에 선택지가 남아 있습니다 — 3단계를 다시 생성하세요.`,
         unknown: '게시할 수 없습니다. 단계·성취기준·핵심질문을 확인하세요.',
       },
       errors: {

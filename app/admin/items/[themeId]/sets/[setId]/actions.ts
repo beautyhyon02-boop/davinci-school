@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getSessionProfile } from '@/lib/auth/session'
 import { STAGE_SCHEMAS, Materials, LessonDesign, type Stage } from '@/lib/studio/schemas'
 import { isMaterialsPublicUrl } from '@/lib/studio/upload-rules'
-import { canPublish, buildSnapshot } from '@/lib/studio/publish'
+import { canPublish, buildSnapshot, type DraftLessonQuizzes } from '@/lib/studio/publish'
 import { canEditStage, downstreamResets, keyQuestionAfterStage2 } from '@/lib/studio/edit-rules'
 import { STAGE_ERRORS, type StageErrorCode, type StageStatus } from '@/lib/studio/stages'
 import { app } from '@/content/site'
@@ -266,6 +266,7 @@ export async function publishItemSet(setId: string): Promise<PublishResult> {
     statuses: stageStatus,
     standards: standardsFull.map((s) => ({ code: s.code, verified: !!s.verified_at })),
     keyQuestion: itemSet.key_question,
+    lessons: itemSet.lessons as DraftLessonQuizzes[] | null,
   })
   if (!ok) return { ok: false, blockers }
 

@@ -7,7 +7,7 @@ import { SetPageTabs } from './SetPageTabs'
 import { PublishPanel } from './PublishPanel'
 import { PackageView } from '@/components/studio/PackageView'
 import { PrintButton } from '@/components/classroom/PrintButton'
-import { canPublish, buildSnapshot } from '@/lib/studio/publish'
+import { canPublish, buildSnapshot, type DraftLessonQuizzes } from '@/lib/studio/publish'
 import type { StageStatus } from '@/lib/studio/stages'
 import { app } from '@/content/site'
 import { WIZARD_STAGES, type WizardStage } from '@/lib/studio/wizard-stages'
@@ -68,6 +68,7 @@ export default async function SetWizardPage({ params }: { params: Promise<{ them
     statuses: stageStatus,
     standards: standardsFull.map((s) => ({ code: s.code, verified: !!s.verified_at })),
     keyQuestion: itemSet.key_question,
+    lessons: itemSet.lessons as DraftLessonQuizzes[] | null,
   })
 
   return (

@@ -82,6 +82,15 @@ function setShortQuiz(s3: V1Input['s3'], no: number, idx: number, from: [type: '
 
 type TaskT = LessonT['worksheet']['tasks'][number]; type QuestionT = LessonT['teacher_script']['questions'][number]
 /**
+ * 퀴즈에서 만든 발문의 막힐 때 힌트(if_stuck)를 손으로 적는다(L-06: 정답을 그대로 말하지 않는다). compat 은 해설이 정답을 말하면
+ * 중립 힌트로 바꾸지만, 그 차시에 맞는 구체적인 도움말은 여기서 준다. 발문 앞부분이 다르면(입력이 바뀌었으면) 멈춘다.
+ */
+function setHint(lessons: LessonT[], no: number, idx: number, promptStart: string, hint: string) {
+  const q = lessons.find((l) => l.no === no)?.teacher_script.questions[idx]
+  if (!q || !q.prompt.startsWith(promptStart)) throw new Error(`PATCHES: ${no}차시 발문 ${idx + 1}이 "${promptStart}…"가 아님`)
+  q.if_stuck = hint
+}
+/**
  * 도전 과제의 기대 수행(expected)을 손으로 적는다. v1 에는 도전 과제가 없어 compat 은 핵심질문으로 만든 일반 '교사 확인' 문장을 넣는다
  * (I3 — 예전에는 차시 목표 문장을 그대로 옮겨 정답처럼 읽혔다). 중1 교사가 보고 맞다고 할 기준이되, 서·논술형 답은 적지 않는다(C-03).
  */
@@ -257,6 +266,11 @@ const SETS: SetDef[] = [
       // v1 에는 차시 주제가 없어 compat 이 목표 앞 40자를 잘라 쓴다 → 안내장·평가 계획표에 보일 짧은 주제명
       setTopics(lessons, ['통계적 탐구 문제 세우기', '줄기와 잎 그림과 도수분포표', '히스토그램과 도수분포다각형', '상대도수로 두 집단 비교하기', '자료로 감축 목표 제안하기'])
       tidyFlow(lessons)
+      // L-06: v1 퀴즈 해설을 옮긴 힌트가 값을 그대로 말하던 발문(2차시 1: 41·42·44·45·47 = 잎 1·2·4·5·7, 2차시 2: "…6으로 주어져 있다",
+      // 4차시 3: "그 총합은 항상 1이다") — 값을 말하지 않고 찾아가는 길만 준다
+      setHint(lessons, 2, 0, '자료 A를 줄기와 잎 그림으로', '자료 A에서 40개 이상 50개 미만인 값을 모두 찾아 작은 수부터 적고, 각 값에서 일의 자리만 떼어 보게 한다.')
+      setHint(lessons, 2, 1, '계급 30개 이상 40개 미만의 도수는', '도수분포표에서 30개 이상 40개 미만 칸을 짚고, 자료 A에서 그 범위에 드는 부스를 하나씩 세어 보게 한다.')
+      setHint(lessons, 4, 2, '상대도수의 총합은', '상대도수표의 값을 모두 더해 보게 하고, 도수 몇 개를 같은 총합으로 나눠 다 더하면 무엇이 되는지 떠올려 보게 한다.')
       // I3: 도전 과제 기대 수행 — 남긴 서술형(플라스틱컵 상대도수)의 값은 적지 않는다
       setChallenges(lessons, {
         1: '조사 항목(품목별 일회용품 개수)·대상(축제 부스)·방법(누가 언제 어떻게 셀지)을 모두 정하고, 부스 수도 함께 세어야 하는 까닭(해마다 부스 수가 달라 개수만으로는 비교하기 어려움)을 쓰면 인정',

@@ -1,5 +1,5 @@
 import type { z } from 'zod'
-import { Materials, LessonDesign } from './schemas'
+import { Materials, LessonDesign, isShortQuiz } from './schemas'
 import type { Material as MaterialSchema, Lesson as LessonSchema, Assessment as AssessmentSchema, TeacherGuide as TeacherGuideSchema } from './schemas'
 import type { StageStatus } from './stages'
 import type { SnapshotV2, UnitPlanT, ReconstructedStandardT, LearningGoalT, NoticePlanT } from './compat'
@@ -52,20 +52,29 @@ export const PUBLISH_STAGES = [2, 3, 4, 5, 6, 7] as const
  * - 2~7단계가 모두 accepted 여야 한다.
  * - 연결된 성취기준이 전부 원문 검증(verified)되어야 한다.
  * - 핵심질문(keyQuestion)이 정해져 있어야 한다.
+ * - 초안 차시(item_sets.lessons)의 퀴즈가 모두 단답형이어야 한다(대표 2026-09-26: 객관식 폐지) — 그 전에 3단계를 확정한 초안에
+ *   선택형이 남아 있으면 차시마다 quizChoice:<차시 번호>. 게시 판(item_set_versions)은 보지 않는다(옛 판의 선택형은 그대로 읽힌다).
  */
+export type DraftLessonQuizzes = { no: number; formative_check?: { quiz?: { type: string; choices: unknown }[] | null } | null }
 export function canPublish({
   statuses,
   standards,
   keyQuestion,
+  lessons = [],
 }: {
   statuses: Record<string, StageStatus | undefined>
   standards: { code: string; verified: boolean }[]
   keyQuestion: string | null | undefined
+  /** 초안 차시(3단계 출력이 저장된 item_sets.lessons). 없으면(null) 퀴즈 검사를 건너뛴다 — 3단계 미확정은 stageNotAccepted 가 막는다. */
+  lessons?: DraftLessonQuizzes[] | null
 }): { ok: boolean; blockers: string[] } {
   const blockers: string[] = []
   for (const stage of PUBLISH_STAGES) if (statuses[`stage${stage}`]?.state !== 'accepted') blockers.push(`stageNotAccepted:${stage}`)
   for (const standard of standards) if (!standard.verified) blockers.push(`unverifiedStandard:${standard.code}`)
   if (!keyQuestion || !keyQuestion.trim()) blockers.push('noKeyQuestion')
+  for (const lesson of Array.isArray(lessons) ? lessons : []) {
+    if ((lesson.formative_check?.quiz ?? []).some((q) => !isShortQuiz(q))) blockers.push(`quizChoice:${lesson.no}`)
+  }
   return { ok: blockers.length === 0, blockers }
 }
 

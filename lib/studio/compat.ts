@@ -132,13 +132,24 @@ export function topicFromGoal(goal: string): string {
 }
 
 const squash = (s: string) => s.replace(/\s+/g, '')
+/** 수 하나(단위가 붙어도 된다: "6", "12개", "0.18")인 정답 표기면 그 수. */
+const numberKey = (k: string) => /^(\d+(?:\.\d+)?)[^\d.]*$/.exec(squash(k))?.[1] ?? null
+/**
+ * 해설이 정답 표기를 그대로 말하는가. 수는 한 글자라도 다른 수의 일부가 아닌 낱개로 나오면 말한 것으로 본다
+ * ("그 총합은 항상 1이다" → 1, "…: 6으로 주어져 있다" → 6; "41·42"의 1은 아니다). 글자 표기는 두 글자 이상이 공백을 빼고 들어 있으면.
+ */
+export function statesAnswer(text: string, key: string): boolean {
+  const n = numberKey(key)
+  if (n !== null) return new RegExp(`(?<![\\d.])${n.replace('.', '\\.')}(?![\\d.])`).test(text)
+  const k = squash(key)
+  return k.length >= 2 && squash(text).includes(k)
+}
 /**
  * 막혔을 때 힌트(L-06): v1 퀴즈 해설이 정답을 그대로 담고 있으면 정답을 말하지 않는 중립 힌트로 바꾼다.
- * 정답 키가 "A / B"(같은 뜻의 다른 표기, judgeQuiz 와 같은 약속)면 표기 하나라도 해설에 있으면 바꾼다.
+ * 정답 키가 "A / B"(같은 뜻의 다른 표기, judgeQuiz 와 같은 약속)면 표기 하나라도 해설에 있으면 바꾼다. 수 정답(한 글자 포함)도 본다.
  */
 function hintFor(q: QuizV1): string {
-  const said = squash(q.explanation)
-  if (!q.answer.split('/').map(squash).some((k) => k.length >= 2 && said.includes(k))) return q.explanation
+  if (!q.answer.split('/').some((k) => statesAnswer(q.explanation, k))) return q.explanation
   return q.type === 'choice'
     ? '보기를 하나씩 자료나 배운 뜻과 대조해, 맞지 않는 것부터 지워 보게 한다.'
     : '질문의 핵심 낱말에 밑줄을 긋고, 자료나 배운 뜻에서 같은 낱말이 나오는 곳을 찾아보게 한다.'
