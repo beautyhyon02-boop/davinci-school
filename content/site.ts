@@ -434,7 +434,8 @@ export const app = {
       mergeNoteLabel: '병합 시 생략',
       mergeableLabel: (no: number) => `${no}차시와 병합 가능`,
       assessmentSessionBadge: '단원 평가',
-      assessmentSessionNote: '마지막 교수 차시 뒤에 서술형(15분)과 논술형(35분)을 함께 보는 평가 차시입니다. 퀴즈·활동지는 없고, 문항은 아래 평가 문항 카드에 있습니다.',
+      // 분은 세트 구조(lib/studio/assessment-structure.ts ASSESSMENT_SESSION)에서 넘겨받는다
+      assessmentSessionNote: (shortMin: number, essayMin: number) => `마지막 교수 차시 뒤에 서술형(${shortMin}분)과 논술형(${essayMin}분)을 함께 보는 평가 차시입니다. 퀴즈·활동지는 없고, 문항은 아래 평가 문항 카드에 있습니다.`,
     },
     teacherGuideHeading: '교사용 지침서',
     teacherGuide: {
@@ -609,7 +610,7 @@ export const app = {
       lessonTab: (n: number) => `${n}차시`,
       // 마지막 교수 차시 뒤 단원 평가 차시(서술형 + 논술형, 대표 2026-09-26) 탭
       assessmentTab: (n: number) => `${n}차시 · 단원 평가`,
-      assessmentIntro: '이 시간에는 서술형 문항(15분)과 논술형 문항(35분)에 차례로 답해요. 자료를 보면서 써도 돼요.',
+      assessmentIntro: (shortMin: number, essayMin: number) => `이 시간에는 서술형 문항(${shortMin}분)과 논술형 문항(${essayMin}분)에 차례로 답해요. 자료를 보면서 써도 돼요.`,
       locked: '아직 열리지 않았어요',
       keyQuestion: '이 시간의 질문',
       materials: '자료',

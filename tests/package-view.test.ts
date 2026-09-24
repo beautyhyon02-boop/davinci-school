@@ -7,6 +7,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { PackageView, MaterialsSection, ANSWER_LINES } from '@/components/studio/PackageView'
 import { buildSnapshot, upgradeSnapshot, type Snapshot } from '@/lib/studio/publish'
 import { app } from '@/content/site'
+import { SHORT_MINUTES, ESSAY_MINUTES } from '@/lib/studio/structure-text'
 
 const fx = (k: string) => JSON.parse(readFileSync(`data/studio-fixtures/${k}.json`, 'utf8'))
 const v1 = (k: string) => JSON.parse(readFileSync(`tests/fixtures/v1/${k}.json`, 'utf8'))
@@ -90,7 +91,7 @@ describe.each(['수학', '과학'] as const)('PackageView v2 (%s mock snapshot)'
     const cards = html.split('data-lesson-kind=').slice(1)
     expect(cards.map((x) => x.slice(1, x.indexOf('"', 1)))).toEqual(['teaching', 'teaching', 'teaching', 'teaching', 'teaching', 'assessment'])
     const session = cards[5].slice(0, cards[5].indexOf(`<h2 class="text-lg font-bold">`))
-    expect(text(session)).toContain(c.lessons.assessmentSessionBadge); expect(text(session)).toContain(norm(c.lessons.assessmentSessionNote))
+    expect(text(session)).toContain(c.lessons.assessmentSessionBadge); expect(text(session)).toContain(norm(c.lessons.assessmentSessionNote(SHORT_MINUTES, ESSAY_MINUTES)))
     expect(text(session)).toContain('서술형 + 논술형')
     expect(text(session)).toContain(norm(c.lessons.stepLabel('서술형 작성', 15))); expect(text(session)).toContain(norm(c.lessons.stepLabel('논술형 작성', 35)))
     expect(session).not.toContain(`>${c.lessons.worksheetHeading}</p>`); expect(session).not.toContain(`>${c.lessons.quizHeading}</p>`)

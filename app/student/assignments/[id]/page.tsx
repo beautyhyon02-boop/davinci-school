@@ -5,6 +5,7 @@ import { getSessionProfile } from '@/lib/auth/session'
 import { loadAssignmentSnapshot } from '@/lib/classroom/snapshot'
 import { itemNosForLesson, itemLabel, materialIdsForLesson, studentConditions } from '@/lib/classroom/lessons'
 import { isUnitAssessmentSession } from '@/lib/studio/assessment-structure'
+import { SHORT_MINUTES, ESSAY_MINUTES } from '@/lib/studio/structure-text'
 import { MaterialsSection } from '@/components/studio/PackageView'
 import { overallFor, gradeFor } from '@/lib/classroom/scoring'
 import { LessonTabs } from './LessonTabs'
@@ -59,7 +60,7 @@ export default async function StudentAssignmentPage({ params }: { params: Promis
           <p className="text-sm font-semibold text-ink-500">{copy.keyQuestion}</p>
           <p className="mt-1 text-xl font-bold">{lesson.key_question}</p>
           <p className="mt-2">{lesson.goal}</p>
-          {isUnitAssessmentSession(lesson) && <p className="mt-2 rounded-xl bg-lemon-100 p-3 text-sm">{copy.assessmentIntro}</p>}
+          {isUnitAssessmentSession(lesson) && <p className="mt-2 rounded-xl bg-lemon-100 p-3 text-sm">{copy.assessmentIntro(SHORT_MINUTES, ESSAY_MINUTES)}</p>}
         </section>
         {/* 이 차시가 쓰는 자료(표·자동 그래프·설명글) — 결석생도 앱만 보고 풀 수 있어야 한다(스펙 §5.2). */}
         <MaterialsSection materials={snapshot.materials.filter((m) => materialIds.includes(m.id))} />

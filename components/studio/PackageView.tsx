@@ -9,6 +9,7 @@ import type { Snapshot } from '@/lib/studio/publish'
 import type { Lesson as LessonSchema, QuizItem as QuizItemSchema, Material as MaterialSchema, AssessmentItem as AssessmentItemSchema, Rubric as RubricSchema } from '@/lib/studio/schemas'
 import { getLevels } from '@/lib/reference/levels'
 import { lessonAssessments, isAssessmentSession, isUnitAssessmentSession } from '@/lib/studio/assessment-structure'
+import { SHORT_MINUTES, ESSAY_MINUTES } from '@/lib/studio/structure-text'
 import { app } from '@/content/site'
 
 // v2 패키지 화면(스펙 §2.9). 카드 순서 = 표지 → 소개 → 성취기준(+A~E 접이식) → 재구조화 표 → 학습 목표(축 배지) → 핵심질문 →
@@ -234,7 +235,7 @@ function LessonCard({ l, showAnswers, open }: { l: Lesson; showAnswers: boolean;
   const t = l.time_budget
   const materials = l.materials_used.map((id) => `${copy.materials.idLabel} ${id}`).join(', ')
   const kinds = lessonAssessments(l)
-  // 단원 평가 차시(대표 2026-09-26: 마지막 교수 차시 뒤, 서술형 15분 + 논술형 35분)는 가르치는 차시와 구별되게 레몬 테두리와 안내 한 줄
+  // 단원 평가 차시(대표 2026-09-26: 마지막 교수 차시 뒤, 서술형 작성 + 논술형 작성 — 분은 ASSESSMENT_SESSION)는 가르치는 차시와 구별되게 레몬 테두리와 안내 한 줄
   const session = isUnitAssessmentSession(l)
   return (
     <div data-lesson-kind={isAssessmentSession(l) ? 'assessment' : 'teaching'} className={`rounded-xl border p-3 text-sm ${session ? 'border-lemon-300 bg-lemon-100/30' : 'border-ink-100'}`}>
@@ -246,7 +247,7 @@ function LessonCard({ l, showAnswers, open }: { l: Lesson; showAnswers: boolean;
         {l.mergeable_with !== null && <Badge tone="gray">{c.mergeableLabel(l.mergeable_with)}</Badge>}
         <Badge tone="gray">{c.timeLabel(t.intro_min, t.main_min, t.wrapup_min)}</Badge>
       </div>
-      {session && <p className="mt-2 text-ink-700">{c.assessmentSessionNote}</p>}
+      {session && <p className="mt-2 text-ink-700">{c.assessmentSessionNote(SHORT_MINUTES, ESSAY_MINUTES)}</p>}
       <p className="mt-2"><Label>{c.columns.keyQuestion}:</Label> {l.key_question}</p>
       <p><Label>{c.columns.goal}:</Label> {l.goal}</p>
 

@@ -1,4 +1,5 @@
 import { rule } from './types'
+import { SESSION_MINUTES } from '../../structure-text'
 
 /** 부록 A.2 차시·재구성(L-). */
 export const LESSON_RULES = [
@@ -10,7 +11,8 @@ export const LESSON_RULES = [
   rule('L-06', 'PS', '발문 2~4개마다 예상 답(expected_answer)과 막힐 때 힌트(if_stuck; 정답을 그대로 말하지 않음)를 적는다.', 'WP7 §5·§9-2'),
   rule('L-07', 'PS', '준비물(materials_needed: 오프라인 교구·출력물)과 지도상 유의점(caution_notes: 오개념 1개 이상)을 차시마다 적는다. 사용 자료는 materials_used에 ID(A~Z)만.', 'WP7 §3(d)'),
   rule('L-08', 'PS', '활동지(worksheet): 과제 2~5개를 기본(D~E)·표준(C)·도전(A~B) 층으로(각 1개 이상, 한 장에 함께), 자기평가 1~3문장.', 'WP7 §3(e)', 'WP1 §5'),
-  rule('L-09', 'PS', '형성평가가 항상 선행한다: 교수 차시는 마지막 교수 차시까지 모두 마무리 퀴즈 정확히 3문항(선택형/단답형, 정답·해설). 서술형 1 + 논술형 1은 마지막 교수 차시 뒤 별도 단원 평가 차시(kind "assessment", 60분 = 평가 안내 5 · 서술형 작성 15 · 논술형 작성 35 · 정리 5, 퀴즈 0)에서 함께 본다(대표 2026-09-26).', 'WP7 §6', '대표'),
+  // 평가 차시 시간은 세트 구조 상수에서(structure-text.ts) — 바꾸면 스펙 부록 A 행도 같은 문장으로
+  rule('L-09', 'PS', `형성평가가 항상 선행한다: 교수 차시는 마지막 교수 차시까지 모두 마무리 퀴즈 정확히 3문항(선택형/단답형, 정답·해설). 서술형 1 + 논술형 1은 마지막 교수 차시 뒤 별도 단원 평가 차시(kind "assessment", 60분 = ${SESSION_MINUTES}, 퀴즈 0)에서 함께 본다(대표 2026-09-26).`, 'WP7 §6', '대표'),
   rule('L-10', 'P', '퀴즈는 워밍업 어투(짧은 "구하시오", 단일 조회)에 개념 관계 문항을 섞고, 해설은 한두 줄.', 'WP11-3', 'WP11-9'),
   rule('L-11', 'P', '압축으로 남은 시간은 새 활동이 아니라 피드백·정리·형성평가에 쓴다.', 'WP7 §4'),
   rule('L-12', 'S', '문항 카드에 차시 흐름(어느 차시가 어느 문항을 준비하는지)을 함께 담는다 — unit_plan.assessment_plan.summative_placement와 lessons[].assessment가 같아야 한다.', 'WP13-1'),
