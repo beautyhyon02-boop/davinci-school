@@ -36,7 +36,8 @@ describe('fixture v2 conversion script', () => {
       expect(serialize(data), name).toBe(serialize(b.files[name]))
       expect(readFileSync(`data/studio-fixtures/${name}`, 'utf8'), name).toBe(serialize(data))
     }
-    expect(Object.keys(a.files)).toHaveLength(14)
+    expect(Object.keys(a.files)).toHaveLength(15)   // stage2~7 × 2과목 + stage7-review × 2 + stage1 기본(수학)
+    expect(JSON.stringify(a.files['stage1-generate.json'])).not.toMatch(/5차시 논술형/)
   })
 })
 
@@ -84,6 +85,8 @@ for (const set of SETS) describe(`${set.subject} fixtures (v2)`, () => {
     // 수학 서술형(상대도수 0.24·0.30)과 뺀 서술형 1(도수분포표)의 답이 자료 본문에 없어야 한다 — 공유 자료 B는 두 과목 모두 개수만 싣는다(M5)
     expect(body('A')).not.toMatch(/1·3·6|30~40|도수/)
     expect(body('B')).not.toMatch(/0\.24|0\.30|상대도수/)
+    // fix wave 2(리드 판정): 수학 서술형 '상대도수로 비교하는 이유' 요소(2점)의 답을 알려 주던 문장
+    expect(body('B')).not.toMatch(/두 해는 부스 수와 전체 개수가 다르다/)
     // 과학 4차시 퀴즈가 끌어낼 결론("여러 번 써야 이득", 뺀 서술형 2의 답이자 논술형의 판단 근거)이 자료 E에 없어야 한다
     expect(body('E')).not.toMatch(/이득/)
     expect(materials.some((m) => m.role === 'raw')).toBe(true)
@@ -91,12 +94,22 @@ for (const set of SETS) describe(`${set.subject} fixtures (v2)`, () => {
   it('no lesson hands out the 서술형 answer (C-03 at lesson level: flows, notes, quizzes·worksheets·scripts of every teaching lesson)', () => {
     // 남긴 서술형이 학생에게 구하게 하는 값·결론. 교수 차시의 전개 활동·유의점·발문·활동지·퀴즈가 이것을 미리 말하면 안 된다.
     // 과학 서술형(재활용이 어려운 이유)은 자료 D·E의 근거를 인용하게 하는 문항이라(대표님 판단, T6) 요인 문장 대조는 하지 않고,
-    // 성질과 재활용을 잇는 결론 문장("섞이면 … 다시 녹여 쓰기 어렵다")만 본다.
-    const ANSWERS: Record<string, RegExp> = { 수학: /0\.24|0\.30/, 과학: /나누어 다시 녹여|다시 녹여 쓰기 어렵/ }
+    // 새 사례(PET·PS) 예측의 답(둘 다 가라앉아 물로는 나눌 수 없음)만 본다. 수학은 값과 자료 B에서 뺀 이유 문장.
+    const ANSWERS: Record<string, RegExp> = { 수학: /0\.24|0\.30|두 해는 부스 수와 전체 개수가 다르다/, 과학: /PS.{0,15}가라앉|둘 다 (물에 )?가라앉|물로(는)? 나눌 수 없/ }
     const { lessons } = loadFixture(`stage3-generate${set.suffix}`) as { lessons: { no: number; kind: string; flow: { main: { activities: string[] }[] }; teacher_script: unknown; worksheet: unknown; formative_check: unknown; caution_notes: string[] }[] }
     for (const l of lessons.filter((x) => x.kind === 'teaching')) {
       for (const t of [...l.flow.main.flatMap((m) => m.activities), ...l.caution_notes]) expect(t, `${l.no}차시`).not.toMatch(ANSWERS[set.subject])
       for (const t of [JSON.stringify(l.teacher_script), JSON.stringify(l.worksheet), JSON.stringify(l.formative_check)]) expect(t, `${l.no}차시 퀴즈·활동지·발문`).not.toMatch(ANSWERS[set.subject])
+    }
+  })
+  it('the 논술형 key reason is not handed out by a later lesson (과학: 자료 D의 "미생물이 거의 분해하지 못" — taught in 2차시 only)', () => {
+    // 논술형이 인용하게 하는 과학적 근거. 자료 D를 읽는 2차시(가르치는 차시)는 다루지만, 그 뒤 차시(특히 논술형 준비 5차시)의
+    // 퀴즈·활동지·발문이 그 문장을 정답으로 건네면 안 된다(fix wave 2: 5차시 퀴즈 1).
+    const REASON: Record<string, { re: RegExp; taughtIn: number[] }> = { 수학: { re: /0\.24|0\.30/, taughtIn: [] }, 과학: { re: /미생물이 거의 분해하지 못/, taughtIn: [2] } }
+    const { lessons } = loadFixture(`stage3-generate${set.suffix}`) as { lessons: { no: number; kind: string; teacher_script: unknown; worksheet: unknown; formative_check: unknown }[] }
+    const r = REASON[set.subject]
+    for (const l of lessons.filter((x) => x.kind === 'teaching' && !r.taughtIn.includes(x.no))) {
+      for (const t of [JSON.stringify(l.teacher_script), JSON.stringify(l.worksheet), JSON.stringify(l.formative_check)]) expect(t, `${l.no}차시`).not.toMatch(r.re)
     }
   })
   it('the kept 서술형 is a 6-point item with analytic (3 × 0~2) + holistic rubrics and 1~6 exemplars; no paper item in the demo sets', () => {
