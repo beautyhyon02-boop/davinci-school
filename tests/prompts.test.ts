@@ -83,9 +83,27 @@ describe('prompts v2', () => {
     const u = buildPrompt(0, { theme: { title: 't', level: '중', grade: 1, subjects: ['수학', '과학'] }, subject: '', standards: [], prior: {} }).user
     expect(u).toContain('참여 과목: 수학, 과학'); expect(u).not.toContain('과목: \n')
   })
+  it('stage 0 task keeps ideas as one-line sketches inside the grade range, with no materials/sources/grading', () => {
+    const task = buildPrompt(0, { theme: { title: 't', level: '중', grade: 1, subjects: ['수학', '과학'] }, subject: '', standards: [], prior: {} }).user.split('과제: ')[1]
+    expect(task).toContain('아이디어는 한 줄 스케치이며 해당 학년 교과서 범위 안에서만 제안한다')
+    expect(task).toContain('자료·출처·채점은 여기서 다루지 않는다')
+  })
+  it('stage 0 prompts (before standards are chosen) do not print an empty 성취기준(원문) header', () => {
+    const c0 = { theme: { title: 't', level: '중', grade: 1, subjects: ['수학', '세계사'] }, subject: '', standards: [], prior: {} }
+    expect(buildPrompt(0, c0).user).not.toContain('성취기준(원문')
+    expect(buildReviewPrompt(0, c0, { intro: 'x', subject_ideas: [] }).user).not.toContain('성취기준(원문')
+    expect(buildPrompt(2, ctx).user).toContain('성취기준(원문, 절대 변형 금지)')
+  })
 })
 
 describe('review focus v2', () => {
+  it('stage 0 review checks only grade level, subject grade range and spoilers — not standards/sources/materials/grading', () => {
+    const c0 = { theme: { title: 't', level: '중', grade: 1, subjects: ['과학', '세계사'] }, subject: '', standards: [], prior: {} }
+    const focus = buildReviewPrompt(0, c0, { intro: 'x', subject_ideas: [] }).user.split('검토 초점: ')[1].split('\n\n생성 결과')[0]
+    expect(focus).toMatch(/3~4문장/); expect(focus).toMatch(/해당 학년 교과 내용 범위/); expect(focus).toMatch(/좁힌 예/); expect(focus).toMatch(/결론이나 정답을 미리 말하지 않는지/)
+    expect(focus).toContain('성취기준 원문, 출처 표기 계획, 자료 계획, 채점 계획은 요구하지 않는다')
+    expect(focus).toMatch(/반려하지 않는다/)
+  })
   it('stage 5 review asks to actually grade the exemplars per item and to check level wording', () => {
     const u = buildReviewPrompt(5, ctx, { items: [] }).user
     expect(u).toMatch(/예시답안을 채점표로 실제로 채점/); expect(u).toMatch(/부사만/); expect(u).toMatch(/8문항/)

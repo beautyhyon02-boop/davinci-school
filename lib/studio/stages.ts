@@ -3,10 +3,10 @@ import { buildPrompt, buildReviewPrompt, type Ctx } from './prompts/stages'
 import { staticIssues, type Issue } from './checks'
 import { enrichOutput } from './enrich'
 import { callStructured } from '@/lib/ai/claude'
-import { MAX_ATTEMPTS } from './max-attempts'
+import { MAX_ATTEMPTS, EXHAUSTED_ERROR } from './max-attempts'
 import type { ZodType } from 'zod'
 
-export { MAX_ATTEMPTS }
+export { MAX_ATTEMPTS, EXHAUSTED_ERROR }
 
 /** runStage/runThemeIntro가 던지는 '알려진' 오류의 코드. API 라우트가 이 코드로 400을 매핑한다(그 외는 500). */
 export const STAGE_ERRORS = {
@@ -14,6 +14,7 @@ export const STAGE_ERRORS = {
   TOO_FEW_STANDARDS: 'too-few-standards',
   NOTHING_TO_REVIEW: 'nothing-to-review',
   ACCEPT_REQUIRES_REVIEW: 'accept-requires-review',
+  INVALID_EDIT: 'invalid-edit',
 } as const
 export type StageErrorCode = (typeof STAGE_ERRORS)[keyof typeof STAGE_ERRORS]
 
@@ -51,12 +52,51 @@ export type ThemeRepo = {
   log(entry: ThemeLogRow): Promise<void>
 }
 
-export async function runThemeIntro({ themeId, action, repo }: { themeId: string; action: 'generate' | 'review' | 'accept'; repo: ThemeRepo }) {
+export type ThemeIntroAction = 'generate' | 'review' | 'accept' | 'edit'
+export type ThemeIntroOutput = { intro: string; subject_ideas: { subject: string; idea: string }[] }
+
+/**
+ * 관리자가 직접 고친 소개(action 'edit')를 다듬고 검증한다. 앞뒤 공백을 걷어 낸 뒤 STAGE_SCHEMAS[0]으로 검사하고,
+ * 대주제에 없는 과목의 아이디어는 받지 않는다. 실패하면 INVALID_EDIT(화면이 content/site.ts 문구로 바꿔 보여 준다).
+ */
+function parseIntroEdit(edit: unknown, subjects: string[]): ThemeIntroOutput {
+  const raw = (edit ?? {}) as { intro?: unknown; subject_ideas?: unknown }
+  const ideas = Array.isArray(raw.subject_ideas) ? raw.subject_ideas : []
+  const candidate = {
+    intro: typeof raw.intro === 'string' ? raw.intro.trim() : raw.intro,
+    subject_ideas: ideas.map((i) => {
+      const o = (i ?? {}) as { subject?: unknown; idea?: unknown }
+      return { subject: o.subject, idea: typeof o.idea === 'string' ? o.idea.trim() : o.idea }
+    }),
+  }
+  const r = STAGE_SCHEMAS[0].safeParse(candidate)
+  if (!r.success) {
+    const where = r.error.issues.map((i) => i.path.join('.') || '(root)').join(', ')
+    throw new StageError(STAGE_ERRORS.INVALID_EDIT, `invalid edit: ${where}`)
+  }
+  const out = r.data as ThemeIntroOutput
+  const outside = out.subject_ideas.filter((i) => !subjects.includes(i.subject)).map((i) => i.subject)
+  if (outside.length > 0) throw new StageError(STAGE_ERRORS.INVALID_EDIT, `invalid edit: subject not in theme (${outside.join(', ')})`)
+  return out
+}
+
+export async function runThemeIntro({ themeId, action, repo, edit }: { themeId: string; action: ThemeIntroAction; repo: ThemeRepo; edit?: unknown }) {
   const theme = await repo.loadTheme(themeId)
   const prev = theme.intro_ideas ?? { state: 'idle', attempt: 0, updated_at: '' }
   const now = () => new Date().toISOString()
   const ctx: Ctx = { theme: { title: theme.title, level: theme.level, grade: theme.grade, subjects: theme.subjects }, subject: '', standards: [], prior: {} }
 
+  // 직접 수정: 검토 AI를 거치지 않고 관리자가 고친 내용을 그대로 확정한다(검토 한도에 닿아도 막히지 않도록).
+  // 시도 횟수는 그대로 두고, 확정본은 themes.intro 에도 저장한다.
+  if (action === 'edit') {
+    const output = parseIntroEdit(edit, theme.subjects)
+    const status: StageStatus = { state: 'accepted', attempt: prev.attempt, output, review: { pass: true, issues: [] }, model: 'manual', updated_at: now() }
+    await repo.saveThemeIntro(themeId, status, output)
+    return { status }
+  }
+
+  // 생성은 검토 한도에 닿은 뒤에도 언제든 다시 할 수 있다 — 한도 표지(EXHAUSTED_ERROR)는 안내일 뿐 잠금이 아니다.
+  // 시도 횟수는 계속 늘고, 새 상태에는 error 가 없으므로 한도 표지는 지워진다.
   if (action === 'generate') {
     const attempt = prev.attempt + 1
     const p = buildPrompt(0, ctx)
@@ -88,14 +128,14 @@ export async function runThemeIntro({ themeId, action, repo }: { themeId: string
     const exhausted = !review.pass && prev.attempt >= (MAX_ATTEMPTS[0] ?? 1)
     const status: StageStatus = { state: 'reviewed', attempt: prev.attempt, output, review, updated_at: now(),
       ...(prev.model ? { model: prev.model } : {}),
-      ...(exhausted ? { error: '검토 반복 한도 도달 — 관리자가 직접 수정' } : {}) }
+      ...(exhausted ? { error: EXHAUSTED_ERROR } : {}) }
     await repo.saveThemeIntro(themeId, status); return { status }
   }
 
   // accept
   if (prev.state !== 'reviewed' || !prev.review?.pass) throw new StageError(STAGE_ERRORS.ACCEPT_REQUIRES_REVIEW, 'accept requires a passing review')
   const status: StageStatus = { ...prev, state: 'accepted', updated_at: now() }
-  const accepted = output as { intro: string; subject_ideas: { subject: string; idea: string }[] }
+  const accepted = output as ThemeIntroOutput
   await repo.saveThemeIntro(themeId, status, accepted)
   return { status }
 }
@@ -157,7 +197,7 @@ export async function runStage({ itemSetId, stage, action, repo }: { itemSetId: 
       const exhausted = prev.attempt >= (MAX_ATTEMPTS[stage] ?? 1)
       const status: StageStatus = { state: 'reviewed', attempt: prev.attempt, output, review, updated_at: now(),
         ...(prev.model ? { model: prev.model } : {}),
-        ...(exhausted ? { error: '검토 반복 한도 도달 — 관리자가 직접 수정' } : {}) }
+        ...(exhausted ? { error: EXHAUSTED_ERROR } : {}) }
       await repo.saveStatus(itemSetId, stage, status); return { status }
     }
     // 검토 결과({pass, issues})를 generation_log.issues 에 남기기 위해, 성공한 호출의 로그 행은 검토 결과가 나온 뒤에 기록한다
@@ -173,7 +213,7 @@ export async function runStage({ itemSetId, stage, action, repo }: { itemSetId: 
     const exhausted = !review.pass && prev.attempt >= (MAX_ATTEMPTS[stage] ?? 1)
     const status: StageStatus = { state: 'reviewed', attempt: prev.attempt, output, review, updated_at: now(),
       ...(prev.model ? { model: prev.model } : {}),
-      ...(exhausted ? { error: '검토 반복 한도 도달 — 관리자가 직접 수정' } : {}) }
+      ...(exhausted ? { error: EXHAUSTED_ERROR } : {}) }
     await repo.saveStatus(itemSetId, stage, status); return { status }
   }
 

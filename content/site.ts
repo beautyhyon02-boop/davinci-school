@@ -219,7 +219,19 @@ export const app = {
       ideasLabel: '과목별 아이디어',
       reviewIssuesHeading: '검토 결과 — 통과하지 못했습니다',
       errorPrefix: '오류: ',
+      // 검토 반복 한도에 닿았을 때의 안내(잠금 아님) — 빨간 오류 대신 이 문구를 보여 준다
+      exhausted: '검토를 여러 번 통과하지 못했습니다. [생성]을 눌러 다시 만들어 보거나, 아래 [직접 수정]에서 고쳐 확정할 수 있습니다.',
       errors: { generic: '요청 처리 중 오류가 났습니다.' },
+      edit: {
+        heading: '직접 수정',
+        help: '검토를 통과하지 못해도 여기서 고친 내용을 확정할 수 있습니다.',
+        introLabel: '소개 문구 (3~4문장)',
+        ideaLabel: (subject: string) => `${subject} 아이디어`,
+        submit: '수정하여 확정',
+        submitting: '확정하는 중…',
+        saved: '고친 내용으로 확정했습니다.',
+        invalid: '소개 문구(20자 이상)와 과목마다 아이디어(5자 이상)를 모두 채워 주세요.',
+      },
     },
     materials: {
       heading: '공유 자료',

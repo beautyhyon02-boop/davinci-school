@@ -33,7 +33,7 @@ export default async function ThemeDetailPage({ params }: { params: Promise<{ th
 
   const { data: theme } = await supabase
     .from('themes')
-    .select('id, title, level, grade, subjects, intro_ideas, materials')
+    .select('id, title, level, grade, subjects, intro, intro_ideas, materials')
     .eq('id', themeId)
     .single()
   if (!theme) notFound()
@@ -90,7 +90,7 @@ export default async function ThemeDetailPage({ params }: { params: Promise<{ th
       </div>
 
       <div className="mt-6 grid gap-6">
-        <ThemeIntroPanel themeId={themeId} initialStatus={theme.intro_ideas} />
+        <ThemeIntroPanel themeId={themeId} initialStatus={theme.intro_ideas} themeSubjects={themeSubjects} acceptedIntro={(theme.intro as string | null) ?? null} />
         <SharedMaterialsPanel themeId={themeId} initialJson={initialMaterialsJson} />
 
         <Card>

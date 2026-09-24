@@ -18,6 +18,8 @@ const EDIT_ERROR_COPY: Record<StageErrorCode, string> = {
   [STAGE_ERRORS.TOO_FEW_STANDARDS]: errors.tooFewStandards,
   [STAGE_ERRORS.NOTHING_TO_REVIEW]: errors.generic,
   [STAGE_ERRORS.ACCEPT_REQUIRES_REVIEW]: errors.generic,
+  // 대주제 소개 직접 수정(runThemeIntro 'edit') 전용 — 세트 편집에서는 나오지 않는다
+  [STAGE_ERRORS.INVALID_EDIT]: errors.generic,
 }
 
 async function assertAdmin() {

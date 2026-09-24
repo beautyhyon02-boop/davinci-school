@@ -22,8 +22,8 @@ function header(ctx: Ctx) {
     `학교급·학년: ${LEVEL_NAME[ctx.theme.level] ?? ctx.theme.level} ${ctx.theme.grade}학년 (모든 내용은 이 학년 수준)`,
     ...(ctx.theme.subjects.length > 0 ? [`참여 과목: ${ctx.theme.subjects.join(', ')}`] : []),
     ...(ctx.subject ? [`과목: ${ctx.subject}`] : []),
-    `성취기준(원문, 절대 변형 금지):`,
-    ...ctx.standards.map((s) => `${s.code} ${s.text}`),
+    // 0단계(대주제 소개)는 성취기준을 고르기 전이다 — 빈 '성취기준(원문)' 머리말을 두면 검토 AI가 원문이 없다고 반려한다
+    ...(ctx.standards.length > 0 ? ['성취기준(원문, 절대 변형 금지):', ...ctx.standards.map((s) => `${s.code} ${s.text}`)] : []),
   ].join('\n')
 }
 
@@ -33,7 +33,7 @@ const [SHORT_STEP, ESSAY_STEP] = ASSESSMENT_SESSION.steps
 const SESSION_TEXT = `단원 평가 차시(kind "assessment", 마지막 번호, topic "${ASSESSMENT_SESSION.topic}"): 마지막 교수 차시 뒤에 ${SET_KINDS}을 함께 본다 — standards는 두 문항이 평가하는 성취기준 1~2개, time_budget 도입 ${SESSION_T.intro_min}·전개 ${SESSION_T.main_min}·정리 ${SESSION_T.wrapup_min}(평가 안내·답안 점검), flow.main은 [${SHORT_STEP.step_label} ${SHORT_STEP.minutes}분, ${ESSAY_STEP.step_label} ${ESSAY_STEP.minutes}분], formative_check.quiz는 빈 배열, teacher_script.questions·worksheet.tasks·worksheet.self_check는 빈 배열로 둘 수 있다, caution_notes(시간 안내·답안 방식 안내), materials_used(두 문항이 쓰는 자료 ID), assessment ["서술형", "논술형"], mergeable_with null`
 
 const TASKS: Record<Stage, string> = {
-  0: '대주제 소개문(3~4문장)과 참여 과목별로 이 대주제와 연결할 수 있는 수업 아이디어를 한 줄씩 제안하라.',
+  0: '대주제 소개문(3~4문장)과 참여 과목별로 이 대주제와 연결할 수 있는 수업 아이디어를 한 줄씩 제안하라. 아이디어는 한 줄 스케치이며 해당 학년 교과서 범위 안에서만 제안한다; 자료·출처·채점은 여기서 다루지 않는다. 소개문은 결론이나 정답을 미리 말하지 않는다.',
   1: '주어진 성취기준이 이 대주제와 학년에 적합한지 판단하고, 부적합한 것이 있으면 이유와 함께 표시하라. 해당 학년 교과서에서 다루는 내용만 적합으로 본다.',
   2: '재구조화 표(standards: 성취기준마다 통합/재조정/유지, original_text는 원문 그대로, reconstructed_text는 "학생은 [자료]를 가지고 [수행]을 해서 [결과물]을 할 수 있다", reason 태그, merged_with(재구조화 유형이 통합이면 함께 묶은 다른 성취기준 코드 배열, 그 외는 빈 배열), learning_elements; reconstructed_text는 original_text와 merged_with 성취기준 원문에 있는 어휘만 쓴다)와 세트 통합 문장 1개(reconstruction), 학습 목표 3~5개(각각 axis=지식·이해/과정·기능/가치·태도, 세 축 모두 1개 이상), 세트 핵심질문 후보 2~3개를 만들어라. 위에 준 C 문장(도달점)보다 좁아지거나 다른 활동을 가리키지 않게 한다. level_anchor는 빈 배열로 둔다(서버가 채운다).',
   3: `unit_plan(set_title, set_key_question, lesson_map(모든 차시, 단원 평가 차시 포함), assessment_plan: formative·summative_placement ${SET_ITEM_COUNT}건(서술형 → 논술형, 두 건 모두 단원 평가 차시 번호)·rubric_note 상/중/하)과 lessons를 설계하라: 교수 차시 ${TEACHING_LESSONS.min}~${TEACHING_LESSONS.max}개(보통 ${TEACHING_LESSONS.max}개) + 마지막 교수 차시 뒤 단원 평가 차시 1개. 교수 차시(kind "teaching"): 담당 성취기준 1~2개, topic, 차시 핵심질문, goal, time_budget(도입 10·전개 40·정리 10, 합 60), flow(intro 불릿, main 소단계 2~4개에 minutes 합 = 전개 시간, wrapup 불릿), teacher_script.questions 발문 2~4개(prompt·expected_answer·if_stuck), materials_used(자료 ID A~F만), materials_needed(준비물), caution_notes(오개념 1개 이상), worksheet(tasks 2~5개: 기본·표준·도전 각 1개 이상, tier·level_ref·answer_space·expected; self_check 1~3), formative_check.quiz(마지막 교수 차시 포함 모든 교수 차시에 정확히 3문항), assessment는 빈 배열, mergeable_with·merge_note. ${SESSION_TEXT}.`,
@@ -125,7 +125,8 @@ export function buildPrompt(stage: Stage, ctx: Ctx) {
  * 그래서 여기에는 기계로 판정하기 어려운 것(의미·수준·구체성)과 기계 검사의 판단 근거를 사람 말로 다시 적은 것만 둔다.
  */
 const REVIEW_FOCUS: Record<Stage, string> = {
-  0: '소개문이 학년 수준인지, 과목별 아이디어가 그 과목 성취기준으로 이어질 수 있는지.',
+  // 0단계는 성취기준을 고르기 전의 한 줄 스케치다 — 뒤 단계(1: 성취기준, 4: 자료·출처, 5: 채점)의 요구로 반려하지 않게 범위를 못 박는다(2026-09-24)
+  0: '이 단계는 성취기준을 고르기 전의 대주제 소개와 과목별 한 줄 아이디어 스케치다. 다음 세 가지만 본다. (a) 소개문이 해당 학년 수준의 어휘이고 길이가 3~4문장인지(grade_level). (b) 과목별 아이디어가 그 과목의 해당 학년 교과 내용 범위 안에 있는지(grade_level) — 다른 학년 내용이면 그 과목 아이디어를 해당 학년 수준(예: 중1)으로 좁힌 예를 detail에 함께 적는다. (c) 소개문·아이디어가 결론이나 정답을 미리 말하지 않는지(other). 성취기준 원문, 출처 표기 계획, 자료 계획, 채점 계획은 요구하지 않는다 — 모두 뒤 단계에서 다루므로 이것이 없다는 이유로 반려하지 않는다. 위 세 가지에 문제가 없으면 pass=true, issues=[].',
   1: '추천한 성취기준이 해당 학년 교과서 범위인지(다른 학년 내용이면 grade_level 이슈).',
   2: '재구조화 문장마다 원문에 없는 동사·대상·개념이 있는지(fidelity). 재구조화 문장이 위의 C 문장(도달점)보다 좁거나 다른 활동인지(level). 통합이면 merged_with에 함께 묶은 성취기준 코드가 빠짐없이 있고 그 원 성취기준의 학습요소가 남았는지, 통합이 아니면 merged_with가 빈 배열인지. 핵심질문 후보가 사실 확인형인지. 학습 목표에 세 축이 다 있고 서술어가 통일됐는지. 재구성에 축제·일회용품 같은 맥락이 섞였는지.',
   3: `모든 성취기준이 어느 차시엔가 배정됐는지(coverage). 교수 차시마다 퀴즈 3문항(마지막 교수 차시 포함)이 차시 핵심질문을 점검하고 정답이 맞는지(quiz). ${SET_KINDS}이 마지막 교수 차시 뒤 단원 평가 차시(kind "assessment", ${SESSION_STEPS})에 함께 있고 교수 차시에는 서·논술형이 없는지(coverage). 발문이 원장이 읽고 그대로 진행할 만큼 구체적이고 if_stuck이 정답을 그대로 말하지 않는지. 교수 차시 활동지 기본·표준·도전이 실제로 난이도 차이가 나는지(level). caution_notes에 오개념이 있는지. 시간 배분이 활동량과 맞는지. 교수 차시의 수업·퀴즈가 단원 평가 문항의 답을 미리 말하지 않는지(C-03).`,
