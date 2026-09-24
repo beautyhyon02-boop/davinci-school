@@ -179,3 +179,15 @@ describe('runStage v2 hooks', () => {
     expect((outputs[2] as { level_anchor: unknown[] }).level_anchor.length).toBe(2)
   })
 })
+
+describe('effortFor — 5단계 생각 깊이(Hobby 300초 한도)', () => {
+  it('기본은 모두 high, 환경변수로 5단계만 xhigh', async () => {
+    const { effortFor } = await import('@/lib/studio/stages')
+    const prev = process.env.STUDIO_STAGE5_EFFORT
+    delete process.env.STUDIO_STAGE5_EFFORT
+    expect(effortFor(5)).toBe('high'); expect(effortFor(3)).toBe('high')
+    process.env.STUDIO_STAGE5_EFFORT = 'xhigh'
+    expect(effortFor(5)).toBe('xhigh'); expect(effortFor(3)).toBe('high')
+    if (prev === undefined) delete process.env.STUDIO_STAGE5_EFFORT; else process.env.STUDIO_STAGE5_EFFORT = prev
+  })
+})

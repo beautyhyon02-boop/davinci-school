@@ -181,6 +181,15 @@ export function stageNotes(ctx: Awaited<ReturnType<Repo['loadContext']>>, stage:
  * - accept([확인]): 확인할 출력(생성됨·검토 의견 받음 상태)만 있으면 된다. 검토 통과는 요구하지 않는다.
  * 시도 횟수(attempt)는 기록용일 뿐 한도로 막지 않는다.
  */
+/**
+ * 단계별 생각 깊이. 5단계는 원래 xhigh였으나 Vercel Hobby의 요청 한도(300초)에 4분으로 닿아(2026-09-26 실측)
+ * 기본을 high로 낮춘다. 환경변수 STUDIO_STAGE5_EFFORT=xhigh 로 되돌릴 수 있다(Pro 요금제·한도 상향 시).
+ */
+export function effortFor(stage: Stage): 'high' | 'xhigh' {
+  if (stage !== 5) return 'high'
+  return process.env.STUDIO_STAGE5_EFFORT === 'xhigh' ? 'xhigh' : 'high'
+}
+
 export async function runStage({ itemSetId, stage, action, repo }: { itemSetId: string; stage: Stage; action: 'generate' | 'review' | 'accept'; repo: Repo }) {
   const ctx = await repo.loadContext(itemSetId)
   const prev = ctx.statuses?.[stage] ?? { state: 'idle', attempt: 0, updated_at: '' }
@@ -204,7 +213,7 @@ export async function runStage({ itemSetId, stage, action, repo }: { itemSetId: 
     let status: StageStatus
     try {
       const r = await callStructured({ stage, role: 'generate', schema: STAGE_SCHEMAS[stage] as ZodType<unknown>, system: p.system, user: p.user,
-        effort: stage === 5 ? 'xhigh' : 'high', mode: STAGE_OUTPUT_MODE[stage], fixtureKey: p.fixtureKey,
+        effort: effortFor(stage), mode: STAGE_OUTPUT_MODE[stage], fixtureKey: p.fixtureKey,
         log: e => repo.log({ itemSetId, stage, role: 'generate', attempt, ...e }) })
       // 서버가 채우는 값(2단계 level_anchor, 5단계 min_competency)을 넣은 뒤 저장한다 — 모델 원출력이 아니라 이것이 검사·확인·게시의 대상
       const data = enrichOutput(stage, r.data, { standards: ctx.standards, prior: ctx.prior })
