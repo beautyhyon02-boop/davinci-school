@@ -17,6 +17,16 @@ const norm = (s: string) => s.replace(/\s+/g, ' ').trim()
 const count = (s: string, needle: string) => s.split(needle).length - 1
 const c = app.packageView
 const w = app.studio.wizard
+// 렌더러(React)가 글자를 이스케이프하는 방식 그대로 — 마크업 안에서 원문 위치를 찾을 때
+const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;')
+/** a 뒤에 b 가 오고, 둘 사이에 블록 경계(</p> 또는 </li>)가 있다 = 같은 줄에 이어 붙지 않고 아랫줄에 있다(오너 요청 2026-09-26). */
+function separated(html: string, a: string, b: string) {
+  const ia = html.indexOf(esc(a))
+  expect(ia, a).toBeGreaterThanOrEqual(0)
+  const ib = html.indexOf(esc(b), ia + esc(a).length)
+  expect(ib, b).toBeGreaterThan(ia)
+  expect(html.slice(ia, ib), `${a} ↔ ${b}`).toMatch(/<\/p>|<\/li>/)
+}
 
 type Outputs = Partial<Record<WizardStage, unknown>>
 const render = (stage: WizardStage, outputs: Outputs, sharedMaterials: Parameters<typeof StageOutput>[0]['sharedMaterials'] = []) =>
@@ -28,7 +38,7 @@ describe.each(['수학', '과학'] as const)('StageOutput (%s fixtures)', (subje
     2: fx(`stage2-generate${sfx}`), 3: fx(`stage3-generate${sfx}`), 4: fx(`stage4-generate${sfx}`),
     5: fx(`stage5-generate${sfx}`), 6: fx(`stage6-generate${sfx}`), 7: fx(`stage7-generate${sfx}`),
   }
-  const s3 = outputs[3] as { lessons: { no: number; topic: string; caution_notes: string[]; teacher_script: { questions: { prompt: string; expected_answer: string }[] } }[] }
+  const s3 = outputs[3] as { lessons: { no: number; topic: string; caution_notes: string[]; teacher_script: { questions: { prompt: string; expected_answer: string; if_stuck: string }[] }; formative_check: { quiz: { q: string; answer: string; explanation: string }[] } }[] }
   const s6 = outputs[6] as { per_lesson: { no: number; notes: string[] }[]; glossary: { term: string }[] }
 
   it('stage 3 shows full lesson cards with the matching 지침서 notes inside each card', () => {
@@ -40,10 +50,17 @@ describe.each(['수학', '과학'] as const)('StageOutput (%s fixtures)', (subje
     for (const l of s3.lessons) {
       const start = html.indexOf(`data-lesson-no="${l.no}"`)
       const next = html.indexOf('data-lesson-no="', start + 1)
-      const seg = text(html.slice(start, next < 0 ? undefined : next))
+      const raw = html.slice(start, next < 0 ? undefined : next)
+      const seg = text(raw)
       expect(seg).toContain(norm(`${c.lessons.columns.no} ${l.no} · ${l.topic}`))
       expect(seg).toContain(c.lessons.teacherBlockHeading)
-      for (const q of l.teacher_script.questions) expect(seg).toContain(norm(`${q.prompt} — ${c.lessons.scriptExpected}: ${q.expected_answer}`))
+      // 발문 → 아랫줄 예상 답 → 아랫줄 막힐 때(옆으로 잇지 않음), 퀴즈 문제 → 정답 → 해설
+      for (const q of l.teacher_script.questions) {
+        expect(seg).toContain(norm(`${q.prompt} ${c.lessons.scriptExpected} ${q.expected_answer}`))
+        separated(raw, q.prompt, q.expected_answer); separated(raw, q.expected_answer, q.if_stuck)
+      }
+      for (const q of l.formative_check.quiz) { separated(raw, q.answer, q.explanation) }
+      expect(seg).not.toContain(` — ${c.lessons.scriptExpected}:`)
       for (const n of l.caution_notes) expect(seg).toContain(norm(n))
       for (const n of s6.per_lesson.find((p) => p.no === l.no)?.notes ?? []) expect(seg).toContain(norm(n))
     }
@@ -63,6 +80,23 @@ describe.each(['수학', '과학'] as const)('StageOutput (%s fixtures)', (subje
     const rows = mats.reduce((s, m) => s + (m.table?.rows.length ?? 0), 0)
     expect(count(html, '<tr class="border-b border-ink-50">')).toBe(rows)
     for (const m of mats) if (m.body) expect(text(html)).toContain(norm(m.body))
+  })
+  it('stages 3–7 use the same heading weight and never join content lists with " · " / " / "', () => {
+    const s3o = outputs[3] as { unit_plan: { assessment_plan: { summative_placement: { kind: string; lesson_no: number }[] } } }
+    const h3 = render(3, outputs)
+    expect(h3).toContain(`<p class="text-base font-bold text-ink-900">${w.stage3.unitPlanHeading}</p>`)
+    const placements = s3o.unit_plan.assessment_plan.summative_placement.map((p) => c.unitPlan.placement(p.kind, p.lesson_no))
+    for (let i = 1; i < placements.length; i++) separated(h3, placements[i - 1], placements[i])
+    const s5 = outputs[5] as { items: { level_map: { level: string; min: number; max: number }[]; conditions: { length: string; format: string } }[] }
+    const h5 = render(5, outputs)
+    expect(text(h5)).not.toMatch(/[A-E] \d+~\d+ \/ [A-E]/)
+    for (const it of s5.items) separated(h5, it.conditions.length, it.conditions.format)
+    const s7 = outputs[7] as { per_lesson: { quiz_notes: { wrong_note: string }[] }[] }
+    const h7 = render(7, outputs)
+    for (const p of s7.per_lesson) for (let i = 1; i < p.quiz_notes.length; i++) separated(h7, p.quiz_notes[i - 1].wrong_note, p.quiz_notes[i].wrong_note)
+    const s6 = outputs[6] as { general: { materials: string[] } }
+    const h6 = render(6, outputs)
+    for (let i = 1; i < s6.general.materials.length; i++) separated(h6, s6.general.materials[i - 1], s6.general.materials[i])
   })
   it('stage 6 shows the whole guide with lesson topics; stage 7 the whole notice plan', () => {
     const g = text(render(6, outputs))

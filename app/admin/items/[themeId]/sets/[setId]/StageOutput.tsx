@@ -1,7 +1,7 @@
 import { app } from '@/content/site'
 import type { WizardStage } from '@/lib/studio/wizard-stages'
 import { usedMaterialIds, stageMaterialsView } from '@/lib/studio/materials'
-import { arr } from '@/components/studio/parts/common'
+import { SectionTitle, arr } from '@/components/studio/parts/common'
 import { LessonCards, type LessonLike } from '@/components/studio/parts/LessonCards'
 import { UnitPlanView, type UnitPlanLike } from '@/components/studio/parts/UnitPlanView'
 import { MaterialsFull, type MaterialLike } from '@/components/studio/parts/MaterialsFull'
@@ -21,9 +21,8 @@ const copy = app.studio.wizard
 type Stage2Output = { reconstruction: string; learning_goals: (string | { text: string; axis: string })[]; key_question_candidates: string[] }
 type Stage3Output = { unit_plan?: UnitPlanLike | null; lessons?: LessonLike[] }
 
-function Heading({ children }: { children: React.ReactNode }) {
-  return <p className="text-sm font-semibold text-ink-500">{children}</p>
-}
+// 칸 제목은 원장 화면 조각과 같은 위계(text-base 굵게 — parts/common.tsx SectionTitle, 오너 요청 2026-09-26).
+const Heading = SectionTitle
 
 export function StageOutput({ stage, outputs, sharedMaterials = [] }: {
   stage: WizardStage

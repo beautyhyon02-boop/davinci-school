@@ -32,6 +32,16 @@ const render = (snapshot: Snapshot, mode: 'admin' | 'teacher') => renderToStatic
 // 마크업에서 태그를 걷어낸 글자만(렌더된 텍스트 비교용).
 const text = (html: string) => html.replace(/<[^>]+>/g, ' ').replace(/&quot;/g, '"').replace(/&#x27;/g, "'").replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/\s+/g, ' ')
 const norm = (s: string) => s.replace(/\s+/g, ' ')
+// 렌더러(React)가 글자를 이스케이프하는 방식 그대로 — 마크업 안에서 원문 위치를 찾을 때
+const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;')
+/** a 뒤에 b 가 오고, 둘 사이에 블록 경계(</p> 또는 </li>)가 있다 = 같은 줄에 이어 붙지 않고 아랫줄에 있다(오너 요청 2026-09-26). */
+function separated(html: string, a: string, b: string) {
+  const ia = html.indexOf(esc(a))
+  expect(ia, a).toBeGreaterThanOrEqual(0)
+  const ib = html.indexOf(esc(b), ia + esc(a).length)
+  expect(ib, b).toBeGreaterThan(ia)
+  expect(html.slice(ia, ib), `${a} ↔ ${b}`).toMatch(/<\/p>|<\/li>/)
+}
 
 describe.each(['수학', '과학'] as const)('PackageView v2 (%s mock snapshot)', (subject) => {
   const snap = snapshotFor(subject)
@@ -56,15 +66,27 @@ describe.each(['수학', '과학'] as const)('PackageView v2 (%s mock snapshot)'
       for (const l of snap.lessons) {
         const start = h.indexOf(`data-lesson-no="${l.no}"`)
         const next = h.indexOf('data-lesson-no="', start + 1)
-        const seg = text(h.slice(start, next < 0 ? h.indexOf(`<h2 class="text-lg font-bold">${c.materialsHeading}</h2>`) : next))
+        const raw = h.slice(start, next < 0 ? h.indexOf(`<h2 class="text-lg font-bold">${c.materialsHeading}</h2>`) : next)
+        const seg = text(raw)
         expect(seg).toContain(c.lessons.teacherBlockHeading)
-        for (const q of l.teacher_script.questions) expect(seg).toContain(norm(`${q.prompt} — ${c.lessons.scriptExpected}: ${q.expected_answer}`))
+        // 발문(굵게) → 아랫줄 예상 답 → 아랫줄 막힐 때(오너 요청 2026-09-26: 옆으로 쭉 나열하지 말 것)
+        for (const q of l.teacher_script.questions) {
+          expect(raw).toContain(`<p data-script-prompt="true" class="font-semibold">${esc(q.prompt)}</p>`)
+          separated(raw, q.prompt, q.expected_answer); separated(raw, q.expected_answer, q.if_stuck)
+        }
+        expect(seg).not.toContain(` — ${c.lessons.scriptExpected}:`)
         for (const n of l.caution_notes) expect(seg).toContain(norm(n))
         for (const n of snap.teacher_guide!.per_lesson.find((p) => p.no === l.no)?.notes ?? []) expect(seg).toContain(norm(n))
         // 퀴즈 수준(L-10, 대표 2026-09-26): 교수 차시 카드의 교사용 지침 칸에 문항마다 D~E·C·B — 시연 세트는 수준이 모두 붙어 있다
         const quiz = l.formative_check.quiz as { level_ref?: string }[]
-        if (quiz.length) expect(seg).toContain(norm(`${c.lessons.quizLevelsHeading}: ${quiz.map((q, i) => c.lessons.quizLevel(i + 1, q.level_ref)).join(' · ')}`))
-        else expect(seg).not.toContain(c.lessons.quizLevelsHeading)
+        if (quiz.length) {
+          // 퀴즈 수준은 한 줄에 하나(예전의 " · " 한 줄 나열 아님)
+          const levels = raw.slice(raw.indexOf('data-quiz-levels'))
+          const block = levels.slice(0, levels.indexOf('</ul>'))
+          expect(block).toContain(c.lessons.quizLevelsHeading)
+          for (const [i, q] of quiz.entries()) expect(block).toContain(`<li>${esc(c.lessons.quizLevel(i + 1, q.level_ref))}</li>`)
+          expect(seg).not.toContain(quiz.map((q, i) => c.lessons.quizLevel(i + 1, q.level_ref)).join(' · '))
+        } else expect(seg).not.toContain(c.lessons.quizLevelsHeading)
       }
     }
     expect(c.lessons.quizLevel(3, 'B')).toBe('3번 B(관계·추론)'); expect(c.lessons.quizLevel(1, undefined)).toBe('1번 수준 없음')
@@ -110,6 +132,25 @@ describe.each(['수학', '과학'] as const)('PackageView v2 (%s mock snapshot)'
       if (it.rubric.holistic) expect(t).toContain(norm(it.rubric.holistic.상))
     }
   })
+  it('item cards read top-down: stem in text-base, elements/conditions/length/format/notes/exemplars/A~E one per line (2026-09-26)', () => {
+    const segs = html.split('data-print="item"').slice(1)
+    snap.assessment!.items.forEach((it, i) => {
+      const seg = segs[i]
+      expect(seg).toContain(`<p data-item-stem="true" class="mt-3 whitespace-pre-wrap text-base font-semibold leading-relaxed">${esc(it.stem)}</p>`)
+      for (const el of it.evaluation_elements) expect(seg).toContain(`<li>${esc(el)}</li>`)
+      if (it.evaluation_elements.length > 1) expect(text(seg)).not.toContain(it.evaluation_elements.join(' · '))
+      for (let k = 1; k < it.conditions.items.length; k++) separated(seg, it.conditions.items[k - 1].text, it.conditions.items[k].text)
+      separated(seg, it.conditions.length, it.conditions.format)
+      for (let k = 1; k < it.rubric.notes.length; k++) separated(seg, it.rubric.notes[k - 1], it.rubric.notes[k])
+      for (const e of it.exemplar_answers) separated(seg, e.text, e.rationale)
+      // A~E: 수준마다 한 줄(수준 굵게 · 예상 점수 · 특징), 예전의 " / " 한 줄 나열 아님
+      const lm = seg.slice(seg.indexOf('data-level-map'))
+      const block = lm.slice(0, lm.indexOf('</ul>'))
+      expect(block.split('<li>').length - 1).toBe(it.level_map.length)
+      for (const lv of it.level_map) expect(block).toContain(`<span class="inline-block w-6 font-bold">${lv.level}</span> <span class="tabular-nums">${lv.min}~${lv.max}</span>`)
+      expect(text(seg)).not.toMatch(/[A-E] \d+~\d+ \/ [A-E]/)
+    })
+  })
   it('marks exactly the paper-answer items (none in the demo sets since 2026-09-26; a synthetic paper 서술형 shows one)', () => {
     const papers = snap.assessment!.items.filter((i) => i.conditions.answer_mode === 'paper').length
     expect(papers).toBe(0)
@@ -152,7 +193,7 @@ describe.each(['수학', '과학'] as const)('PackageView v2 (%s mock snapshot)'
     expect(html).not.toContain(`<h2 class="text-lg font-bold">${c.gradeBoundariesHeading}</h2>`)
     expect(html).not.toContain(`<h2 class="text-lg font-bold">${c.feedbackTemplatesHeading}</h2>`)
     const card = html.slice(start, html.indexOf('<h2 class="text-lg font-bold">', start + 1))
-    expect(card).toContain(`<h3 class="font-semibold">${c.gradeBoundariesHeading}</h3>`)
+    expect(card).toContain(`<h3 class="text-base font-bold">${c.gradeBoundariesHeading}</h3>`)
     expect(card).toContain(c.feedbackTemplatesHeading)
     expect(card).toMatch(/<details open="" data-print="omit"/)
     for (const b of snap.assessment!.grade_boundaries) expect(text(card)).toContain(`${b.grade} ${b.min}~${b.max} ${b.band} ${b.level_ref}`)

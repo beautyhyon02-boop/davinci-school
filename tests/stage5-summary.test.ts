@@ -13,6 +13,16 @@ const fx = JSON.parse(readFileSync('data/studio-fixtures/stage5-generate.json', 
 const render = (output: unknown) => renderToStaticMarkup(createElement(Stage5Summary, { output }))
 const text = (html: string) => html.replace(/<[^>]+>/g, ' ').replace(/&quot;/g, '"').replace(/&#x27;/g, "'").replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/\s+/g, ' ')
 const norm = (s: string) => s.replace(/\s+/g, ' ').trim()
+// 렌더러(React)가 글자를 이스케이프하는 방식 그대로 — 마크업 안에서 원문 위치를 찾을 때
+const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;')
+/** a 뒤에 b 가 오고, 둘 사이에 블록 경계(</p> 또는 </li>)가 있다 = 같은 줄에 이어 붙지 않고 아랫줄에 있다(오너 요청 2026-09-26). */
+function separated(html: string, a: string, b: string) {
+  const ia = html.indexOf(esc(a))
+  expect(ia, a).toBeGreaterThanOrEqual(0)
+  const ib = html.indexOf(esc(b), ia + esc(a).length)
+  expect(ib, b).toBeGreaterThan(ia)
+  expect(html.slice(ia, ib), `${a} ↔ ${b}`).toMatch(/<\/p>|<\/li>/)
+}
 
 type Step = { points: number; descriptor: string }
 type Crit = { name: string; max: number; scale: Step[] }
@@ -65,7 +75,23 @@ describe('Stage5Summary', () => {
       expect(t).toContain(norm(e.text))
       expect(t).toContain(norm(e.rationale))
     }
-    for (const it of fx.items) expect(t).toContain(it.level_map.map((l: { level: string; min: number; max: number }) => `${l.level} ${l.min}~${l.max}`).join(' / '))
+    // A~E: 수준마다 한 줄(오너 요청 2026-09-26 — " / " 한 줄 나열 아님)
+    for (const it of fx.items) {
+      for (const l of it.level_map as { level: string; min: number; max: number }[]) expect(html).toContain(`<span class="inline-block w-6 font-bold">${l.level}</span> <span class="tabular-nums">${l.min}~${l.max}</span>`)
+      expect(t).not.toContain(it.level_map.map((l: { level: string; min: number; max: number }) => `${l.level} ${l.min}~${l.max}`).join(' / '))
+    }
+  })
+  it('reads top-down: stem in text-base, conditions one per numbered line, 분량·형식·초과 응답·유의점·예시답안 의견 each on its own line', () => {
+    const segs = html.split('data-stage5-item').slice(1)
+    fx.items.forEach((it: { stem: string; conditions: { items: { text: string }[]; length: string; format: string }; rubric: { notes: string[] }; exemplar_answers: { text: string; rationale: string }[] }, i: number) => {
+      const seg = segs[i]
+      expect(seg).toContain(`<p data-item-stem="true" class="mt-3 whitespace-pre-wrap text-base font-semibold leading-relaxed">${esc(it.stem)}</p>`)
+      for (let k = 1; k < it.conditions.items.length; k++) separated(seg, it.conditions.items[k - 1].text, it.conditions.items[k].text)
+      separated(seg, it.conditions.length, it.conditions.format)
+      expect(text(seg)).not.toContain(`${it.conditions.length} · ${copy.formatLabel}`)
+      for (let k = 1; k < it.rubric.notes.length; k++) separated(seg, it.rubric.notes[k - 1], it.rubric.notes[k])
+      for (const e of it.exemplar_answers) separated(seg, e.text, e.rationale)
+    })
   })
   it('puts 등급표(7행, level_ref) and 피드백 틀 in a separate 채점 기준표(공통) box after the items', () => {
     const common = html.indexOf('data-stage5-common')

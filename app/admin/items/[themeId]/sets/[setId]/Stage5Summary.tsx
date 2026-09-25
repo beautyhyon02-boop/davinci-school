@@ -2,6 +2,7 @@ import { Badge } from '@/components/ui/Badge'
 import { app } from '@/content/site'
 import { sortScale, stepAt } from '@/lib/studio/scale'
 import { ItemMaterials, type MaterialLike } from '@/components/studio/parts/MaterialsFull'
+import { Aside, KV, LabeledLines, SubLabel } from '@/components/studio/parts/common'
 
 // 5단계(문항) 요약 — 오너 지적(2026-09-25): 문두·등급표·예시답안 개수만 보여서 논술형 조건 4개와 두 문항의 채점표를
 // 볼 수 없었다("조건이 없다", "루브릭이 형편없다"). 문항 카드마다 조건·분량·채점표(요소 × 점수 표, 0점부터)·총체적 기준·유의점·
@@ -9,6 +10,8 @@ import { ItemMaterials, type MaterialLike } from '@/components/studio/parts/Mate
 // PackageView 는 서버 전용(getLevels 가 node:fs)이라 여기서 쓰지 못한다 — 같은 모양을 평범한 데이터로 그린다.
 // 저장된 출력은 옛 판·손으로 고친 판일 수 있으므로 모든 필드를 선택적으로 읽는다(빠진 칸은 그리지 않는다).
 // 문항 = 자료 + 문항 한 덩어리(대표 연수 2기 p.18~20): 문두 아래·조건 위에 그 문항의 <자료 1>·<자료 2> 상자(원장·학생 화면과 같은 조각).
+// 읽기 위계(오너 요청 2026-09-26, 모든 과목): 원장 문항 카드(PackageView)와 같게 — 문두 text-base 굵게, 조건은 번호 붙은 세로 목록,
+// 분량·형식·초과 응답·유의점·예시답안·A~E(수준마다 한 줄)·참고 예시는 한 줄에 하나씩. 틀은 parts/common.tsx.
 const copy = app.studio.wizard.stage5
 
 type Step = { points: number; descriptor: string; example?: string | null }
@@ -34,10 +37,6 @@ type Stage5Output = {
 }
 
 const LEVELS = ['상', '중', '하'] as const
-
-function SubHeading({ children }: { children: React.ReactNode }) {
-  return <p className="text-xs font-semibold text-ink-500">{children}</p>
-}
 
 /** 채점표: 행 = 평가 요소, 열 = 0점 … 최고점(0점부터 오름차순). 요소의 만점보다 높은 칸은 "—". */
 function RubricTable({ criteria }: { criteria: Criterion[] }) {
@@ -98,20 +97,21 @@ function ItemCard({ item, no, materials }: { item: Item; no: number; materials: 
         {item.lesson_no != null && <Badge tone="gray">{copy.lessonLabel(item.lesson_no)}</Badge>}
         {cd?.answer_mode && <Badge tone={cd.answer_mode === 'paper' ? 'lemon' : 'gray'}>{copy.answerMode[cd.answer_mode] ?? cd.answer_mode}</Badge>}
       </div>
-      {item.situation && (
-        <p className="mt-2 text-xs"><span className="font-semibold text-ink-500">{copy.situationLabel}:</span> {copy.situation(item.situation.role, item.situation.audience, item.situation.purpose, item.situation.product)}</p>
-      )}
-      {(item.materials_used?.length ?? 0) > 0 && (
-        <p className="mt-1 text-xs"><span className="font-semibold text-ink-500">{copy.materialsLabel}:</span> {item.materials_used!.map(copy.materialRef).join(', ')}</p>
+      {(item.situation || (item.materials_used?.length ?? 0) > 0) && (
+        <div className="mt-3 space-y-1">
+          {item.situation && <KV label={copy.situationLabel}>{copy.situation(item.situation.role, item.situation.audience, item.situation.purpose, item.situation.product)}</KV>}
+          {/* 자료 ID 는 짧은 메타데이터라 한 줄에 */}
+          {(item.materials_used?.length ?? 0) > 0 && <KV label={copy.materialsLabel}>{item.materials_used!.map(copy.materialRef).join(', ')}</KV>}
+        </div>
       )}
 
-      <p className="mt-2 whitespace-pre-wrap font-semibold">{item.stem}</p>
+      <p data-item-stem className="mt-3 whitespace-pre-wrap text-base font-semibold leading-relaxed">{item.stem}</p>
       <ItemMaterials item={item} materials={materials} />
 
-      <div className="mt-2 rounded-lg bg-ink-100/40 p-2 text-xs">
-        <SubHeading>{copy.conditionsHeading}</SubHeading>
+      <div data-item-conditions className="mt-3 rounded-lg bg-ink-100/40 p-3">
+        <SubLabel>{copy.conditionsHeading}</SubLabel>
         {conds.length > 0 ? (
-          <ol className="mt-1 space-y-0.5">
+          <ol className="mt-1 space-y-1">
             {conds.map((x) => (
               <li key={x.no}>
                 <span className="font-semibold">{copy.conditionNo(x.no)}</span> {x.text}
@@ -121,36 +121,32 @@ function ItemCard({ item, no, materials }: { item: Item; no: number; materials: 
             ))}
           </ol>
         ) : <p className="mt-1 text-ink-500">{copy.noConditions(item.kind)}</p>}
+        {/* 분량·형식·초과 응답은 한 줄에 하나씩 */}
         {(cd?.length || cd?.format || cd?.overflow_rule) && (
-          <p className="mt-1 text-ink-500">
-            {[cd.length && `${copy.lengthLabel}: ${cd.length}`, cd.format && `${copy.formatLabel}: ${cd.format}`, cd.overflow_rule && `${copy.overflowLabel}: ${cd.overflow_rule}`].filter(Boolean).join(' · ')}
-          </p>
+          <div className="mt-2 space-y-0.5 text-ink-700">
+            <KV label={copy.lengthLabel}>{cd.length}</KV>
+            <KV label={copy.formatLabel}>{cd.format}</KV>
+            <KV label={copy.overflowLabel}>{cd.overflow_rule}</KV>
+          </div>
         )}
       </div>
 
       {criteria.length > 0 && (
         <div className="mt-3 space-y-2">
-          <SubHeading>{copy.rubricHeading}</SubHeading>
+          <SubLabel>{copy.rubricHeading}</SubLabel>
           <RubricTable criteria={criteria} />
           {item.rubric?.holistic && (
-            <div className="text-xs">
-              <SubHeading>{copy.holisticHeading}</SubHeading>
-              <ul className="mt-1 space-y-0.5">
-                {LEVELS.map((lv) => <li key={lv}><span className="font-semibold">{copy.levels[lv]}</span> {item.rubric!.holistic![lv]}</li>)}
-              </ul>
-            </div>
+            <LabeledLines
+              label={copy.holisticHeading}
+              items={LEVELS.map((lv) => <><span className="font-semibold">{copy.levels[lv]}</span> {item.rubric!.holistic![lv]}</>)}
+            />
           )}
-          {(item.rubric?.notes?.length ?? 0) > 0 && (
-            <div className="text-xs">
-              <SubHeading>{copy.notesHeading}</SubHeading>
-              <ul className="mt-1 list-disc pl-5">{item.rubric!.notes!.map((n, i) => <li key={i}>{n}</li>)}</ul>
-            </div>
-          )}
+          <LabeledLines label={copy.notesHeading} items={item.rubric?.notes ?? []} />
         </div>
       )}
 
       {exemplars.length > 0 && (
-        <details className="mt-3 rounded-lg bg-lemon-100/40 p-2 text-xs">
+        <details className="mt-3 rounded-lg bg-lemon-100/40 p-3">
           <summary className="cursor-pointer font-semibold text-ink-500">{copy.exemplarCount(no, exemplars.length)}</summary>
           <div className="mt-2 space-y-2">
             {exemplars.map((e, i) => (
@@ -160,19 +156,28 @@ function ItemCard({ item, no, materials }: { item: Item; no: number; materials: 
                   {(e.scores?.length ?? 0) > 0 && <span className="text-ink-500">{copy.exemplarScores(e.scores!)}</span>}
                 </div>
                 <p className="mt-1 whitespace-pre-wrap">{e.text}</p>
-                {e.rationale && <p className="mt-1 text-ink-500">{copy.rationaleLabel}: {e.rationale}</p>}
+                {e.rationale && <Aside kind="rationale" label={copy.rationaleLabel} faint>{e.rationale}</Aside>}
               </div>
             ))}
           </div>
         </details>
       )}
 
+      {/* A~E: 수준마다 한 줄 — 수준(굵게)·예상 점수·특징 */}
       {(item.level_map?.length ?? 0) > 0 && (
-        <p className="mt-2 text-xs"><span className="font-semibold text-ink-500">{copy.levelMapHeading}:</span> {item.level_map!.map((l) => `${l.level} ${l.min}~${l.max}`).join(' / ')}</p>
+        <div data-level-map className="mt-3">
+          <SubLabel>{copy.levelMapHeading}</SubLabel>
+          <ul className="mt-1 space-y-1">
+            {item.level_map!.map((l) => (
+              <li key={l.level}>
+                <span className="inline-block w-6 font-bold">{l.level}</span> <span className="tabular-nums">{l.min}~{l.max}</span>
+                {l.trait && <span className="text-ink-500"> — {l.trait}</span>}
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
-      {(item.references?.length ?? 0) > 0 && (
-        <p className="mt-1 text-xs text-ink-500"><span className="font-semibold">{copy.referencesHeading}:</span> {item.references!.map((r) => `${r.id} — ${r.source}`).join(', ')}</p>
-      )}
+      <LabeledLines className="mt-3 text-ink-500" label={copy.referencesHeading} items={(item.references ?? []).map((r) => `${r.id} — ${r.source}`)} />
     </div>
   )
 }
@@ -185,13 +190,13 @@ function CommonCriteria({ o }: { o: Stage5Output }) {
   const cols = copy.boundaryColumns
   return (
     <div data-stage5-common className="rounded-xl border-2 border-lavender-100 bg-lavender-100/30 p-3 text-sm">
-      <p className="font-semibold">{copy.commonHeading}</p>
+      <p className="text-base font-bold">{copy.commonHeading}</p>
       <p className="mt-0.5 text-xs text-ink-500">{copy.commonNote}</p>
       {rows.length > 0 && (
         <div className="mt-2">
-          <SubHeading>{copy.boundariesHeading}</SubHeading>
+          <SubLabel>{copy.boundariesHeading}</SubLabel>
           <div className="overflow-x-auto">
-            <table className="mt-1 w-full min-w-[360px] text-left text-xs">
+            <table className="mt-1 w-full min-w-[360px] text-left text-sm">
               <thead>
                 <tr className="border-b border-ink-100 text-ink-500">
                   <th className="py-1 pr-3">{cols.grade}</th><th className="py-1 pr-3">{cols.range}</th><th className="py-1 pr-3">{cols.band}</th><th className="py-1 pr-3">{cols.levelRef}</th>
@@ -209,10 +214,15 @@ function CommonCriteria({ o }: { o: Stage5Output }) {
         </div>
       )}
       {fb && (
-        <div className="mt-2 text-xs">
-          <SubHeading>{copy.feedbackHeading}</SubHeading>
-          <ul className="mt-1 space-y-0.5">
-            {LEVELS.map((lv) => <li key={lv}><span className="font-semibold">{copy.levels[lv]}</span> {fb[lv]}</li>)}
+        <div className="mt-3">
+          <SubLabel>{copy.feedbackHeading}</SubLabel>
+          <ul className="mt-1 space-y-2">
+            {LEVELS.map((lv) => (
+              <li key={lv}>
+                <p className="font-semibold">{copy.levels[lv]}</p>
+                <p className="mt-0.5 pl-3 text-ink-700">{fb[lv]}</p>
+              </li>
+            ))}
           </ul>
         </div>
       )}
@@ -226,7 +236,7 @@ export function Stage5Summary({ output, materials = [] }: { output: unknown; mat
   return (
     <div className="mt-3 space-y-4">
       <div className="space-y-3">
-        <p className="text-sm font-semibold text-ink-500">{copy.itemsHeading}</p>
+        <p className="text-base font-bold">{copy.itemsHeading}</p>
         {o.items?.map((it, i) => <ItemCard key={i} item={it} no={i + 1} materials={materials} />)}
       </div>
       <CommonCriteria o={o} />

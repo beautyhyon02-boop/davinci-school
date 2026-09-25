@@ -53,7 +53,9 @@ describe('stageOutputsFor (StageWizard → StageOutput)', () => {
   it('renders through StageOutput with the corrected materials — the 단원 평가 차시 card shows 자료 F·H·I, not the stale A·B·D', () => {
     const outputs = stageOutputsFor({ 3: accepted(stage3Output), 5: accepted(stage5Output) })
     const html = renderToStaticMarkup(createElement(StageOutput, { stage: 3 as WizardStage, outputs, sharedMaterials: [] }))
-    expect(html).toContain('자료 F, 자료 H, 자료 I')
-    expect(html).not.toContain('자료 A, 자료 B, 자료 D')
+    // 사용 자료는 한 줄에 하나씩(오너 요청 2026-09-26) — 단원 평가 차시 카드 안에서 F·H·I 순서로, 옛 A·B·D 없이
+    const session = html.slice(html.indexOf('data-lesson-no="2"'))
+    expect(session).toContain('<li>자료 F</li><li>자료 H</li><li>자료 I</li>')
+    for (const id of ['A', 'B', 'D']) expect(session).not.toContain(`<li>자료 ${id}</li>`)
   })
 })
