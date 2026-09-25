@@ -3,6 +3,7 @@ import { app } from '@/content/site'
 import { sortScale, stepAt } from '@/lib/studio/scale'
 import { ItemMaterials, type MaterialLike } from '@/components/studio/parts/MaterialsFull'
 import { Aside, KV, LabeledLines, SubLabel } from '@/components/studio/parts/common'
+import { conditionDisplayText } from '@/lib/studio/condition-text'
 
 // 5단계(문항) 요약 — 오너 지적(2026-09-25): 문두·등급표·예시답안 개수만 보여서 논술형 조건 4개와 두 문항의 채점표를
 // 볼 수 없었다("조건이 없다", "루브릭이 형편없다"). 문항 카드마다 조건·분량·채점표(요소 × 점수 표, 0점부터)·총체적 기준·유의점·
@@ -114,7 +115,7 @@ function ItemCard({ item, no, materials }: { item: Item; no: number; materials: 
           <ol className="mt-1 space-y-1">
             {conds.map((x) => (
               <li key={x.no}>
-                <span className="font-semibold">{copy.conditionNo(x.no)}</span> {x.text}
+                <span className="font-semibold">{copy.conditionNo(x.no)}</span> {conditionDisplayText(x.text, x.points)}
                 {x.category && <> <Badge tone="gray">{x.category}</Badge></>}
                 {x.points != null && <> <Badge tone="gray">{copy.pointsLabel(x.points)}</Badge></>}
               </li>

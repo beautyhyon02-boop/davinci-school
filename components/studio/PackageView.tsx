@@ -14,6 +14,7 @@ import { LessonCards } from './parts/LessonCards'
 import { UnitPlanView } from './parts/UnitPlanView'
 import { TeacherGuideView } from './parts/TeacherGuideView'
 import { NoticePlanView } from './parts/NoticePlanView'
+import { conditionDisplayText } from '@/lib/studio/condition-text'
 
 // v2 패키지 화면(스펙 §2.9). 카드 순서 = 표지 → 소개 → 성취기준(+A~E 접이식) → 재구조화 표 → 학습 목표(축 배지) → 핵심질문 →
 // 평가 계획 → 차시 카드(시간·소단계·발문 대본·준비물·유의점·활동지·퀴즈; 마지막 교수 차시 뒤 단원 평가 차시는 레몬 테두리 카드) →
@@ -213,7 +214,7 @@ function AssessmentItemView({ item, no, materials, showAnswers, open }: { item: 
             <ol className="mt-1 space-y-1">
               {item.conditions.items.map((x) => (
                 <li key={x.no}>
-                  <span className="font-semibold">{cd.itemNo(x.no)}</span> {x.text}{' '}
+                  <span className="font-semibold">{cd.itemNo(x.no)}</span> {conditionDisplayText(x.text, x.points)}{' '}
                   <span data-print="omit"><Badge tone="gray">{x.category}</Badge></span>
                   {x.points !== null && <> <Badge tone="gray">{cd.pointsLabel(x.points)}</Badge></>}
                 </li>
