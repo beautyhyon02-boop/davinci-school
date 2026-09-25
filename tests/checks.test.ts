@@ -2,6 +2,7 @@
 import { describe, it, expect } from 'vitest'
 import { staticIssues, inventedActors, statesAnswer, quizCopySource, lessonSourceUnits, questionStems } from '@/lib/studio/checks'
 import { statesAnswer as compatStatesAnswer } from '@/lib/studio/compat'
+import { LessonDesign } from '@/lib/studio/schemas'
 import { assessmentV2, lessonV2, assessmentSession } from './studio-schemas.test'
 
 const standards = [{ code: '[9수04-02]', text: '자료를 줄기와 잎 그림, 도수분포표, 히스토그램, 도수분포다각형으로 나타내고 해석할 수 있다.' }, { code: '[9수04-03]', text: '상대도수를 구하고, 상대도수의 분포를 표나 그래프로 나타내고 해석할 수 있다.' }]
@@ -73,16 +74,23 @@ describe('staticIssues', () => {
     // 옛 모양(문자열 라벨)도 읽어서 잡는다
     expect(coverage([1, 2, 3].map(teaching).concat({ ...teaching(4), assessment: '서술형2' as never }, { ...assessmentSession(5), assessment: '논술형' as never }))).toMatch(/교수 차시에는/)
   })
-  it('stage 3 (대표 2026-09-26, L-10): 퀴즈 수준이 D~E·C·B 하나씩이 아니면 참고 메모(kind other) — 옛 초안(level_ref 없음)도 짚고 막지는 않는다', () => {
+  it('stage 3 (대표 2026-09-26, L-10): 퀴즈 수준이 D~E·C·B 하나씩이 아니면 참고 메모(kind other) — 옛 초안(level_ref 없음)도 zod 는 통과하고 메모만 받는다', () => {
     const one = [standards[0]]
     const design = (lessons: unknown[]) => ({ unit_plan: { set_title: 't', set_key_question: 'q?', lesson_map: [], assessment_plan: { formative: 'f', summative_placement: [{ lesson_no: 6, kind: '서술형' }, { lesson_no: 6, kind: '논술형' }], rubric_note: { 상: 'a', 중: 'b', 하: 'c' } } }, lessons })
     const base = [1, 2, 3, 4, 5].map((no) => ({ ...lessonV2, no })).concat(assessmentSession(6))
     const levelNotes = (lessons: unknown[]) => staticIssues(3, design(lessons), { standards: one, prior: {} }).filter((i) => i.detail.includes('수준'))
     expect(levelNotes(base)).toEqual([])
     const setLevels = (no: number, levels: (string | undefined)[]) => base.map((l) => (l.no === no ? { ...l, formative_check: { quiz: l.formative_check.quiz.map((q, i) => ({ ...q, level_ref: levels[i] })) } } : l))
-    expect(levelNotes(setLevels(1, ['D~E', 'D~E', 'D~E']))).toEqual([{ kind: 'other', detail: '1차시 퀴즈 3문항은 수준 D~E·C·B를 하나씩(level_ref)(지금 D~E·D~E·D~E)' }])
-    expect(levelNotes(setLevels(3, [undefined, undefined, undefined]))).toEqual([{ kind: 'other', detail: '3차시 퀴즈 3문항은 수준 D~E·C·B를 하나씩(level_ref)(지금 없음·없음·없음)' }])
+    const note = '퀴즈 수준 표시(level_ref)가 없거나 D~E/C/B가 고르지 않음 — 3단계를 다시 생성하면 채워집니다'
+    expect(levelNotes(setLevels(1, ['D~E', 'D~E', 'D~E']))).toEqual([{ kind: 'other', detail: `1차시 ${note}` }])
+    expect(levelNotes(setLevels(3, ['D~E', 'C', undefined]))).toEqual([{ kind: 'other', detail: `3차시 ${note}` }])
     expect(levelNotes(setLevels(2, ['C', 'B', 'D~E']))).toEqual([])   // 순서는 따지지 않는다
+    // 옛 모양 차시(퀴즈에 level_ref 가 아예 없음): 새 세트 zod(LessonDesign)를 통과하고 — 이미지 첨부·문장 고치기가 되고 — [TS] 메모만 받는다
+    const old = base.map((l) => ({ ...l, formative_check: { quiz: l.formative_check.quiz.map(({ level_ref: _x, ...q }) => { void _x; return q }) } }))
+    const unit_plan = { set_title: '자료의 정리와 해석', set_key_question: '자료는 무엇을 말하는가?', lesson_map: old.map((l) => ({ lesson_no: l.no, standards: l.standards, topic: l.topic })),
+      assessment_plan: { ...design(old).unit_plan.assessment_plan, formative: '교수 차시마다 퀴즈 3문항' } }
+    expect(LessonDesign.safeParse({ unit_plan, lessons: old }).error?.issues ?? []).toEqual([])
+    expect(levelNotes(old).map((i) => i.detail)).toEqual([1, 2, 3, 4, 5].map((no) => `${no}차시 ${note}`))
   })
   it('stage 3 (대표 2026-09-26, L-10): 정답이 본문(발문 대본·수업 흐름·활동지·사용 자료)에 그대로 있고 발문이 그 문장을 옮겼으면 "정답이 본문에 그대로 있음" 참고 메모', () => {
     const one = [standards[0]]

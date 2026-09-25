@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import { loadFixture } from '@/lib/ai/mock'
 import { STAGE_SCHEMAS, Review } from '@/lib/studio/schemas'
 import { staticIssues, conditionHints, materialNumbers, lessonSourceUnits, quizCopySource } from '@/lib/studio/checks'
-import { quizLevelSpreadIssue } from '@/lib/studio/schemas'
+import { quizLevelSpreadOk } from '@/lib/studio/schemas'
 import { checkReconstructionFidelity } from '@/lib/studio/fidelity'
 import { runStage, type Repo, type StageStatus } from '@/lib/studio/stages'
 import { buildPrompt, buildReviewPrompt } from '@/lib/studio/prompts/stages'
@@ -113,7 +113,7 @@ for (const set of SETS) describe(`${set.subject} fixtures (v2)`, () => {
     const teaching = design.lessons.filter((l) => l.kind === 'teaching')
     expect(teaching.flatMap((l) => l.formative_check.quiz.map((q) => q.level_ref))).toHaveLength(15)
     for (const l of teaching) {
-      expect(quizLevelSpreadIssue(l.formative_check.quiz), `${set.subject} ${l.no}차시`).toBeNull()
+      expect(quizLevelSpreadOk(l.formative_check.quiz), `${set.subject} ${l.no}차시`).toBe(true)
       expect(l.formative_check.quiz.map((q) => q.level_ref).sort(), `${set.subject} ${l.no}차시`).toEqual(['B', 'C', 'D~E'])
       const units = lessonSourceUnits(l, materials)
       const asked = [...l.teacher_script.questions.map((s) => s.prompt), ...l.worksheet.tasks.map((t) => t.prompt)]

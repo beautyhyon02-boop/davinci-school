@@ -3,7 +3,7 @@ import { checkReconstructionFidelity, tokensFoundIn } from './fidelity'
 import { levelRefFor } from './level-map'
 import { structureIssues, kindFamily, sessionPlacementIssues, isAssessmentSession, lessonAssessments, ESSAY_MIN_MINUTES } from './assessment-structure'
 import type { Stage, ReviewKind, Reconstruction, LessonDesign, Materials, Assessment, TeacherGuide, NoticePlan } from './schemas'
-import { QUIZ_SHORT_ONLY, isShortQuiz, quizLevelSpreadIssue } from './schemas'
+import { QUIZ_SHORT_ONLY, isShortQuiz, quizLevelSpreadOk } from './schemas'
 import { titleHasSourceMarker, usedMaterialIds, mentionedMaterialIds, MAX_SET_MATERIALS } from './materials'
 import { sortScale, zeroStep } from './scale'
 
@@ -122,6 +122,8 @@ export function statesAnswer(text: string, key: string): boolean {
 // ── L-10 퀴즈 베끼기(대표 2026-09-26: "퀴즈가 너무 쉬운 수준이 아닌지") ─────────────────────────────
 /** [TS] 퀴즈 베끼기 사유(L-10). */
 export const QUIZ_COPIED = '정답이 본문에 그대로 있음'
+/** [TS] 퀴즈 수준 메모(L-10). 대표 결정: 수준이 없거나 고르지 않아도 막지 않는다 — zod 는 보지 않고 이 참고 메모만 남긴다. */
+export const QUIZ_LEVEL_NOTE = '퀴즈 수준 표시(level_ref)가 없거나 D~E/C/B가 고르지 않음 — 3단계를 다시 생성하면 채워집니다'
 // 조사·어미 한 겹과 묻는 말(무엇·몇·얼마·하는가 …), 어느 발문에나 나오는 말(자료·따르면)을 떼고 남은 두 글자 이상 낱말을 발문의 내용어로 본다.
 const TAIL = /(으로|에서|에게|까지|부터|처럼|보다|이라|이며|해서|하여|하고|하는가|되는가|있는가|는가|인가|시오|은|는|이|가|을|를|의|에|로|와|과|도|만)$/
 const ASKING = /^(무엇|어느|어떤|어디|누구|얼마|몇|다음|빈칸|들어갈|낱말|단답|알맞은|구하|쓰|자료|따르면)/
@@ -213,10 +215,9 @@ function lessonIssues(o: LessonDesignT, ctx: CheckCtx): Issue[] {
       if (!isShortQuiz(q)) issues.push({ kind: 'quiz', detail: `${l.no}차시 퀴즈 ${i + 1}: ${QUIZ_SHORT_ONLY}` })
     }
     // L-10(대표 2026-09-26): 교수 차시 퀴즈는 수준 D~E·C·B 하나씩, 정답이 본문(수업 흐름·발문 대본·활동지·자료)에 그대로 있는 문항 금지.
-    // 참고 메모(kind other)일 뿐 막지 않는다 — zod(LessonDesign)도 수준 분포를 보지만 검토는 저장된 옛 초안에도 돈다.
+    // 참고 메모(kind other)일 뿐 막지 않는다 — zod 는 수준을 보지 않는다(옛 초안의 이미지 첨부·문장 고치기가 그대로 되게).
     if (!isAssessmentSession(l)) {
-      const spread = quizLevelSpreadIssue(l.formative_check.quiz)
-      if (spread) issues.push({ kind: 'other', detail: `${l.no}차시 ${spread}` })
+      if (!quizLevelSpreadOk(l.formative_check.quiz)) issues.push({ kind: 'other', detail: `${l.no}차시 ${QUIZ_LEVEL_NOTE}` })
       const units = lessonSourceUnits(l, materials)
       for (const [i, q] of l.formative_check.quiz.entries()) {
         const where = quizCopySource(q, units)

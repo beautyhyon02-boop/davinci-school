@@ -59,7 +59,8 @@ export const Reconstruction = z.object({
 /**
  * 퀴즈 수준(L-10, 대표 2026-09-26 "퀴즈가 너무 쉬운 수준이 아닌지"): 성취수준 A~E 틀(활동지 층 기본 D~E·표준 C·도전 A~B)에 묶는다 —
  * D~E 회상(용어·사실), C 이해·적용(도달점 수준의 적용·계산·설명 핵심어), B 관계·추론(두 개념의 관계, 이유, 새 사례 적용).
- * 교수 차시의 3문항은 이 셋을 하나씩 갖는다. 교사용 표시(원장 화면)이고 학생 화면에는 보이지 않는다.
+ * 교수 차시의 3문항은 이 셋을 하나씩 갖는다(3단계 프롬프트가 요구한다). 교사용 표시(원장 화면)이고 학생 화면에는 보이지 않는다.
+ * 대표 결정(마법사는 아무것도 막지 않는다): zod 는 어느 경로에서도 수준을 요구하지 않는다 — 빠졌거나 고르지 않으면 [TS] 참고 메모만(checks.ts).
  */
 export const QUIZ_LEVELS = ['D~E', 'C', 'B'] as const
 export type QuizLevel = (typeof QUIZ_LEVELS)[number]
@@ -69,20 +70,17 @@ export const QuizItem = z.object({
   choices: z.array(z.string()).min(2).max(5).nullable(),
   answer: z.string().min(1),
   explanation: z.string().min(3),
-  // 선택: 2026-09-26 이전에 저장·게시된 퀴즈에는 없다. 새 세트(LessonDesign)는 교수 차시마다 D~E·C·B 하나씩을 요구한다.
+  // 선택(모든 경로): 2026-09-26 이전에 저장·게시된 퀴즈에는 없다. 분포는 [TS] 참고 메모가 본다(막지 않음).
   level_ref: z.enum(QUIZ_LEVELS).optional(),
 })
 /** 새 세트 퀴즈 규칙(L-09) 위반 사유 — zod(LessonDesign)와 [TS](checks.ts)가 같은 문장을 쓴다. */
 export const QUIZ_SHORT_ONLY = '퀴즈는 단답형만(선택지 금지)'
 /** 단답형(type 'short', choices null)인가. 새 세트의 퀴즈는 모두 이래야 한다. */
 export const isShortQuiz = (q: { type: string; choices: unknown }) => q.type === 'short' && q.choices === null
-/** 퀴즈 수준 규칙(L-10) 위반 사유 — zod(LessonDesign)와 [TS](checks.ts)가 같은 문장을 쓴다. */
-export const QUIZ_LEVEL_SPREAD = `퀴즈 3문항은 수준 ${QUIZ_LEVELS.join('·')}를 하나씩(level_ref)`
-/** 교수 차시 퀴즈의 level_ref 가 D~E·C·B 를 정확히 하나씩 갖는가(빠진 level_ref 는 '없음'). 아니면 지금 수준 목록을, 맞으면 null. */
-export function quizLevelSpreadIssue(quiz: { level_ref?: string | null }[]): string | null {
-  const levels = quiz.map((q) => q.level_ref ?? '없음')
-  const ok = levels.length === QUIZ_LEVELS.length && QUIZ_LEVELS.every((lv) => levels.filter((x) => x === lv).length === 1)
-  return ok ? null : `${QUIZ_LEVEL_SPREAD}(지금 ${levels.join('·') || '없음'})`
+/** 교수 차시 퀴즈의 level_ref 가 D~E·C·B 를 정확히 하나씩 갖는가(순서 무관, 빠진 level_ref 가 있으면 거짓). [TS](checks.ts)가 쓴다. */
+export function quizLevelSpreadOk(quiz: { level_ref?: string | null }[]): boolean {
+  const levels = quiz.map((q) => q.level_ref)
+  return levels.length === QUIZ_LEVELS.length && QUIZ_LEVELS.every((lv) => levels.filter((x) => x === lv).length === 1)
 }
 // 설계(§2.3)는 expected_answer min(2) — 한 글자 정답('10' 아닌 '4' 같은 수·기호)을 받으려고 min(1)로 완화했다
 export const ScriptQuestion = z.object({ prompt: z.string().min(5), expected_answer: z.string().min(1), if_stuck: z.string().min(2) })
@@ -166,11 +164,9 @@ const lessonDesignOf = (legacy: boolean) => z.object({
   if (!legacy || kinds === SET_ORDER.join(',')) for (const m of sessionPlacementIssues(d.lessons)) issue(ctx, m)
   if (d.unit_plan.lesson_map.length !== d.lessons.length) issue(ctx, 'lesson_map 수가 차시 수와 다름')
   // L-09(대표 2026-09-26): 새 세트의 퀴즈는 단답형만. 게시 판 읽기(legacy)는 옛 선택형을 그대로 받는다.
-  // L-10(대표 2026-09-26): 새 세트의 교수 차시 퀴즈 3문항은 수준 D~E·C·B 하나씩. 게시 판 읽기는 level_ref 없는 옛 퀴즈를 그대로 받는다.
+  // L-10 퀴즈 수준(D~E·C·B)은 여기서 보지 않는다 — 옛 3단계 초안(level_ref 없음)의 이미지 첨부·문장 고치기가 막히지 않게 [TS] 참고 메모로만.
   if (!legacy) for (const l of d.lessons) {
     for (const [i, q] of l.formative_check.quiz.entries()) if (!isShortQuiz(q)) issue(ctx, `${l.no}차시 퀴즈 ${i + 1}: ${QUIZ_SHORT_ONLY}`)
-    const spread = isAssessmentSession(l) ? null : quizLevelSpreadIssue(l.formative_check.quiz)
-    if (spread) issue(ctx, `${l.no}차시 ${spread}`)
   }
 })
 export const LessonDesign = lessonDesignOf(false)

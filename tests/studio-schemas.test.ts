@@ -144,7 +144,7 @@ describe('schemas v2', () => {
     expect(Lesson.safeParse({ ...lessonV2, formative_check: { quiz: [choiceQuiz('문항 1'), choiceQuiz('문항 2'), choiceQuiz('문항 3')] } }).success).toBe(true)
     expect(PublishedLessonDesign.safeParse({ unit_plan, lessons: withQuiz(choiceQuiz('문항 2')) }).error?.issues ?? []).toEqual([])
   })
-  it('quiz level (대표 2026-09-26, L-10): 새 세트 교수 차시 퀴즈는 수준 D~E·C·B 하나씩(순서 무관), 게시 판 읽기는 level_ref 없는 옛 퀴즈도 받는다', () => {
+  it('quiz level (대표 2026-09-26, L-10): level_ref 는 모든 경로에서 선택 — 없거나 고르지 않아도 zod 는 막지 않는다(분포는 [TS] 참고 메모)', () => {
     expect(QUIZ_LEVELS).toEqual(['D~E', 'C', 'B'])
     const lessons = [1, 2, 3, 4, 5].map((no) => ({ ...lessonV2, no })).concat(assessmentSession(6))
     const unit_plan = { set_title: '자료의 정리와 해석', set_key_question: '자료는 무엇을 말하는가?', lesson_map: lessons.map((l) => ({ lesson_no: l.no, standards: l.standards, topic: l.topic })),
@@ -154,9 +154,10 @@ describe('schemas v2', () => {
     const messages = (ls: unknown[]) => LessonDesign.safeParse({ unit_plan, lessons: ls }).error?.issues.map((i) => i.message) ?? []
     expect(messages(withLevels(['D~E', 'C', 'B']))).toEqual([])
     expect(messages(withLevels(['B', 'D~E', 'C']))).toEqual([])
-    expect(messages(withLevels(['D~E', 'D~E', 'C']))).toEqual(['2차시 퀴즈 3문항은 수준 D~E·C·B를 하나씩(level_ref)(지금 D~E·D~E·C)'])
-    expect(messages(withLevels([undefined, 'C', 'B']))).toEqual(['2차시 퀴즈 3문항은 수준 D~E·C·B를 하나씩(level_ref)(지금 없음·C·B)'])
-    expect(STAGE_SCHEMAS[3].safeParse({ unit_plan, lessons: withLevels(['C', 'C', 'C']) }).success).toBe(false)
+    // 대표 결정(마법사는 아무것도 막지 않는다): 고르지 않거나 빠진 수준도 새 세트 zod 를 통과한다
+    expect(messages(withLevels(['D~E', 'D~E', 'C']))).toEqual([])
+    expect(messages(withLevels([undefined, 'C', 'B']))).toEqual([])
+    expect(STAGE_SCHEMAS[3].safeParse({ unit_plan, lessons: withLevels(['C', 'C', 'C']) }).success).toBe(true)
     // 수준 목록 밖의 값은 퀴즈 한 문항(QuizItem)에서부터 받지 않는다 — 활동지 층의 'A~B'는 퀴즈 수준이 아니다
     expect(QuizItem.safeParse({ ...quiz('문항 1'), level_ref: 'A~B' }).success).toBe(false)
     // level_ref 는 선택 필드 — 2026-09-26 이전에 저장·게시된 퀴즈(수준 없음)도 퀴즈·차시·게시 판으로는 읽힌다
@@ -164,7 +165,8 @@ describe('schemas v2', () => {
     expect(QuizItem.safeParse(old).success).toBe(true)
     expect(Lesson.safeParse({ ...lessonV2, formative_check: { quiz: [old, old, old] } }).success).toBe(true)
     expect(PublishedLessonDesign.safeParse({ unit_plan, lessons: withLevels('strip') }).error?.issues ?? []).toEqual([])
-    expect(messages(withLevels('strip'))).toHaveLength(5)   // 새 세트는 교수 차시 다섯 곳 모두 걸리고, 단원 평가 차시(퀴즈 0)는 보지 않는다
+    // 옛 3단계 초안(수준 없음)도 새 세트 zod 를 통과한다 — 차시 이미지 첨부(applyImages)·문장 고치기(saveStageEdit·validateEdited)가 막히지 않는다
+    expect(messages(withLevels('strip'))).toEqual([])
   })
   it('material source is an object and role defaults to raw', () => {
     const m = Material.parse({ id: 'A', title: 't', kind: 'table', body: null, table: { columns: ['부스', '개수'], rows: [[1, 18]] }, source: { kind: '자작', attribution: null, ai_assisted: false } })
