@@ -1,8 +1,16 @@
 import { describe, it, expect } from 'vitest'
+import { readFileSync } from 'node:fs'
 import { buildPrompt, buildReviewPrompt } from '@/lib/studio/prompts/stages'
 import { rulesFor } from '@/lib/studio/prompts/rules/index'
 import { gradeLabel, standardCodePrefixes } from '@/lib/studio/level-map'
 import type { Stage } from '@/lib/studio/schemas'
+
+/** 통째 예시의 "예시답안:" 칸 아래 줄("  (단계) 글")만 모은다 — 조건 줄 "  (1) …"과 섞이지 않게 칸 단위로 자른다. */
+const answerLines = (s: string) => s.split('\n예시답안:\n').slice(1).flatMap((sec) => {
+  const rows = sec.split('\n')
+  const end = rows.findIndex((l) => !l.startsWith('  ('))
+  return rows.slice(0, end === -1 ? rows.length : end).map((l) => l.slice(3, l.indexOf(') ')))
+})
 
 const ctx = { theme: { title: '학교 축제 일회용품 줄이기', level: '중', grade: 1, subjects: ['수학'] }, subject: '수학',
   standards: [{ code: '[9수04-02]', text: '자료를 줄기와 잎 그림, 도수분포표, 히스토그램, 도수분포다각형으로 나타내고 해석할 수 있다.' }, { code: '[9수04-03]', text: '상대도수를 구하고, 상대도수의 분포를 표나 그래프로 나타내고 해석할 수 있다.' }], prior: {} }
@@ -73,12 +81,39 @@ describe('prompts v2', () => {
     expect(task).not.toMatch(/평가원|교육청/); expect(task).toMatch(/문장·수치는 옮기지 않는다/)
     expect(task).not.toMatch(/서술형 2개|두 문항 점수 합|holistic은 논술형만/)
   })
-  it('stage 5 shows 2 서술형 + 3 논술형 reference cards (no duplicates)', () => {
+  it('stage 5 shows 2 full exemplars (서술형 1 + 논술형 1) then 2 short cards (no duplicates)', () => {
     const u = buildPrompt(5, ctx).user
-    const cards = [...u.matchAll(/^\[예시 ([^\]]+)\] \S+ \S+ (서술형|논술형|서·논술형|수행)/gm)]
-    expect(cards.filter((c) => c[2] === '서술형')).toHaveLength(2)
-    expect(cards.filter((c) => c[2] === '논술형')).toHaveLength(3)
-    expect(new Set(cards.map((c) => c[1])).size).toBe(cards.length)
+    const heads = [...u.matchAll(/^\[예시 ([^\]]+)\] \S+ \S+ (서술형|논술형|서·논술형|수행)/gm)]
+    expect(heads).toHaveLength(4)
+    expect(heads.map((c) => c[2]).slice(0, 2)).toEqual(['서술형', '논술형'])   // 통째 예시 2건
+    expect(heads.map((c) => c[2]).slice(2)).toEqual(['서술형', '논술형'])      // 짧은 카드 2장
+    expect(new Set(heads.map((c) => c[1])).size).toBe(heads.length)
+    expect(u.indexOf('예시 문항 전체(')).toBeLessThan(u.indexOf('짧은 예시 카드('))
+  })
+  it('stage 5 (대표 2026-09-26 예시 문항 수준): form-template paragraph + two FULL exemplars (rubric table, every step, answers, source)', () => {
+    const u = buildPrompt(5, ctx).user
+    const [knowledge, task] = u.split('\n\n과제: ')
+    // 과제의 형식 틀 — 자료집 문항 한 건의 순서와 밀도
+    expect(task).toMatch(/형식 틀\(/)
+    for (const s of ['성취기준 → 평가 요소', '전제문', '<자료 1>·<자료 2> 상자', '발문 → \\[N점\\]', '조건\\(conditions', '채점 기준표\\(rubric: 요소 × 척도', '총체적 상/중/하', '예시답안\\(exemplar_answers', '채점 시 유의점\\(rubric.notes\\)']) expect(task, s).toMatch(new RegExp(s))
+    expect(task).toMatch(/"예시 문항 전체" 2건\(서술형 1·논술형 1\)이 기대하는 밀도/)
+    for (const s of ['문두 길이', '조건 문장의 말투', '척도 descriptor', '예시답안 길이']) expect(task, s).toContain(s)
+    expect(task).toContain('형식과 밀도를 따르되 문장·수치는 옮기지 않는다')
+    expect(task).toMatch(/이 과제의 규칙과 다르면 이 과제의 규칙을 따른다/)
+    // 통째 예시 2건: 채점 기준표 2번, 예시답안 칸 2번(합쳐 2단계 이상), 출처 줄은 통째 2 + 카드 2
+    expect(knowledge.split('채점 기준표(').length - 1).toBe(2)
+    expect(knowledge.split('\n예시답안:\n').length - 1).toBe(2)
+    const answerLevels = answerLines(knowledge)
+    expect(answerLevels.length).toBeGreaterThanOrEqual(2)
+    expect(knowledge.match(/^출처: /gm)).toHaveLength(4)
+    expect(knowledge).toMatch(/^ {2}· .+ \(만점 \d+\): 0점 /m)   // 요소마다 모든 척도, 0점부터
+    // 검토: 형식·밀도를 통째 예시와 견준다
+    const focus = buildReviewPrompt(5, ctx, { items: [] }).user.split('검토 초점: ')[1]
+    expect(focus).toMatch(/형식·밀도를 위 "예시 문항 전체" 2건/); expect(focus).toMatch(/척도 서술이 예시보다 얇으면/)
+    expect(focus).toMatch(/예시의 요소 수·배점·조건 개수·조건 내용은 견주지 않는다/)
+    // 다른 단계(3단계)는 짧은 카드만
+    const u3 = buildPrompt(3, ctx).user
+    expect(u3).not.toContain('예시 문항 전체('); expect(u3).not.toContain('채점 기준표(')
   })
   it('stage 5 conditions are guidelines only (C-32, 대표 2026-09-26): 서술형 none, 논술형 2~4, no solving hints', () => {
     const task = buildPrompt(5, ctx).user.split('과제: ')[1]
@@ -364,4 +399,22 @@ describe('stage 4 — 자료 내부 모순 금지(2026-09-26)', () => {
     expect(buildPrompt(4, c).user).toMatch(/서로 모순되지 않아야/)
     expect(buildReviewPrompt(4, c, { materials: [] }).user).toMatch(/모순|모호/)
   })
+})
+
+describe('5단계 생성 입력 크기 가드(Hobby 300초, 5단계 effort high — 통째 예시 2건 주입 뒤에도 45k자 미만)', () => {
+  const j = (f: string) => JSON.parse(readFileSync(f, 'utf8'))
+  const shared = j('docs/samples/2026-09-20-중1-일회용품-공유자료.json')
+  for (const [subject, suf, stdFile] of [['수학', '', 'standards-math.json'], ['과학', '-과학', 'standards-science.json']] as const) {
+    it(`${subject}: v2 fixture prior(0·2·3·4단계 + 공유 자료)로 만든 5단계 생성 입력 < 45,000자이고 통째 예시 2건을 싣는다`, () => {
+      const F = 'data/studio-fixtures/'
+      const prior = { stage0: j(`${F}stage0-generate.json`), stage2: j(`${F}stage2-generate${suf}.json`), stage3: j(`${F}stage3-generate${suf}.json`), stage4: j(`${F}stage4-generate${suf}.json`), shared_materials: shared }
+      const c = { theme: { title: '학교 축제 일회용품 줄이기', level: '중', grade: 1, subjects: [subject] }, subject, standards: j(`${F}${stdFile}`), prior }
+      const u = buildPrompt(5, c).user
+      expect(u.length).toBeLessThan(45_000)
+      const knowledge = u.split('\n\n과제: ')[0]
+      expect(knowledge.split('채점 기준표(').length - 1).toBe(2)
+      expect(answerLines(knowledge).length).toBeGreaterThanOrEqual(2)
+      expect(u).toContain('"stage4"'); expect(u).toContain('"shared_materials"')   // 실제 prior가 들어간 크기다
+    })
+  }
 })
