@@ -391,6 +391,16 @@ describe('대표 연수 2기 — 핵심질문 6단계·자료 설계·문항 안
     const f = buildReviewPrompt(5, ctx, { items: [] }).user.split('검토 초점: ')[1]
     for (const s of ['문항은 자료와 한 덩어리다', 'materials_used가 문두가 자료를 쓰는 순서와 같은지', '<자료 1>·<자료 2>로만 가리키는지', '"자료 A"·"자료 F"로 가리키면 other', '전제문이 <자료 n>마다']) expect(f, s).toContain(s)
   })
+  // 경기 논술형 평가 장학자료(2025.7, WP9 §7) §4 반례 — 풀이 힌트가 된 조건 문구를 검토 초점의 반면 예시로 구체적으로 짚는다(문서명은 인용하지 않는다)
+  it('stage 5 review focus lists hint-like condition patterns (반면 예시) to flag: 계산식 지정, 계산값 지정, 값 쌍 나열', () => {
+    const f = focus(5)
+    expect(f).toContain('반면 예시')
+    expect(f).toContain('미지수를 정하고 일차방정식을 세울 것')
+    expect(f).toContain('π를 3으로 계산할 것')
+    expect(f).toContain('짝지어 나열한 표')
+    // 인용은 문구만, 출처 문서명은 프롬프트에 쓰지 않는다(2026-09-26 대표님: 기관·자료명 노출 금지)
+    expect(f).not.toMatch(/경기|장학자료|gg25/)
+  })
 })
 
 describe('stage 4 — 자료 내부 모순 금지(2026-09-26)', () => {

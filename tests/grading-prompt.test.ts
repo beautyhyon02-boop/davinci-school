@@ -88,6 +88,15 @@ describe('grading fixtures follow the v2 math items (mock mode)', () => {
   })
 })
 
+describe('경기2025 G-10(오류 이월 인정)이 채점 프롬프트에 닿는다', () => {
+  it('GRADING_RULES(= GRADING_PROMPT_RULES)에 G-10 문장이 있고, buildGradingPrompt의 system 첫 블록에 그대로 실린다', () => {
+    expect(GRADING_PROMPT_RULES).toMatch(/^G-10 .*오류 이월 인정/m)
+    const p = buildGradingPrompt({ snapshot, itemNo: 1, studentGrade: 1, answer: 'x'.repeat(60) })
+    expect(p.system[0]).toBe(GRADING_RULES)
+    expect(p.system[0]).toContain('오류 이월 인정')
+  })
+})
+
 describe('학년 선택(대표 2026-09-26): 채점·안내장 프롬프트의 학년 줄', () => {
   it('uses the student grade when there is one, else the school band — never "null학년"', () => {
     const noGrade: Snapshot = { ...snapshot, cover: { ...snapshot.cover, grade: null } }

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { rulesFor, allRuleIds, COMMON_RULES, LESSON_RULES, SUBJECT_RULES, NOTICE_RULES, GRADING_RULES_V2 } from '@/lib/studio/prompts/rules/index'
+import { rulesFor, allRuleIds, COMMON_RULES, LESSON_RULES, SUBJECT_RULES, NOTICE_RULES, GRADING_RULES_V2, GRADING_PROMPT_RULES } from '@/lib/studio/prompts/rules/index'
 
 describe('rules v2', () => {
   it('every rule id is unique and appears exactly once in the spec appendix', () => {
@@ -8,8 +8,8 @@ describe('rules v2', () => {
     expect(new Set(ids).size).toBe(ids.length)
     const spec = readFileSync('docs/superpowers/specs/2026-09-25-item-studio-v2-design.md', 'utf8')
     for (const id of ids) expect(spec.split(`| ${id} |`).length - 1, id).toBe(1)
-    // 부록 A: 공통 33(C-31 대표 확정값, C-32 조건=지침(2026-09-26), C-33 자료 설계·유형(대표 연수 2기) 포함) + 차시 12 + 과목 36(국6·수7·사6·역3·과7·영7) + 채점 9 + 안내장 12
-    expect(ids.length).toBe(33 + 12 + 36 + 9 + 12)
+    // 부록 A: 공통 36(C-31 대표 확정값, C-32 조건=지침(2026-09-26), C-33 자료 설계·유형(대표 연수 2기), C-34·C-36·C-37 경기2025 포함) + 차시 12 + 과목 37(국6·수7·사6·역3·과8·영7) + 채점 10(G-10 경기2025) + 안내장 12
+    expect(ids.length).toBe(36 + 12 + 37 + 10 + 12)
   })
   it('the spec appendix has no rule row that the code lacks', () => {
     const spec = readFileSync('docs/superpowers/specs/2026-09-25-item-studio-v2-design.md', 'utf8')
@@ -126,5 +126,62 @@ describe('학년 선택(대표 2026-09-26): 규칙은 학교급(학년군) 수�
     const text = all.map((r) => r.text).join('\n')
     expect(text).not.toMatch(/중1은|중1 이하|중1 어휘|[1-6]학년 /)
     expect(text).not.toMatch(/교육과정 학년 수준/)
+  })
+})
+
+// 경기 논술형 평가 장학자료(2025.7, WP9 §7) 채택분 — 대표님 결정 불필요(2026-09-25). C-35(분량 미감점)·조건 0개 허용(C-32 개정안)은 대표님 결정 대기(docs/STATUS.md), 채택하지 않는다.
+describe('경기2025: 사다리 설계·동점 두 줄·답안 틀·오류 이월·과학 타당성, C-14 입장별 예시답안 보강', () => {
+  const all = [...COMMON_RULES, ...LESSON_RULES, ...Object.values(SUBJECT_RULES).flat()]
+  const spec = readFileSync('docs/superpowers/specs/2026-09-25-item-studio-v2-design.md', 'utf8')
+  const row = (id: string) => spec.split('\n').find((line) => line.startsWith(`| ${id} |`))!
+  it('C-34·C-36·C-37 exist with the 경기2025 tag and reach the generation prompt (rulesFor)', () => {
+    const c34 = all.find((r) => r.id === 'C-34')!
+    expect(c34.nature).toBe('PS'); expect(c34.tags).toContain('경기2025')
+    expect(c34.text).toContain('사다리'); expect(c34.text).toContain('앞부분'); expect(c34.text).toContain('뒷부분')
+    const c36 = all.find((r) => r.id === 'C-36')!
+    expect(c36.nature).toBe('PS'); expect(c36.tags).toContain('경기2025')
+    expect(c36.text).toContain('X만 충족'); expect(c36.text).toContain('Y만 충족'); expect(c36.text).toContain('같은 점수의 두 줄')
+    const c37 = all.find((r) => r.id === 'C-37')!
+    expect(c37.nature).toBe('P'); expect(c37.tags).toContain('경기2025')
+    expect(c37.text).toContain('답안 틀'); expect(c37.text).toContain('[A][B]')
+    for (const r of [c34, c36, c37]) {
+      expect(row(r.id), r.id).toContain(`| ${r.id} | ${r.text} |`)
+      expect(rulesFor('수학'), r.id).toMatch(new RegExp(`^${r.id} `, 'm'))
+    }
+  })
+  it('C-14 is amended in place (no new id) to add one exemplar per position when students choose a side; spec row identical', () => {
+    const c14 = all.find((r) => r.id === 'C-14')!
+    expect(c14.text).toContain('입장을 선택하는 논술형은 입장별로 예시답안을 각 1편씩 만든다')
+    expect(c14.text).toMatch(/6점이면 6·5·4·3·2·1/)
+    expect(c14.tags).toContain('경기2025')
+    expect(row('C-14')).toContain(`| C-14 | ${c14.text} |`)
+  })
+  it('C-38 ("피드백 시 유의점" 필드안) is NOT a new schema field — AssessmentItem has no dedicated place for it, so its text is folded into C-16 (rubric.notes guidance) instead; no C-38 id exists', () => {
+    expect(all.some((r) => r.id === 'C-38')).toBe(false)
+    const c16 = all.find((r) => r.id === 'C-16')!
+    expect(c16.text).toContain('전용 칸이 없으므로'); expect(c16.text).toContain('피드백 시 유의점')
+    expect(c16.tags).toContain('경기2025')
+    expect(row('C-16')).toContain(`| C-16 | ${c16.text} |`)
+  })
+  it('G-10 (오류 이월 인정) is a grading rule and reaches GRADING_PROMPT_RULES; spec row identical', () => {
+    const g10 = GRADING_RULES_V2.find((r) => r.id === 'G-10')!
+    expect(g10.nature).toBe('P'); expect(g10.tags).toContain('경기2025')
+    expect(g10.text).toContain('오류 이월 인정')
+    expect(GRADING_PROMPT_RULES).toMatch(/^G-10 /m)
+    expect(row('G-10')).toContain(`| G-10 | ${g10.text} |`)
+  })
+  it('S-과-08 (과학 타당성 평가 소문항) exists, distinct from C-27, and reaches the 과학 generation prompt; spec row identical', () => {
+    const s08 = SUBJECT_RULES['과학'].find((r) => r.id === 'S-과-08')!
+    expect(s08.nature).toBe('P'); expect(s08.tags).toContain('경기2025')
+    expect(s08.text).toContain('가치 판단만 한 의견을 정답으로 인정하지 않는다')
+    expect(row('S-과-08')).toContain(`| S-과-08 | ${s08.text} |`)
+    expect(rulesFor('과학')).toMatch(/^S-과-08 /m)
+  })
+  it('C-35(분량 미감점)와 조건 0개 허용(C-32 개정안)은 채택하지 않는다 — 대표님 결정 대기', () => {
+    expect(all.some((r) => r.id === 'C-35')).toBe(false)
+    const c32 = all.find((r) => r.id === 'C-32')!
+    expect(c32.text).toContain('논술형 문항에만 2~4개')
+    const docs = readFileSync('docs/STATUS.md', 'utf8')
+    expect(docs).toContain('C-35')
   })
 })
