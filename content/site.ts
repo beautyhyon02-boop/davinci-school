@@ -664,6 +664,7 @@ export const app = {
       gradingHeading: '검수 요령',
       commonErrors: '흔한 오답',
       commonErrorItem: (itemNo: number) => `문항 ${itemNo}`,
+      howToReadLabel: '이렇게 읽기',
       reviewTips: '검수 팁',
       retryLabel: '재도전 안내',
     },
@@ -714,7 +715,7 @@ export const app = {
     feedbackTemplatesHeading: '피드백 틀',
     feedbackLevels: { 상: '상', 중: '중', 하: '하' },
     noticePlanHeading: '안내장 틀',
-    noticePlan: { lessonLabel: (n: number) => `${n}차시`, summary: '학습 요약', preview: '다음 차시', home: '가정 학습', quizNotes: '퀴즈 오답 코멘트', phrases: '요소별 문구', good: '잘한 점', improve: '보완' },
+    noticePlan: { lessonLabel: (n: number) => `${n}차시`, summary: '학습 요약', preview: '다음 차시', home: '가정 학습', quizNotes: '퀴즈 오답 코멘트', quizNoteNo: (n: number) => `${n}번`, phrases: '요소별 문구', good: '잘한 점', improve: '보완' },
     generatedWithHeading: '생성 모델',
     empty: '아직 내용이 없습니다.',
     // 문제지 인쇄(간단판): 표지·자료·문항·답란만 종이에 남긴다(app/globals.css 의 html.print-questions)

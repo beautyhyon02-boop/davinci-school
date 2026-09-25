@@ -7,7 +7,7 @@ import type { AssessmentItem as AssessmentItemSchema, Rubric as RubricSchema } f
 import { getLevels } from '@/lib/reference/levels'
 import { sortScale } from '@/lib/studio/scale'
 import { app } from '@/content/site'
-import { Answers, Label } from './parts/common'
+import { Answers, Aside, KV, LabeledLines, SubLabel } from './parts/common'
 import { MaterialsSection, ItemMaterials, type MaterialLike } from './parts/MaterialsFull'
 import { embeddedMaterialIds } from '@/lib/studio/item-materials'
 import { LessonCards } from './parts/LessonCards'
@@ -23,6 +23,8 @@ import { NoticePlanView } from './parts/NoticePlanView'
 // 차시 카드·자료·평가 계획·교사용 지침서·안내장 틀은 components/studio/parts/ 의 조각(서버·클라이언트 공용, 제작소 단계 탭도 같은 조각을 쓴다).
 // 이 파일은 성취기준(getLevels 가 node:fs)·문항·채점 기준처럼 서버에서만 그리는 칸과 조립만 맡는다(사용처: 관리자 세트 page, 원장 문항 page).
 // 차시 카드의 "교사용 지침" 칸(발문 대본·유의점·지침서의 그 차시 메모)은 관리자·원장 화면에만 있다 — 학생 화면은 이 조립을 쓰지 않는다.
+// 읽기 위계(오너 요청 2026-09-26, 모든 과목): 내용 목록은 옆으로 잇지 않고 한 줄에 하나씩 — 평가 요소·조건(번호)·분량/형식·유의점·
+// 예시답안·A~E(수준마다 한 줄). 문두는 text-base 굵게, 소제목은 SubLabel, 보조 설명은 옅게. 코드·배지·자료 ID 같은 메타데이터만 한 줄에.
 
 type AssessmentItem = z.infer<typeof AssessmentItemSchema>
 type Rubric = z.infer<typeof RubricSchema>
@@ -100,8 +102,8 @@ function ReconstructionSection({ snapshot }: { snapshot: Snapshot }) {
                   <td className="py-1 pr-3">{r.original_text}</td>
                   <td className="py-1 pr-3"><Badge tone="gray">{r.reconstruction_type}</Badge></td>
                   <td className="py-1 pr-3">{r.reconstructed_text}</td>
-                  <td className="py-1 pr-3">{r.reason.join(', ')}</td>
-                  <td className="py-1 pr-3">{r.learning_elements.join(', ')}</td>
+                  <td className="py-1 pr-3"><ul className="space-y-0.5">{r.reason.map((x, i) => <li key={i}>{x}</li>)}</ul></td>
+                  <td className="py-1 pr-3"><ul className="space-y-0.5">{r.learning_elements.map((x, i) => <li key={i}>{x}</li>)}</ul></td>
                 </tr>
               ))}
             </tbody>
@@ -154,12 +156,10 @@ function RubricView({ rubric }: { rubric: Rubric }) {
         </div>
       ))}
       {rubric.holistic && (
-        <div>
-          <p className="font-semibold text-ink-500">{c.holisticHeading}</p>
-          <ul className="list-disc pl-5">
-            {(['상', '중', '하'] as const).map((lv) => <li key={lv}><span className="font-semibold">{copy.feedbackLevels[lv]}</span> {rubric.holistic![lv]}</li>)}
-          </ul>
-        </div>
+        <LabeledLines
+          label={c.holisticHeading}
+          items={(['상', '중', '하'] as const).map((lv) => <><span className="font-semibold">{copy.feedbackLevels[lv]}</span> {rubric.holistic![lv]}</>)}
+        />
       )}
     </div>
   )
@@ -193,23 +193,24 @@ function AssessmentItemView({ item, no, materials, showAnswers, open }: { item: 
           <Badge tone={item.conditions.answer_mode === 'paper' ? 'lemon' : 'gray'}>{cd.answerMode[item.conditions.answer_mode]}</Badge>
         </span>
       </div>
-      <div data-print="omit">
-        <p className="mt-2"><Label>{c.elementsLabel}:</Label> {item.evaluation_elements.join(' · ')}</p>
-        {item.situation && <p><Label>{c.situationLabel}:</Label> {c.situation(item.situation.role, item.situation.audience, item.situation.purpose, item.situation.product)}</p>}
-        <p><Label>{c.materialsLabel}:</Label> {item.materials_used.map((id) => `${copy.materials.idLabel} ${id}`).join(', ')}</p>
+      <div data-print="omit" className="mt-3 space-y-2">
+        <LabeledLines label={c.elementsLabel} items={item.evaluation_elements} />
+        {item.situation && <KV label={c.situationLabel}>{c.situation(item.situation.role, item.situation.audience, item.situation.purpose, item.situation.product)}</KV>}
+        {/* 자료 ID 는 짧은 메타데이터라 한 줄에 */}
+        <KV label={c.materialsLabel}>{item.materials_used.map((id) => `${copy.materials.idLabel} ${id}`).join(', ')}</KV>
       </div>
 
-      <p className="mt-2 whitespace-pre-wrap text-base font-semibold">{item.stem}</p>
+      <p data-item-stem className="mt-3 whitespace-pre-wrap text-base font-semibold leading-relaxed">{item.stem}</p>
 
       {/* 전제문·발문 아래, 조건 위에 그 문항의 자료(대표 연수 2기 p.18~20: 자료와 문항은 한 덩어리) — 화면·문제지 인쇄 모두 */}
       <ItemMaterials item={item} materials={materials} />
 
-      <div className="mt-2 rounded-lg bg-ink-100/40 p-2">
+      <div data-item-conditions className="mt-3 space-y-2 rounded-lg bg-ink-100/40 p-3">
         {/* 조건 문장이 없는 문항(서술형, C-32)은 "조건" 머리글·빈 목록 없이 분량·형식 줄만(화면·문제지 인쇄 모두) */}
         {item.conditions.items.length > 0 && (
-          <>
-            <p className="font-semibold text-ink-500">{cd.heading}</p>
-            <ul className="space-y-0.5">
+          <div>
+            <SubLabel>{cd.heading}</SubLabel>
+            <ol className="mt-1 space-y-1">
               {item.conditions.items.map((x) => (
                 <li key={x.no}>
                   <span className="font-semibold">{cd.itemNo(x.no)}</span> {x.text}{' '}
@@ -217,28 +218,27 @@ function AssessmentItemView({ item, no, materials, showAnswers, open }: { item: 
                   {x.points !== null && <> <Badge tone="gray">{cd.pointsLabel(x.points)}</Badge></>}
                 </li>
               ))}
-            </ul>
-          </>
+            </ol>
+          </div>
         )}
-        <p className={`${item.conditions.items.length > 0 ? 'mt-1 ' : ''}text-ink-500`}>
-          {cd.lengthLabel}: {item.conditions.length} · {cd.formatLabel}: {item.conditions.format}
-          {item.conditions.overflow_rule && ` · ${cd.overflowLabel}: ${item.conditions.overflow_rule}`}
-        </p>
+        {/* 분량·형식·초과 응답은 한 줄에 하나씩 */}
+        <div className="space-y-0.5 text-ink-700">
+          <KV label={cd.lengthLabel}>{item.conditions.length}</KV>
+          <KV label={cd.formatLabel}>{item.conditions.format}</KV>
+          <KV label={cd.overflowLabel}>{item.conditions.overflow_rule}</KV>
+        </div>
       </div>
 
       <AnswerSpace item={item} />
 
       {showAnswers && (
         <Answers open={open}>
-          <p className="font-semibold text-ink-500">{copy.rubricHeading}</p>
+          <SubLabel>{copy.rubricHeading}</SubLabel>
           <RubricView rubric={item.rubric} />
+          <LabeledLines label={c.notesHeading} items={item.rubric.notes} />
           <div>
-            <p className="font-semibold text-ink-500">{c.notesHeading}</p>
-            <ul className="list-disc pl-5">{item.rubric.notes.map((n, i) => <li key={i}>{n}</li>)}</ul>
-          </div>
-          <div>
-            <p className="font-semibold text-ink-500">{c.exemplarsHeading}</p>
-            <div className="space-y-2">
+            <SubLabel>{c.exemplarsHeading}</SubLabel>
+            <div className="mt-1 space-y-2">
               {item.exemplar_answers.map((e, i) => (
                 <div key={i} className="rounded-lg bg-white p-2">
                   <div className="flex flex-wrap items-center gap-2">
@@ -246,14 +246,24 @@ function AssessmentItemView({ item, no, materials, showAnswers, open }: { item: 
                     <span className="text-ink-500">{c.exemplarScores(e.scores)}</span>
                   </div>
                   <p className="mt-1 whitespace-pre-wrap">{e.text}</p>
-                  <p className="mt-1 text-ink-500">{c.rationaleLabel}: {e.rationale}</p>
+                  <Aside kind="rationale" label={c.rationaleLabel} faint>{e.rationale}</Aside>
                 </div>
               ))}
             </div>
           </div>
-          <p><Label>{c.levelMapHeading}:</Label> {item.level_map.map((l) => `${l.level} ${l.min}~${l.max}`).join(' / ')}</p>
-          <ul className="list-disc pl-5 text-ink-500">{item.level_map.map((l) => <li key={l.level}>{l.level}: {l.trait}</li>)}</ul>
-          {item.min_competency && <p><Label>{c.minCompetencyLabel}:</Label> {item.min_competency}</p>}
+          {/* A~E: 수준마다 한 줄 — 수준(굵게)·예상 점수·특징 */}
+          <div data-level-map>
+            <SubLabel>{c.levelMapHeading}</SubLabel>
+            <ul className="mt-1 space-y-1">
+              {item.level_map.map((l) => (
+                <li key={l.level}>
+                  <span className="inline-block w-6 font-bold">{l.level}</span> <span className="tabular-nums">{l.min}~{l.max}</span>
+                  {l.trait && <span className="text-ink-500"> — {l.trait}</span>}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <KV stacked label={c.minCompetencyLabel}>{item.min_competency}</KV>
         </Answers>
       )}
     </div>
@@ -288,7 +298,7 @@ function GradingCriteriaCard({ assessment, open }: { assessment: NonNullable<Sna
       <SectionHeading>{copy.gradingCriteriaHeading}</SectionHeading>
       <p className="mt-1 text-sm text-ink-500">{copy.gradingCriteriaNote}</p>
       <Answers open={open}>
-        <h3 className="font-semibold">{copy.gradeBoundariesHeading}</h3>
+        <h3 className="text-base font-bold">{copy.gradeBoundariesHeading}</h3>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[420px] text-left text-sm">
             <thead>
@@ -305,10 +315,15 @@ function GradingCriteriaCard({ assessment, open }: { assessment: NonNullable<Sna
             </tbody>
           </table>
         </div>
-        <h3 className="pt-2 font-semibold">{copy.feedbackTemplatesHeading}</h3>
-        <div className="space-y-2 text-sm">
-          {(['상', '중', '하'] as const).map((lv) => <p key={lv}><span className="font-semibold">{copy.feedbackLevels[lv]}</span>: {assessment.feedback_templates[lv]}</p>)}
-        </div>
+        <h3 className="pt-2 text-base font-bold">{copy.feedbackTemplatesHeading}</h3>
+        <ul className="space-y-2 text-sm">
+          {(['상', '중', '하'] as const).map((lv) => (
+            <li key={lv}>
+              <p className="font-semibold">{copy.feedbackLevels[lv]}</p>
+              <p className="mt-0.5 pl-3 text-ink-700">{assessment.feedback_templates[lv]}</p>
+            </li>
+          ))}
+        </ul>
       </Answers>
     </Card>
   )
