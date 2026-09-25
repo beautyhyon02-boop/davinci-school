@@ -20,7 +20,13 @@ export function UnitPlanView({ plan }: { plan: UnitPlanLike }) {
   const p = plan.assessment_plan
   return (
     <div className="mt-2 space-y-1 text-sm">
-      <p><Label>{c.lessonMapLabel}:</Label> {arr(plan.lesson_map).map((l) => c.lessonMapItem(l.lesson_no, l.topic)).join(' · ')}</p>
+      {/* 대표님 지적(2026-09-26): 차시 구성을 한 줄로 늘어놓으니 눈에 안 들어온다 → 한 줄에 한 차시 */}
+      <div>
+        <Label>{c.lessonMapLabel}:</Label>
+        <ul className="mt-1 space-y-0.5">
+          {arr(plan.lesson_map).map((l) => <li key={l.lesson_no}>{c.lessonMapItem(l.lesson_no, l.topic)}</li>)}
+        </ul>
+      </div>
       {p && (
         <>
           <p><Label>{c.formativeLabel}:</Label> {p.formative}</p>
