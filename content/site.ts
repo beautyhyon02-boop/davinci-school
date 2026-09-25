@@ -631,6 +631,12 @@ export const app = {
       // 차시 카드의 교사용 지침 칸(관리자·원장 화면만): 발문 대본 + 지도상 유의점 + 교사용 지침서의 그 차시 메모
       teacherBlockHeading: '교사용 지침',
       guideNotesHeading: '지침서 메모',
+      // 교사용 지침 칸의 퀴즈 수준(L-10, 대표 2026-09-26: 성취수준 틀로 난이도를 나눈다) — 관리자·원장 화면만, 학생 화면에는 없다
+      quizLevelsHeading: '퀴즈 수준',
+      quizLevel: (no: number, level: string | undefined) => {
+        const names: Record<string, string> = { 'D~E': '회상', C: '이해·적용', B: '관계·추론' }
+        return level ? `${no}번 ${level}${names[level] ? `(${names[level]})` : ''}` : `${no}번 수준 없음`
+      },
       worksheetHeading: '활동지',
       worksheetTier: (tier: string, ref: string) => `${tier}(${ref})`,
       worksheetExpected: '기대 답',

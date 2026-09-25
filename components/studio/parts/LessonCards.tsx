@@ -10,7 +10,7 @@ import { Answers, Label, arr } from './common'
 // (학생 차시 패널은 핵심질문·목표·자료·퀴즈만 — app/student/assignments/[id]/page.tsx).
 // 저장된 출력(옛 판·손으로 고친 판)을 그대로 받으므로 모든 필드를 느슨하게 읽는다.
 
-export type QuizLike = { q: string; type?: string; choices?: string[] | null; answer?: string; explanation?: string }
+export type QuizLike = { q: string; type?: string; choices?: string[] | null; answer?: string; explanation?: string; level_ref?: string }
 export type LessonLike = {
   no: number
   kind?: string
@@ -61,13 +61,16 @@ function QuizView({ quiz, showAnswers }: { quiz: QuizLike[]; showAnswers: boolea
 }
 
 /**
- * 교사용 지침 칸 — 이 차시를 어떻게 가르칠지: 발문 대본(예상 답·막힐 때), 지도상 유의점, 교사용 지침서의 이 차시 메모.
- * 예상 답·막힐 때는 채점 자료를 보이는 화면(showAnswers)에서만.
+ * 교사용 지침 칸 — 이 차시를 어떻게 가르칠지: 발문 대본(예상 답·막힐 때), 지도상 유의점, 퀴즈 수준(L-10: 문항마다 D~E 회상·C 이해·적용·B 관계·추론,
+ * 대표 2026-09-26), 교사용 지침서의 이 차시 메모. 예상 답·막힐 때는 채점 자료를 보이는 화면(showAnswers)에서만. 퀴즈 수준은 답이 아니라
+ * 늘 보이되 이 카드는 관리자·원장 화면에만 있다 — 학생 차시 패널은 수준을 보이지 않는다. 수준이 없는 옛 퀴즈(2026-09-26 이전)면 줄을 두지 않는다.
  */
 function TeacherBlock({ l, guideNotes, showAnswers }: { l: LessonLike; guideNotes: string[]; showAnswers: boolean }) {
   const questions = arr(l.teacher_script?.questions)
   const cautions = arr(l.caution_notes)
-  if (questions.length === 0 && cautions.length === 0 && guideNotes.length === 0) return null
+  const quiz = quizOf(l)
+  const levels = quiz.some((q) => q.level_ref) ? quiz.map((q, i) => c.quizLevel(i + 1, q.level_ref)) : []
+  if (questions.length === 0 && cautions.length === 0 && guideNotes.length === 0 && levels.length === 0) return null
   return (
     <div data-teacher-guide className="mt-3 space-y-2 rounded-lg bg-lavender-50 p-3">
       <p className="font-bold">{c.teacherBlockHeading}</p>
@@ -91,6 +94,9 @@ function TeacherBlock({ l, guideNotes, showAnswers }: { l: LessonLike; guideNote
           <p className="font-semibold text-ink-500">{c.cautionHeading}</p>
           <ul className="list-disc pl-5">{cautions.map((x, i) => <li key={i}>{x}</li>)}</ul>
         </div>
+      )}
+      {levels.length > 0 && (
+        <p data-quiz-levels><span className="font-semibold text-ink-500">{c.quizLevelsHeading}:</span> {levels.join(' · ')}</p>
       )}
       {guideNotes.length > 0 && (
         <div>

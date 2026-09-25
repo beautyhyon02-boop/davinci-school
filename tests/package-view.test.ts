@@ -61,8 +61,18 @@ describe.each(['수학', '과학'] as const)('PackageView v2 (%s mock snapshot)'
         for (const q of l.teacher_script.questions) expect(seg).toContain(norm(`${q.prompt} — ${c.lessons.scriptExpected}: ${q.expected_answer}`))
         for (const n of l.caution_notes) expect(seg).toContain(norm(n))
         for (const n of snap.teacher_guide!.per_lesson.find((p) => p.no === l.no)?.notes ?? []) expect(seg).toContain(norm(n))
+        // 퀴즈 수준(L-10, 대표 2026-09-26): 교수 차시 카드의 교사용 지침 칸에 문항마다 D~E·C·B — 시연 세트는 수준이 모두 붙어 있다
+        const quiz = l.formative_check.quiz as { level_ref?: string }[]
+        if (quiz.length) expect(seg).toContain(norm(`${c.lessons.quizLevelsHeading}: ${quiz.map((q, i) => c.lessons.quizLevel(i + 1, q.level_ref)).join(' · ')}`))
+        else expect(seg).not.toContain(c.lessons.quizLevelsHeading)
       }
     }
+    expect(c.lessons.quizLevel(3, 'B')).toBe('3번 B(관계·추론)'); expect(c.lessons.quizLevel(1, undefined)).toBe('1번 수준 없음')
+    // 수준이 없는 옛 퀴즈(2026-09-26 이전 판)는 수준 줄을 두지 않는다
+    const old = { ...snap, lessons: snap.lessons.map((l) => ({ ...l, formative_check: { quiz: l.formative_check.quiz.map(({ level_ref: _x, ...q }) => { void _x; return q }) } })) }
+    expect(render(old, 'teacher')).not.toContain('data-quiz-levels')
+    // 학생 화면(자기 차시 패널·퀴즈 폼)은 수준을 보이지 않는다
+    for (const f of ['page.tsx', 'QuizForm.tsx', 'LessonTabs.tsx', 'ResultView.tsx']) expect(readFileSync(`app/student/assignments/[id]/${f}`, 'utf8'), f).not.toMatch(/level_ref|quizLevel/)
     // 학생 화면은 패키지 조립·차시 카드를 쓰지 않는다(자기 차시 패널 + 자료 조각만) — 교사용 지침 칸이 학생에게 갈 길이 없다
     const student = readFileSync('app/student/assignments/[id]/page.tsx', 'utf8')
     expect(student).not.toMatch(/PackageView|LessonCards|LessonCard\b/)
