@@ -13,6 +13,9 @@ import { statesAnswer } from '@/lib/studio/compat'
 const STAGES = [2, 3, 4, 5, 6, 7] as const
 const SETS = [{ suffix: '', subject: '수학', standards: 'standards-math.json' }, { suffix: '-과학', subject: '과학', standards: 'standards-science.json' }] as const
 const std = (f: string) => JSON.parse(readFileSync(`data/studio-fixtures/${f}`, 'utf8')) as { code: string; text: string }[]
+// 시연 대주제(중1 일회용품)의 공유 자료 ID — docs/samples/2026-09-20-중1-일회용품-공유자료.json. 3·5단계 [TS] 자문
+// (sharedMaterialCitationIssues, checks.ts)을 실제 fixture로 e2e 돌리는 데 쓴다 — 시연 fixture는 자문이 없어야 한다.
+const SHARED_MATERIAL_IDS = ['A', 'B', 'C', 'D']
 
 describe('fixture keys', () => {
   const ctx = { theme: { title: 't', level: '중', grade: 1, subjects: ['수학', '과학'] }, subject: '과학', standards: [], prior: {} }
@@ -50,7 +53,7 @@ for (const set of SETS) describe(`${set.subject} fixtures (v2)`, () => {
     const gen = loadFixture(`stage${n}-generate${set.suffix}`)
     const parsed = STAGE_SCHEMAS[n].safeParse(gen)
     expect(parsed.error?.issues.map((i) => `${i.path.join('.')}: ${i.message}`) ?? []).toEqual([])
-    expect(staticIssues(n, gen, { standards, prior }).map((i) => `${i.kind}: ${i.detail}`)).toEqual([])
+    expect(staticIssues(n, gen, { standards, prior, sharedMaterialIds: SHARED_MATERIAL_IDS }).map((i) => `${i.kind}: ${i.detail}`)).toEqual([])
     expect(Review.safeParse(loadFixture(`stage${n}-review${set.suffix}`)).success).toBe(true)
     prior[`stage${n}`] = gen
   })

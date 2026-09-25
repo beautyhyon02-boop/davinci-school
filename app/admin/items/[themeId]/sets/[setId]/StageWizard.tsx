@@ -1,5 +1,5 @@
 'use client'
-import { useState, useTransition } from 'react'
+import { useMemo, useState, useTransition } from 'react'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
@@ -8,6 +8,7 @@ import { canAccept as canAcceptStage, canGenerate as canGenerateStage, canReview
 import type { StageStatus } from '@/lib/studio/stages'
 import type { Issue } from '@/lib/studio/checks'
 import { EXHAUSTED_ERROR } from '@/lib/studio/max-attempts'
+import { syncAssessmentSessionMaterials } from '@/lib/studio/assessment-structure'
 import type { MaterialLike } from '@/components/studio/parts/MaterialsFull'
 import { chooseKeyQuestion, saveStageEdit } from './actions'
 import { WIZARD_STAGES, useStageRunner, type WizardStage } from './useStageRunner'
@@ -107,6 +108,22 @@ function KeyQuestionPicker({ setId, candidates, current }: { setId: string; cand
       </div>
     </Card>
   )
+}
+
+/**
+ * StageOutput에 넘길 단계별 출력(마법사의 outputs prop). 저장된 값을 그대로 보이는 게 원칙이지만, 단원 평가 차시의
+ * materials_used만은 예외다 — 5단계를 저장할 때 저장소(repo.ts saveOutput·saveStageEdit)가 3단계 lessons 열도 같이
+ * 고치지만, 그 반영이 읽기 전용 재조회 전에는 화면에 닿지 않아(예: [확인] 직후 setStageStatus만으로 넘어갈 때) 3단계
+ * 탭이 예전 값(예: 무관한 공유 자료 A~D)을 그대로 보일 수 있다. 순수 함수라 상태는 그대로 두고 여기서 보일 값만 맞춘다
+ * (오너 규칙 2026-09-26 보완). 바뀔 게 없으면 outputs[3]을 새로 만들지 않는다(참조 그대로).
+ */
+export function stageOutputsFor(effective: Partial<Record<WizardStage, StageStatus>>): Partial<Record<WizardStage, unknown>> {
+  const base: Partial<Record<WizardStage, unknown>> = Object.fromEntries(WIZARD_STAGES.map((s) => [s, effective[s]?.output]))
+  const stage3 = base[3] as { lessons?: { no: number; kind?: string; assessment?: unknown; materials_used?: string[] | null }[] } | undefined
+  const stage5 = base[5] as { items?: { kind: string; points: number; materials_used?: string[] | null }[] } | undefined
+  if (!stage3 || !Array.isArray(stage3.lessons) || !stage5 || !Array.isArray(stage5.items)) return base
+  const lessons = syncAssessmentSessionMaterials(stage3.lessons, stage5.items)
+  return lessons === stage3.lessons ? base : { ...base, 3: { ...stage3, lessons } }
 }
 
 function StagePanel({
@@ -273,7 +290,7 @@ export function StageWizard({
   const activeStatus = effective[active]
   const prevAccepted = active === 2 || effective[(active - 1) as WizardStage]?.state === 'accepted'
   const stage2Accepted = effective[2]?.state === 'accepted'
-  const outputs: Partial<Record<WizardStage, unknown>> = Object.fromEntries(WIZARD_STAGES.map((s) => [s, effective[s]?.output]))
+  const outputs: Partial<Record<WizardStage, unknown>> = useMemo(() => stageOutputsFor(effective), [effective])
   const stage2Candidates = (effective[2]?.output as { key_question_candidates?: string[] } | undefined)?.key_question_candidates ?? candidates
 
   return (
