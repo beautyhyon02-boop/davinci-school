@@ -305,3 +305,11 @@ describe('학년 선택(대표 2026-09-26): 학년이 없으면 학교급 학년
     }
   })
 })
+
+describe('stage 4 — 자료 내부 모순 금지(2026-09-26)', () => {
+  it('생성·검토 지시문에 모순·모호 지시 규칙이 있다', () => {
+    const c = { theme: { title: 't', level: '중', grade: null, subjects: ['영어'] }, subject: '영어', standards: [], prior: {} }
+    expect(buildPrompt(4, c).user).toMatch(/서로 모순되지 않아야/)
+    expect(buildReviewPrompt(4, c, { materials: [] }).user).toMatch(/모순|모호/)
+  })
+})
