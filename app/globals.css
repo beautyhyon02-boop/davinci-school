@@ -50,7 +50,7 @@ body { @apply antialiased; }
 }
 
 /* 문제지 인쇄(간단판, components/classroom/PrintButton sheet='questions'): <html class="print-questions"> 일 때만.
- * PackageView 의 바로 아래 칸 중 data-print="keep"(표지·핵심질문·자료·문항)만 남기고, 그 안의 data-print="omit"(배지·채점 자료 등)은 숨긴다.
+ * PackageView 의 바로 아래 칸 중 data-print="keep"(표지·핵심질문·문항 — 자료는 문항 안 상자로; 문항 밖 자료가 있을 때만 자료 칸)만 남기고, 그 안의 data-print="omit"(배지·채점 자료 등)은 숨긴다.
  * data-print="sheet-only"(이름·날짜 줄, 답란)는 화면과 평소 인쇄에서는 보이지 않는다. */
 [data-print="sheet-only"] { display: none; }
 @media print {
@@ -59,8 +59,11 @@ body { @apply antialiased; }
   html.print-questions [data-print="sheet-only"] { display: block; }
   html.print-questions [data-package-view] { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
   html.print-questions [data-package-view] > [data-print="keep"] { box-shadow: none; padding: 0; }
-  html.print-questions [data-print="item"] { break-inside: avoid; }
+  /* 문항 카드는 자료 상자를 품어 한 쪽보다 길 수 있다 — 통째로 다음 쪽으로 밀어 빈 쪽이 생기지 않게 문항은 가를 수 있게 두고, 자료 상자·자료 하나만 가르지 않는다 */
+  html.print-questions [data-print="item"] { break-inside: auto; }
   html.print-questions [data-print="material"] { break-inside: avoid; }
+  /* 문항 안 자료 상자(<자료 1>·<자료 2>) — 문항 = 자료 + 문항 한 덩어리. 상자 하나는 쪽이 바뀌어도 가르지 않는다 */
+  html.print-questions [data-print="item-material"] { break-inside: avoid; }
   .answer-line { height: 8mm; border-bottom: 1px solid #9ca3af; }
   .answer-box { margin-top: 3mm; min-height: 70mm; border: 1.5px solid #6b7280; border-radius: 3mm; padding: 3mm; color: #6b7280; }
   .student-line { display: flex; gap: 12mm; margin-top: 3mm; font-size: 11pt; }

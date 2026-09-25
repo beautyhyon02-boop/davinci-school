@@ -599,6 +599,13 @@ export const app = {
       // 제작소 4단계 탭: 대주제 공유 자료(모든 과목이 함께 쓰는 자료)를 세트 자료와 구별
       sharedBadge: '공유',
     },
+    // 문항 = 자료 + 문항 한 덩어리(대표 연수 2기 p.18~20): 문항 카드 안에 그 문항의 자료를 <자료 1>·<자료 2> 상자로 넣는다.
+    // 번호는 문항 안 번호(materials_used 순서), 옆의 작은 "자료 B"는 세트 자료 ID — 옛 문두("자료 B는 …")도 그대로 읽히게.
+    items: {
+      materialLabel: (n: number) => `<자료 ${n}>`,
+      materialHint: (id: string) => `자료 ${id}`,
+      materialMissing: (id: string) => `자료 ${id}을(를) 이 세트에서 찾을 수 없습니다.`,
+    },
     lessonsHeading: '차시',
     lessons: {
       columns: { no: '차시', standards: '담당 성취기준', keyQuestion: '차시 핵심질문', goal: '목표', assessment: '평가 배치', mergeable: '병합 가능' },

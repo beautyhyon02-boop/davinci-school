@@ -8,7 +8,8 @@ import { getLevels } from '@/lib/reference/levels'
 import { sortScale } from '@/lib/studio/scale'
 import { app } from '@/content/site'
 import { Answers, Label } from './parts/common'
-import { MaterialsSection } from './parts/MaterialsFull'
+import { MaterialsSection, ItemMaterials, type MaterialLike } from './parts/MaterialsFull'
+import { embeddedMaterialIds } from '@/lib/studio/item-materials'
 import { LessonCards } from './parts/LessonCards'
 import { UnitPlanView } from './parts/UnitPlanView'
 import { TeacherGuideView } from './parts/TeacherGuideView'
@@ -16,7 +17,7 @@ import { NoticePlanView } from './parts/NoticePlanView'
 
 // v2 패키지 화면(스펙 §2.9). 카드 순서 = 표지 → 소개 → 성취기준(+A~E 접이식) → 재구조화 표 → 학습 목표(축 배지) → 핵심질문 →
 // 평가 계획 → 차시 카드(시간·소단계·발문 대본·준비물·유의점·활동지·퀴즈; 마지막 교수 차시 뒤 단원 평가 차시는 레몬 테두리 카드) →
-// 자료(출처 배지) → 문항 카드 2장(서술형·논술형, 옛 판 3장; 문항별 채점표는 카드 안 접이식) →
+// 자료(출처 배지) → 문항 카드 2장(서술형·논술형, 옛 판 3장; 문항 = 자료 + 문항 한 덩어리 — 카드 안에 그 문항의 <자료 1>·<자료 2> 상자, 문항별 채점표는 카드 안 접이식) →
 // 채점 기준(두 문항 공통 등급표 level_ref·피드백 틀, 접이식 — 2026-09-25) → 교사용 지침서 → 안내장 틀 → 참고한 공개 자료 → 생성 모델(관리자만).
 // 정답·예시답안 같은 채점 자료는 <details> 로 묶는다 — 관리자 미리보기는 펼친 채, 원장 열람(mode='teacher')은 접힌 채로 시작한다.
 // 차시 카드·자료·평가 계획·교사용 지침서·안내장 틀은 components/studio/parts/ 의 조각(서버·클라이언트 공용, 제작소 단계 탭도 같은 조각을 쓴다).
@@ -178,7 +179,7 @@ function AnswerSpace({ item }: { item: AssessmentItem }) {
   )
 }
 
-function AssessmentItemView({ item, no, showAnswers, open }: { item: AssessmentItem; no: number; showAnswers: boolean; open: boolean }) {
+function AssessmentItemView({ item, no, materials, showAnswers, open }: { item: AssessmentItem; no: number; materials: MaterialLike[]; showAnswers: boolean; open: boolean }) {
   const c = copy.assessment
   const cd = c.conditions
   return (
@@ -199,6 +200,9 @@ function AssessmentItemView({ item, no, showAnswers, open }: { item: AssessmentI
       </div>
 
       <p className="mt-2 whitespace-pre-wrap text-base font-semibold">{item.stem}</p>
+
+      {/* 전제문·발문 아래, 조건 위에 그 문항의 자료(대표 연수 2기 p.18~20: 자료와 문항은 한 덩어리) — 화면·문제지 인쇄 모두 */}
+      <ItemMaterials item={item} materials={materials} />
 
       <div className="mt-2 rounded-lg bg-ink-100/40 p-2">
         {/* 조건 문장이 없는 문항(서술형, C-32)은 "조건" 머리글·빈 목록 없이 분량·형식 줄만(화면·문제지 인쇄 모두) */}
@@ -256,14 +260,14 @@ function AssessmentItemView({ item, no, showAnswers, open }: { item: AssessmentI
   )
 }
 
-function AssessmentSection({ assessment, showAnswers, open }: { assessment: Snapshot['assessment']; showAnswers: boolean; open: boolean }) {
+function AssessmentSection({ assessment, materials, showAnswers, open }: { assessment: Snapshot['assessment']; materials: MaterialLike[]; showAnswers: boolean; open: boolean }) {
   if (!assessment) return null
   return (
     <>
       <Card print="keep">
         <SectionHeading>{copy.assessmentHeading}</SectionHeading>
         <div className="mt-3 space-y-3">
-          {assessment.items.map((item, i) => <AssessmentItemView key={i} item={item} no={i + 1} showAnswers={showAnswers} open={open} />)}
+          {assessment.items.map((item, i) => <AssessmentItemView key={i} item={item} no={i + 1} materials={materials} showAnswers={showAnswers} open={open} />)}
         </div>
       </Card>
 
@@ -336,7 +340,7 @@ export function PackageView({ snapshot, mode, showAnswers = false }: { snapshot:
   const open = mode === 'admin'
   return (
     <div data-package-view className="space-y-4">
-      {/* 문제지 인쇄(html.print-questions)에서는 print="keep" 칸(표지·핵심질문·자료·문항)만 남는다 — app/globals.css */}
+      {/* 문제지 인쇄(html.print-questions)에서는 print="keep" 칸(표지·핵심질문·문항 — 자료는 문항 안에; 문항 밖 자료가 있을 때만 자료 칸)만 남는다 — app/globals.css */}
       <Card print="keep">
         <div className="flex flex-wrap items-center gap-2">
           <h1 className="text-2xl font-bold">{snapshot.cover.title}</h1>
@@ -380,11 +384,12 @@ export function PackageView({ snapshot, mode, showAnswers = false }: { snapshot:
         </Card>
       )}
 
-      <MaterialsSection materials={snapshot.materials} />
+      {/* 자료 칸은 화면에 그대로(차시도 쓴다). 문제지 인쇄에는 문항 안에 실린 자료를 빼고, 전부 실렸으면 칸째 뺀다 */}
+      <MaterialsSection materials={snapshot.materials} embeddedIds={[...embeddedMaterialIds(snapshot.assessment?.items)]} />
       {mode === 'admin' && (snapshot.materials_omitted?.length ?? 0) > 0 && (
         <p data-print="omit" className="text-sm text-ink-500">{c.materialsOmitted(snapshot.materials_omitted!)}</p>
       )}
-      <AssessmentSection assessment={snapshot.assessment} showAnswers={showAnswers} open={open} />
+      <AssessmentSection assessment={snapshot.assessment} materials={snapshot.materials} showAnswers={showAnswers} open={open} />
       <TeacherGuideSection guide={snapshot.teacher_guide} lessons={snapshot.lessons} />
       <NoticePlanSection plan={snapshot.notice_plan} />
 

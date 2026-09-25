@@ -3,10 +3,10 @@ import type { ReactNode } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { getSessionProfile } from '@/lib/auth/session'
 import { loadAssignmentSnapshot } from '@/lib/classroom/snapshot'
-import { itemNosForLesson, itemLabel, materialIdsForLesson, studentConditions } from '@/lib/classroom/lessons'
+import { itemNosForLesson, itemLabel, sectionMaterialIds, studentConditions } from '@/lib/classroom/lessons'
 import { isUnitAssessmentSession } from '@/lib/studio/assessment-structure'
 import { SHORT_MINUTES, ESSAY_MINUTES } from '@/lib/studio/structure-text'
-import { MaterialsSection } from '@/components/studio/parts/MaterialsFull'
+import { MaterialsSection, ItemMaterials } from '@/components/studio/parts/MaterialsFull'
 import { overallFor, gradeFor } from '@/lib/classroom/scoring'
 import { LessonTabs } from './LessonTabs'
 import { QuizForm } from './QuizForm'
@@ -53,7 +53,8 @@ export default async function StudentAssignmentPage({ params }: { params: Promis
     // 이 차시의 서·논술형: 단원 평가 차시(마지막 교수 차시 뒤)는 서술형·논술형 두 문항, 교수 차시는 없음, 옛 판 차시는 한 문항
     const itemNos = itemNosForLesson(snapshot, no)
     const lessonItems = itemNos.map((n) => snapshot.assessment!.items[n - 1])
-    const materialIds = materialIdsForLesson(lesson, lessonItems)
+    // 문항이 쓰는 자료는 답안 칸(문항) 안에 <자료 1>·<자료 2>로 들어간다 — 따로 선 자료 칸에는 나머지만(단원 평가 차시는 보통 없음)
+    const materialIds = sectionMaterialIds(lesson, lessonItems)
     panels[no] = (
       <div className="space-y-5">
         <section className="rounded-2xl bg-white p-5">
@@ -82,7 +83,8 @@ export default async function StudentAssignmentPage({ params }: { params: Promis
           return (
             <div key={itemNo} className="space-y-5">
               <AnswerEditor assignmentId={id} itemNo={itemNo} attempt={1} initialBody={ans1?.body ?? ''} submitted={!!ans1?.submitted_at}
-                label={label} points={item.points} stem={item.stem} conditions={conditions} />
+                label={label} points={item.points} stem={item.stem} conditions={conditions}
+                materials={<ItemMaterials item={item} materials={snapshot.materials} />} />
               {r1 && <ResultView label={label} points={item.points} attempt={1} grading={r1} />}
               {r1 && assignment.allow_retry && !ans2 && <RetryButton assignmentId={id} itemNo={itemNo} />}
               {ans2 && (

@@ -57,6 +57,15 @@ export function materialIdsForLesson(lesson: { materials_used: string[]; kind?: 
   return [...new Set([...lesson.materials_used, ...fromItems])].sort()
 }
 
+/**
+ * 학생 차시 패널의 따로 선 자료 칸에 보일 자료 ID. 문항 = 자료 + 문항 한 덩어리(대표 연수 2기 p.18~20) — 이 차시의 문항은 답안 칸 안에
+ * 자기 자료(<자료 1>·<자료 2>)를 품으므로, 그 자료는 칸에서 빼 같은 자료가 두 번 보이지 않게 한다. 교수 차시(문항 없음)는 그대로.
+ */
+export function sectionMaterialIds(lesson: { materials_used: string[]; kind?: string }, items: { materials_used: string[] }[] = []): string[] {
+  const embedded = new Set(items.flatMap((i) => i.materials_used))
+  return materialIdsForLesson(lesson, items).filter((id) => !embedded.has(id))
+}
+
 /** 표·그래프를 종이에 직접 작성하는 문항(answer_mode 'paper')인지. 학생 화면은 입력칸 대신 종이 답안 안내를 보인다. */
 export function isPaperItem(snapshot: Snapshot, itemNo: number): boolean {
   return snapshot.assessment?.items[itemNo - 1]?.conditions.answer_mode === 'paper'
