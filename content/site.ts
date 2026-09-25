@@ -451,23 +451,15 @@ export const app = {
         goal: (text: string, axis: string) => `${text} (${axis})`,
         candidatesLabel: '핵심질문 후보',
       },
+      // 3·4·6·7단계 탭은 요약이 아니라 완성본 그대로(오너 규칙 2026-09-26) — 차시 카드·자료·지침서·안내장 문구는 app.packageView 를 함께 쓴다
       stage3: {
-        columns: {
-          no: '차시',
-          standards: '담당 성취기준',
-          keyQuestion: '차시 핵심질문',
-          quizCount: '퀴즈 수',
-          assessment: '평가 배치',
-          mergeable: '병합 가능',
-        },
-        noAssessment: '-',
+        unitPlanHeading: '평가 계획',
+        lessonsHeading: '차시 카드(원장 화면과 같은 모양)',
+        guidePending: '각 차시의 「교사용 지침」 칸에 들어갈 지침서 메모는 6단계(교사용 지침서)를 만들면 함께 보입니다.',
       },
       stage4: {
-        idLabel: '자료',
-        kindLabel: '종류',
-        previewHeading: '표 미리보기(상위 5행)',
-        bodyPreviewHeading: '본문',
-        imagesCount: (n: number) => `이미지 ${n}장`,
+        sharedNote: '「공유」 표시는 대주제의 모든 과목이 함께 쓰는 자료입니다. 이 세트의 차시·문항이 가리키는 것만 보입니다.',
+        overriddenNote: (ids: string[]) => `${ids.map((id) => `자료 ${id}`).join(', ')}: 대주제 공유 자료와 ID가 겹쳐 게시 판에서는 공유 자료가 대신 실립니다.`,
       },
       // 5단계 요약(Stage5Summary.tsx): 문항 카드(조건·채점표·예시답안 전부) + 두 문항 공통 채점 기준표(등급표·피드백 틀)
       stage5: {
@@ -509,13 +501,6 @@ export const app = {
         boundaryColumns: { grade: '등급', range: '점수 범위', band: '수준', levelRef: '수준 참조' },
         boundaryRange: (min: number, max: number) => `${min}~${max}점`,
         feedbackHeading: '피드백 틀',
-      },
-      stage6: {
-        termsCount: (n: number) => `용어 ${n}개`,
-        notesCount: (n: number) => `차시별 메모 ${n}개`,
-      },
-      stage7: {
-        summary: (lessons: number, essays: number) => `차시 ${lessons}개 · 서·논술형 차시 문구 ${essays}개`,
       },
       errors: {
         invalidJson: 'JSON 형식을 확인하세요.',

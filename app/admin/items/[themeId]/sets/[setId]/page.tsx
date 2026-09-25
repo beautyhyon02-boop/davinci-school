@@ -11,6 +11,7 @@ import { canPublish, buildSnapshot, type DraftLessonQuizzes } from '@/lib/studio
 import type { StageStatus } from '@/lib/studio/stages'
 import { app } from '@/content/site'
 import { WIZARD_STAGES, type WizardStage } from '@/lib/studio/wizard-stages'
+import { withMaterialDefaults } from '@/lib/studio/draft-defaults'
 
 const copy = app.studio.wizard
 
@@ -95,6 +96,8 @@ export default async function SetWizardPage({ params }: { params: Promise<{ them
                 candidates={candidates}
                 materials={(itemSet.materials ?? []) as { id: string; images?: string[] }[]}
                 lessons={(itemSet.lessons ?? []) as { no: number; images?: string[] }[]}
+                // 4단계 탭에 이 세트가 가리키는 공유 자료를 함께 보인다 — 공유 자료는 v1 모양일 수 있어 v2 기본값을 입혀 넘긴다
+                sharedMaterials={(Array.isArray(theme.materials) ? theme.materials : []).map(withMaterialDefaults)}
               />
             </>
           }

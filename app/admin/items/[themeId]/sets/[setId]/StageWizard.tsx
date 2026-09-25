@@ -8,18 +8,14 @@ import { canAccept as canAcceptStage, canGenerate as canGenerateStage, canReview
 import type { StageStatus } from '@/lib/studio/stages'
 import type { Issue } from '@/lib/studio/checks'
 import { EXHAUSTED_ERROR } from '@/lib/studio/max-attempts'
-import { cleanMaterialTitle } from '@/lib/studio/compat'
-import { lessonAssessments } from '@/lib/studio/assessment-structure'
+import type { MaterialLike } from '@/components/studio/parts/MaterialsFull'
 import { chooseKeyQuestion, saveStageEdit } from './actions'
 import { WIZARD_STAGES, useStageRunner, type WizardStage } from './useStageRunner'
 import { Attachments } from './Attachments'
 import { FieldEditor } from './FieldEditor'
-import { Stage5Summary } from './Stage5Summary'
+import { StageOutput } from './StageOutput'
 
 const copy = app.studio.wizard
-
-// 4단계 요약의 글 자료 본문 — 오너 지적(2026-09-26): 240자로 자르니 안내문의 머리만 보여 "내용이 없다"고 읽혔다.
-// 자료 본문은 한 화면(100~800자)이므로 자르지 않고 전부 보여 준다. 표 자료는 표 미리보기(위 5행)를 쓴다.
 
 /** AI 출력 형식 검사 실패(lib/ai/claude.ts의 최종 에러 문구)인지 — 맞으면 안내 문구를 앞에 두고 원문은 작게 보여 준다. */
 const isParseError = (message: string) => /^AI output could not be parsed after \d+ attempts/.test(message)
@@ -42,142 +38,6 @@ const STATE_TONE: Record<StageStatus['state'], 'gray' | 'lavender' | 'lemon' | '
   reviewed: 'lemon',
   accepted: 'mint',
   failed: 'gray',
-}
-
-// 요약 렌더용 느슨한 모양. v2 출력(learning_goals 객체·formative_check.quiz)을 읽되, v2 이전에 저장된 출력(문자열 목표·최상위 quiz)도 깨지지 않게 둘 다 받는다.
-type Stage2Output = { reconstruction: string; learning_goals: (string | { text: string; axis: string })[]; key_question_candidates: string[] }
-type Lesson = {
-  no: number
-  standards: string[]
-  key_question: string
-  formative_check?: { quiz: unknown[] }
-  quiz?: unknown[]
-  assessment: string[] | string | null   // v2 는 배열(단원 평가 차시 ['서술형', '논술형']), 옛 초안은 문자열·null
-  mergeable_with: number | null
-}
-type Stage3Output = { lessons: Lesson[] }
-type Material = { id: string; title: string; kind: 'table' | 'text' | 'chart' | 'image'; body: string | null; table: { columns: string[]; rows: (string | number)[][] } | null; images?: string[] }
-type Stage4Output = { materials: Material[] }
-type Stage6Output = { glossary: { term: string; explanation: string }[]; per_lesson: { no: number; notes: string[] }[] }
-type Stage7Output = { per_lesson?: { lesson_no: number; criteria_phrases: unknown[] | null }[] }
-
-function StageOutput({ stage, output }: { stage: WizardStage; output: unknown }) {
-  if (output === undefined || output === null) return <p className="mt-3 text-sm text-ink-500">{copy.empty}</p>
-
-  if (stage === 2) {
-    const o = output as Stage2Output
-    return (
-      <div className="mt-3 space-y-3">
-        <div>
-          <p className="text-sm font-semibold text-ink-500">{copy.stage2.reconstructionLabel}</p>
-          <p className="mt-1 whitespace-pre-wrap text-sm">{o.reconstruction}</p>
-        </div>
-        <div>
-          <p className="text-sm font-semibold text-ink-500">{copy.stage2.goalsLabel}</p>
-          <ul className="mt-1 list-disc space-y-1 pl-5 text-sm">
-            {o.learning_goals?.map((g, i) => <li key={i}>{typeof g === 'string' ? g : copy.stage2.goal(g.text, g.axis)}</li>)}
-          </ul>
-        </div>
-        <div>
-          <p className="text-sm font-semibold text-ink-500">{copy.stage2.candidatesLabel}</p>
-          <ul className="mt-1 list-disc space-y-1 pl-5 text-sm">
-            {o.key_question_candidates?.map((q, i) => <li key={i}>{q}</li>)}
-          </ul>
-        </div>
-      </div>
-    )
-  }
-
-  if (stage === 3) {
-    const o = output as Stage3Output
-    const c = copy.stage3.columns
-    return (
-      <div className="mt-3 overflow-x-auto">
-        <table className="w-full min-w-[640px] text-left text-sm">
-          <thead>
-            <tr className="border-b border-ink-100 text-ink-500">
-              <th className="py-1 pr-3">{c.no}</th>
-              <th className="py-1 pr-3">{c.standards}</th>
-              <th className="py-1 pr-3">{c.keyQuestion}</th>
-              <th className="py-1 pr-3">{c.quizCount}</th>
-              <th className="py-1 pr-3">{c.assessment}</th>
-              <th className="py-1 pr-3">{c.mergeable}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {o.lessons?.map((l) => (
-              <tr key={l.no} className="border-b border-ink-50">
-                <td className="py-1 pr-3">{l.no}</td>
-                <td className="py-1 pr-3">{l.standards?.join(', ')}</td>
-                <td className="py-1 pr-3">{l.key_question}</td>
-                <td className="py-1 pr-3">{(l.formative_check?.quiz ?? l.quiz)?.length ?? 0}</td>
-                <td className="py-1 pr-3">{lessonAssessments(l).join(' + ') || copy.stage3.noAssessment}</td>
-                <td className="py-1 pr-3">{l.mergeable_with ?? copy.stage3.noAssessment}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    )
-  }
-
-  if (stage === 4) {
-    const o = output as Stage4Output
-    return (
-      <div className="mt-3 space-y-3">
-        {o.materials?.map((m) => (
-          <div key={m.id} className="rounded-xl border border-ink-100 p-3">
-            <p className="text-sm font-semibold">
-              {copy.stage4.idLabel} {m.id} · {cleanMaterialTitle(m.title)} · {copy.stage4.kindLabel}: {m.kind}
-              {(m.images?.length ?? 0) > 0 && <> · {copy.stage4.imagesCount(m.images!.length)}</>}
-            </p>
-            {/* 표 자료는 표 미리보기, 그 밖의 자료(글·차트·이미지)는 본문을 미리 보여 준다(오너 지적 2026-09-26: 미리보기를 열지 않으면 읽을 수 없었다) */}
-            {!m.table && m.body && (
-              <div className="mt-2">
-                <p className="text-xs text-ink-500">{copy.stage4.bodyPreviewHeading}</p>
-                <p className="mt-1 whitespace-pre-wrap text-xs">{m.body}</p>
-              </div>
-            )}
-            {m.table && (
-              <div className="mt-2 overflow-x-auto">
-                <p className="text-xs text-ink-500">{copy.stage4.previewHeading}</p>
-                <table className="mt-1 w-full min-w-[420px] text-left text-xs">
-                  <thead>
-                    <tr className="border-b border-ink-100 text-ink-500">
-                      {m.table.columns.map((col, i) => <th key={i} className="py-1 pr-3">{col}</th>)}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {m.table.rows.slice(0, 5).map((row, i) => (
-                      <tr key={i} className="border-b border-ink-50">
-                        {row.map((cell, j) => <td key={j} className="py-1 pr-3">{String(cell)}</td>)}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-    )
-  }
-
-  if (stage === 5) return <Stage5Summary output={output} />
-
-  if (stage === 7) {
-    const o = output as Stage7Output
-    return <p className="mt-3 text-sm">{copy.stage7.summary(o.per_lesson?.length ?? 0, o.per_lesson?.filter((p) => p.criteria_phrases).length ?? 0)}</p>
-  }
-
-  // stage 6
-  const o = output as Stage6Output
-  return (
-    <div className="mt-3 space-y-1 text-sm">
-      <p>{copy.stage6.termsCount(o.glossary?.length ?? 0)}</p>
-      <p>{copy.stage6.notesCount(o.per_lesson?.reduce((s, l) => s + (l.notes?.length ?? 0), 0) ?? 0)}</p>
-    </div>
-  )
 }
 
 /**
@@ -253,6 +113,8 @@ function StagePanel({
   setId,
   stage,
   status,
+  outputs,
+  sharedMaterials,
   prevAccepted,
   laterStages,
   busy,
@@ -262,6 +124,9 @@ function StagePanel({
   setId: string
   stage: WizardStage
   status: StageStatus | undefined
+  /** 모든 단계의 현재 출력 — 결과 보기가 다른 단계 것(3↔6 지침서 메모, 4 ← 자료 참조)을 함께 읽는다. */
+  outputs: Partial<Record<WizardStage, unknown>>
+  sharedMaterials: MaterialLike[]
   prevAccepted: boolean
   /** 이 단계 뒤의, 준비 전이 아닌 단계 — 이 단계를 고쳐 저장하면 초기화된다(문장 고치기가 확인을 받는다). */
   laterStages: number[]
@@ -332,7 +197,7 @@ function StagePanel({
           </div>
         </div>
       ) : (
-        <StageOutput stage={stage} output={status?.output} />
+        <StageOutput stage={stage} outputs={outputs} sharedMaterials={sharedMaterials} />
       )}
 
       {/* 문장 고치기(대표 2026-09-26): 기본은 접혀 있고, 구조를 바꿀 때는 아래 [JSON 편집]을 쓴다 */}
@@ -383,6 +248,7 @@ export function StageWizard({
   candidates,
   materials = [],
   lessons = [],
+  sharedMaterials = [],
 }: {
   setId: string
   initialStatuses: Partial<Record<WizardStage, StageStatus>>
@@ -390,6 +256,8 @@ export function StageWizard({
   candidates: string[]
   materials?: { id: string; images?: string[] }[]
   lessons?: { no: number; images?: string[] }[]
+  /** 대주제 공유 자료(v2 기본값을 입힌 평범한 데이터) — 4단계 탭에 이 세트가 가리키는 것만 '공유'로 보인다. */
+  sharedMaterials?: MaterialLike[]
 }) {
   // 서버가 내려준 초기 상태로 훅을 시작한다 — 클라이언트 로드 전에도 화면과 [기본값으로 진행]이 같은 상태를 본다.
   const { statuses: effective, busy, error, run, runDefaults, refresh, setStageStatus } = useStageRunner(setId, initialStatuses)
@@ -405,6 +273,7 @@ export function StageWizard({
   const activeStatus = effective[active]
   const prevAccepted = active === 2 || effective[(active - 1) as WizardStage]?.state === 'accepted'
   const stage2Accepted = effective[2]?.state === 'accepted'
+  const outputs: Partial<Record<WizardStage, unknown>> = Object.fromEntries(WIZARD_STAGES.map((s) => [s, effective[s]?.output]))
   const stage2Candidates = (effective[2]?.output as { key_question_candidates?: string[] } | undefined)?.key_question_candidates ?? candidates
 
   return (
@@ -440,6 +309,8 @@ export function StageWizard({
           setId={setId}
           stage={active}
           status={activeStatus}
+          outputs={outputs}
+          sharedMaterials={sharedMaterials}
           prevAccepted={prevAccepted}
           laterStages={WIZARD_STAGES.filter((s) => s > active && (effective[s]?.state ?? 'idle') !== 'idle')}
           busy={busy}
