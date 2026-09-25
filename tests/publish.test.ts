@@ -307,3 +307,30 @@ describe('buildSnapshot: 참조하는 자료만 싣는다(materials_omitted)', (
     expect(snap.materials_omitted).toEqual([])
   })
 })
+
+// 오너 규칙 2026-09-26 보완: 단원 평가 차시의 materials_used는 5단계 문항이 쓰는 자료와 같아야 한다 — 다시 만들지 않은
+// 초안(영어 세트가 대주제 공유 A~D를 그대로 실은 3단계)도 미리보기·게시 때 바로잡힌다(syncAssessmentSessionMaterials).
+describe('buildSnapshot: 단원 평가 차시 materials_used를 5단계 문항과 맞춘다(sync)', () => {
+  const theme = { ...baseTheme, materials: ['A', 'B', 'C', 'D'].map((id) => material(id, `공유 자료 ${id}`)) }
+  const setMaterials = ['F', 'H', 'I'].map((id) => material(id, `세트 자료 ${id}`))
+  const items = [
+    { kind: '서술형', points: 6, materials_used: ['F'], references: [] },
+    { kind: '논술형', points: 16, materials_used: ['H', 'I'], references: [] },
+  ]
+  const assessment = { items, grade_boundaries: [], feedback_templates: { 상: '', 중: '', 하: '' } } as never
+  const lessons = [
+    { no: 1, kind: 'teaching', assessment: [], materials_used: ['F'] },
+    { no: 2, kind: 'assessment', assessment: ['서술형', '논술형'], materials_used: ['A', 'B', 'D'] },
+  ] as never
+
+  it('overwrites the stale session materials_used (shared A·B·D) with the items\' actual F·H·I', () => {
+    const snap = buildSnapshot({ theme, itemSet: { ...baseItemSet, materials: setMaterials, assessment, lessons }, standards: [], version: 1 })
+    const session = snap.lessons.find((l) => l.no === 2)!
+    expect(session.materials_used).toEqual(['F', 'H', 'I'])
+    // 교수 차시는 손대지 않는다
+    expect(snap.lessons.find((l) => l.no === 1)!.materials_used).toEqual(['F'])
+    // 게시 판 자료 목록도 이제 실제로 쓰는 F·H·I만 남는다(A·B·D는 이 세트가 안 쓰므로 빠진다)
+    expect(snap.materials.map((m) => m.id)).toEqual(['F', 'H', 'I'])
+    expect(snap.materials_omitted).toEqual(['A', 'B', 'C', 'D'])
+  })
+})

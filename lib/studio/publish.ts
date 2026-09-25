@@ -6,6 +6,7 @@ import type { SnapshotV2, UnitPlanT, ReconstructedStandardT, LearningGoalT, Noti
 import { upgradeSnapshot as upgradeSnapshotCompat } from './compat'
 import { withMaterialDefaults, upgradeDraftColumns } from './draft-defaults'
 import { usedMaterialIds } from './materials'
+import { syncAssessmentSessionMaterials } from './assessment-structure'
 
 /** 게시 판 스냅샷(v2). 모양은 compat.ts 에 정의되어 있다 — 옛 v1 판은 읽을 때 upgradeSnapshot 으로 올린다. */
 export type Snapshot = SnapshotV2
@@ -123,7 +124,10 @@ export function buildSnapshot({ theme, itemSet, standards, version }: {
   const merged = new Map<string, MaterialT>()
   for (const m of materialsWithDefaults(theme.materials)) merged.set(m.id, m)
   for (const m of materialsWithDefaults(up.materials)) if (!merged.has(m.id)) merged.set(m.id, m)
-  const lessons = lessonsWithDefaults(itemSet.unit_plan ?? null, up.lessons)
+  // 단원 평가 차시 materials_used를 5단계 문항의 실제 자료로 맞춘다(오너 규칙 2026-09-26 보완) — 4단계보다 먼저 적어 둔
+  // 대주제 공유 자료(예: 영어 세트의 수학 표 A~D)가 그대로 남아 있어도 다시 게시하면 여기서 항상 바로잡힌다.
+  const lessonsRaw = lessonsWithDefaults(itemSet.unit_plan ?? null, up.lessons)
+  const lessons = syncAssessmentSessionMaterials(lessonsRaw, up.assessment?.items ?? null)
   const used = usedMaterialIds({ lessons, items: up.assessment?.items ?? [], texts: [up.teacher_guide, itemSet.notice_plan] })
   const { materials, omitted } = selectUsedMaterials([...merged.values()].sort((a, b) => a.id.localeCompare(b.id)), used)
   const models = Array.from(new Set(Object.values(itemSet.stage_status ?? {}).map((s) => s?.model).filter((m): m is string => !!m)))

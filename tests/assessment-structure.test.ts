@@ -3,6 +3,7 @@ import {
   SET_ITEMS, SET_ORDER, SET_ITEM_COUNT, SET_TOTAL, SHORT_POINTS, ESSAY_POINTS, SHORT_TOTAL, LEGACY_SET_ITEMS,
   structureOf, structureIssues, itemLabels, isShortKind,
   LESSON_KINDS, TEACHING_LESSONS, ASSESSMENT_SESSION, ESSAY_MIN_MINUTES, sessionPlacementIssues, lessonAssessments, isAssessmentSession, isUnitAssessmentSession,
+  syncAssessmentSessionMaterials,
 } from '@/lib/studio/assessment-structure'
 import { GRADE_TABLE_22 } from '@/lib/studio/level-map'
 
@@ -74,5 +75,37 @@ describe('단원 평가 차시 (대표 2026-09-26 보완: 서·논술형은 마�
     expect(isUnitAssessmentSession({ kind: 'assessment', assessment: ['서술형', '논술형'] })).toBe(true)
     expect(isUnitAssessmentSession({ kind: 'assessment', assessment: ['논술형'] })).toBe(false)
     expect(isUnitAssessmentSession({ kind: 'teaching', assessment: ['서술형', '논술형'] })).toBe(false)
+  })
+})
+
+describe('syncAssessmentSessionMaterials (오너 규칙 2026-09-26 보완: 단원 평가 차시 자료는 문항과 같아야 한다)', () => {
+  const teaching = (no: number, materials_used: string[]) => ({ no, kind: 'teaching', assessment: [] as string[], materials_used })
+  const session = (no: number, materials_used: string[]) => ({ no, kind: 'assessment', assessment: ['서술형', '논술형'] as string[], materials_used })
+  const items = (short: string[], essay: string[]) => [{ kind: '서술형', points: 6, materials_used: short }, { kind: '논술형', points: 16, materials_used: essay }]
+
+  it('replaces the session materials_used with the sorted union of the items — the 영어 세트 bug (shared math tables A–D vs items F·H·I)', () => {
+    const lessons = [teaching(1, ['A']), teaching(2, ['B']), session(3, ['A', 'B', 'D'])]
+    const out = syncAssessmentSessionMaterials(lessons, items(['F'], ['H', 'I']))
+    expect(out.find((l) => l.no === 3)!.materials_used).toEqual(['F', 'H', 'I'])
+    expect(out.find((l) => l.no === 1)!.materials_used).toEqual(['A'])   // 교수 차시는 손대지 않는다
+  })
+
+  it('returns the same lessons array (reference) when the union already matches — no unnecessary write', () => {
+    const lessons = [teaching(1, ['A']), session(2, ['A', 'B'])]
+    const out = syncAssessmentSessionMaterials(lessons, items(['A'], ['A', 'B']))
+    expect(out).toBe(lessons)
+  })
+
+  it('leaves lessons untouched when there are no items yet, or when the items are not the current structure (legacy 3-item shape)', () => {
+    const lessons = [session(1, ['A', 'B', 'D'])]
+    expect(syncAssessmentSessionMaterials(lessons, null)).toBe(lessons)
+    expect(syncAssessmentSessionMaterials(lessons, [])).toBe(lessons)
+    const legacyItems = [{ kind: '서술형', points: 3, materials_used: ['F'] }, { kind: '서술형', points: 3, materials_used: ['H'] }, { kind: '논술형', points: 16, materials_used: ['I'] }]
+    expect(syncAssessmentSessionMaterials(lessons, legacyItems)).toBe(lessons)
+  })
+
+  it('leaves lessons untouched when no lesson is the current single 단원 평가 차시 (e.g. only teaching lessons)', () => {
+    const lessons = [teaching(1, ['A'])]
+    expect(syncAssessmentSessionMaterials(lessons, items(['F'], ['H']))).toBe(lessons)
   })
 })

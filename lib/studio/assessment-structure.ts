@@ -131,3 +131,26 @@ export function sessionPlacementIssues(lessons: LessonLike[]): string[] {
   if (teaching < TEACHING_LESSONS.min || teaching > TEACHING_LESSONS.max) out.push(`교수 차시는 ${TEACHING_LESSONS.min}~${TEACHING_LESSONS.max}개 — 지금 ${teaching}개`)
   return out
 }
+
+type SyncableLesson = { no: number; kind?: string; assessment?: unknown; materials_used?: string[] | null }
+type SyncableItem = { kind: string; points: number; materials_used?: string[] | null }
+
+/**
+ * 단원 평가 차시(오너 규칙 2026-09-26 보완): materials_used = 5단계 문항들이 실제로 쓰는 자료의 합집합(오름차순).
+ * 4단계보다 먼저 생성돼 대주제 공유 자료를 통째로 적어 둔 초안(예: 영어 세트가 수학 표 A~D를 그대로 실은 문제)이
+ * 있어도, 문항이 실제로 정한 자료로 항상 덮어써 맞춘다 — 순수 함수라 buildSnapshot/upgradeDraftColumns(스냅샷 시점)와
+ * 5단계 저장(repo.saveOutput·saveStageEdit) 양쪽에서 같은 규칙으로 쓴다.
+ * 지금 구조(서술형 1 + 논술형 1, structureOf === 'current')일 때만 손댄다 — 옛 판(legacy, 여러 평가 차시로 나뉨)은
+ * 단원 평가 차시가 하나가 아니라 이 함수가 가리키는 "그 차시"가 없거나 의미가 달라 건드리지 않는다.
+ * 바뀔 게 없으면(합집합이 이미 같으면) lessons 를 그대로(같은 참조) 돌려준다 — upgradeDraftColumns 의
+ * "v2 조각은 같은 객체 그대로" 규칙(draft-defaults.test.ts)과 같은 결로 맞춘 것이다.
+ */
+export function syncAssessmentSessionMaterials<L extends SyncableLesson>(lessons: L[], items: SyncableItem[] | null | undefined): L[] {
+  if (!Array.isArray(items) || items.length === 0) return lessons
+  if (structureOf(items) !== 'current') return lessons
+  const session = lessons.find(isUnitAssessmentSession)
+  if (!session) return lessons
+  const union = Array.from(new Set(items.flatMap((it) => it.materials_used ?? []))).sort()
+  if (JSON.stringify(session.materials_used ?? []) === JSON.stringify(union)) return lessons
+  return lessons.map((l) => (l === session ? { ...l, materials_used: union } : l))
+}

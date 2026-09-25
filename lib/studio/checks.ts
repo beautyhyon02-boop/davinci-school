@@ -4,7 +4,7 @@ import { levelRefFor } from './level-map'
 import { structureIssues, kindFamily, sessionPlacementIssues, isAssessmentSession, lessonAssessments, ESSAY_MIN_MINUTES } from './assessment-structure'
 import type { Stage, ReviewKind, Reconstruction, LessonDesign, Materials, Assessment, TeacherGuide, NoticePlan } from './schemas'
 import { QUIZ_SHORT_ONLY, isShortQuiz } from './schemas'
-import { titleHasSourceMarker, usedMaterialIds, MAX_SET_MATERIALS } from './materials'
+import { titleHasSourceMarker, usedMaterialIds, mentionedMaterialIds, MAX_SET_MATERIALS } from './materials'
 import { sortScale, zeroStep } from './scale'
 
 export type Issue = { kind: ReviewKind; detail: string }
@@ -13,6 +13,8 @@ export type CheckCtx = {
   prior: Record<string, unknown>
   /** 대주제(선택) — 2단계 재구성 문장에 대주제 상황 낱말이 섞였을 때 반려 사유를 알아보기 쉽게 적는 데만 쓴다(판정은 바꾸지 않는다). */
   theme?: { title: string }
+  /** 대주제 공유 자료 ID(A~Z, 오름차순 불필요). 3·5단계 [TS] 자문(공유 자료를 가리키지만 문항·활동지 어디도 안 쓴다)이 참조한다 — loadContext의 prior.shared_materials에서 온다(stages.ts staticCheck). */
+  sharedMaterialIds?: string[]
 }
 type ReconstructionT = z.infer<typeof Reconstruction>; type LessonDesignT = z.infer<typeof LessonDesign>; type MaterialsT = z.infer<typeof Materials>
 type AssessmentT = z.infer<typeof Assessment>; type GuideT = z.infer<typeof TeacherGuide>; type NoticePlanT = z.infer<typeof NoticePlan>
@@ -66,6 +68,42 @@ function reconstructionIssues(o: ReconstructionT, ctx: CheckCtx): Issue[] {
   return issues
 }
 
+/** 차시 자체의 활동지·퀴즈·발문 문장(공백 없이 잇지 않고 공백 하나로 이은 글) — mentionedMaterialIds로 "자료 X" 언급을 찾는 데 쓴다. */
+function lessonOwnTexts(l: LessonCorpusLike): string {
+  const texts: string[] = []
+  for (const t of l.worksheet?.tasks ?? []) { if (t.prompt) texts.push(t.prompt); if (t.expected) texts.push(t.expected) }
+  for (const q of l.formative_check?.quiz ?? []) { if (q.q) texts.push(q.q); if (q.answer) texts.push(q.answer); if (q.explanation) texts.push(q.explanation) }
+  for (const q of l.teacher_script?.questions ?? []) { if (q.prompt) texts.push(q.prompt); if (q.expected_answer) texts.push(q.expected_answer); if (q.if_stuck) texts.push(q.if_stuck) }
+  return texts.join(' ')
+}
+type LessonCorpusLike = {
+  no: number; kind?: string; materials_used?: string[] | null
+  worksheet?: { tasks?: { prompt?: string; expected?: string }[] | null } | null
+  formative_check?: { quiz?: { q?: string; answer?: string; explanation?: string }[] | null } | null
+  teacher_script?: { questions?: { prompt?: string; expected_answer?: string; if_stuck?: string }[] | null } | null
+}
+
+/**
+ * [TS] 자문(kind other, 3·5단계 공용): 교수 차시가 대주제 공유 자료를 materials_used에 적었지만 문항도 이 차시의
+ * 활동지·퀴즈·발문 문장도 실제로 쓰지 않는 경우 — 대주제가 공유한다는 이유만으로 무관한 자료를 끌어다 쓴 흔적이다
+ * (2026-09-26 관찰: 영어 세트가 이 과목과 무관한 수학 표 A~D를 차시 materials_used에 그대로 옮겨 적음). 문항(items)을
+ * 모르면(3단계 검토 시점에 아직 5단계가 없는 보통의 경우) 판단할 수 없으므로 건너뛴다 — 참고용 자문이라 확신 없이는 짚지 않는다.
+ */
+function sharedMaterialCitationIssues(lessons: LessonCorpusLike[], items: { materials_used?: string[] | null }[] | null | undefined, sharedIds: string[] | undefined): Issue[] {
+  if (!sharedIds?.length || !Array.isArray(items) || items.length === 0) return []
+  const usedByItems = new Set(items.flatMap((it) => it.materials_used ?? []))
+  const issues: Issue[] = []
+  for (const l of lessons) {
+    if (isAssessmentSession(l)) continue
+    for (const id of l.materials_used ?? []) {
+      if (!sharedIds.includes(id) || usedByItems.has(id)) continue
+      if (mentionedMaterialIds(lessonOwnTexts(l)).includes(id)) continue
+      issues.push({ kind: 'other', detail: `${l.no}차시가 문항·활동지가 쓰지 않는 공유 자료 ${id}를 가리킴` })
+    }
+  }
+  return issues
+}
+
 function lessonIssues(o: LessonDesignT, ctx: CheckCtx): Issue[] {
   const issues: Issue[] = []
   const covered = new Set(o.lessons.flatMap((l) => l.standards))
@@ -92,6 +130,10 @@ function lessonIssues(o: LessonDesignT, ctx: CheckCtx): Issue[] {
     }
     for (const q of l.teacher_script.questions) if (norm(q.if_stuck) === norm(q.expected_answer)) issues.push({ kind: 'other', detail: `${l.no}차시 발문 힌트가 정답과 같음` })
   }
+  // 5단계가 이미 확정돼 있으면(예: 3단계를 나중에 다시 검토·편집) 그 문항들 기준으로도 무관한 공유 자료 인용을 짚는다 —
+  // 보통은 3단계 시점에 5단계가 없어 건너뛴다(sharedMaterialCitationIssues 가 items 없으면 스스로 건너뛴다).
+  const items5 = (ctx.prior.stage5 as { items?: { materials_used?: string[] | null }[] } | undefined)?.items
+  issues.push(...sharedMaterialCitationIssues(o.lessons, items5, ctx.sharedMaterialIds))
   return issues
 }
 
@@ -273,6 +315,8 @@ function assessmentIssues(o: AssessmentT, ctx: CheckCtx): Issue[] {
   issues.push(...placementIssues(o, ctx))
   const setMaterials = (ctx.prior.stage4 as MaterialsT | undefined)?.materials
   if (Array.isArray(setMaterials)) issues.push(...materialUseIssues(setMaterials, ctx, o.items))
+  const lessons3 = (ctx.prior.stage3 as Partial<LessonDesignT> | undefined)?.lessons
+  if (Array.isArray(lessons3)) issues.push(...sharedMaterialCitationIssues(lessons3, o.items, ctx.sharedMaterialIds))
   return issues
 }
 

@@ -6,6 +6,7 @@ import { STAGE_SCHEMAS, Materials, LessonDesign, type Stage } from '@/lib/studio
 import { isMaterialsPublicUrl } from '@/lib/studio/upload-rules'
 import { canPublish, buildSnapshot, type DraftLessonQuizzes } from '@/lib/studio/publish'
 import { canEditStage, downstreamResets, keyQuestionAfterStage2, normalizeKeyQuestion, KEY_QUESTION_LIMITS } from '@/lib/studio/edit-rules'
+import { syncAssessmentSessionMaterials } from '@/lib/studio/assessment-structure'
 import { STAGE_ERRORS, stageNotes, type StageErrorCode, type StageStatus } from '@/lib/studio/stages'
 import { createSupabaseRepo } from '@/lib/studio/repo'
 import type { Issue } from '@/lib/studio/checks'
@@ -98,7 +99,7 @@ export async function saveStageEdit(setId: string, stage: Stage, json: string): 
   const supabase = await createClient()
   const { data: itemSet, error: fetchErr } = await supabase
     .from('item_sets')
-    .select('theme_id, key_question, stage_status')
+    .select('theme_id, key_question, stage_status, lessons')
     .eq('id', setId)
     .single()
   if (fetchErr || !itemSet) return { ok: false, error: errors.saveFailed }
@@ -121,6 +122,14 @@ export async function saveStageEdit(setId: string, stage: Stage, json: string): 
     const candidates = (r.data as { key_question_candidates?: string[] }).key_question_candidates ?? []
     const previous = (prev.output as { key_question_candidates?: string[] } | undefined)?.key_question_candidates ?? []
     columns.key_question = keyQuestionAfterStage2(itemSet.key_question as string | null, candidates, previous)
+  }
+  // 5단계를 손으로 고치면 단원 평가 차시 materials_used도 그 문항들이 쓰는 자료로 맞춘다(오너 규칙 2026-09-26 보완,
+  // lib/studio/repo.ts saveOutput 의 생성 경로와 같은 규칙 — syncAssessmentSessionMaterials).
+  if (stage === 5) {
+    const currentLessons = (itemSet.lessons as { no: number; kind?: string; assessment?: unknown; materials_used?: string[] | null }[] | null) ?? []
+    const items = (r.data as { items?: { kind: string; points: number; materials_used?: string[] | null }[] }).items ?? []
+    const lessons = syncAssessmentSessionMaterials(currentLessons, items)
+    if (lessons !== currentLessons) columns.lessons = lessons
   }
   const { error: updateErr } = await supabase.from('item_sets').update(columns).eq('id', setId)
   if (updateErr) return { ok: false, error: errors.saveFailed }

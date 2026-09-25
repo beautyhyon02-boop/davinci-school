@@ -48,6 +48,16 @@ describe('prompts v2', () => {
     expect(rules).toMatch(/L-09 .*모두 단답형 — 낱말·수치·짧은 구를 직접 쓰는 문항, 선택지 없음/); expect(rules).toMatch(/L-10 .*답은 낱말·수치·짧은 구/)
     expect(rules).not.toMatch(/선택형\/단답형/)
   })
+  it('stage 3 (오너 규칙 2026-09-26 보완): materials_used는 이 과목에 꼭 필요한 자료만 — 공유 자료는 0~2개, 그 밖은 4단계에서 이 과목 전용 ID를 미리 정한다', () => {
+    const task = buildPrompt(3, ctx).user.split('과제: ')[1]
+    expect(task).toMatch(/이 과목 수업에 꼭 필요한 자료만 적는다/)
+    expect(task).toMatch(/대주제 공유 자료는 이 과목 활동에 필요한 것만\(보통 0~2개\) 고르고/)
+    expect(task).toMatch(/이 과목 전용으로 만들 자료 ID\(공유 자료 다음 글자부터\)를 미리 정해 적는다/)
+    expect(task).toMatch(/단원 평가 차시의 materials_used는 5단계 문항이 쓸 자료와 같아야 한다/)
+    expect(task).toMatch(/비워 두면 5단계 뒤 자동으로 채운다/)
+    const review = buildReviewPrompt(3, ctx, {}).user.split('검토 초점: ')[1]
+    expect(review).toMatch(/이 과목 수업과 무관한 대주제 공유 자료를 가리키는지\(other\)/)
+  })
   it('stage 5 asks for the item card fields, injects A~E and exemplars, and forbids copying', () => {
     const u = buildPrompt(5, ctx).user
     for (const f of ['evaluation_elements', 'situation', 'condition_nos', 'answer_mode', 'exemplar_answers', 'level_map', 'holistic', 'notes', 'references', 'assumed_short_points', 'lesson_no']) expect(u).toContain(f)

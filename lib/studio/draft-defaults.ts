@@ -2,6 +2,7 @@ import type { z } from 'zod'
 import type { Material, Lesson, Assessment, TeacherGuide, LearningGoal } from './schemas'
 import { upgradeLessonV1, upgradeAssessmentV1, upgradeTeacherGuideV1, normalizeLessonsV2, cleanAssessmentConditions } from './compat'
 import { sortAssessmentScales } from './scale'
+import { syncAssessmentSessionMaterials } from './assessment-structure'
 
 type MaterialT = z.infer<typeof Material>
 type LessonT = z.infer<typeof Lesson>
@@ -65,6 +66,9 @@ export function upgradeDraftColumns(c: DraftColumns): {
   // v1 은 upgradeAssessmentV1 이 이미 조건을 정리한다 — v2 초안(2026-09-26 이전에 저장돼 풀이 힌트가 남았을 수 있음)은 여기서 한 번 더 본다(C-32)
   // 척도는 0점부터 오름차순으로 맞춘다(생성 AI가 만점부터 적은 초안이 있다 — lib/studio/scale.ts)
   const assessment = sortAssessmentScales(cleanAssessmentConditions(assessmentRaw, materials))
-  const teacher_guide = guideRaw == null ? null : isV1Guide(guideRaw) ? upgradeTeacherGuideV1(guideRaw as never, lessons, assessment) : (guideRaw as GuideT)
-  return { learning_goals, lessons, materials, assessment, teacher_guide }
+  // 단원 평가 차시 materials_used를 5단계 문항의 실제 자료로 맞춘다(오너 규칙 2026-09-26 보완) — 다시 생성하지 않은
+  // 옛 초안(예: 영어 세트가 대주제 공유 자료 A~D를 그대로 실은 3단계)도 미리보기·게시 시점에 여기서 바로잡힌다.
+  const syncedLessons = syncAssessmentSessionMaterials(lessons, assessment?.items ?? null)
+  const teacher_guide = guideRaw == null ? null : isV1Guide(guideRaw) ? upgradeTeacherGuideV1(guideRaw as never, syncedLessons, assessment) : (guideRaw as GuideT)
+  return { learning_goals, lessons: syncedLessons, materials, assessment, teacher_guide }
 }

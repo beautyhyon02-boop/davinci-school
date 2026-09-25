@@ -3,6 +3,7 @@ import type { Ctx } from './prompts/stages'
 import type { Repo, StageStatus, ThemeRepo } from './stages'
 import { keyQuestionAfterStage2 } from './edit-rules'
 import { withMaterialDefaults } from './draft-defaults'
+import { syncAssessmentSessionMaterials } from './assessment-structure'
 
 type Supabase = Awaited<ReturnType<typeof createClient>>
 
@@ -129,7 +130,15 @@ export function createSupabaseRepo(supabase: Supabase): Repo {
           return
         }
         case 5: {
-          const { error } = await supabase.from('item_sets').update({ assessment: output }).eq('id', itemSetId)
+          // 단원 평가 차시 materials_used를 이 문항들이 실제로 쓰는 자료로 맞춘다(오너 규칙 2026-09-26 보완) — 저장된
+          // 3단계 lessons 열도 함께 고쳐서 다음에 그 열을 읽는 화면(단계 탭·미리보기)이 다시 계산하지 않아도 맞게 보인다.
+          const { data: current } = await supabase.from('item_sets').select('lessons').eq('id', itemSetId).single()
+          const currentLessons = (current?.lessons as { no: number; kind?: string; assessment?: unknown; materials_used?: string[] | null }[] | null) ?? []
+          const items = (output as { items?: { kind: string; points: number; materials_used?: string[] | null }[] }).items ?? []
+          const lessons = syncAssessmentSessionMaterials(currentLessons, items)
+          const columns: Record<string, unknown> = { assessment: output }
+          if (lessons !== currentLessons) columns.lessons = lessons
+          const { error } = await supabase.from('item_sets').update(columns).eq('id', itemSetId)
           if (error) throw new Error(error.message)
           return
         }

@@ -53,6 +53,17 @@ describe('upgradeDraftColumns', () => {
     expect(mixed.assessment!.items[2].rubric.criteria).toHaveLength(4)
     expect(TeacherGuide.safeParse(mixed.teacher_guide).success).toBe(true)
   })
+  // 오너 규칙 2026-09-26 보완: 단원 평가 차시의 materials_used는 5단계 문항이 쓰는 자료와 같아야 한다(syncAssessmentSessionMaterials).
+  it('syncs the 단원 평가 차시 materials_used to the assessment items even without touching anything else (v2 draft, no regeneration)', () => {
+    const lessons = [
+      { no: 1, kind: 'teaching', assessment: [], materials_used: ['A'] },
+      { no: 2, kind: 'assessment', assessment: ['서술형', '논술형'], materials_used: ['A', 'B', 'D'] },
+    ]
+    const assessment = { items: [{ kind: '서술형', points: 6, materials_used: ['F'] }, { kind: '논술형', points: 16, materials_used: ['H', 'I'] }], grade_boundaries: [], feedback_templates: { 상: '', 중: '', 하: '' } }
+    const c = upgradeDraftColumns({ learning_goals: [], lessons, materials: [], assessment, teacher_guide: null })
+    expect(c.lessons.find((l) => l.no === 2)!.materials_used).toEqual(['F', 'H', 'I'])
+    expect(c.lessons.find((l) => l.no === 1)!.materials_used).toEqual(['A'])   // 교수 차시는 손대지 않는다
+  })
   it('buildSnapshot runs the guard: a v1 draft becomes a v2 snapshot', () => {
     const cols = v1Cols()
     const snap = buildSnapshot({

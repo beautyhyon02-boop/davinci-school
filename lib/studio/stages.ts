@@ -152,7 +152,10 @@ export async function runThemeIntro({ themeId, action, repo, edit }: { themeId: 
  */
 function staticCheck(stage: Stage, output: unknown, ctx: { standards: { code: string; text: string }[]; prior: Record<string, unknown>; theme?: { title: string } }): Issue[] {
   try {
-    return staticIssues(stage, output, { standards: ctx.standards, prior: ctx.prior, ...(ctx.theme ? { theme: { title: ctx.theme.title } } : {}) })
+    // 대주제 공유 자료 ID(loadContext가 prior.shared_materials에 넣어 둔다) — 3·5단계 [TS] 자문(무관한 공유 자료 인용)이 쓴다.
+    const shared = ctx.prior.shared_materials as { id: string }[] | undefined
+    const sharedMaterialIds = Array.isArray(shared) ? shared.map((m) => m.id) : undefined
+    return staticIssues(stage, output, { standards: ctx.standards, prior: ctx.prior, ...(ctx.theme ? { theme: { title: ctx.theme.title } } : {}), sharedMaterialIds })
   } catch (e) {
     // 옛 데이터가 아니라 checks.ts 회귀일 수도 있으므로 서버 로그에 흔적을 남긴다
     console.error('[studio] staticIssues threw', { stage, err: e })

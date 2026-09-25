@@ -222,6 +222,47 @@ describe('staticIssues', () => {
     expect(details([{ step_label: '서술형 작성', minutes: 15, activities: ['쓰기'] }, { step_label: '논술형 작성', minutes: 35, activities: ['쓰기'] }])).not.toMatch(/35분|서술형 작성 단계/)
     expect(details([{ step_label: '안내', minutes: 15, activities: ['읽기'] }, { step_label: '논술형 작성', minutes: 35, activities: ['쓰기'] }])).toMatch(/서술형 작성 단계/)
   })
+  // 오너 관찰(2026-09-26): 영어 세트가 이 과목과 무관한 대주제 공유 수학 표(A~D)를 차시 materials_used에 그대로 옮겨 적었다.
+  describe('stage 3/5: a shared material a lesson cites but no item/worksheet actually uses (advisory, other)', () => {
+    const one = [standards[0]]
+    const design = (lessons: unknown[]) => ({ unit_plan: { set_title: 't', set_key_question: 'q?', lesson_map: [], assessment_plan: { formative: 'f', summative_placement: [], rubric_note: { 상: 'a', 중: 'b', 하: 'c' } } }, lessons })
+    const teaching = (no: number, materials_used: string[]) => ({ ...lessonV2, no, materials_used })
+    const shareIssues = (o: unknown, ctx: Record<string, unknown> = {}) => staticIssues(3, o, { standards: one, prior: ctx, sharedMaterialIds: ['A', 'B', 'D'] }).filter((i) => i.detail.includes('공유 자료'))
+
+    it('stage 3: skipped when stage 5 items are not known yet (the common case while designing lessons)', () => {
+      const lessons = [1, 2, 3].map((no) => teaching(no, ['A'])).concat(assessmentSession(4))
+      expect(shareIssues(design(lessons))).toEqual([])
+    })
+    it('stage 3: skipped without sharedMaterialIds even if a later stage5 is known', () => {
+      const lessons = [1, 2, 3].map((no) => teaching(no, ['A'])).concat(assessmentSession(4))
+      const issues = staticIssues(3, design(lessons), { standards: one, prior: { stage5: { items: [{ materials_used: ['F'] }] } } }).filter((i) => i.detail.includes('공유 자료'))
+      expect(issues).toEqual([])
+    })
+    it('stage 3: flags a teaching lesson citing a shared id that stage5 items never use and the worksheet/quiz/script never mention', () => {
+      const lessons = [teaching(1, ['D']), teaching(2, ['B']), teaching(3, ['B']), assessmentSession(4)]
+      const prior = { stage5: { items: [{ materials_used: ['B'] }, { materials_used: ['B'] }] } }
+      expect(shareIssues(design(lessons), prior)).toEqual([{ kind: 'other', detail: '1차시가 문항·활동지가 쓰지 않는 공유 자료 D를 가리킴' }])
+    })
+    it('stage 3: does not flag the 단원 평가 차시 itself, ids the items do use, or ids only the lesson worksheet/quiz/script mentions by name', () => {
+      const mentioning = { ...teaching(1, ['D']), worksheet: { ...lessonV2.worksheet, tasks: [{ ...lessonV2.worksheet.tasks[0], prompt: '자료 D의 항목을 하나 고르시오' }] } }
+      const lessons = [mentioning, teaching(2, ['B']), teaching(3, ['B']), { ...assessmentSession(4), materials_used: ['A', 'B', 'D'] }]
+      const prior = { stage5: { items: [{ materials_used: ['B'] }, { materials_used: ['B'] }] } }
+      expect(shareIssues(design(lessons), prior)).toEqual([])
+    })
+    it('stage 5: flags using ctx.prior.stage3 lessons and this output\'s own items (실제 검토 시점 — 5단계에서 항상 알 수 있다)', () => {
+      const lessons = [teaching(1, ['D']), teaching(2, ['B']), teaching(3, ['B']), assessmentSession(4)]
+      const prior = { stage4: { materials }, stage3: { lessons } }
+      const a = structuredClone(assessmentV2); a.items[0].materials_used = ['B']; a.items[1].materials_used = ['B']
+      const issues = staticIssues(5, a, { standards, prior, sharedMaterialIds: ['A', 'B', 'D'] }).filter((i) => i.detail.includes('공유 자료'))
+      expect(issues).toEqual([{ kind: 'other', detail: '1차시가 문항·활동지가 쓰지 않는 공유 자료 D를 가리킴' }])
+    })
+    it('과학 fixture 수치(B/D/E, items도 B·D·E를 쓴다)에서는 자문이 뜨지 않는다 — mock fixture 는 note-free 여야 한다', () => {
+      const lessons = [teaching(1, ['B']), teaching(2, ['D']), teaching(3, ['D', 'E']), assessmentSession(4)]
+      const a = structuredClone(assessmentV2); a.items[0].materials_used = ['D', 'E']; a.items[1].materials_used = ['B', 'D']
+      const issues = staticIssues(5, a, { standards, prior: { stage4: { materials }, stage3: { lessons } }, sharedMaterialIds: ['B', 'D', 'E'] }).filter((i) => i.detail.includes('공유 자료'))
+      expect(issues).toEqual([])
+    })
+  })
   it('stage 6/7: merge pairs must match lessons; notice plan lint', () => {
     const lessons = [1, 2, 3, 4].map((no) => ({ ...lessonV2, no, mergeable_with: no === 1 ? 2 : null }))
     const guide = { general: { materials: [], schedule_note: 's', purpose: 'p' }, glossary: [], merge_guide: [{ lessons: [3, 4], skip_activities: ['x'], time_budget_120: { intro_min: 10, main_min: 90, wrapup_min: 20 } }], grading_guide: { common_errors: [], review_tips: [], retry_guidance: '' }, per_lesson: [] }

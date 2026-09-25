@@ -130,6 +130,34 @@ describe('createSupabaseRepo (v2 columns)', () => {
     const ctx = await createSupabaseRepo(fakeSupabase(seed()) as never).loadContext('set1')
     expect(Object.keys(ctx.outputs)).toEqual([])
   })
+
+  // 오너 규칙 2026-09-26 보완: 5단계를 저장하면 저장된 3단계 lessons 열의 단원 평가 차시 materials_used도
+  // 그 문항들이 실제로 쓰는 자료로 맞춘다(syncAssessmentSessionMaterials) — 다시 3단계를 만들지 않아도 바로잡힌다.
+  it('saveOutput 5 also fixes the stored stage-3 lessons column\'s 단원 평가 차시 materials_used to match the items', async () => {
+    const tables = seed()
+    tables.item_sets[0].lessons = [
+      { no: 1, kind: 'teaching', assessment: [], materials_used: ['A'] },
+      { no: 2, kind: 'assessment', assessment: ['서술형', '논술형'], materials_used: ['A', 'B', 'D'] },
+    ]
+    const repo = createSupabaseRepo(fakeSupabase(tables) as never)
+    const assessment = { items: [{ kind: '서술형', points: 6, materials_used: ['F'] }, { kind: '논술형', points: 16, materials_used: ['H', 'I'] }] }
+    await repo.saveOutput('set1', 5, assessment)
+    const row = tables.item_sets[0]
+    expect(row.assessment).toEqual(assessment)
+    const lessons = row.lessons as { no: number; materials_used: string[] }[]
+    expect(lessons.find((l) => l.no === 2)!.materials_used).toEqual(['F', 'H', 'I'])
+    expect(lessons.find((l) => l.no === 1)!.materials_used).toEqual(['A'])   // 교수 차시는 손대지 않는다
+  })
+
+  it('saveOutput 5 does not rewrite the lessons column when the union already matches', async () => {
+    const tables = seed()
+    const originalLessons = [{ no: 1, kind: 'assessment', assessment: ['서술형', '논술형'], materials_used: ['F', 'H'] }]
+    tables.item_sets[0].lessons = originalLessons
+    const repo = createSupabaseRepo(fakeSupabase(tables) as never)
+    const assessment = { items: [{ kind: '서술형', points: 6, materials_used: ['F'] }, { kind: '논술형', points: 16, materials_used: ['H'] }] }
+    await repo.saveOutput('set1', 5, assessment)
+    expect(tables.item_sets[0].lessons).toEqual(originalLessons)
+  })
 })
 
 describe('buildStatuses', () => {
