@@ -18,13 +18,8 @@ import { Stage5Summary } from './Stage5Summary'
 
 const copy = app.studio.wizard
 
-// 4단계 요약의 글 자료 본문 미리보기 길이 — 오너 지적(2026-09-26): 글 자료(F·H 등)는 제목만 보여서 미리보기를 열지 않으면
-// 본문을 읽을 수 없었다. 표는 그대로 표 미리보기(위 5행)를 쓰고, 표가 없는 자료(text·chart·image)만 본문을 자른다.
-const BODY_PREVIEW_LIMIT = 240
-/** 본문을 BODY_PREVIEW_LIMIT 자로 자르고, 잘렸으면 "…"를 붙인다. */
-function previewBody(body: string): string {
-  return body.length > BODY_PREVIEW_LIMIT ? `${body.slice(0, BODY_PREVIEW_LIMIT)}…` : body
-}
+// 4단계 요약의 글 자료 본문 — 오너 지적(2026-09-26): 240자로 자르니 안내문의 머리만 보여 "내용이 없다"고 읽혔다.
+// 자료 본문은 한 화면(100~800자)이므로 자르지 않고 전부 보여 준다. 표 자료는 표 미리보기(위 5행)를 쓴다.
 
 /** AI 출력 형식 검사 실패(lib/ai/claude.ts의 최종 에러 문구)인지 — 맞으면 안내 문구를 앞에 두고 원문은 작게 보여 준다. */
 const isParseError = (message: string) => /^AI output could not be parsed after \d+ attempts/.test(message)
@@ -140,7 +135,7 @@ function StageOutput({ stage, output }: { stage: WizardStage; output: unknown })
             {!m.table && m.body && (
               <div className="mt-2">
                 <p className="text-xs text-ink-500">{copy.stage4.bodyPreviewHeading}</p>
-                <p className="mt-1 whitespace-pre-wrap text-xs">{previewBody(m.body)}</p>
+                <p className="mt-1 whitespace-pre-wrap text-xs">{m.body}</p>
               </div>
             )}
             {m.table && (

@@ -466,7 +466,7 @@ export const app = {
         idLabel: '자료',
         kindLabel: '종류',
         previewHeading: '표 미리보기(상위 5행)',
-        bodyPreviewHeading: '본문 미리보기',
+        bodyPreviewHeading: '본문',
         imagesCount: (n: number) => `이미지 ${n}장`,
       },
       // 5단계 요약(Stage5Summary.tsx): 문항 카드(조건·채점표·예시답안 전부) + 두 문항 공통 채점 기준표(등급표·피드백 틀)
