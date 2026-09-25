@@ -1,12 +1,14 @@
 import { Badge } from '@/components/ui/Badge'
 import { app } from '@/content/site'
 import { sortScale, stepAt } from '@/lib/studio/scale'
+import { ItemMaterials, type MaterialLike } from '@/components/studio/parts/MaterialsFull'
 
 // 5단계(문항) 요약 — 오너 지적(2026-09-25): 문두·등급표·예시답안 개수만 보여서 논술형 조건 4개와 두 문항의 채점표를
 // 볼 수 없었다("조건이 없다", "루브릭이 형편없다"). 문항 카드마다 조건·분량·채점표(요소 × 점수 표, 0점부터)·총체적 기준·유의점·
 // 예시답안(접힘)·A~E를 모두 보여 주고, 두 문항 공통의 등급표·피드백 틀은 문항과 떨어진 "채점 기준표(공통)" 칸에 둔다.
 // PackageView 는 서버 전용(getLevels 가 node:fs)이라 여기서 쓰지 못한다 — 같은 모양을 평범한 데이터로 그린다.
 // 저장된 출력은 옛 판·손으로 고친 판일 수 있으므로 모든 필드를 선택적으로 읽는다(빠진 칸은 그리지 않는다).
+// 문항 = 자료 + 문항 한 덩어리(대표 연수 2기 p.18~20): 문두 아래·조건 위에 그 문항의 <자료 1>·<자료 2> 상자(원장·학생 화면과 같은 조각).
 const copy = app.studio.wizard.stage5
 
 type Step = { points: number; descriptor: string; example?: string | null }
@@ -82,7 +84,7 @@ function RubricTable({ criteria }: { criteria: Criterion[] }) {
   )
 }
 
-function ItemCard({ item, no }: { item: Item; no: number }) {
+function ItemCard({ item, no, materials }: { item: Item; no: number; materials: MaterialLike[] }) {
   const cd = item.conditions
   const conds = cd?.items ?? []
   const criteria = item.rubric?.criteria ?? []
@@ -104,6 +106,7 @@ function ItemCard({ item, no }: { item: Item; no: number }) {
       )}
 
       <p className="mt-2 whitespace-pre-wrap font-semibold">{item.stem}</p>
+      <ItemMaterials item={item} materials={materials} />
 
       <div className="mt-2 rounded-lg bg-ink-100/40 p-2 text-xs">
         <SubHeading>{copy.conditionsHeading}</SubHeading>
@@ -217,13 +220,14 @@ function CommonCriteria({ o }: { o: Stage5Output }) {
   )
 }
 
-export function Stage5Summary({ output }: { output: unknown }) {
+/** materials = 4단계 세트 자료 + 이 세트가 가리키는 대주제 공유 자료(StageOutput 이 4단계 탭과 같은 규칙으로 고른다). */
+export function Stage5Summary({ output, materials = [] }: { output: unknown; materials?: MaterialLike[] }) {
   const o = output as Stage5Output
   return (
     <div className="mt-3 space-y-4">
       <div className="space-y-3">
         <p className="text-sm font-semibold text-ink-500">{copy.itemsHeading}</p>
-        {o.items?.map((it, i) => <ItemCard key={i} item={it} no={i + 1} />)}
+        {o.items?.map((it, i) => <ItemCard key={i} item={it} no={i + 1} materials={materials} />)}
       </div>
       <CommonCriteria o={o} />
     </div>

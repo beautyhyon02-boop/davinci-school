@@ -1,5 +1,5 @@
 'use client'
-import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
+import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode } from 'react'
 import { saveDraft, submitAnswer } from './actions'
 import { Button } from '@/components/ui/Button'
 import { app } from '@/content/site'
@@ -15,14 +15,17 @@ export type AnswerConditions = { length: string; format: string; answer_mode: 's
 type Props = {
   assignmentId: string; itemNo: number; attempt: number; initialBody: string; submitted: boolean
   label: string; points: number; stem: string; conditions: AnswerConditions
+  /** 문항의 자료 상자(<자료 1>·<자료 2>, 서버에서 그린 ItemMaterials) — 문두 아래·조건 위. 재도전 답안 칸에는 넘기지 않는다(바로 위 첫 답안 칸에 있다). */
+  materials?: ReactNode
 }
 
-function Prompt({ label, points, stem, conditions }: Pick<Props, 'label' | 'points' | 'stem' | 'conditions'>) {
+function Prompt({ label, points, stem, conditions, materials }: Pick<Props, 'label' | 'points' | 'stem' | 'conditions' | 'materials'>) {
   return (
     <>
       <h3 className="text-lg font-bold">{copy.heading(label, points)}</h3>
       <p className="mt-2 text-sm font-semibold text-ink-500">{copy.stem}</p>
       <p className="mt-1 whitespace-pre-wrap text-lg font-semibold">{stem}</p>
+      {materials}
       <div className="mt-2 rounded-xl bg-ink-100/60 p-3 text-sm">
         {/* 조건 문장이 없는 문항(서술형, C-32)에는 "작성 조건" 머리글을 달지 않는다 — 분량·형식만 보인다 */}
         <p className="font-semibold">{conditions.items.length > 0 ? copy.conditions : copy.lengthFormat}</p>
@@ -44,7 +47,7 @@ export function AnswerEditor(props: Props) {
   if (props.conditions.answer_mode === 'paper') {
     return (
       <section className="rounded-2xl bg-white p-5">
-        <Prompt label={props.label} points={props.points} stem={props.stem} conditions={props.conditions} />
+        <Prompt label={props.label} points={props.points} stem={props.stem} conditions={props.conditions} materials={props.materials} />
         <p className="mt-3 rounded-xl bg-lemon-100 p-3">{studentCopy.paperAnswer}</p>
       </section>
     )
@@ -52,7 +55,7 @@ export function AnswerEditor(props: Props) {
   return <ScreenAnswerEditor {...props} />
 }
 
-function ScreenAnswerEditor({ assignmentId, itemNo, attempt, initialBody, submitted, label, points, stem, conditions }: Props) {
+function ScreenAnswerEditor({ assignmentId, itemNo, attempt, initialBody, submitted, label, points, stem, conditions, materials }: Props) {
   const [body, setBody] = useState(initialBody)
   const [status, setStatus] = useState<string | null>(null)
   const [isSubmitted, setSubmitted] = useState(submitted)
@@ -98,7 +101,7 @@ function ScreenAnswerEditor({ assignmentId, itemNo, attempt, initialBody, submit
 
   return (
     <section className="rounded-2xl bg-white p-5">
-      <Prompt label={label} points={points} stem={stem} conditions={conditions} />
+      <Prompt label={label} points={points} stem={stem} conditions={conditions} materials={materials} />
       <textarea value={body} readOnly={isSubmitted} placeholder={copy.placeholder} rows={10}
         onChange={(e) => onChange(e.target.value)} onBlur={persist}
         className="mt-3 w-full rounded-xl border border-ink-300 p-4 text-lg leading-relaxed read-only:bg-ink-100/40" />

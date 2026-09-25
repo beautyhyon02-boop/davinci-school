@@ -5,6 +5,7 @@ import { Histogram } from '../Histogram'
 import { RelativeFreqBars } from '../RelativeFreqBars'
 import { detectChart } from '@/lib/studio/charts'
 import { cleanMaterialTitle } from '@/lib/studio/materials'
+import { itemMaterialLabels } from '@/lib/studio/item-materials'
 import type { Material as MaterialSchema } from '@/lib/studio/schemas'
 import { app } from '@/content/site'
 import { arr } from './common'
@@ -78,51 +79,105 @@ export function MaterialChart({ material }: { material: MaterialLike }) {
   return <div className="mx-auto mt-3 w-full max-w-[480px]"><RelativeFreqBars rows={spec.rows} columns={spec.columns} title={spec.title} /></div>
 }
 
+/** 공개 자료의 출처 배지(공공누리 표기 의무). 자작·원자료 같은 내부 표지는 화면에 내지 않는다(대표님 지시 2026-09-26). */
+function SourceBadge({ material }: { material: MaterialLike }) {
+  const source = material.source && typeof material.source === 'object' ? material.source : null
+  if (source?.kind !== '공개' || !source.attribution) return null
+  return <Badge tone="gray">{copy.materials.sourceLabel.공개} · {source.attribution}</Badge>
+}
+
+/** 자료 본문 — 설명글·표 전체·자동 그래프·첨부 이미지. 자료 목록(MaterialsFull)과 문항 안 자료 상자(ItemMaterials)가 같이 쓴다. */
+export function MaterialBody({ material: m }: { material: MaterialLike }) {
+  const images = arr(m.images)
+  return (
+    <>
+      {m.body && <p className="mt-1 whitespace-pre-wrap text-sm">{m.body}</p>}
+      <MaterialTable material={m} />
+      <MaterialChart material={m} />
+      {images.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-2">
+          {images.map((src, i) => (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img key={src} src={src} alt={copy.materials.imagesAlt(m.title, i + 1)} className="h-24 w-24 rounded-lg object-cover" />
+          ))}
+        </div>
+      )}
+    </>
+  )
+}
+
 /**
  * 자료 목록(카드 틀 없이). sharedIds = 대주제 공유 자료의 ID — 제작소 4단계 탭에서 세트 자료와 구별해 '공유' 배지를 단다.
+ * printOmitIds = 문항 카드 안에 이미 실린 자료 — 문제지 인쇄에서 두 번 나오지 않게 data-print="omit"으로 둔다(화면에는 그대로).
  */
-export function MaterialsFull({ materials, sharedIds = [] }: { materials: MaterialLike[]; sharedIds?: string[] }) {
+export function MaterialsFull({ materials, sharedIds = [], printOmitIds = [] }: { materials: MaterialLike[]; sharedIds?: string[]; printOmitIds?: string[] }) {
   const c = copy.materials
   return (
     <div className="mt-3 space-y-6">
-      {materials.map((m) => {
-        const source = m.source && typeof m.source === 'object' ? m.source : null
-        const images = arr(m.images)
+      {materials.map((m) => (
+        <div key={m.id} data-print={printOmitIds.includes(m.id) ? 'omit' : 'material'} data-material-id={m.id} className="rounded-xl border border-ink-100 bg-ink-100/30 p-4">
+          {/* 자료마다 큰 라벨(자료 A/B…)로 구분이 한눈에 보이게. 공개 자료 출처만 배지로(스펙 §2.4, 2026-09-26 수정). */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full bg-mint-500 px-3 py-1 text-sm font-bold text-white">{c.idLabel} {m.id}</span>
+            <p className="text-base font-bold">{cleanMaterialTitle(m.title ?? '')}</p>
+            {sharedIds.includes(m.id) && <Badge tone="lavender">{c.sharedBadge}</Badge>}
+            <SourceBadge material={m} />
+          </div>
+          <MaterialBody material={m} />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/**
+ * 자료 카드(제목 + 목록). 원장 패키지 화면과 학생 차시 패널이 쓴다.
+ * embeddedIds = 문항 카드 안에 이미 실린 자료(문항 = 자료 + 문항 한 덩어리). 문제지 인쇄(print="keep")에는 문항 안에 없는 자료가
+ * 하나라도 있을 때만 이 칸을 남기고, 남겨도 문항 안에 있는 자료는 빼서 같은 자료가 두 번 인쇄되지 않게 한다.
+ */
+export function MaterialsSection({ materials, embeddedIds = [] }: { materials: MaterialLike[]; embeddedIds?: string[] }) {
+  if (materials.length === 0) return null
+  const allEmbedded = materials.every((m) => embeddedIds.includes(m.id))
+  return (
+    <Card print={allEmbedded ? undefined : 'keep'}>
+      <h2 className="text-lg font-bold">{copy.materialsHeading}</h2>
+      <MaterialsFull materials={materials} printOmitIds={embeddedIds} />
+    </Card>
+  )
+}
+
+/**
+ * 문항 안 자료 상자(대표 연수 2기 p.18~20 — 실제 서논술 문항은 전제문 바로 아래 <자료1>·<자료2> 상자, 그 뒤 발문).
+ * materials_used 순서대로 <자료 1>, <자료 2> … 라벨(문항 안 번호)과 작은 세트 ID 표시("자료 B" — 옛 문두도 읽히게)를 단다.
+ * 관리자·원장 문항 카드(PackageView), 제작소 5단계 탭(Stage5Summary), 학생 단원 평가 탭, 문제지 인쇄가 같은 상자를 쓴다.
+ */
+export function ItemMaterials({ item, materials }: { item: { materials_used?: readonly unknown[] | null }; materials: MaterialLike[] }) {
+  const labels = itemMaterialLabels(item)
+  if (labels.length === 0) return null
+  const byId = new Map(materials.map((m) => [m.id, m]))
+  return (
+    <div data-item-materials className="mt-3 space-y-3">
+      {labels.map((l) => {
+        const m = byId.get(l.id)
         return (
-          <div key={m.id} data-print="material" data-material-id={m.id} className="rounded-xl border border-ink-100 bg-ink-100/30 p-4">
-            {/* 자료마다 큰 라벨(자료 A/B…)로 구분이 한눈에 보이게. 공개 자료 출처만 배지로(스펙 §2.4, 2026-09-26 수정). */}
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full bg-mint-500 px-3 py-1 text-sm font-bold text-white">{c.idLabel} {m.id}</span>
-              <p className="text-base font-bold">{cleanMaterialTitle(m.title ?? '')}</p>
-              {sharedIds.includes(m.id) && <Badge tone="lavender">{c.sharedBadge}</Badge>}
-              {/* 대표님 지시(2026-09-26): 자작·원자료 같은 내부 표지는 화면에 내지 않는다. 공개 자료의 출처만 남긴다(공공누리 표기 의무). */}
-              {source?.kind === '공개' && source.attribution && <Badge tone="gray">{c.sourceLabel.공개} · {source.attribution}</Badge>}
-            </div>
-            {m.body && <p className="mt-1 whitespace-pre-wrap text-sm">{m.body}</p>}
-            <MaterialTable material={m} />
-            <MaterialChart material={m} />
-            {images.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-2">
-                {images.map((src, i) => (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img key={src} src={src} alt={c.imagesAlt(m.title, i + 1)} className="h-24 w-24 rounded-lg object-cover" />
-                ))}
-              </div>
+          <div key={l.id} data-print="item-material" data-material-id={l.id} data-material-no={l.no} className="rounded-lg border-2 border-ink-300 bg-white p-3">
+            <p className="text-center text-sm font-bold">
+              {l.label} <span data-material-hint className="text-xs font-normal text-ink-500">{l.hint}</span>
+            </p>
+            {m ? (
+              <>
+                <div className="mt-1 flex flex-wrap items-center justify-center gap-2">
+                  {cleanMaterialTitle(m.title ?? '') !== '' && <p className="text-sm font-semibold">{cleanMaterialTitle(m.title ?? '')}</p>}
+                  <SourceBadge material={m} />
+                </div>
+                <MaterialBody material={m} />
+              </>
+            ) : (
+              <p className="mt-1 text-center text-xs text-ink-500">{copy.items.materialMissing(l.id)}</p>
             )}
           </div>
         )
       })}
     </div>
-  )
-}
-
-/** 자료 카드(제목 + 목록). 원장 패키지 화면과 학생 차시 패널이 쓴다 — 문제지 인쇄에도 남는 칸(print="keep"). */
-export function MaterialsSection({ materials }: { materials: MaterialLike[] }) {
-  if (materials.length === 0) return null
-  return (
-    <Card print="keep">
-      <h2 className="text-lg font-bold">{copy.materialsHeading}</h2>
-      <MaterialsFull materials={materials} />
-    </Card>
   )
 }

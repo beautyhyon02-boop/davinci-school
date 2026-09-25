@@ -13,7 +13,7 @@ import { Stage5Summary } from './Stage5Summary'
 // 같은 조각(components/studio/parts/)을 쓴다. PackageView 자체는 서버 전용(getLevels 가 node:fs)이라 여기서는 조각만 가져온다.
 //   3단계 = 평가 계획 + 차시 카드 전부(교사용 지침 칸에 6단계 지침서의 그 차시 메모가 있으면 함께)
 //   4단계 = 자료 전부(표 전체·그래프·이미지) + 이 세트가 가리키는 대주제 공유 자료('공유' 표시)
-//   5단계 = Stage5Summary(문항 카드·채점 기준표) · 6단계 = 교사용 지침서 전체 · 7단계 = 안내장 틀 전체
+//   5단계 = Stage5Summary(문항 카드 — 카드 안에 그 문항의 <자료 n> 상자 — ·채점 기준표) · 6단계 = 교사용 지침서 전체 · 7단계 = 안내장 틀 전체
 // 다른 단계의 출력(차시 → 지침서 메모·자료 참조 등)은 outputs 로 받는다 — 모두 평범한 데이터(함수 prop 없음).
 const copy = app.studio.wizard
 
@@ -94,7 +94,14 @@ export function StageOutput({ stage, outputs, sharedMaterials = [] }: {
     )
   }
 
-  if (stage === 5) return <Stage5Summary output={output} />
+  if (stage === 5) {
+    // 문항 카드 안에 그 문항의 자료를 넣는다 — 4단계 탭과 같은 규칙(세트 자료 전부 + 이 세트가 가리키는 공유 자료)
+    const lessons = (outputs[3] as Stage3Output | null | undefined)?.lessons
+    const items = (output as { items?: { materials_used?: string[] }[] }).items
+    const used = usedMaterialIds({ lessons, items, texts: [outputs[6], outputs[7]] })
+    const setMaterials = arr((outputs[4] as { materials?: MaterialLike[] } | null | undefined)?.materials)
+    return <Stage5Summary output={output} materials={stageMaterialsView(setMaterials, sharedMaterials, used).materials} />
+  }
 
   if (stage === 6) {
     const lessons = arr((outputs[3] as Stage3Output | null | undefined)?.lessons)

@@ -194,18 +194,39 @@ describe.each(['수학', '과학'] as const)('PackageView 문제지 인쇄 표�
     return starts.map((s, i) => html.slice(s, starts[i + 1] ?? stop))
   }
 
-  it('keeps exactly cover → key question → materials → items, in that order', () => {
+  it('keeps exactly cover → key question → items; the separate 자료 card is dropped because every material is inside an item (no duplicates)', () => {
     expect(html.startsWith('<div data-package-view="true"')).toBe(true)
-    expect(count(html, 'data-print="keep"')).toBe(4)
+    // 데모 세트는 문항이 세트 자료를 전부 품는다(수학 A·B, 과학 B·D·E) — 따로 선 자료 칸은 인쇄에서 빠진다
+    expect(new Set(items.flatMap((i) => i.materials_used))).toEqual(new Set(snap.materials.map((m) => m.id)))
+    expect(count(html, 'data-print="keep"')).toBe(3)
     const keeps: number[] = []
     for (let at = html.indexOf('data-print="keep"'); at >= 0; at = html.indexOf('data-print="keep"', at + 1)) keeps.push(at)
     const cover = html.indexOf(`>${snap.cover.title}</h1>`)
     const kq = html.indexOf(`<h2 class="text-lg font-bold">${c.keyQuestionHeading}</h2>`)
-    const mats = html.indexOf(`<h2 class="text-lg font-bold">${c.materialsHeading}</h2>`)
     const qs = html.indexOf(`<h2 class="text-lg font-bold">${c.assessmentHeading}</h2>`)
-    // 각 keep 칸 바로 안에 표지 제목·핵심질문·자료·문항 제목이 온다
-    expect([cover, kq, mats, qs].every((x, i) => x > keeps[i] && (keeps[i + 1] === undefined || x < keeps[i + 1]))).toBe(true)
+    // 각 keep 칸 바로 안에 표지 제목·핵심질문·문항 제목이 온다
+    expect([cover, kq, qs].every((x, i) => x > keeps[i] && (keeps[i + 1] === undefined || x < keeps[i + 1]))).toBe(true)
     expect(text(html)).toContain(norm(snap.key_question))
+    // 자료 칸은 화면에는 그대로 있다(차시도 쓴다) — keep 이 아닐 뿐
+    const mats = html.indexOf(`<h2 class="text-lg font-bold">${c.materialsHeading}</h2>`)
+    expect(mats).toBeGreaterThan(-1)
+    expect(html.slice(0, mats).lastIndexOf('<div data-print="keep"')).toBeLessThan(kq)
+  })
+  it('a material used only by lessons keeps the 자료 card on the sheet, but the item-embedded materials inside it are omitted (printed once)', () => {
+    const extra = structuredClone(snap)
+    extra.materials.push({ ...extra.materials[0], id: 'Z', title: '차시에서만 쓰는 자료' })
+    const h = render(extra, 'teacher')
+    expect(count(h, 'data-print="keep"')).toBe(4)
+    const mats = h.indexOf(`<h2 class="text-lg font-bold">${c.materialsHeading}</h2>`)
+    const card = h.slice(mats, h.indexOf(`<h2 class="text-lg font-bold">${c.assessmentHeading}</h2>`))
+    expect(count(card, 'data-print="material"')).toBe(1)
+    expect(card).toContain('data-print="material" data-material-id="Z"')
+    for (const m of snap.materials) expect(card).toContain(`data-print="omit" data-material-id="${m.id}"`)
+    // 인쇄되는 자료 블록 = 문항 안 상자 + 문항 밖 자료 Z — 같은 ID 가 두 번 인쇄되지 않는다
+    const printed = [...h.matchAll(/data-print="(?:item-)?material" data-material-id="([A-Z])"/g)].map((m) => m[1])
+    expect(printed.filter((id) => id === 'Z')).toHaveLength(1)
+    const perItem = items.map((i) => i.materials_used.length).reduce((a, b) => a + b, 0)
+    expect(printed).toHaveLength(perItem + 1)
   })
   it('puts the 이름·날짜 line in the cover as sheet-only', () => {
     const cover = html.slice(0, html.indexOf(`<h2 class="text-lg font-bold">${c.standardsHeading}</h2>`))
@@ -214,8 +235,10 @@ describe.each(['수학', '과학'] as const)('PackageView 문제지 인쇄 표�
     expect(cover).toContain(c.print.studentLine.date)
     expect(cover).toContain(`data-print="omit"`)   // 버전 배지·게시일
   })
-  it('marks every material and every item card, and hides the grading material inside item cards', () => {
-    expect(count(html, 'data-print="material"')).toBe(snap.materials.length)
+  it('marks every item card with its embedded 자료 boxes, and hides the grading material inside item cards', () => {
+    // 따로 선 자료 칸의 자료는 모두 문항 안에 있으므로 인쇄용 표식이 omit 이다
+    expect(count(html, 'data-print="material"')).toBe(0)
+    expect(count(html, 'data-print="item-material"')).toBe(items.reduce((a, i) => a + i.materials_used.length, 0))
     const segs = itemSegments()
     expect(segs.length).toBe(items.length)
     segs.forEach((seg, i) => {
@@ -247,6 +270,56 @@ describe.each(['수학', '과학'] as const)('PackageView 문제지 인쇄 표�
     const seg = render(paper, 'teacher').split('data-print="item"')[1]
     expect(seg).toContain('data-answer-kind="paper"'); expect(seg).toContain(`<div class="answer-box">${c.print.paperBox}</div>`)
     expect(count(seg, 'data-answer-line')).toBe(0)
+  })
+})
+
+// 문항 = 자료 + 문항 한 덩어리(대표 연수 2기 실습-2 p.18~20): 문항 카드 안, 문두 아래·조건 위에 그 문항의 자료를
+// materials_used 순서대로 <자료 1>·<자료 2> 상자로 넣는다. 옛 문두("자료 B는 …")가 읽히게 상자 라벨 옆에 세트 ID를 작게.
+describe.each(['수학', '과학'] as const)('PackageView 문항 안 자료 (%s)', (subject) => {
+  const snap = snapshotFor(subject)
+  const items = snap.assessment!.items
+  const segsOf = (h: string) => {
+    const starts: number[] = []
+    for (let at = h.indexOf('data-print="item"'); at >= 0; at = h.indexOf('data-print="item"', at + 1)) starts.push(at)
+    const stop = h.indexOf(`<h2 class="text-lg font-bold">${c.gradingCriteriaHeading}</h2>`)
+    return starts.map((s, i) => h.slice(s, starts[i + 1] ?? (stop < 0 ? h.length : stop)))
+  }
+  it.each(['admin', 'teacher'] as const)('each item card (%s) embeds its own materials in materials_used order, labeled <자료 n> with the set ID hint, between stem and conditions', (mode) => {
+    const segs = segsOf(render(snap, mode))
+    expect(segs).toHaveLength(items.length)
+    segs.forEach((seg, i) => {
+      const it = items[i]
+      const boxes = [...seg.matchAll(/data-print="item-material" data-material-id="([A-Z])" data-material-no="(\d+)"/g)].map((m) => [m[1], Number(m[2])])
+      expect(boxes).toEqual(it.materials_used.map((id, k) => [id, k + 1]))
+      it.materials_used.forEach((id, k) => {
+        expect(text(seg)).toContain(`${c.items.materialLabel(k + 1)} ${c.items.materialHint(id)}`)
+        const m = snap.materials.find((x) => x.id === id)!
+        if (m.body) expect(text(seg)).toContain(norm(m.body).slice(0, 40))
+        if (m.table) expect(text(seg)).toContain(norm(String(m.table.columns[0])))
+      })
+      // 문두 → 자료 상자 → (조건·분량) 순서
+      const stemAt = text(seg).indexOf(norm(it.stem))
+      const firstBox = text(seg).indexOf(c.items.materialLabel(1))
+      const lengthAt = text(seg).indexOf(`${c.assessment.conditions.lengthLabel}:`)
+      expect(stemAt).toBeGreaterThan(-1)
+      expect(firstBox).toBeGreaterThan(stemAt)
+      expect(lengthAt).toBeGreaterThan(firstBox)
+    })
+  })
+  it('the <자료 n> numbering restarts per item and follows materials_used order, not the set letter order', () => {
+    const swapped = structuredClone(snap)
+    const last = swapped.assessment!.items[swapped.assessment!.items.length - 1]
+    last.materials_used = [...last.materials_used].reverse()
+    const seg = segsOf(render(swapped, 'admin')).at(-1)!
+    const boxes = [...seg.matchAll(/data-material-id="([A-Z])" data-material-no="(\d+)"/g)].map((m) => `${m[2]}:${m[1]}`)
+    expect(boxes).toEqual(last.materials_used.map((id, k) => `${k + 1}:${id}`))
+  })
+  it('a materials_used ID missing from the set shows a gentle note instead of crashing', () => {
+    const broken = structuredClone(snap)
+    broken.assessment!.items[0].materials_used = ['Q']
+    const seg = segsOf(render(broken, 'admin'))[0]
+    expect(text(seg)).toContain(norm(c.items.materialMissing('Q')))
+    expect(text(seg)).not.toMatch(/undefined|NaN/)
   })
 })
 
