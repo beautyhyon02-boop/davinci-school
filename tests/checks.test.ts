@@ -334,3 +334,17 @@ describe('staticIssues', () => {
     expect(issues.some((i) => i.detail.includes('청유형'))).toBe(true)
   })
 })
+
+describe('zeroDistinguishesAttempt — 거나/또는으로 붙인 시도 서술(2026-09-26 영어 세트)', () => {
+  it('무응답 + 다른 경우가 있으면 인정, 무응답만 있으면 불인정', async () => {
+    const { zeroDistinguishesAttempt } = await import('@/lib/studio/checks')
+    for (const ok of [
+      '답을 쓰지 않았거나, 수치 정보 없이 품목 이름만 나열했다.',
+      '답을 쓰지 않았거나, 주어나 동사가 빠진 문장이 있거나 단어 수 구간을 벗어났다.',
+      '답을 쓰지 않았거나, 자료를 전혀 가져오지 않아 인용도 출처도 나타나지 않는다.',
+      '답을 쓰지 않았거나, 영어 문장 없이 낱말·우리말만 적었다.',
+      '무응답 또는 자료와 무관한 내용',
+    ]) expect(zeroDistinguishesAttempt(ok), ok).toBe(true)
+    for (const bad of ['부족함', '답을 쓰지 않았다.', '수치가 없다.']) expect(zeroDistinguishesAttempt(bad), bad).toBe(false)
+  })
+})

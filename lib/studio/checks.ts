@@ -30,7 +30,9 @@ export const adverbOnlyDiff = (a: string, b: string) => norm(a.replace(ADVERBS, 
  */
 const NO_RESPONSE = /무응답|미응답|미작성|미제출|백지|빈\s?칸|아무것도|(쓰|적|작성하|답하|제출하)지\s*(않|못)|답(안)?이\s*없/
 const ATTEMPT = /시도|일부|관련|무관|엉뚱|(썼|적었|작성했|답했|했|하였)(으나|지만|어도|는데)/
-export const zeroDistinguishesAttempt = (descriptor: string) => NO_RESPONSE.test(descriptor) && ATTEMPT.test(descriptor)
+// 무응답 뒤에 '거나/또는'으로 다른 경우를 붙인 꼴("답을 쓰지 않았거나, 수치 정보 없이 품목 이름만 나열했다" — 2026-09-26 영어 세트 5건)도 시도를 구분한 것으로 본다.
+const ALTERNATIVE = /(않았거나|않거나|없거나|못했거나|않은\s*경우(이거나|와)|또는)\s*,?\s*\S+/
+export const zeroDistinguishesAttempt = (descriptor: string) => NO_RESPONSE.test(descriptor) && (ATTEMPT.test(descriptor) || ALTERNATIVE.test(descriptor))
 
 /** 안내장 문장 규칙(부록 A N-01·02·05·12)의 기계 검사 부분. lib/classroom/notice-lint.ts(T8)가 학생별 안내장에도 같은 목록을 쓴다. */
 export const NOTICE_FORBIDDEN: [RegExp, string][] = [
