@@ -51,12 +51,29 @@ describe('rules v2', () => {
     expect(all).not.toMatch(/서술형 2개|서술형1|서술형2|서술형 두 문항/)
     expect(all).not.toMatch(/선택형\/단답형|선택형 퀴즈/)
     const spec = readFileSync('docs/superpowers/specs/2026-09-25-item-studio-v2-design.md', 'utf8')
-    for (const id of ['C-14', 'C-15', 'C-31', 'L-05', 'L-09', 'L-10', 'S-수-01', 'S-수-02', 'S-과-03', 'S-영-05']) {
+    for (const id of ['C-14', 'C-15', 'C-31', 'L-05', 'L-08', 'L-09', 'L-10', 'S-수-01', 'S-수-02', 'S-과-03', 'S-영-05']) {
       const r = text(id)
       const row = spec.split('\n').find((line) => line.startsWith(`| ${id} |`))!
       // 이번에 고친 행은 스펙 부록 A 문장이 코드 문장과 글자까지 같다
       expect(row, id).toContain(`| ${id} | ${r.text} |`)
     }
+  })
+  it('L-10·L-08 (대표 2026-09-26, "차시 설계나 퀴즈가 너무 쉬운 수준이 아닌지"): 퀴즈 3문항은 성취수준 D~E·C·B 하나씩, 문장 베끼기 금지; 전개는 C 목표 + A~B 확장 1개; 스펙 부록 A 행과 같은 문장', () => {
+    const spec = readFileSync('docs/superpowers/specs/2026-09-25-item-studio-v2-design.md', 'utf8')
+    const row = (id: string) => spec.split('\n').find((line) => line.startsWith(`| ${id} |`))!
+    const l10 = LESSON_RULES.find((r) => r.id === 'L-10')!
+    expect(l10.nature).toBe('PS'); expect(l10.tags).toContain('대표')
+    for (const s of ['모두 단답형이되 수준을 나눈다', '회상(D~E: 용어·사실)', '이해·적용(C: 도달점 수준의 적용·계산·설명 핵심어)', '관계·추론(B: 두 개념의 관계, 이유, 새 사례 적용)',
+      'level_ref', '정답이 자료·대본에 그대로 적힌 문장을 옮겨 적는 문항은 금지', '회상 문항도 낱말을 묻되 문장 베끼기는 안 됨']) expect(l10.text, s).toContain(s)
+    expect(l10.text).not.toMatch(/워밍업|단일 조회/)
+    expect(row('L-10')).toBe(`| L-10 | ${l10.text} | P+S | [WP11-3][WP11-9][대표] |`)
+    const l08 = LESSON_RULES.find((r) => r.id === 'L-08')!
+    expect(l08.text).toContain('전개 활동은 C(도달점)를 목표로 하고 A~B 학생용 확장 활동(발문 또는 활동지 도전 과제) 1개를 포함한다')
+    expect(l08.tags).toContain('대표')
+    expect(row('L-08')).toBe(`| L-08 | ${l08.text} | P+S | [WP7 §3(e)][WP1 §5][대표] |`)
+    // 생성 프롬프트 규칙 블록에 들어간다
+    expect(rulesFor('수학')).toMatch(/^L-10 퀴즈 3문항은 모두 단답형이되 수준을 나눈다/m)
+    expect(rulesFor('과학')).toMatch(/^L-08 .*A~B 학생용 확장 활동/m)
   })
   it('C-32 (대표 2026-09-26): 조건은 지침이지 풀이 힌트가 아니고 논술형에만 둔다; C-11은 풀이 단계 쪼개기를 뜻하지 않는다', () => {
     const c32 = COMMON_RULES.find((r) => r.id === 'C-32')!

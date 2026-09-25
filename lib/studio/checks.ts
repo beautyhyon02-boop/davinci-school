@@ -3,7 +3,7 @@ import { checkReconstructionFidelity, tokensFoundIn } from './fidelity'
 import { levelRefFor } from './level-map'
 import { structureIssues, kindFamily, sessionPlacementIssues, isAssessmentSession, lessonAssessments, ESSAY_MIN_MINUTES } from './assessment-structure'
 import type { Stage, ReviewKind, Reconstruction, LessonDesign, Materials, Assessment, TeacherGuide, NoticePlan } from './schemas'
-import { QUIZ_SHORT_ONLY, isShortQuiz } from './schemas'
+import { QUIZ_SHORT_ONLY, isShortQuiz, quizLevelSpreadIssue } from './schemas'
 import { titleHasSourceMarker, usedMaterialIds, mentionedMaterialIds, MAX_SET_MATERIALS } from './materials'
 import { sortScale, zeroStep } from './scale'
 
@@ -104,8 +104,92 @@ function sharedMaterialCitationIssues(lessons: LessonCorpusLike[], items: { mate
   return issues
 }
 
+const squashWs = (s: string) => s.replace(/\s+/g, '')
+/** 수 하나(단위가 붙어도 된다: "6", "12개", "0.18")인 정답 표기면 그 수. */
+const numberKey = (k: string) => /^(\d+(?:\.\d+)?)[^\d.]*$/.exec(squashWs(k))?.[1] ?? null
+/**
+ * 글(해설·힌트·수업 문장)이 정답 표기를 그대로 말하는가. 수는 한 글자라도 다른 수의 일부가 아닌 낱개로 나오면 말한 것으로 본다
+ * ("그 총합은 항상 1이다" → 1, "…: 6으로 주어져 있다" → 6; "41·42"의 1은 아니다). 글자 표기는 두 글자 이상이 공백을 빼고 들어 있으면.
+ * L-06 발문 힌트(compat.ts hintFor, fixture 검사)와 L-10 퀴즈 베끼기 [TS](quizCopySource)가 같은 판정을 쓴다.
+ */
+export function statesAnswer(text: string, key: string): boolean {
+  const n = numberKey(key)
+  if (n !== null) return new RegExp(`(?<![\\d.])${n.replace('.', '\\.')}(?![\\d.])`).test(text)
+  const k = squashWs(key)
+  return k.length >= 2 && squashWs(text).includes(k)
+}
+
+// ── L-10 퀴즈 베끼기(대표 2026-09-26: "퀴즈가 너무 쉬운 수준이 아닌지") ─────────────────────────────
+/** [TS] 퀴즈 베끼기 사유(L-10). */
+export const QUIZ_COPIED = '정답이 본문에 그대로 있음'
+// 조사·어미 한 겹과 묻는 말(무엇·몇·얼마·하는가 …), 어느 발문에나 나오는 말(자료·따르면)을 떼고 남은 두 글자 이상 낱말을 발문의 내용어로 본다.
+const TAIL = /(으로|에서|에게|까지|부터|처럼|보다|이라|이며|해서|하여|하고|하는가|되는가|있는가|는가|인가|시오|은|는|이|가|을|를|의|에|로|와|과|도|만)$/
+const ASKING = /^(무엇|어느|어떤|어디|누구|얼마|몇|다음|빈칸|들어갈|낱말|단답|알맞은|구하|쓰|자료|따르면)/
+/** 퀴즈 발문의 내용어(중복 없이). */
+export function questionStems(q: string): string[] {
+  const out = new Set<string>()
+  for (const raw of q.split(/[^가-힣A-Za-z0-9.]+/)) {
+    const t = raw.replace(/\.+$/, '').replace(TAIL, '')
+    if (t.length >= 2 && !ASKING.test(t)) out.add(t)
+  }
+  return [...out]
+}
+/**
+ * 이 차시의 본문 문장 — [어디, 문장]. 수업 흐름(도입·전개·정리), 발문 대본(발문 + 예상 답, 막힐 때), 활동지(과제 + 기대 답), 사용 자료 본문(문장 단위).
+ * 예상 답·기대 답이 짧으면(답 하나) 발문·과제와 한 문장으로 본다 — 퀴즈가 수업에서 물은 문항을 되풀이했는지 보려고. 길면(교사가 보는 인정 기준)
+ * 발문과 떼고 절 단위로 나눈다 — 긴 기준 문장의 앞뒤 절에 흩어진 낱말이 우연히 겹치는 것을 베끼기로 보지 않으려고.
+ */
+type SourceUnit = [where: string, text: string]
+/** 이보다 길면 예상 답·기대 답을 교사용 인정 기준으로 보고 절 단위로 나눈다. */
+const SHORT_EXPECTED = 25
+const CLAUSE = /(?<=[.!?])\s+|,\s+|\s—\s/
+type LessonTextLike = {
+  flow?: { intro?: string[] | null; main?: { activities?: string[] | null }[] | null; wrapup?: string[] | null } | null
+  teacher_script?: { questions?: { prompt?: string; expected_answer?: string; if_stuck?: string }[] | null } | null
+  worksheet?: { tasks?: { prompt?: string; expected?: string }[] | null } | null
+  materials_used?: string[] | null
+}
+export function lessonSourceUnits(l: LessonTextLike, materials: { id: string; body?: string | null }[] = []): SourceUnit[] {
+  const units: SourceUnit[] = []
+  for (const t of [...(l.flow?.intro ?? []), ...(l.flow?.main ?? []).flatMap((m) => m.activities ?? []), ...(l.flow?.wrapup ?? [])]) units.push(['수업 흐름', t])
+  const pair = (where: string, prompt = '', answer = '') => {
+    if (answer.length <= SHORT_EXPECTED) { units.push([where, `${prompt} ${answer}`]); return }
+    units.push([where, prompt])
+    for (const c of answer.split(CLAUSE)) units.push([where, c])
+  }
+  for (const q of l.teacher_script?.questions ?? []) { pair('발문 대본', q.prompt, q.expected_answer); if (q.if_stuck) units.push(['발문 대본', q.if_stuck]) }
+  for (const t of l.worksheet?.tasks ?? []) pair('활동지', t.prompt, t.expected)
+  const used = new Set(l.materials_used ?? [])
+  for (const m of materials) if (used.has(m.id) && m.body) for (const s of m.body.split(/(?<=[.!?])\s+|\n+/)) units.push([`자료 ${m.id}`, s])
+  return units
+}
+/**
+ * 퀴즈의 정답이 본문에 그대로 있는가(L-10: 자료·대본 문장을 옮겨 적으면 답이 되는 문항 금지). 정답 표기 하나가 통째로(statesAnswer)
+ * 한 문장에 들어 있고 그 문장이 발문 내용어의 60% 이상(2개 이상)을 함께 담으면 — 발문을 그 문장에서 떼어 냈거나 수업에서 물은 문항을
+ * 되풀이한 것이다 — 그 문장의 자리(수업 흐름·발문 대본·활동지·자료 X)를, 아니면 null. 용어만 같은 회상 문항(정답 낱말이 수업 흐름에
+ * 나오는 것은 자연스럽다)은 발문이 그 문장을 옮기지 않았으면 걸지 않는다.
+ */
+export function quizCopySource(quiz: { q?: string; answer?: string }, units: SourceUnit[]): string | null {
+  const stems = questionStems(quiz.q ?? '')
+  const need = Math.max(2, Math.ceil(stems.length * 0.6))
+  const keys = (quiz.answer ?? '').split('/').map((k) => k.trim()).filter(Boolean)
+  for (const [where, text] of units) {
+    if (!keys.some((k) => statesAnswer(text, k))) continue
+    const flat = squashWs(text)
+    if (stems.filter((s) => flat.includes(s)).length >= need) return where
+  }
+  return null
+}
+/** 3단계 검사가 볼 수 있는 자료 본문: 4단계 확정본(다시 검토할 때)과 대주제 공유 자료. 보통 3단계 시점에는 공유 자료만 있다. */
+function knownMaterials(ctx: CheckCtx): { id: string; body?: string | null }[] {
+  const own = (ctx.prior.stage4 as { materials?: { id: string; body?: string | null }[] } | undefined)?.materials
+  const shared = ctx.prior.shared_materials as { id: string; body?: string | null }[] | undefined
+  return [...(Array.isArray(own) ? own : []), ...(Array.isArray(shared) ? shared : [])]
+}
+
 function lessonIssues(o: LessonDesignT, ctx: CheckCtx): Issue[] {
   const issues: Issue[] = []
+  const materials = knownMaterials(ctx)
   const covered = new Set(o.lessons.flatMap((l) => l.standards))
   for (const s of ctx.standards) if (!covered.has(s.code)) issues.push({ kind: 'coverage', detail: `${s.code}가 어느 차시에도 배정되지 않음` })
   // L-09(대표 2026-09-26 보완): 교수 차시 3~5개 + 마지막 교수 차시 뒤 단원 평가 차시 1개(서술형 → 논술형 함께). zod 도 보지만
@@ -127,6 +211,17 @@ function lessonIssues(o: LessonDesignT, ctx: CheckCtx): Issue[] {
     // zod(LessonDesign)도 보지만 검토는 저장된 출력(2026-09-26 이전 초안·손으로 고친 판)에도 돌므로 다시 본다.
     for (const [i, q] of l.formative_check.quiz.entries()) {
       if (!isShortQuiz(q)) issues.push({ kind: 'quiz', detail: `${l.no}차시 퀴즈 ${i + 1}: ${QUIZ_SHORT_ONLY}` })
+    }
+    // L-10(대표 2026-09-26): 교수 차시 퀴즈는 수준 D~E·C·B 하나씩, 정답이 본문(수업 흐름·발문 대본·활동지·자료)에 그대로 있는 문항 금지.
+    // 참고 메모(kind other)일 뿐 막지 않는다 — zod(LessonDesign)도 수준 분포를 보지만 검토는 저장된 옛 초안에도 돈다.
+    if (!isAssessmentSession(l)) {
+      const spread = quizLevelSpreadIssue(l.formative_check.quiz)
+      if (spread) issues.push({ kind: 'other', detail: `${l.no}차시 ${spread}` })
+      const units = lessonSourceUnits(l, materials)
+      for (const [i, q] of l.formative_check.quiz.entries()) {
+        const where = quizCopySource(q, units)
+        if (where) issues.push({ kind: 'other', detail: `${l.no}차시 퀴즈 ${i + 1}: ${QUIZ_COPIED}(${where})` })
+      }
     }
     for (const q of l.teacher_script.questions) if (norm(q.if_stuck) === norm(q.expected_answer)) issues.push({ kind: 'other', detail: `${l.no}차시 발문 힌트가 정답과 같음` })
   }

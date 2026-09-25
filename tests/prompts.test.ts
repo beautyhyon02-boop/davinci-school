@@ -56,6 +56,17 @@ describe('prompts v2', () => {
     expect(rules).toMatch(/L-09 .*모두 단답형 — 낱말·수치·짧은 구를 직접 쓰는 문항, 선택지 없음/); expect(rules).toMatch(/L-10 .*답은 낱말·수치·짧은 구/)
     expect(rules).not.toMatch(/선택형\/단답형/)
   })
+  it('stage 3 (대표 2026-09-26, L-10·L-08): 퀴즈 level_ref D~E·C·B 하나씩·베끼기 금지, 전개는 C 목표 + A~B 확장 활동 1개; 검토는 모두 회상·베끼기·확장 없음을 짚는다', () => {
+    const task = buildPrompt(3, ctx).user.split('과제: ')[1]
+    expect(task).toMatch(/세 문항은 수준을 나눠 level_ref를 하나씩 붙인다 — "D~E" 회상\(용어·사실을 낱말로\), "C" 이해·적용\(도달점 수준의 적용·계산·설명 핵심어\), "B" 관계·추론/)
+    expect(task).toMatch(/발문·활동지에서 이미 물은 문항을 그대로 되풀이하거나 자료·대본에 적힌 문장을 옮겨 적으면 답이 되는 문항은 쓰지 않는다/)
+    expect(task).toMatch(/전개 활동은 C\(도달점\)를 목표로 하고 A~B 학생용 확장 활동 1개\(발문 또는 활동지 도전 과제\)를 포함한다/)
+    const review = buildReviewPrompt(3, ctx, {}).user.split('검토 초점: ')[1]
+    expect(review).toMatch(/level_ref가 D~E\(회상\)·C\(이해·적용\)·B\(관계·추론\) 하나씩/); expect(review).toMatch(/세 문항이 모두 용어·사실 회상이거나/)
+    expect(review).toMatch(/옮겨 적으면 되는 문항, 발문·활동지 문항을 그대로 되풀이한 퀴즈는 quiz/)
+    expect(review).toMatch(/A~B 학생용 확장 활동\(발문 또는 활동지 도전 과제\)을 1개 이상 두었는지 — 없으면 level/)
+    expect(buildPrompt(3, ctx).system).toMatch(/L-10 퀴즈 3문항은 모두 단답형이되 수준을 나눈다/)
+  })
   it('stage 3 (오너 규칙 2026-09-26 보완): materials_used는 이 과목에 꼭 필요한 자료만 — 공유 자료는 0~2개, 그 밖은 4단계에서 이 과목 전용 ID를 미리 정한다', () => {
     const task = buildPrompt(3, ctx).user.split('과제: ')[1]
     expect(task).toMatch(/이 과목 수업에 꼭 필요한 자료만 적는다/)

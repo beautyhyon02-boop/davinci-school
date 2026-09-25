@@ -1,10 +1,13 @@
 // tests/studio-schemas.test.ts
 import { describe, it, expect } from 'vitest'
-import { Reconstruction, Lesson, LessonDesign, PublishedLessonDesign, Lessons, Material, Assessment, PublishedAssessment, NoticePlan, Review, STAGE_SCHEMAS, AXES, ASSESSMENT_KINDS } from '@/lib/studio/schemas'
+import { Reconstruction, Lesson, LessonDesign, PublishedLessonDesign, Lessons, Material, Assessment, PublishedAssessment, NoticePlan, Review, STAGE_SCHEMAS, AXES, ASSESSMENT_KINDS, QuizItem, QUIZ_LEVELS } from '@/lib/studio/schemas'
 
-// 대표 2026-09-26: 퀴즈는 단답형만(객관식 폐지) — 새 세트 fixture 도 단답형이다
-const quiz = (q: string) => ({ q, type: 'short' as 'short' | 'choice', choices: null as string[] | null, answer: '6', explanation: '표에서 센다.' })
-const choiceQuiz = (q: string) => ({ q, type: 'choice' as 'short' | 'choice', choices: ['가', '나'] as string[] | null, answer: '가', explanation: '표에서 센다.' })
+// 대표 2026-09-26: 퀴즈는 단답형만(객관식 폐지) — 새 세트 fixture 도 단답형이다.
+// 퀴즈 수준(L-10): 교수 차시 3문항은 D~E·C·B 하나씩 — 도우미는 '문항 1·2·3'에 차례로 붙인다(다른 발문은 수준 없음).
+type QuizLevelT = (typeof QUIZ_LEVELS)[number] | undefined
+const LEVEL_OF: Record<string, QuizLevelT> = { '문항 1': 'D~E', '문항 2': 'C', '문항 3': 'B' }
+const quiz = (q: string) => ({ q, type: 'short' as 'short' | 'choice', choices: null as string[] | null, answer: '6', explanation: '표에서 센다.', level_ref: LEVEL_OF[q] })
+const choiceQuiz = (q: string) => ({ q, type: 'choice' as 'short' | 'choice', choices: ['가', '나'] as string[] | null, answer: '가', explanation: '표에서 센다.', level_ref: LEVEL_OF[q] })
 export const lessonV2 = {
   no: 1, standards: ['[9수04-02]'], topic: '도수분포표 만들기',
   key_question: '자료를 계급으로 나누면 무엇이 보이는가?', goal: '자료를 계급으로 나누어 도수분포표로 나타낼 수 있다.',
@@ -140,6 +143,28 @@ describe('schemas v2', () => {
     // 차시 하나(Lesson)와 게시 판(PublishedLessonDesign)은 옛 선택형을 읽는다 — 이미 게시된 판은 바꾸지 않는다
     expect(Lesson.safeParse({ ...lessonV2, formative_check: { quiz: [choiceQuiz('문항 1'), choiceQuiz('문항 2'), choiceQuiz('문항 3')] } }).success).toBe(true)
     expect(PublishedLessonDesign.safeParse({ unit_plan, lessons: withQuiz(choiceQuiz('문항 2')) }).error?.issues ?? []).toEqual([])
+  })
+  it('quiz level (대표 2026-09-26, L-10): 새 세트 교수 차시 퀴즈는 수준 D~E·C·B 하나씩(순서 무관), 게시 판 읽기는 level_ref 없는 옛 퀴즈도 받는다', () => {
+    expect(QUIZ_LEVELS).toEqual(['D~E', 'C', 'B'])
+    const lessons = [1, 2, 3, 4, 5].map((no) => ({ ...lessonV2, no })).concat(assessmentSession(6))
+    const unit_plan = { set_title: '자료의 정리와 해석', set_key_question: '자료는 무엇을 말하는가?', lesson_map: lessons.map((l) => ({ lesson_no: l.no, standards: l.standards, topic: l.topic })),
+      assessment_plan: { formative: '교수 차시마다 퀴즈 3문항', summative_placement: [{ lesson_no: 6, kind: '서술형' }, { lesson_no: 6, kind: '논술형' }], rubric_note: { 상: 'a', 중: 'b', 하: 'c' } } }
+    const withLevels = (levels: QuizLevelT[] | 'strip', no = 2) => lessons.map((l) => (l.no === no || (levels === 'strip' && l.formative_check.quiz.length > 0)
+      ? { ...l, formative_check: { quiz: l.formative_check.quiz.map((q, i) => ({ ...q, level_ref: levels === 'strip' ? undefined : levels[i] })) } } : l))
+    const messages = (ls: unknown[]) => LessonDesign.safeParse({ unit_plan, lessons: ls }).error?.issues.map((i) => i.message) ?? []
+    expect(messages(withLevels(['D~E', 'C', 'B']))).toEqual([])
+    expect(messages(withLevels(['B', 'D~E', 'C']))).toEqual([])
+    expect(messages(withLevels(['D~E', 'D~E', 'C']))).toEqual(['2차시 퀴즈 3문항은 수준 D~E·C·B를 하나씩(level_ref)(지금 D~E·D~E·C)'])
+    expect(messages(withLevels([undefined, 'C', 'B']))).toEqual(['2차시 퀴즈 3문항은 수준 D~E·C·B를 하나씩(level_ref)(지금 없음·C·B)'])
+    expect(STAGE_SCHEMAS[3].safeParse({ unit_plan, lessons: withLevels(['C', 'C', 'C']) }).success).toBe(false)
+    // 수준 목록 밖의 값은 퀴즈 한 문항(QuizItem)에서부터 받지 않는다 — 활동지 층의 'A~B'는 퀴즈 수준이 아니다
+    expect(QuizItem.safeParse({ ...quiz('문항 1'), level_ref: 'A~B' }).success).toBe(false)
+    // level_ref 는 선택 필드 — 2026-09-26 이전에 저장·게시된 퀴즈(수준 없음)도 퀴즈·차시·게시 판으로는 읽힌다
+    const { level_ref: _drop, ...old } = quiz('문항 1'); void _drop
+    expect(QuizItem.safeParse(old).success).toBe(true)
+    expect(Lesson.safeParse({ ...lessonV2, formative_check: { quiz: [old, old, old] } }).success).toBe(true)
+    expect(PublishedLessonDesign.safeParse({ unit_plan, lessons: withLevels('strip') }).error?.issues ?? []).toEqual([])
+    expect(messages(withLevels('strip'))).toHaveLength(5)   // 새 세트는 교수 차시 다섯 곳 모두 걸리고, 단원 평가 차시(퀴즈 0)는 보지 않는다
   })
   it('material source is an object and role defaults to raw', () => {
     const m = Material.parse({ id: 'A', title: 't', kind: 'table', body: null, table: { columns: ['부스', '개수'], rows: [[1, 18]] }, source: { kind: '자작', attribution: null, ai_assisted: false } })

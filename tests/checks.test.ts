@@ -1,6 +1,7 @@
 // tests/checks.test.ts
 import { describe, it, expect } from 'vitest'
-import { staticIssues, inventedActors } from '@/lib/studio/checks'
+import { staticIssues, inventedActors, statesAnswer, quizCopySource, lessonSourceUnits, questionStems } from '@/lib/studio/checks'
+import { statesAnswer as compatStatesAnswer } from '@/lib/studio/compat'
 import { assessmentV2, lessonV2, assessmentSession } from './studio-schemas.test'
 
 const standards = [{ code: '[9수04-02]', text: '자료를 줄기와 잎 그림, 도수분포표, 히스토그램, 도수분포다각형으로 나타내고 해석할 수 있다.' }, { code: '[9수04-03]', text: '상대도수를 구하고, 상대도수의 분포를 표나 그래프로 나타내고 해석할 수 있다.' }]
@@ -71,6 +72,55 @@ describe('staticIssues', () => {
     expect(legacy).toMatch(/4차시: 교수 차시에는/); expect(legacy).toMatch(/서술형 → 논술형을 함께/)
     // 옛 모양(문자열 라벨)도 읽어서 잡는다
     expect(coverage([1, 2, 3].map(teaching).concat({ ...teaching(4), assessment: '서술형2' as never }, { ...assessmentSession(5), assessment: '논술형' as never }))).toMatch(/교수 차시에는/)
+  })
+  it('stage 3 (대표 2026-09-26, L-10): 퀴즈 수준이 D~E·C·B 하나씩이 아니면 참고 메모(kind other) — 옛 초안(level_ref 없음)도 짚고 막지는 않는다', () => {
+    const one = [standards[0]]
+    const design = (lessons: unknown[]) => ({ unit_plan: { set_title: 't', set_key_question: 'q?', lesson_map: [], assessment_plan: { formative: 'f', summative_placement: [{ lesson_no: 6, kind: '서술형' }, { lesson_no: 6, kind: '논술형' }], rubric_note: { 상: 'a', 중: 'b', 하: 'c' } } }, lessons })
+    const base = [1, 2, 3, 4, 5].map((no) => ({ ...lessonV2, no })).concat(assessmentSession(6))
+    const levelNotes = (lessons: unknown[]) => staticIssues(3, design(lessons), { standards: one, prior: {} }).filter((i) => i.detail.includes('수준'))
+    expect(levelNotes(base)).toEqual([])
+    const setLevels = (no: number, levels: (string | undefined)[]) => base.map((l) => (l.no === no ? { ...l, formative_check: { quiz: l.formative_check.quiz.map((q, i) => ({ ...q, level_ref: levels[i] })) } } : l))
+    expect(levelNotes(setLevels(1, ['D~E', 'D~E', 'D~E']))).toEqual([{ kind: 'other', detail: '1차시 퀴즈 3문항은 수준 D~E·C·B를 하나씩(level_ref)(지금 D~E·D~E·D~E)' }])
+    expect(levelNotes(setLevels(3, [undefined, undefined, undefined]))).toEqual([{ kind: 'other', detail: '3차시 퀴즈 3문항은 수준 D~E·C·B를 하나씩(level_ref)(지금 없음·없음·없음)' }])
+    expect(levelNotes(setLevels(2, ['C', 'B', 'D~E']))).toEqual([])   // 순서는 따지지 않는다
+  })
+  it('stage 3 (대표 2026-09-26, L-10): 정답이 본문(발문 대본·수업 흐름·활동지·사용 자료)에 그대로 있고 발문이 그 문장을 옮겼으면 "정답이 본문에 그대로 있음" 참고 메모', () => {
+    const one = [standards[0]]
+    const design = (lessons: unknown[]) => ({ unit_plan: { set_title: 't', set_key_question: 'q?', lesson_map: [], assessment_plan: { formative: 'f', summative_placement: [{ lesson_no: 6, kind: '서술형' }, { lesson_no: 6, kind: '논술형' }], rubric_note: { 상: 'a', 중: 'b', 하: 'c' } } }, lessons })
+    const first = lessonV2.formative_check.quiz[0]
+    const lesson1 = (patch: Record<string, unknown>, q: { q: string; answer: string }) => ({ ...lessonV2, no: 1, ...patch, formative_check: { quiz: [{ ...first, ...q }, ...lessonV2.formative_check.quiz.slice(1)] } })
+    const copyNotes = (l: unknown, prior: Record<string, unknown> = {}) => staticIssues(3, design([l, ...[2, 3, 4, 5].map((no) => ({ ...lessonV2, no })), assessmentSession(6)]), { standards: one, prior })
+      .filter((i) => i.detail.includes('본문에 그대로'))
+    // 수업에서 물은 발문을 퀴즈가 되풀이 — 발문 대본
+    const script = { teacher_script: { questions: [{ prompt: '자료 A의 도수분포표에서 계급 30개 이상 40개 미만의 도수는?', expected_answer: '6', if_stuck: '표에서 그 칸을 짚어 보게 한다.' }, lessonV2.teacher_script.questions[1]] } }
+    expect(copyNotes(lesson1(script, { q: '자료 A의 도수분포표에서 계급 30개 이상 40개 미만의 도수는?', answer: '6' }))).toEqual([{ kind: 'other', detail: '1차시 퀴즈 1: 정답이 본문에 그대로 있음(발문 대본)' }])
+    // 같은 개념의 새 사례(다른 계급)는 되풀이가 아니다
+    expect(copyNotes(lesson1(script, { q: '자료 A의 도수분포표에서 계급 50개 이상 60개 미만의 도수는?', answer: '4' }))).toEqual([])
+    // 수업 흐름 문장에 빈칸을 뚫은 발문 — 수업 흐름
+    const flow = { flow: { ...lessonV2.flow, intro: ['과학적 탐구 방법의 과정(문제 인식 → 가설 설정 → 자료 수집 → 결론 도출)을 칠판에 정리'] } }
+    expect(copyNotes(lesson1(flow, { q: '과학적 탐구 방법은 "문제 인식 → 가설 설정 → (   ) → 결론 도출" 순서로 진행된다. 빈칸에 들어갈 단계는?', answer: '자료 수집 / 자료 모으기' }))).toEqual([{ kind: 'other', detail: '1차시 퀴즈 1: 정답이 본문에 그대로 있음(수업 흐름)' }])
+    // 회상 문항이 묻는 용어가 수업 흐름에 나오는 것은 자연스럽다 — 발문이 그 문장을 옮기지 않았으면 걸지 않는다
+    const terms = { flow: { ...lessonV2.flow, intro: ['계급·계급의 크기·도수 용어를 익힌다'] } }
+    expect(copyNotes(lesson1(terms, { q: '도수분포표에서 "20개 이상 30개 미만"처럼 변량을 나눈 구간을 무엇이라 하는가?', answer: '계급' }))).toEqual([])
+    // 사용 자료 본문의 문장을 옮기면 답이 되는 발문 — 4단계 확정본(다시 검토)이나 대주제 공유 자료, 이 차시가 쓰는 자료만
+    const body = '플라스틱은 석유에서 얻은 원료로 만든 고분자 물질이다. 가볍고 잘 깨지지 않는다.'
+    const lookUp = { q: '자료 A에 따르면 플라스틱은 무엇에서 얻은 원료로 만드는가?', answer: '석유' }
+    expect(copyNotes(lesson1({ materials_used: ['A'] }, lookUp), { stage4: { materials: [{ id: 'A', body }] } })).toEqual([{ kind: 'other', detail: '1차시 퀴즈 1: 정답이 본문에 그대로 있음(자료 A)' }])
+    expect(copyNotes(lesson1({ materials_used: ['A'] }, lookUp), { shared_materials: [{ id: 'A', body }] })).toHaveLength(1)
+    expect(copyNotes(lesson1({ materials_used: ['B'] }, lookUp), { stage4: { materials: [{ id: 'A', body }] } })).toEqual([])
+    expect(copyNotes(lesson1({ materials_used: ['A'] }, lookUp))).toEqual([])   // 자료 본문을 모르면(보통의 3단계) 판단하지 않는다
+    // 긴 기대 답(교사용 인정 기준)은 절 단위로 본다 — 앞 절의 낱말과 뒤 절의 정답이 우연히 겹친 것은 베끼기가 아니다
+    const criteria = { worksheet: { ...lessonV2.worksheet, tasks: lessonV2.worksheet.tasks.map((t) => (t.tier === '도전' ? { ...t, expected: '부스 수와 전체 개수가 달라 개수가 늘어도 차지하는 비율은 그대로일 수 있음을, 개수와 상대도수가 다르게 말하는 품목을 예로 들어 설명하면 인정' } : t)) } }
+    expect(copyNotes(lesson1(criteria, { q: '어떤 계급의 도수가 전체 도수에서 차지하는 비율을 무엇이라 하는가?', answer: '상대도수' }))).toEqual([])
+    // 단원 평가 차시는 보지 않는다(퀴즈 0), 단답 판정은 L-06 힌트 검사와 같은 함수다
+    expect(compatStatesAnswer).toBe(statesAnswer)
+  })
+  it('quizCopySource: 발문 내용어는 조사·묻는 말·흔한 말(자료·따르면)을 뗀 낱말, 수 정답은 다른 수의 일부가 아닌 낱개일 때만', () => {
+    expect(questionStems('자료 D에 따르면 땅에 묻힌 플라스틱이 사라지기까지 약 몇 년이 걸리는가?')).toEqual(['묻힌', '플라스틱', '사라지기', '걸리'])
+    const units = lessonSourceUnits({ flow: { intro: ['자료 A의 40번대 값 41·42·44·45·47을 줄기와 잎 그림으로 나타낸다'] } })
+    expect(units).toEqual([['수업 흐름', '자료 A의 40번대 값 41·42·44·45·47을 줄기와 잎 그림으로 나타낸다']])
+    expect(quizCopySource({ q: '자료 A의 40번대 값을 줄기와 잎 그림으로 나타낼 때 잎의 개수는?', answer: '1' }, units)).toBeNull()
+    expect(quizCopySource({ q: '자료 A의 40번대 값을 줄기와 잎 그림으로 나타낼 때 가장 작은 값은?', answer: '41' }, units)).toBe('수업 흐름')
   })
   it('stage 4: size conventions and raw-data leakage hints', () => {
     const big = { materials: [{ ...materials[0], table: { columns: ['a'], rows: Array.from({ length: 30 }, (_, i) => [i]) } }] }
