@@ -611,6 +611,8 @@ export const app = {
       sourceLabel: { 자작: '자작', 공개: '공개 자료' },
       aiBadge: 'AI 보조 · 확인 필요',
       roleLabel: { raw: '원자료', context: '배경' },
+      // 제작소 4단계 탭: 대주제 공유 자료(모든 과목이 함께 쓰는 자료)를 세트 자료와 구별
+      sharedBadge: '공유',
     },
     lessonsHeading: '차시',
     lessons: {
@@ -634,6 +636,9 @@ export const app = {
       scriptStuck: '막힐 때',
       needsLabel: '준비물',
       cautionHeading: '지도상 유의점',
+      // 차시 카드의 교사용 지침 칸(관리자·원장 화면만): 발문 대본 + 지도상 유의점 + 교사용 지침서의 그 차시 메모
+      teacherBlockHeading: '교사용 지침',
+      guideNotesHeading: '지침서 메모',
       worksheetHeading: '활동지',
       worksheetTier: (tier: string, ref: string) => `${tier}(${ref})`,
       worksheetExpected: '기대 답',
@@ -653,6 +658,7 @@ export const app = {
       glossaryHeading: '용어 설명',
       perLessonHeading: '차시별 유의점',
       lessonLabel: (no: number) => `${no}차시`,
+      lessonWithTopic: (no: number, topic: string) => `${no}차시 · ${topic}`,
       mergeHeading: '병합 안내',
       mergeLabel: (a: number, b: number) => `${a}·${b}차시 병합`,
       mergeSkip: '생략 활동',

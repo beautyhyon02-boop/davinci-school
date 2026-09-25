@@ -50,6 +50,24 @@ describe.each(['수학', '과학'] as const)('PackageView v2 (%s mock snapshot)'
       for (const n of l.caution_notes) expect(t).toContain(norm(n))
     }
   })
+  it('each lesson card carries a 교사용 지침 block with that lesson\'s script, cautions and 지침서 notes — admin and teacher modes (2026-09-26)', () => {
+    for (const mode of ['admin', 'teacher'] as const) {
+      const h = mode === 'admin' ? html : render(snap, 'teacher')
+      for (const l of snap.lessons) {
+        const start = h.indexOf(`data-lesson-no="${l.no}"`)
+        const next = h.indexOf('data-lesson-no="', start + 1)
+        const seg = text(h.slice(start, next < 0 ? h.indexOf(`<h2 class="text-lg font-bold">${c.materialsHeading}</h2>`) : next))
+        expect(seg).toContain(c.lessons.teacherBlockHeading)
+        for (const q of l.teacher_script.questions) expect(seg).toContain(norm(`${q.prompt} — ${c.lessons.scriptExpected}: ${q.expected_answer}`))
+        for (const n of l.caution_notes) expect(seg).toContain(norm(n))
+        for (const n of snap.teacher_guide!.per_lesson.find((p) => p.no === l.no)?.notes ?? []) expect(seg).toContain(norm(n))
+      }
+    }
+    // 학생 화면은 패키지 조립·차시 카드를 쓰지 않는다(자기 차시 패널 + 자료 조각만) — 교사용 지침 칸이 학생에게 갈 길이 없다
+    const student = readFileSync('app/student/assignments/[id]/page.tsx', 'utf8')
+    expect(student).not.toMatch(/PackageView|LessonCards|LessonCard\b/)
+    expect(student).toContain("from '@/components/studio/parts/MaterialsFull'")
+  })
   it('shows worksheet tasks for all three tiers 기본/표준/도전 with the level reference', () => {
     for (const l of snap.lessons) for (const w of l.worksheet.tasks) {
       expect(t).toContain(norm(c.lessons.worksheetTier(w.tier, w.level_ref)))
