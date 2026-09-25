@@ -306,6 +306,48 @@ describe('학년 선택(대표 2026-09-26): 학년이 없으면 학교급 학년
   })
 })
 
+// 대표 연수 2기 실습-2(2026-09-02): 2단계 핵심질문 6단계(p.3~14), 4단계 자료 설계(p.15~17), 5단계 문항 = 자료 + 문항 한 덩어리(p.18~20)
+describe('대표 연수 2기 — 핵심질문 6단계·자료 설계·문항 안 <자료 n>', () => {
+  const task = (stage: Stage) => buildPrompt(stage, ctx).user.split('과제: ')[1]
+  const focus = (stage: Stage) => buildReviewPrompt(stage, ctx, {}).user.split('검토 초점: ')[1].split('\n\n생성 결과')[0]
+  it('stage 2 task derives key questions by the 6 steps with two axes, 주장·감상 variants, reuse, and no item wording', () => {
+    const t = task(2)
+    for (const s of ['핵심질문 6단계', '① 재구성 문장에서 핵심 기능어', '③ 수업이 끝난 뒤 학생에게 남아야 할 핵심 이해', '④ 그 핵심 이해를 질문형으로',
+      '"무엇인가?"', '"어떻게 알 수 있는가?"', '그렇게 판단할 수 있는 단서는 무엇인가', '기능어가 주장이면 입장 + 근거', '감상이면 인상 + 근거',
+      '⑤ 수업 전체를 끌고 갈 수 있는지', '자료를 바꿔도', '차시 활동으로도', '마지막 단원 평가 문항으로', '⑥ 문항과 구분한다', '핵심질문은 문항 문장이 아니다',
+      '"쓰시오"']) expect(t, s).toContain(s)
+    // 재구성 문장 규칙(L-02)은 그대로 — 대주제 상황은 재구성 문장에 쓰지 않는다
+    expect(t).toMatch(/재구성 문장에 쓰지 않고/)
+  })
+  it('stage 2 review mirrors it: two axes, reuse across materials/lessons/items, item wording → other', () => {
+    const f = focus(2)
+    for (const s of ['6단계', '"무엇인가?" + "어떻게 알 수 있는가?"', '입장 + 근거', '인상 + 근거', '자료를 바꿔도 반복해 쓸 수 있고', '단원 평가 문항',
+      '쓰고 버릴 질문이면 other', '응답 방식', '담았으면 other']) expect(f, s).toContain(s)
+    // 대주제 상황이 핵심질문 후보에 있는 것은 여전히 반려하지 않는다
+    expect(f).toMatch(/그것은 반려하지 않는다/)
+  })
+  it('stage 4 task decides the thinking first (기능어 → 핵심 단서 → 답안 방향) and picks the type by 기능어; review mirrors it', () => {
+    const t = task(4)
+    for (const s of ['형식보다 사고를 먼저', 'C-33', '"학생이 이 자료로 무슨 사고를 해야 하지?"', '기능어 → 학생이 붙잡을 핵심 단서 → 최종 답안의 방향',
+      '추론형: 짧은 대화문·메시지·안내문·광고문·이메일·짧은 글', '주장형: 서로 다른 입장이 드러나는 짧은 자료 2개·통계 사례·찬반 상황 자료',
+      '비교형: 두 대상 소개문·표·그래프·설명글 2개', '파악형: 연표·사료·기사·요약문·개념도·설명문', '이해·적용형: 실험 결과·생활 사례·그림·도식·조건 제시문',
+      '친숙하게', '노골적이지도', '모호하지도', '표현·어조·반복·상황 맥락']) expect(t, s).toContain(s)
+    const f = focus(4)
+    for (const s of ['C-33', '기능어', '추론형은 짧은 대화문', '비교할 두 대상이나 기준이 자료에 없으면 other', '노골적이거나', '모호하면 other', '낯선 주제면 other']) expect(f, s).toContain(s)
+    // 기존 4단계 규칙(원자료만·모순 금지)은 그대로
+    expect(t).toMatch(/원자료만 담는다/); expect(t).toMatch(/서로 모순되지 않아야/)
+  })
+  it('stage 5 task: materials_used in stem order, refer to materials as <자료 n> (never set letters), 전제문 introduces each; review mirrors', () => {
+    const t = task(5)
+    for (const s of ['materials_used(자료 ID를 문두가 쓰는 순서대로', '문항은 자료와 한 덩어리다', '<자료 1>, <자료 2>로만 가리킨다', '세트 자료 ID("자료 A"·"자료 F")로 가리키지 않는다',
+      '전제문은 <자료 n>마다 무엇인지 한 마디씩 소개한다', '"<자료 1>은 ○○을 품목별로 센 표이고, <자료 2>는 ○○에 대한 안내문이다."', '차시·활동지·지침서는 지금처럼 세트 자료 ID']) expect(t, s).toContain(s)
+    // 고르기 발문 예시도 문항 안 번호로
+    expect(t).toContain('"<자료 1>에서 사실 한 가지, <자료 2>에서 품목 한 가지와 그 수치"'); expect(t).not.toContain('자료 F에서 사실 한 가지')
+    const f = buildReviewPrompt(5, ctx, { items: [] }).user.split('검토 초점: ')[1]
+    for (const s of ['문항은 자료와 한 덩어리다', 'materials_used가 문두가 자료를 쓰는 순서와 같은지', '<자료 1>·<자료 2>로만 가리키는지', '"자료 A"·"자료 F"로 가리키면 other', '전제문이 <자료 n>마다']) expect(f, s).toContain(s)
+  })
+})
+
 describe('stage 4 — 자료 내부 모순 금지(2026-09-26)', () => {
   it('생성·검토 지시문에 모순·모호 지시 규칙이 있다', () => {
     const c = { theme: { title: 't', level: '중', grade: null, subjects: ['영어'] }, subject: '영어', standards: [], prior: {} }

@@ -8,8 +8,8 @@ describe('rules v2', () => {
     expect(new Set(ids).size).toBe(ids.length)
     const spec = readFileSync('docs/superpowers/specs/2026-09-25-item-studio-v2-design.md', 'utf8')
     for (const id of ids) expect(spec.split(`| ${id} |`).length - 1, id).toBe(1)
-    // 부록 A: 공통 32(C-31 대표 확정값, C-32 조건=지침(2026-09-26) 포함) + 차시 12 + 과목 36(국6·수7·사6·역3·과7·영7) + 채점 9 + 안내장 12
-    expect(ids.length).toBe(32 + 12 + 36 + 9 + 12)
+    // 부록 A: 공통 33(C-31 대표 확정값, C-32 조건=지침(2026-09-26), C-33 자료 설계·유형(대표 연수 2기) 포함) + 차시 12 + 과목 36(국6·수7·사6·역3·과7·영7) + 채점 9 + 안내장 12
+    expect(ids.length).toBe(33 + 12 + 36 + 9 + 12)
   })
   it('the spec appendix has no rule row that the code lacks', () => {
     const spec = readFileSync('docs/superpowers/specs/2026-09-25-item-studio-v2-design.md', 'utf8')
@@ -70,6 +70,37 @@ describe('rules v2', () => {
     expect(subj).not.toMatch(/핵심 채점 포인트를 조건에 명시/); expect(subj).not.toMatch(/조건 3~5개/); expect(subj).not.toMatch(/서술형은 조건-점수/)
     const spec = readFileSync('docs/superpowers/specs/2026-09-25-item-studio-v2-design.md', 'utf8')
     expect(spec).toContain(`| C-32 | ${c32.text} |`)
+  })
+})
+
+// 대표 연수 2기 실습-2(2026-09-02): 핵심질문 6단계(p.3~14) → L-04, 자료 설계·유형(p.15~17) → C-33. 스펙 부록 A 행은 코드 문장과 글자까지 같다.
+describe('대표 연수 2기: L-04 핵심질문 6단계, C-33 자료 설계·유형', () => {
+  const spec = readFileSync('docs/superpowers/specs/2026-09-25-item-studio-v2-design.md', 'utf8')
+  const row = (id: string) => spec.split('\n').find((line) => line.startsWith(`| ${id} |`))!
+  it('L-04 names the 6 steps, the two axes (무엇인가 + 어떻게 알 수 있는가), 주장·감상 as 입장/인상 + 근거, reuse across materials, and "not an item sentence"', () => {
+    const l04 = LESSON_RULES.find((r) => r.id === 'L-04')!
+    expect(l04.nature).toBe('P'); expect(l04.tags).toContain('대표-연수2기')
+    for (const s of ['6단계', '기능어', '핵심 이해', '질문형', '수업 전체를 끌고 가는지', '문항과 구분', '"무엇인가?" + "어떻게 알 수 있는가?"',
+      '그렇게 판단할 수 있는 단서는 무엇인가', '무엇이 같고 다르며', '주장한다는 입장 + 근거', '감상한다는 인상 + 근거', '자료를 바꿔도 반복해 쓸 수 있고',
+      '단원 평가 문항', '문항 문장이 아니므로', '자료 지시·응답 방식', '도입 제시·전개 상기·정리 재확인']) expect(l04.text, s).toContain(s)
+    expect(row('L-04')).toContain(`| L-04 | ${l04.text} |`)
+    expect(row('L-04')).toContain('[대표-연수2기]')
+  })
+  it('C-33 carries the material type table by 기능어 and the design principles (PS, 대표-연수2기), and reaches the generation prompt', () => {
+    const c33 = COMMON_RULES.find((r) => r.id === 'C-33')!
+    expect(c33.nature).toBe('PS'); expect(c33.tags).toEqual(['대표-연수2기'])
+    for (const s of ['형식보다 사고를 먼저', '기능어 → 핵심 단서 → 최종 답안의 방향',
+      '추론형은 짧은 대화문·메시지·안내문·광고문·이메일·짧은 글', '주장형은 서로 다른 입장이 드러나는 짧은 자료 2개·통계 사례·찬반 상황 자료',
+      '비교형은 두 대상 소개문·표·그래프·설명글 2개', '파악형은 연표·사료·기사·요약문·개념도·설명문', '이해·적용형은 실험 결과·생활 사례·그림·도식·조건 제시문',
+      '친숙하게', '노골적이지도 너무 모호하지도', '표현·어조·반복·상황 맥락']) expect(c33.text, s).toContain(s)
+    expect(row('C-33')).toContain(`| C-33 | ${c33.text} | P+S | [대표-연수2기] |`)
+    expect(rulesFor('과학')).toMatch(/^C-33 자료는 형식보다 사고를 먼저/m)
+    // 태그 범례에 출처가 있다
+    expect(spec).toContain('`[대표-연수2기]` 대표 교사 연수 2기 실습-2')
+  })
+  it('C-32 cites the material by its item-local number (<자료 1>), not by a set letter', () => {
+    const c32 = COMMON_RULES.find((r) => r.id === 'C-32')!.text
+    expect(c32).toContain('<자료 1>의 수치를 근거로'); expect(c32).not.toContain('자료 B의 수치')
   })
 })
 
