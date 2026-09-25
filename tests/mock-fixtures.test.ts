@@ -2,7 +2,8 @@ import { describe, it, expect, beforeAll } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { loadFixture } from '@/lib/ai/mock'
 import { STAGE_SCHEMAS, Review } from '@/lib/studio/schemas'
-import { staticIssues, conditionHints, materialNumbers } from '@/lib/studio/checks'
+import { staticIssues, conditionHints, materialNumbers, lessonSourceUnits, quizCopySource } from '@/lib/studio/checks'
+import { quizLevelSpreadIssue } from '@/lib/studio/schemas'
 import { checkReconstructionFidelity } from '@/lib/studio/fidelity'
 import { runStage, type Repo, type StageStatus } from '@/lib/studio/stages'
 import { buildPrompt, buildReviewPrompt } from '@/lib/studio/prompts/stages'
@@ -80,6 +81,7 @@ for (const set of SETS) describe(`${set.subject} fixtures (v2)`, () => {
     expect(items.map((i) => [i.kind, i.lesson_no])).toEqual([['서술형', 6], ['논술형', 6]])
   })
   it('퀴즈는 단답형만 (대표 2026-09-26, L-09·L-10): 교수 차시마다 정확히 3문항, 모두 type short·choices null, 답은 낱말·수치·짧은 구, [TS] 통과', () => {
+    // 수준(D~E·C·B)과 본문 베끼기는 아래 '퀴즈 수준' 테스트가 본다
     type Q = { q: string; type: string; choices: unknown; answer: string; explanation: string }
     const design = loadFixture(`stage3-generate${set.suffix}`) as { lessons: { no: number; kind: string; formative_check: { quiz: Q[] }; teacher_script: { questions: { expected_answer: string; if_stuck: string }[] } }[] }
     const teaching = design.lessons.filter((l) => l.kind === 'teaching')
@@ -102,6 +104,27 @@ for (const set of SETS) describe(`${set.subject} fixtures (v2)`, () => {
     for (const l of teaching) for (const s of l.teacher_script.questions) {
       for (const k of s.expected_answer.split(/\s*\/\s*|,\s+/)) expect(statesAnswer(s.if_stuck, k), `${l.no}차시 발문 힌트 "${s.if_stuck}"가 정답 "${k}"를 말함`).toBe(false)
     }
+  })
+  it('퀴즈 수준 (대표 2026-09-26, L-10): 교수 차시마다 D~E·C·B 하나씩, 정답이 그 차시 본문(수업 흐름·발문 대본·활동지·사용 자료)에 그대로 있지 않고 발문·활동지 문항을 되풀이하지 않는다', () => {
+    type Q = { q: string; answer: string; level_ref?: string }
+    type L = { no: number; kind: string; formative_check: { quiz: Q[] }; teacher_script: { questions: { prompt: string }[] }; worksheet: { tasks: { prompt: string }[] } }
+    const design = loadFixture(`stage3-generate${set.suffix}`) as { lessons: L[] }
+    const { materials } = loadFixture(`stage4-generate${set.suffix}`) as { materials: { id: string; body: string | null }[] }
+    const teaching = design.lessons.filter((l) => l.kind === 'teaching')
+    expect(teaching.flatMap((l) => l.formative_check.quiz.map((q) => q.level_ref))).toHaveLength(15)
+    for (const l of teaching) {
+      expect(quizLevelSpreadIssue(l.formative_check.quiz), `${set.subject} ${l.no}차시`).toBeNull()
+      expect(l.formative_check.quiz.map((q) => q.level_ref).sort(), `${set.subject} ${l.no}차시`).toEqual(['B', 'C', 'D~E'])
+      const units = lessonSourceUnits(l, materials)
+      const asked = [...l.teacher_script.questions.map((s) => s.prompt), ...l.worksheet.tasks.map((t) => t.prompt)]
+      for (const [i, q] of l.formative_check.quiz.entries()) {
+        const where = `${set.subject} ${l.no}차시 퀴즈 ${i + 1}`
+        expect(quizCopySource(q, units), `${where}: 정답이 본문에 그대로 있음`).toBeNull()
+        expect(asked, `${where}: 발문·활동지 문항을 되풀이함`).not.toContain(q.q)
+      }
+    }
+    // 4단계 자료를 아는 검토(다시 검토하는 경우)에서도 [TS] 메모가 없다
+    expect(staticIssues(3, design, { standards, prior: { stage4: { materials } } }).map((i) => i.detail)).toEqual([])
   })
   it('lesson topics are hand-written short noun phrases (≤20자) and unit_plan.lesson_map carries the same topic per lesson (헤딩 절단 재발 방지)', () => {
     const { lessons, unit_plan } = loadFixture(`stage3-generate${set.suffix}`) as { lessons: { no: number; topic: string }[]; unit_plan: { lesson_map: { lesson_no: number; topic: string }[] } }

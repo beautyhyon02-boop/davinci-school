@@ -8,15 +8,15 @@
       "quiz_notes": [
         {
           "quiz_no": 1,
-          "wrong_note": "자료를 모아 정리·해석해 답하는 질문이 통계적 탐구 문제이다."
+          "wrong_note": "마신 컵 수라는 자료를 모아 답하므로 통계적 탐구 문제이다."
         },
         {
           "quiz_no": 2,
-          "wrong_note": "자료 A는 올해 축제 부스 20곳의 일회용컵 사용 개수를 조사한 자료이다"
+          "wrong_note": "자료를 얻을 사람이나 사물이 조사 대상이다."
         },
         {
           "quiz_no": 3,
-          "wrong_note": "집단의 크기(부스 수)를 알아야 뒤에서 상대도수로 비교할 수 있다."
+          "wrong_note": "한 명당 A반은 3개, B반은 3.5개이다."
         }
       ],
       "criteria_phrases": null
@@ -29,15 +29,15 @@
       "quiz_notes": [
         {
           "quiz_no": 1,
-          "wrong_note": "자료 A의 40번대 값 일의 자리를 잎으로 나열한 것이다."
+          "wrong_note": "변량을 나눈 구간이 계급이고, 구간의 너비가 계급의 크기이다."
         },
         {
           "quiz_no": 2,
-          "wrong_note": "계급의 크기 10일 때 도수는 30~40: 6으로 주어져 있다."
+          "wrong_note": "51, 52, 55, 58로 모두 4곳이다."
         },
         {
           "quiz_no": 3,
-          "wrong_note": "계급의 크기를 줄이면 계급의 개수는 늘어난다."
+          "wrong_note": "5·7·8회 세 명이 들어간다."
         }
       ],
       "criteria_phrases": null
@@ -50,15 +50,15 @@
       "quiz_notes": [
         {
           "quiz_no": 1,
-          "wrong_note": "도수는 그 계급에 속한 자료의 개수이다."
+          "wrong_note": "점의 높이는 그 계급의 도수이다."
         },
         {
           "quiz_no": 2,
-          "wrong_note": "해설을 다시 읽고 근거가 되는 곳을 찾아봅시다."
+          "wrong_note": "40개 이상 50개 미만이 5로 그다음이다."
         },
         {
           "quiz_no": 3,
-          "wrong_note": "직사각형 윗변의 중앙을 이으면 도수분포다각형이 된다."
+          "wrong_note": "두 넓이는 같다."
         }
       ],
       "criteria_phrases": null
@@ -71,15 +71,15 @@
       "quiz_notes": [
         {
           "quiz_no": 1,
-          "wrong_note": "240 ÷ 1,350 을 계산한 값이다."
+          "wrong_note": "상대도수는 그 계급의 도수를 도수의 총합으로 나눈 값이다."
         },
         {
           "quiz_no": 2,
-          "wrong_note": "도수의 총합이 다르면 상대도수로 비교한다."
+          "wrong_note": "9 ÷ 25 = 0.36이다."
         },
         {
           "quiz_no": 3,
-          "wrong_note": "상대도수는 도수 ÷ 도수의 총합이며, 그 총합은 항상 1이다."
+          "wrong_note": "도수 = 상대도수 × 도수의 총합이므로 0.2 × 50 = 10이다."
         }
       ],
       "criteria_phrases": null
@@ -96,11 +96,11 @@
         },
         {
           "quiz_no": 2,
-          "wrong_note": "0.32 × 1,350 = 432이므로 약 432개이다."
+          "wrong_note": "40개 이상인 부스는 5 + 4 + 1 = 10곳이다."
         },
         {
           "quiz_no": 3,
-          "wrong_note": "근거가 되는 수치에는 단위와 출처를 함께 적는다."
+          "wrong_note": "수치를 가져온 곳이 출처이다."
         }
       ],
       "criteria_phrases": null
