@@ -122,6 +122,7 @@
 | 수학 | `수학/*.json` | `math-achievement`, `math-guidebook-hs`, `math-guidebook-ms`, `math-jaryojip`, `math-saryeon`, `math-silcheon`, `math-suhaeng` |
 | 영어 | `영어/*.json` | `eng-achievement`, `eng-agency`, `eng-highguide`, `eng-midguide`, `eng-midperf`, `eng-seoulpractice`, `eng-seoultool` |
 | 과학 | `과학/*.json` | `sci-case`, `sci-gg`, `sci-gj`, `sci-level`, `sci-moe2020`, `sci-sp`, `sci-st`, `sci-suhaeng`, `sci-yj` |
+| 경기 논술형(2025.7 장학자료) | `경기논술형/<교과>.json` | `gg25-kor`, `gg25-math`, `gg25-eng`, `gg25-soc`, `gg25-hist`, `gg25-sci` (§9 참고) |
 
 ## 5. 은행별 레코드 수 (2026-09-24 QA 기준, `2025/국어·수학·영어` 확장분 제외)
 
@@ -168,3 +169,38 @@ exit code 0은 결함 0건을 의미한다.
 레코드)은 이번 배점 감사·파일명 정규화·`page_range` 추가 대상에서 **의도적으로 제외**했다.
 `scripts/check_exemplars.py`를 지금 실행하면 이 확장분에서 몇 건의 배점 불일치가 보고될 수 있는데,
 이는 알려진 후속 작업 대상이며 이번 QA의 미해결 결함이 아니다.
+
+## 9. `경기논술형/` — 경기 논술형 평가 장학자료(2025.7) 38건 (WP9, 2026-09-25 추가)
+
+원문: `250725 경기 논술형평가 장학자료- 탑재용 최종.pdf` (경기도교육청 「학습 여정을 탐색하는 의미있는
+경기 논술형 평가」, 213쪽, **텍스트층 없는 이미지 PDF**). 이 파일은 `reference-corpus/`에 추출본이 없으므로
+전 쪽을 110dpi로 렌더링해 이미지를 직접 판독해 전사했다. 공공누리 공공저작물 — 각 레코드
+`source.attribution`에 출처 문구를 둔다. 분석 문서: `docs/research/corpus/wp9-gyeonggi-essay.md`.
+
+| 파일 | 건수 | 비고 |
+|---|---|---|
+| `국어.json` | 8 | 고1 4, 중1 4 |
+| `수학.json` | 6 | 고1 2, 중1 4 |
+| `영어.json` | 8 | 고1 4, 중1 4 (답안 영어, 지시·채점 한국어) |
+| `사회.json` | 6 | 고1 통합사회 3, 중1 사회 3 |
+| `역사.json` | 2 | 고1 한국사1, 중2 역사 (원문은 '사회과' 편에 수록 — `subject_note`) |
+| `과학.json` | 8 | 고1 통합과학 4, 중1 과학 4 |
+| **합계** | **38** | 원문 목차의 전 문항. 원문상 **전부 논술형**(서술형 0건) |
+
+추가 필드(이 은행 전용): `title`, `competencies`, `evaluation_elements`, `assessment_mode`(지필/수행),
+`design_intent`(논술형 평가 제작 의도), `lesson_link`(수업-평가 연계 주안점), `holistic`(원문에 총체적
+채점표가 없어 전부 `null`), `feedback`(원문 '피드백 시 유의점'), `ai_use`. `levels[].desc`는 원문
+'수행 수준(채점기준)' 문장을 그대로 옮겼다. `source.pages`는 개별 쪽 전체 목록(PDF 쪽 = 인쇄 쪽).
+
+QA 메모:
+- `scripts/check_exemplars.py`(재귀 glob이라 수정 없이 인식): 38건 스키마 오류 0, 배점 플래그 0.
+  (실행 결과의 잔존 플래그 5건은 §8의 2025 국·영 확장분.)
+- `gg25-soc-05`는 중1 자유학기라 원문이 점수 없이 A~E/A~C 등급으로만 채점 → `points: null`,
+  `levels[].points: null` + `grade`.
+- 원문 자체 불일치는 `rubric.type_note`에 기록하고 고치지 않았다: `gg25-math-04`(문두 [총 15점] vs 채점표 12점,
+  points=12), `gg25-kor-03`(유의점 '각 7점씩' vs 표 7·5·3), `gg25-eng-03`(유의점 180~200 vs 조건 180~220단어).
+  예시답안 원문 오기는 `exemplar_answers[].note`에 기록(`gg25-math-03` ii, `gg25-soc-03` 예시1).
+- 최하 척도가 1점인 요소(무응답도 1점)가 17문항에 있다 — 원문 관행 그대로이며 우리 C-13과 다름.
+- 예시답안이 긴 문항(`gg25-kor-08` 5편 중 4편, `gg25-soc-03` 3편 중 2편)은 `excerpt: true`로
+  앞부분만 싣고 전문 쪽을 적었다.
+- 판독 불가 쪽 없음, `incomplete` 레코드 없음.

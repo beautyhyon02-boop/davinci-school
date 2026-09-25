@@ -1,0 +1,1427 @@
+[
+ {
+  "id": "gg25-eng-01",
+  "subject": "영어",
+  "school_level": "고",
+  "grade": 1,
+  "title": "온라인 신분 도용 문제 예방 방안 제시하기",
+  "unit": "표현",
+  "standard_codes": [
+   "[10공영1-02-02]",
+   "[10공영1-02-04]",
+   "[10공영1-02-06]"
+  ],
+  "competencies": [
+   "지식정보처리 역량",
+   "창의적 사고 역량",
+   "협력적 소통 역량"
+  ],
+  "evaluation_elements": [
+   "사실적 정보를 정확하게 설명하기",
+   "자신의 의견 제안하기",
+   "기고문 형식에 맞게 작성하기",
+   "적절한 어휘 및 언어 형식 사용하기"
+  ],
+  "kind": "논술형",
+  "assessment_mode": "수행평가",
+  "points": 25,
+  "time_min": 50,
+  "design_intent": "학생들이 주어진 쓰기 맥락에 근거하여 '온라인 신분 도용'이라는 문제에 대해서 정보를 탐색하고 사실적 정보를 바탕으로 기고문 형식과 목적에 맞게 자신의 생각을 표현할 수 있도록 설계. 모든 수준의 학생들이 참여할 수 있는 과정 중심 수행평가로 실시하는 것을 의도로 출제 — 수행평가 지문 난이도나 조건의 변경, 답안의 자유도, 그리고 피드백을 통해 해당 문항은 성취수준 C, D, E의 학생들에게도 최종 글을 쓸 수 있도록 출제.",
+  "lesson_link": "'정보 해석 → 시각 자료 활용 → 자기 생각 구성'이라는 일련의 과정을 경험한 뒤 이를 바탕으로 완성하는 것을 목표. <논술형 평가와 연계된 수업활동 예시> 1 배경지식 활성화 및 문제의식 형성(온라인 신분 도용 관련 배경지식과 개념 도입, 실제 피해 사례나 통계, 문제의식 형성) → 2 시각 자료 해석 및 핵심 메시지 파악(그래프·통계·인포그래픽 해석) → 3 예방 방안 토의 및 자신의 의견 구성하기 → 4 최종 글쓰기 → 5 피드백(최종본 채점 결과를 통한 피드백).",
+  "context": "최근 온라인 신분 도용(Identity Theft)으로 인한 피해 사례가 증가하고 있다. 학교 구성원들에게 '온라인 신분 도용(Identity Theft)'의 위험성을 경고하고, 이를 예방하는 방법을 알리는 글을 학교 신문에 기고하고자 한다.",
+  "materials": [
+   {
+    "label": "<자료 1>",
+    "type": "인포그래픽(영어)",
+    "summary": "Identity Theft 정의(Someone may steal your personal information … and use it without your permission to do illegal things or trick others) + Common Types: Phishing(Fake emails or texts to steal information), Malware(Malicious* software that collects data; *malicious: 악의적인)."
+   },
+   {
+    "label": "<자료 2>",
+    "type": "인포그래픽(영어)",
+    "summary": "Key Phishing Statistics 2025: 49% Rise in phishing since 2021; 35% Attacks target individuals.",
+    "source": "https://hoxhunt.com/blog/ai-phishing-attacks"
+   },
+   {
+    "label": "<자료 3>",
+    "type": "인포그래픽(영어)",
+    "summary": "MALWARE & IDENTITY THEFT: Dangers of Malware(Your ID, password, and bank info can be stolen), Financial Loss(Hackers may demand money or it causes you to lose data); The Global Cost of Malware 막대그래프(2015 $325 Million, 2017 $5 Billion, 2021 $20 Billion, 2024 $42 Billion, 2026 $71.5 Billion, 2028 $157 Billion, 2031 $265 Billion).",
+    "source": "https://www.knowbe4.com"
+   }
+  ],
+  "stem": "1. 최근 온라인 신분 도용(Identity Theft)으로 인한 피해 사례가 증가하고 있다. 학교 구성원들에게 '온라인 신분 도용(Identity Theft)'의 위험성을 경고하고, 이를 예방하는 방법을 알리는 글을 학교 신문에 기고하고자 한다. 주어진 <자료 1>, <자료 2>, <자료 3>을 활용하여 <조건>에 맞게 영어로 작성하시오. [25점]",
+  "conditions": [
+   "기고문의 목적에 맞게 다음과 같은 구성으로 작성할 것",
+   "- 제목: 내용을 잘 나타낼 수 있도록 작성할 것",
+   "- 서론: 주변의 피해 사례나 뉴스 등을 사용하여 작성할 것",
+   "- 본론 1: <자료 1>을 활용하여 온라인 신분 도용의 개념과 유형을 구체적이고 정확하게 설명하고, <자료 2>, <자료 3> 중 하나를 활용하여 온라인 신분 도용의 심각성을 설명할 것",
+   "- 본론 2: 온라인 신분 도용을 예방하기 위해 개인이 실천할 수 있는 방법 두 가지를 구체적으로 제안할 것",
+   "- 결론: 독자에게 경각심을 주거나 행동을 촉구하는 문장으로 마무리할 것",
+   "180~220 단어로 쓸 것"
+  ],
+  "answer_format": "영어 기고문 180~220 단어",
+  "requires_drawing": false,
+  "rubric": {
+   "type": "분석적",
+   "criteria": [
+    {
+     "name": "서론 작성하기 (사실적 정보를 정확하게 설명하기)",
+     "levels": [
+      {
+       "points": 2,
+       "desc": "사실적 정보(주변의 피해 사례나 뉴스)를 명확하게 제시함."
+      },
+      {
+       "points": 1,
+       "desc": "사실적 정보(주변의 피해 사례나 뉴스)를 제시하지 않음."
+      }
+     ]
+    },
+    {
+     "name": "온라인 신분 도용의 의미와 유형을 설명하기",
+     "levels": [
+      {
+       "points": 4,
+       "desc": "온라인 신분 도용의 의미와 유형에 대해 <자료 1>을 활용하여 명확하게 설명함."
+      },
+      {
+       "points": 3,
+       "desc": "온라인 신분 도용의 의미와 유형 중 한 가지를 <자료 1>을 활용하여 설명함."
+      },
+      {
+       "points": 3,
+       "desc": "온라인 신분 도용의 의미와 유형에 대해 설명하였으나 <자료 1>을 활용하지 않음"
+      },
+      {
+       "points": 2,
+       "desc": "온라인 신분 도용의 의미와 유형 중 한 가지를 설명하였으나 <자료 1>을 활용하지 않음."
+      },
+      {
+       "points": 1,
+       "desc": "온라인 신분 도용의 의미와 유형에 대해 모두 설명하지 않음."
+      }
+     ]
+    },
+    {
+     "name": "온라인 신분 도용의 심각성을 설명하기",
+     "levels": [
+      {
+       "points": 3,
+       "desc": "온라인 신분 도용의 심각성을 <자료 2> 또는 <자료 3>을 활용하여 명확하게 설명함."
+      },
+      {
+       "points": 2,
+       "desc": "온라인 신분 도용의 심각성을 설명하였으나 <자료 2>와 <자료 3>을 모두 활용하지 않음."
+      },
+      {
+       "points": 1,
+       "desc": "온라인 신분 도용의 심각성에 설명하지 않음."
+      }
+     ]
+    },
+    {
+     "name": "예방 방안 제시하기 (자신의 의견 제안하기)",
+     "levels": [
+      {
+       "points": 6,
+       "desc": "온라인 신분 도용을 예방하기 위해 개인이 실천할 수 있는 방법 두 가지를 모두 구체적으로 제시함."
+      },
+      {
+       "points": 4,
+       "desc": "온라인 신분 도용을 예방하기 위해 개인이 실천할 수 있는 방법 한 가지를 구체적으로 제시함."
+      },
+      {
+       "points": 2,
+       "desc": "온라인 신분 도용을 예방하기 위해 개인이 실천할 수 있는 방법을 제시하지 않음."
+      }
+     ]
+    },
+    {
+     "name": "결론 작성하기",
+     "levels": [
+      {
+       "points": 2,
+       "desc": "경각심을 주거나 행동을 촉구하는 문장을 작성함."
+      },
+      {
+       "points": 1,
+       "desc": "경각심을 주거나 행동을 촉구하는 문장을 작성하지 않음."
+      }
+     ]
+    },
+    {
+     "name": "제목 작성하기 (글의 형식에 맞게 글쓰기)",
+     "levels": [
+      {
+       "points": 2,
+       "desc": "내용을 잘 나타내는 제목을 작성함."
+      },
+      {
+       "points": 1,
+       "desc": "내용을 잘 나타내는 제목을 작성하지 않음."
+      }
+     ]
+    },
+    {
+     "name": "기고문 형식에 맞게 작성하기",
+     "levels": [
+      {
+       "points": 2,
+       "desc": "기고문 형식(서론, 본론, 결론)에 맞게 작성함."
+      },
+      {
+       "points": 1,
+       "desc": "기고문 형식(서론, 본론, 결론)에 맞게 작성하지 않음."
+      }
+     ]
+    },
+    {
+     "name": "적절한 어휘와 언어 형식 사용하기",
+     "levels": [
+      {
+       "points": 4,
+       "desc": "다양한 어휘와 언어 형식을 정확하게 사용함."
+      },
+      {
+       "points": 3,
+       "desc": "어휘와 언어 형식의 사용이 반복되며 일부 오류가 있으나 의미 전달에 지장을 주지 않음."
+      },
+      {
+       "points": 2,
+       "desc": "어휘와 언어 형식의 사용이 반복되며 오류가 많아 의미 전달에 지장이 있음."
+      },
+      {
+       "points": 1,
+       "desc": "어휘와 언어 형식이 부정확하여 의미 전달이 어려움."
+      }
+     ]
+    }
+   ],
+   "notes": "평가 요소 네가지를 바탕으로 기고문을 평가하되 학생의 깊이 있는 사고가 표현되고 있는지, 논리적으로 전개되고 있는지에 중점을 두어서 수행 수준을 판단함. E 수준의 경우에는 단편적인 수준에서의 낮은 수행 수준을 보일 것으로 보이므로 다소 단편적이고 제한적인 수준으로 제목만 작성하였으면 '제목 작성하기' 채점 요소 중 2점을 부여할 수 있음. 협력적 소통 역량에 초점을 맞추고자 언어의 정확성보다는 내용 측면에 비중을 두어 채점함. <조건>에 분량을 180~220 단어로 제시하였으나 글자 수로 감점 혹은 가점을 하지는 않으며, 이는 충분한 내용을 쓸 수 있도록 권장하는 분량임. 즉, 내용이 충분히 제시되고 깊이 있는 사고가 표현되고 있음에도 글자 수로 감점하는 일이 없도록 할 것.",
+   "type_note": "최하 척도 1~2점(0점 척도 없음)."
+  },
+  "holistic": null,
+  "exemplar_answers": [
+   {
+    "level": "예시",
+    "text": "Title: Protect Your Digital Self: Beware of Identity Theft\nLast month, a senior in our school discovered that someone used her email to buy games online. Moreover, news reports show that identity theft is rising among teenagers. This makes many of us wonder, \"How safe is our information ?\"\nIdentity theft is when a person secretly takes your private details and uses them to act as if they are you. Two common types are phishing and malware. First, phishing uses fake emails or texts to trick you into giving personal details. Second, malware is harmful software that quietly installs itself on your computer or phone, then collects data such as passwords. In 2025, phishing attacks have increased by 49% since 2021, and 35% of those attacks target individuals. This shows how serious online identity theft has become.\nTo prevent identity theft, everyone can take action. First, check the sender's email address before clicking any link. Last week, I deleted a suspicious email pretending to be from my bank. Second, keep your device updated with antivirus software. I set my laptop to update automatically, which helps to block malware. Both steps are simple but effective.\nPlease stay alert and protect your information. Together, we can keep our digital lives safe!"
+   }
+  ],
+  "feedback": "성취기준을 확인하고, 내용과 문항의 난이도, 성취수준 부합 정도를 고려함. 해당 학생의 수준보다 높은 수준으로 응답한 결과를 확인하여 그와 함께 피드백함. 써야 할 내용이 많고 내용이 쉽지 않지만 실생활에서 접할 수 있는 사례임을 강조하여 동기 부여하는 피드백을 하고, 과정 중심 수행평가로 설계한 만큼 최종 글을 쓰기까지의 과정에 단계별로 적절히 피드백함.",
+  "ai_use": null,
+  "source": {
+   "file": "250725 경기 논술형평가 장학자료- 탑재용 최종.pdf",
+   "pages": [
+    86,
+    87,
+    88,
+    89,
+    90
+   ],
+   "page_range": [
+    86,
+    90
+   ],
+   "attribution": "경기도교육청(2025.7) 「학습 여정을 탐색하는 의미있는 경기 논술형 평가」 — 공공누리 공공저작물, 출처 표시"
+  }
+ },
+ {
+  "id": "gg25-eng-02",
+  "subject": "영어",
+  "school_level": "고",
+  "grade": 1,
+  "title": "스트레스 해소 방안을 제안하는 글쓰기",
+  "unit": "표현",
+  "standard_codes": [
+   "[10공영1-02-02]",
+   "[10공영1-02-04]",
+   "[10공영1-02-07]"
+  ],
+  "competencies": [
+   "지식정보처리 역량",
+   "협력적 소통 역량",
+   "공동체 역량"
+  ],
+  "evaluation_elements": [
+   "자신의 의견 제안하기",
+   "해결 방안의 효과 설명하기",
+   "목적에 맞는 글의 형식을 갖추어 작성하기",
+   "적절한 어휘 및 언어 형식 사용하기"
+  ],
+  "kind": "논술형",
+  "assessment_mode": "수행평가",
+  "points": 17,
+  "time_min": 50,
+  "design_intent": "수업 시간에 '긴장을 완화하는 방법'에 관한 글을 읽고, 이를 삶의 맥락에 적용하기 위한 학습의 기회를 제공하고자 설계. 학교 친구들이 스트레스를 효과적인 방법을 활용하여 해소할 수 있도록 제안하는 글쓰기를 평가 목표로 설정. 고등학교 학생들의 스트레스 원인과 그 해결책을 객관적인 자료를 활용하여 제시할 수 있도록 수업 시간에 관련된 연구 자료 및 통계 자료를 검색하고 이를 근거로 활용한 논리적 구조를 갖춘 글쓰기를 평가로 진행. 학생들이 글쓰기 과정에서 활용한 정보는 정확한 출처를 밝혀 제시하도록 하여 정보 사용 윤리에 관한 교육도 함께 진행. 조건의 변경에 따라 다양한 성취 수준을 판별하는 문항, 혹은 수행평가로 변경하여 전체 성취수준을 판별하는 문항으로 활용 가능. 최소 능력의 판별을 위하여 사실적 정보를 글로 표현하는 방법, 제안하는 표현, 서론·본론·결론의 구조를 갖춘 글쓰기를 수업 중 충분히 학습하여 자신의 생각을 간략하게라도 표현할 수 있도록 지도하는 방안이 필요 — 수업 시간 서론·본론·결론 쓰기 연습 활동에서 활용 가능한 format을 제공하고 guided writing 활동을 단계별로 안내.",
+  "lesson_link": "<논술형 평가와 연계된 수업활동 예시> 1차시 고등학교 학생들의 스트레스 원인 파악하기(객관적인 읽기 자료 활용) → 2차시 스트레스 원인에 관한 해결 방안 찾기(해결 방안의 효과를 객관적인 자료를 참고하여 탐구) → 3차시 글의 근거가 될 수 있는 객관적 자료 찾기(참고한 자료의 출처 정리) → 4차시 출처 표기하는 방법 학습하기(예시 References: Stanford University. (2018). …) → 5차시 서론-본론-결론을 갖춘 확장형 글쓰기(fishbone diagram에 정리한 내용 활용; 자아 성찰 및 피드백) → 6차시 초안 작성 및 피드백(짝 활동 Peer Feedback). fishbone diagram 활용 예시(cause 1 – solution 1 – Effect – Scientic evidence → Problem) 제시.",
+  "context": "고등학교 학생들이 학업, 진로, 인간관계 등 다양한 요인으로 인해 스트레스를 겪고 있어 학교는 학생들의 스트레스 해소를 위한 실질적인 아이디어를 제안하는 공모전을 개최한다.",
+  "materials": [],
+  "stem": "1. 고등학교 학생들이 학업, 진로, 인간관계 등 다양한 요인으로 인해 스트레스를 겪고 있어 학교는 학생들의 스트레스 해소를 위한 실질적인 아이디어를 제안하는 공모전을 개최한다. 다음 <조건>에 맞게 글을 작성하시오. [17점]",
+  "conditions": [
+   "고등학생이 겪는 스트레스의 원인을 한 가지 정하여 구체적으로 제시할 것",
+   "제시한 스트레스의 원인을 해소할 수 있는 실천 가능한 해결 방안을 구체적으로 제시할 것",
+   "스트레스 해결 방안의 효과에 대하여 객관적 자료를 인용하고, 자료의 출처를 제시할 것",
+   "서론-본론-결론 구조를 갖추어 글을 작성할 것",
+   "200~250단어로 쓸 것 (출처 표기 부분은 분량에 포함하지 않음)"
+  ],
+  "answer_format": "영어 제안하는 글 200~250 단어 + 출처(References)",
+  "requires_drawing": false,
+  "rubric": {
+   "type": "분석적",
+   "criteria": [
+    {
+     "name": "스트레스의 원인 작성하기 (자신의 의견 제안하기)",
+     "levels": [
+      {
+       "points": 3,
+       "desc": "고등학생이 겪는 스트레스의 원인을 명확하게 제시함."
+      },
+      {
+       "points": 2,
+       "desc": "스트레스의 원인을 제시하였으나 대상이 불명확함."
+      },
+      {
+       "points": 1,
+       "desc": "스트레스의 원인을 제시하지 않음."
+      }
+     ]
+    },
+    {
+     "name": "실천 가능한 해결 방안 제시하기",
+     "levels": [
+      {
+       "points": 3,
+       "desc": "제시한 원인에 대한 스트레스의 해결 방안을 명확하게 제시함."
+      },
+      {
+       "points": 2,
+       "desc": "스트레스의 해결 방안을 제시하였으나 원인과 연계되지 않음."
+      },
+      {
+       "points": 1,
+       "desc": "스트레스의 해결 방안을 제시하지 않음."
+      }
+     ]
+    },
+    {
+     "name": "객관적 자료를 활용하여 해결 방안의 효과를 설명하기 (해결 방안의 효과 설명하기)",
+     "levels": [
+      {
+       "points": 3,
+       "desc": "해결 방안의 효과를 객관적인 자료를 활용하여 명확하게 설명함."
+      },
+      {
+       "points": 2,
+       "desc": "해결 방안의 효과를 설명하였으나 객관적인 자료를 활용하지 않음."
+      },
+      {
+       "points": 1,
+       "desc": "해결 방안의 효과를 설명하지 않음."
+      }
+     ]
+    },
+    {
+     "name": "서론-본론-결론 작성하기 (목적에 맞는 글의 형식을 갖추어 작성하기)",
+     "levels": [
+      {
+       "points": 2,
+       "desc": "서론-본론-결론의 구조로 작성함."
+      },
+      {
+       "points": 1,
+       "desc": "서론-본론-결론의 구조로 작성하지 않음."
+      }
+     ]
+    },
+    {
+     "name": "자료의 출처 제시하기",
+     "levels": [
+      {
+       "points": 2,
+       "desc": "자료의 출처를 제시함."
+      },
+      {
+       "points": 1,
+       "desc": "자료의 출처를 제시하지 않음."
+      }
+     ]
+    },
+    {
+     "name": "적절한 어휘와 언어 형식 사용하기",
+     "levels": [
+      {
+       "points": 4,
+       "desc": "다양한 어휘와 언어 형식을 정확하게 사용함."
+      },
+      {
+       "points": 3,
+       "desc": "어휘와 언어 형식의 사용이 반복되며 일부 오류가 있으나 의미 전달에 지장을 주지 않음."
+      },
+      {
+       "points": 2,
+       "desc": "어휘와 언어 형식의 사용이 반복되며 오류가 많아 의미 전달에 지장이 있음."
+      },
+      {
+       "points": 1,
+       "desc": "어휘와 언어 형식이 부정확하여 의미 전달이 어려움."
+      }
+     ]
+    }
+   ],
+   "notes": "채점 요소를 중심으로 학생이 스트레스의 원인과 실천 가능한 해결 방안을 제시하고 그 해결 방안의 효과를 객관적인 자료를 기반으로 효과를 설명하고 자신이 제안한 방안을 실천할 것을 권유하는 글을 서론, 본론, 결론의 구조를 갖추어 작성하였는지에 중점을 두어 수행 수준을 판단함. 글의 길이는 200~250단어로 작성하되, 10단어 정도의 오차는 감점 사유가 아님. 하위 수준으로 갈수록 글의 내용, 언어 및 어법의 정확한 활용, 구체적 표현 및 체계적 분석, 근거의 풍부성과 타당성의 수준이 낮아지는 것을 고려하여 채점함. E 수준의 경우에는 단편적인 수준으로 교사나 동료의 도움을 받아 주제나 독자를 고려하여 수업 시간 배운 제안의 표현을 활용하는 수준에서 답안을 작성할 것으로 예상함. 비판적 사고력과 텍스트의 형식을 잘 지킨 높은 수준의 글과, 자신의 주장을 단편적으로 드러내는 짧은 글의 수준을 구별하여 평가함.",
+   "type_note": "최하 척도 1점(0점 척도 없음)."
+  },
+  "holistic": null,
+  "exemplar_answers": [
+   {
+    "level": "예시",
+    "text": "A Creative Way to Reduce Exam Stress\nMany high school students feel stressed mainly because of exams. The pressure to perform well can cause anxiety and worry about their future. To help students manage this stress, I suggest a creative and proven method: \"Stress-Relief Journaling.\"\nThis method involves students writing down their feelings and worries about exams for just five minutes each day. Then, they write positive affirmations or solutions to their problems. Studies from Stanford University show that expressive writing can significantly lower stress and improve mental health (Stanford University, 2018). This practice helps students understand their feelings, reduce anxiety, and develop a positive mindset. It also encourages self-reflection, which can lead to better study habits and confidence.\nIn conclusion, exam stress is a common problem, but \"Stress-Relief Journaling\" offers a creative and effective solution. I strongly urge everyone to try this method regularly. By doing so, you will feel calmer, more focused, and ready to face exams with confidence. I hope all students will practice this technique and enjoy a healthier, happier school life.\nReferences:\nStanford University. (2018). The benefits of expressive writing for mental health. Journal of Psychology and Health, 33(4), 567-580."
+   }
+  ],
+  "feedback": "성취기준을 확인하고 내용과 문항의 난이도, 성취수준 부합 정도를 고려함. 수업 시간에 배운 실생활 맥락에 맞게 글을 제안하고, 제안한 해결 방안에 관한 객관적 근거를 제시하여 글의 신뢰도를 높일 수 있는 방안을 학습할 수 있는 기회를 제공하는 글쓰기 평가이므로, 수업 시간 글쓰기를 위한 사전 활동을 구체적으로 계획하여 수업을 설계함. 글을 쓰면서 활용한 내용을 미리 diagram을 활용하여 정리해 보는 과정에서 내용의 풍부성 및 내용의 타당성을 위한 활동에 학생이 적극적으로 참여할 수 있도록 피드백을 통해 장려함. 서론-본론-결론의 구조를 지켜 글쓰기하는 활동과 객관적인 근거를 들어 제안하는 글쓰기 활동이 합쳐진 평가이므로 수업 시간에 진행하는 형성 평가에서 각 활동별 학생의 성취 수준 도달 정도와 앞으로의 발전을 위해 보완할 부분을 정확히 명시하여 피드백함. 평소 수업 시간에 학생을 관찰한 내용을 고려하여 피드백함.",
+  "ai_use": null,
+  "source": {
+   "file": "250725 경기 논술형평가 장학자료- 탑재용 최종.pdf",
+   "pages": [
+    91,
+    92,
+    93,
+    94,
+    95,
+    96
+   ],
+   "page_range": [
+    91,
+    96
+   ],
+   "attribution": "경기도교육청(2025.7) 「학습 여정을 탐색하는 의미있는 경기 논술형 평가」 — 공공누리 공공저작물, 출처 표시"
+  }
+ },
+ {
+  "id": "gg25-eng-03",
+  "subject": "영어",
+  "school_level": "고",
+  "grade": 1,
+  "title": "어려운 순간을 극복하며 성장한 경험 글쓰기",
+  "unit": "표현",
+  "standard_codes": [
+   "[10공영1-02-03]",
+   "[10공영1-02-06]"
+  ],
+  "competencies": [
+   "지식정보처리 역량",
+   "협력적 소통 역량",
+   "창의적 사고 역량"
+  ],
+  "evaluation_elements": [
+   "자신의 경험을 구체적으로 제시하기",
+   "서사문 형식에 맞게 작성하기(글의 형식에 맞게 쓰기)",
+   "적절한 어휘 및 언어 형식 사용하기"
+  ],
+  "kind": "논술형",
+  "assessment_mode": "수행평가",
+  "points": 16,
+  "time_min": 50,
+  "design_intent": "학생들이 쓰기 맥락 및 조건에 근거하여 자신의 인생에서 실패, 실수, 두려움 또는 어려운 순간을 극복하면서 성장한 경험을 개인적인 서사글의 형식으로 쓰도록 설계. Guided writing은 아니지만, 학생들이 일반적으로 용이하게 접근할 수 있는 주제를 개인적인 경험을 바탕으로 작성하기에 적합하다고 판단. 지문 난이도나 조건을 변경(guided writing으로 변경)하면 낮은 수준의 학생들을 고려한 문항으로 출제 가능. 최소 능력의 판별을 위하여 개인적인 서사문의 형식이 무엇인지에 대해 우선 안내하고, 도입·문제 상황·전환점·성찰의 내용의 예시를 수업시간 중에 충분히 제시하고 연습하도록 함.",
+  "lesson_link": "자신의 경험이 구체적으로 드러나는 서사문의 형식을 사용해서 자신의 성찰과 변화를 설명할 수 있는지 확인(도입: 사건 이전 상황, 전개와 절정: 문제 상황을 구체적으로 제시하며 긴장이 최고조, 결말: 문제의 마무리와 개인적 경험이 갖는 의미 성찰). 다양한 감정표현 연습, 동료 및 교사의 피드백·수정 및 보완 후 최종본 작성. <수업활동 예시> 1 Narrative essay 이해하기('A new friendship that changed me' 공통 주제, 마인드맵·감정그래프) → 2 Narrative essay 구성 이해하기(Story Mountain 5단계) → 3 Language Function & Expressions 학습하기(배경설명: I still remember the day when … / 감정: I felt nervous… / 사건 전개: First, I… Then, suddenly… / 교훈: The day taught me… Looking back, I realized that…) → 4 구성 훈련·초안 작성 → 5 동료 피드백 & 수정하기.",
+  "context": null,
+  "materials": [],
+  "stem": "1. 자신이 겪은 어려운 순간을 극복하며 성장한 경험에 대한 글을 <조건>에 맞게 작성하시오. [16점]",
+  "conditions": [
+   "개인 경험 서사문 에세이(narrative essay) 형식으로 작성할 것",
+   "도입, 전개, 절정, 결말의 4개의 구조로 작성할 것",
+   "어려운 상황과 극복의 과정, 그 과정에서 깨달은 점, 그리고 개인의 성장의 내용을 명확하게 제시할 것",
+   "자신의 경험에서 느낀 감정을 구체적으로 묘사할 것",
+   "180~220 단어로 쓸 것"
+  ],
+  "answer_format": "영어 narrative essay 180~220 단어",
+  "requires_drawing": false,
+  "rubric": {
+   "type": "분석적",
+   "criteria": [
+    {
+     "name": "감정을 구체적으로 묘사하기 (자신의 경험을 구체적으로 제시하기)",
+     "levels": [
+      {
+       "points": 2,
+       "desc": "경험에서 느낀 감정을 구체적으로 묘사함."
+      },
+      {
+       "points": 1,
+       "desc": "경험에서 느낀 감정을 묘사하지 않음."
+      }
+     ]
+    },
+    {
+     "name": "내용을 구체적으로 제시하기",
+     "levels": [
+      {
+       "points": 5,
+       "desc": "어려운 상황, 극복의 과정, 성찰, 성장의 내용을 명확하게 표현함."
+      },
+      {
+       "points": 4,
+       "desc": "어려운 상황, 극복의 과정, 성찰, 성장의 내용 중 세 가지를 명확하게 표현함."
+      },
+      {
+       "points": 3,
+       "desc": "어려운 상황, 극복의 과정, 성찰, 성장의 내용 중 두 가지를 명확하게 표현함."
+      },
+      {
+       "points": 2,
+       "desc": "어려운 상황, 극복의 과정, 성찰, 성장의 내용 중 한 가지를 명확하게 표현함."
+      },
+      {
+       "points": 1,
+       "desc": "어려운 상황, 극복의 과정, 성찰, 성장의 내용을 모두 표현하지 않음."
+      }
+     ]
+    },
+    {
+     "name": "서사문 형식에 맞게 작성하기 (글의 형식에 맞게 쓰기)",
+     "levels": [
+      {
+       "points": 5,
+       "desc": "서사문 형식에 맞게 도입-전개-절정-결말을 모두 논리적으로 작성함."
+      },
+      {
+       "points": 4,
+       "desc": "도입-전개-절정-결말의 구조 중 세 부분을 작성함."
+      },
+      {
+       "points": 3,
+       "desc": "도입-전개-절정-결말의 구조 중 두 부분을 작성함."
+      },
+      {
+       "points": 2,
+       "desc": "도입-전개-절정-결말의 구조 중 한 부분을 작성함."
+      },
+      {
+       "points": 1,
+       "desc": "도입-전개-절정-결말의 구조로 작성하지 못함."
+      }
+     ]
+    },
+    {
+     "name": "적절한 어휘와 언어 형식 사용하기",
+     "levels": [
+      {
+       "points": 4,
+       "desc": "다양한 어휘와 언어 형식을 정확하게 사용함."
+      },
+      {
+       "points": 3,
+       "desc": "어휘와 언어 형식의 사용이 반복되며 일부 오류가 있으나 의미 전달에 지장을 주지 않음."
+      },
+      {
+       "points": 2,
+       "desc": "어휘와 언어 형식의 사용이 반복되며 오류가 많아 의미 전달에 지장이 있음."
+      },
+      {
+       "points": 1,
+       "desc": "어휘와 언어 형식이 부정확하여 의미 전달이 어려움."
+      }
+     ]
+    }
+   ],
+   "notes": "이 문항은 자신의 생각, 의견을 표현하는 것이므로 유사 답안을 인정하는 범위를 확대하고 타당한 내용이 포함되어 있으면 정답으로 인정하거나 부분 점수를 부여함. 180~200단어로 작성하되, narrative essay의 형식에 맞게 도입-전개-절정-결말의 내용을 균형 있게 쓴 경우에 높은 점수를 부여함.",
+   "type_note": "최하 척도 1점(0점 척도 없음). 유의점의 '180~200단어'는 조건('180~220 단어')과 원문에서 불일치."
+  },
+  "holistic": null,
+  "exemplar_answers": [
+   {
+    "level": "예시",
+    "text": "I always believed I was confident. Speaking in class or performing never bothered me. But during my first year of high school, that belief was tested.\nOur English drama club was putting on a play, and I had the lead role. I practiced every night and felt completely prepared until I stepped on stage. As the spotlight hit me and I saw the audience, my mind went blank. I stood frozen, unable to speak, panic rising in my chest.\nThen, my partner quietly whispered the first line. I repeated it, voice shaking. Slowly, my memory returned, and I made it through the rest of the play. I wasn't perfect, but I didn't give up. Afterward, my teacher said, \"You didn't give up and that's what matters.\"\nThat moment changed how I saw confidence. I realized it isn't about being flawless. It's about how you respond when things go wrong. I once thought failure showed weakness, but now I know it can reveal strength.\nSince then, I've faced other scary moments like presentations or group talks. Whenever I feel afraid, I think back to that stage and remind myself that failure can be the start of growth, not the end."
+   }
+  ],
+  "feedback": "성취기준을 확인하고, 내용과 문항의 난이도, 성취 수준 부합 정도를 고려함. 학생 수준에 맞춘 유연한 해석과 맞춤형 피드백을 제공함. 글의 조건에서 제시한 단락별 내용이 명확하고 구체적으로 제시되었는지와 개인의 목소리가 드러나는 서사글의 특징을 보여주는지에 대해서 중점을 두어서 피드백을 제공함. 어휘·어법의 정확성은 의미 전달에 영향을 주는 오류에 한해서 피드백을 줌.",
+  "ai_use": null,
+  "source": {
+   "file": "250725 경기 논술형평가 장학자료- 탑재용 최종.pdf",
+   "pages": [
+    97,
+    98,
+    99,
+    100,
+    101
+   ],
+   "page_range": [
+    97,
+    101
+   ],
+   "attribution": "경기도교육청(2025.7) 「학습 여정을 탐색하는 의미있는 경기 논술형 평가」 — 공공누리 공공저작물, 출처 표시"
+  }
+ },
+ {
+  "id": "gg25-eng-04",
+  "subject": "영어",
+  "school_level": "고",
+  "grade": 1,
+  "title": "AI 생성 예술 작품의 저작권에 대한 의견 쓰기",
+  "unit": "표현",
+  "standard_codes": [
+   "[10공영1-02-04]",
+   "[10공영1-02-06]"
+  ],
+  "competencies": [
+   "협력적 소통역량"
+  ],
+  "evaluation_elements": [
+   "주장을 뒷받침하는 타당한 근거 논리적으로 제시하기",
+   "주장을 전달하는 적절한 표현 사용하여 글쓰기"
+  ],
+  "kind": "논술형",
+  "assessment_mode": "수행평가",
+  "points": 15,
+  "time_min": 50,
+  "design_intent": "성취수준 A를 고려하여 출제한 것으로 150~200 단어 분량 내에서 본인의 의견을 근거와 함께 작성하도록 설계. 학습자는 AI 이미지·음악·글쓰기 도구 사용 경험을 구체적으로 서술하며 인간의 창의적 개입이 저작권 결정에 미치는 영향을 성찰 — 비판적 사고를 기르고 주장을 뒷받침하는 글을 작성하는 것을 목표로 함. 분량을 100~120 단어로 축소하고 AI 사용 경험과 간단한 의견만 서술하도록 요구하면 보다 낮은 수준의 문항으로 변경할 수 있음.",
+  "lesson_link": "'Human Ingenuity' 테마 수업에서 학생들은 AI 이미지·음악·글쓰기 도구를 실제로 사용해 보고 해당 경험을 바탕으로 글쓰기 과제를 수행하며 수업 활동과 평가를 연결. AI 활용에 있어 '인간 창의성 기여도', '저작권 정의' 등 핵심 개념을 수업 시간에 사전에 안내하고 글쓰기를 수업에서 연습. 서론(입장 제시) → 본론(AI 활용 경험 근거 제시) → 결론(종합 및 제안) 전개 방식을 모델 텍스트로 익힘. <수업활동 예시> 1 배경지식 정리 및 토론(미니 토론: 'AI 생성 예술 작품의 저작권을 누가 가져야 하는가', 본문 학습) → 2 글 구조 모델 학습 & 형식 분석 → 3 AI 도구 실습 및 논거 개발(AI 이미지·음악·글쓰기 도구 활용 작품 만들기, 템플릿(주제문·근거·사례·응집성) 작성, 가정법·강조 구문 학습, 동료 피드백) → 4 초안 작성 및 동료검토(체크리스트) → 5 자기평가(자기 점검표 활용 후 최종 수정).",
+  "context": null,
+  "materials": [
+   {
+    "label": "지문",
+    "type": "글(영어)",
+    "summary": "Who Is the Author of AI-generated Art? — 현행법은 인간만 보호하므로 저작권은 AI를 설정한 사람(개발자·설립자·프롬프트 작성자)에게 가지만 대형 프로젝트에서는 누가 창작물을 'arranged'했는지 불명확; AI가 충분한 자율성을 얻으면 기계 저작권을 인정하고 인간-AI 협업 분쟁을 막을 새 법적 틀이 필요할 수 있음.",
+    "source": "<YBM(박준언 외, 2022), 공통영어1>에서 변형함"
+   }
+  ],
+  "stem": "1. 다음 글을 읽고 AI가 생성한 예술 작품의 저작권을 누가 가져야 하는지에 대한 의견을 <조건>에 맞게 영어로 작성하시오. [15점]",
+  "conditions": [
+   "저작권을 누가 가져가야 하는가에 대한 의견을 명시하고 아래 두 항목을 구체적으로 서술하여 의견을 뒷받침할 것",
+   "- AI 도구를 사용하여 무엇인가를 창작한 경험('활용한 AI 종류', '사용 목적', '창작 과정, '사용 결과')을 작성할 것",
+   "- 해당 경험에서 인간 또는 AI가 창작 과정에 기여한 정도('인간의 역할', 'AI의 역할', '기여도 판단 기준')를 설명할 것",
+   "150~200 단어로 쓸 것"
+  ],
+  "answer_format": "영어 의견문 150~200 단어",
+  "requires_drawing": false,
+  "rubric": {
+   "type": "분석적",
+   "criteria": [
+    {
+     "name": "저작권의 소유자 제시하기 (주장을 뒷받침하는 타당한 근거 논리적으로 제시하기)",
+     "levels": [
+      {
+       "points": 2,
+       "desc": "저작권을 누가 가져야 하는가에 대해 명확히 제시함."
+      },
+      {
+       "points": 1,
+       "desc": "저작권을 누가 가져야 하는가에 대해 명확히 제시하지 않음."
+      }
+     ]
+    },
+    {
+     "name": "AI 사용 경험 제시하기",
+     "levels": [
+      {
+       "points": 5,
+       "desc": "AI 활용 경험을 '활용한 AI 종류', '사용 목적', '창작 과정', '사용 결과' 모두 포함하여 제시함."
+      },
+      {
+       "points": 4,
+       "desc": "AI 활용 경험을 '활용한 AI 종류', '사용 목적', '창작 과정', '사용 결과' 중 세 가지를 포함하여 제시함."
+      },
+      {
+       "points": 3,
+       "desc": "AI 활용 경험을 '활용한 AI 종류', '사용 목적', '창작 과정', '사용 결과' 중 두 가지를 포함하여 제시함."
+      },
+      {
+       "points": 2,
+       "desc": "AI 활용 경험을 '활용한 AI 종류', '사용 목적', '창작 과정', '사용 결과' 중 한 가지를 포함하여 제시함."
+      },
+      {
+       "points": 1,
+       "desc": "AI 사용 경험을 제시하지 않음."
+      }
+     ]
+    },
+    {
+     "name": "창작 기여도 제시하기",
+     "levels": [
+      {
+       "points": 4,
+       "desc": "'나의 역할', 'AI의 역할', '기여도 판단 기준'을 모두 포함하여 선택한 저작권 소유자의 창작기여도에 대해 설득력 있게 설명함."
+      },
+      {
+       "points": 3,
+       "desc": "'나의 역할', 'AI의 역할', '기여도 판단 기준' 중 두 가지를 포함하여 선택한 저작권 소유자의 창작기여도에 대해 설명함."
+      },
+      {
+       "points": 2,
+       "desc": "'나의 역할', 'AI의 역할', '기여도 판단 기준' 중 한 가지를 포함하여 선택한 저작권 소유자의 창작기여도에 대해 설명함."
+      },
+      {
+       "points": 1,
+       "desc": "창작 기여도에 대한 입장이나 설명을 제시하지 않음."
+      }
+     ]
+    },
+    {
+     "name": "적절한 어휘와 언어 형식 사용하기 (주장을 전달하는 적절한 표현 사용하여 글쓰기)",
+     "levels": [
+      {
+       "points": 4,
+       "desc": "다양한 어휘와 언어 형식을 정확하게 사용함."
+      },
+      {
+       "points": 3,
+       "desc": "어휘와 언어 형식의 사용이 반복되며 일부 오류가 있으나 의미 전달에 지장을 주지 않음."
+      },
+      {
+       "points": 2,
+       "desc": "어휘와 언어 형식의 사용이 반복되며 오류가 많아 의미 전달에 지장이 있음."
+      },
+      {
+       "points": 1,
+       "desc": "어휘와 언어 형식이 부정확하여 의미 전달이 어려움."
+      }
+     ]
+    }
+   ],
+   "notes": "학생의 성취수준별 특징을 고려하여 하위 수준일수록 AI 경험 서술의 구체성·체계성, 논거의 타당성이 낮아질 수 있음을 고려함. B 수준 이상에서는 과제가 요구하는 두 가지 요소가 타당한 근거를 통해 적절하게 다루어졌는지 평가하며, E 수준에서는 간단한 AI 사용 경험을 제시하는 수준으로 평가함. 맞춤법·문법·어휘 오류가 표현 의도나 설득력에 방해가 되는지 여부를 고려하여 감점 기준을 적용함. <조건>에 글자 수가 150~200 단어로 제시되었으나 글자 수로 감점 혹은 가점을 하지는 않으며 이는 충분한 내용을 쓸 수 있도록 권장하는 분량임.",
+   "type_note": "최하 척도 1점(0점 척도 없음)."
+  },
+  "holistic": null,
+  "exemplar_answers": [
+   {
+    "level": "예시 1 (AI 회사 입장)",
+    "text": "I believe the copyright of AI-generated art should belong to the AI company that created the tool. A few months ago, I used DALL·E, an AI image generator, to create illustrations for a school presentation. My goal was to visualize scenes from a novel we were studying. I entered several prompts describing the setting and characters. The AI processed my input and produced multiple images within seconds. I selected the one that best matched my vision but did not alter it.\nThroughout this process, the AI made the creative decisions such as selecting styles, colors, and compositions. While I gave it a general direction, the AI interpreted it in ways I couldn't imagine. Based on this, I believe the AI played the most critical role in the artwork's creation. They designed the model, trained it on data, and built the interface that allowed me to use it. Without those systems in place, I couldn't have created anything. Therefore, the primary authorship should lie with the AI company."
+   },
+   {
+    "level": "예시 2 (인간 입장)",
+    "text": "In my opinion, humans should hold the copyright to AI-generated art. I once used ChatGPT and Canva's AI image tools to create a visual poem about climate change for an art and literature competition. First, I wrote a poem about rising sea levels, then entered prompts into the AI to generate matching images. I refined my wording several times to get results that matched the tone of my writing. After selecting an image, I combined it with the text using layout tools, adjusting fonts and placement to create a powerful final product.\nIn this experience, I directed every step of the creative process. The AI didn't make autonomous decisions . It followed my detailed prompts. I was the one who evaluated, selected, and combined the results. The creative vision, message, and aesthetic decisions were all mine. The AI was a tool, like a paintbrush or camera, helping me realize my ideas more efficiently. Therefore, I believe that, the human who designs, refines, and integrates the AI's output should be recognized as the true author and thus the rightful copyright owner."
+   }
+  ],
+  "feedback": "성취기준을 확인하고 내용과 문항의 난이도, 성취수준 부합 정도를 고려함. 제시된 근거가 주장을 충분히 뒷받침하는지 확인하고 지도함.",
+  "ai_use": "학생이 수업에서 AI 이미지·음악·글쓰기 도구를 실제로 사용한 경험을 글의 근거로 쓰게 함(조건에 AI 종류·사용 목적·창작 과정·사용 결과 명시).",
+  "source": {
+   "file": "250725 경기 논술형평가 장학자료- 탑재용 최종.pdf",
+   "pages": [
+    102,
+    103,
+    104,
+    105,
+    106
+   ],
+   "page_range": [
+    102,
+    106
+   ],
+   "attribution": "경기도교육청(2025.7) 「학습 여정을 탐색하는 의미있는 경기 논술형 평가」 — 공공누리 공공저작물, 출처 표시"
+  }
+ },
+ {
+  "id": "gg25-eng-05",
+  "subject": "영어",
+  "school_level": "중",
+  "grade": 1,
+  "title": "나를 움직이고 세상을 바꾸는 가치의 힘에 관한 글쓰기",
+  "unit": "표현",
+  "standard_codes": [
+   "[9영02-04]",
+   "[9영02-06]"
+  ],
+  "competencies": [
+   "협력적 소통 역량",
+   "창의적 사고 역량",
+   "공동체 역량"
+  ],
+  "evaluation_elements": [
+   "자신의 의견 표현하기",
+   "적절한 어휘 및 언어 형식 사용하기"
+  ],
+  "kind": "논술형",
+  "assessment_mode": "수행평가",
+  "points": 15,
+  "time_min": 45,
+  "design_intent": "주어진 쓰기 맥락에 근거하여 학생들이 친숙한 주제(가치와 일상생활)를 바탕으로 자신의 의견을 논리적으로 서술하는 능력을 기르기 위해 설계. 자신이 중요하게 생각하는 가치를 선정하고, 해당 가치가 자신의 일상생활에 미치는 영향과 사회적 의미를 글로 표현함으로써 자기표현 능력과 비판적 사고력을 함께 향상. 실생활과 밀접한 내용을 통해 영어 학습의 의미 있는 사용(contextualized use)을 유도하고, 학습자의 개인적 경험과 연결된 사고 기반 글쓰기를 강화.",
+  "lesson_link": "도덕 교과와 연계하여 가치에 관한 학습이 충분히 이루어진 후 평가를 진행하는 것을 권장하며, 평가 전 1) 사전 사고 구조화 활동(가치의 의미와 예시 탐색, 브레인스토밍 또는 가치 비교 활동) 2) 쓰기 전 표현 및 문장 구성에 대한 모델링(학생 수준에 맞춘 문장 구성 예시, 어휘 예시) 활동이 선행되어야 함. <수업활동 예시> 1 가치의 개념 이해(도덕 교과 연계, 가치 카드 활용) → 2 가치와 행동의 관계 이해(Think-Pair-Share) → 3 구체적인 경험 서술하기(과거시제) → 4 긍정적 변화 연결하기(브레인스토밍, 예시 영상·기사) → 5 글쓰기 구조 익히기(Writing organizer, 서론(가치 선택)-본론(경험 설명)-결론(긍정적 영향 설명)) → 6 초안 작성 및 피드백(Peer Feedback, 교사 순회 피드백) → 7 자기평가(AI 피드백 및 자기 점검표 활용 후 최종 수정).",
+  "context": null,
+  "materials": [
+   {
+    "label": "표",
+    "type": "표",
+    "summary": "가치(Value)-의미(Meaning) 표: Honesty(정직) 거짓말을 하지 않고 진실을 말함 / Responsibility(책임감) 내가 해야 할 일을 스스로 함 / Respect(존중) 다른 사람의 생각과 마음을 이해함 / Cooperation(협력) 함께 힘을 모아 일함 / Consideration(배려) 다른 사람의 입장을 생각하고 도와주려는 마음 / Courage(용기) 옳다고 믿는 일을 두려움 없이 실천하는 태도 / Perseverance(인내) 어려움을 참고 견디며 끝까지 노력하는 자세 / Autonomy(자율) 자신의 생각과 판단에 따라 스스로 행동하는 것 / Gratitude(감사) 받은 도움에 대해 고마워하고 표현하는 마음"
+   }
+  ],
+  "stem": "1. 다음은 개인의 행동뿐만 아니라 사회 변화에도 큰 영향을 미칠 수 있는 삶의 가치와 의미를 나타낸 자료이다. 자신이 중요하게 여기는 가치에 대해 <조건>에 맞게 영어로 작성하시오. [15점]",
+  "conditions": [
+   "자신이 중요하게 여기는 가치를 제시된 자료에서 선정하고 그 의미를 제시할 것 (자료 이외의 다양한 가치를 선택할 수 있음.)",
+   "그 가치가 나의 행동에 미친 영향을 구체적인 경험을 들어 서술할 것",
+   "그 가치가 지역사회나 세계에 미칠 긍정적 영향을 설득력 있게 제시할 것",
+   "100~120단어로 쓸 것"
+  ],
+  "answer_format": "영어 글 100~120 단어",
+  "requires_drawing": false,
+  "rubric": {
+   "type": "분석적",
+   "criteria": [
+    {
+     "name": "중요하게 여기는 가치와 의미 제시하기 (자신의 의견 표현하기)",
+     "levels": [
+      {
+       "points": 3,
+       "desc": "중요하게 여기는 가치와 의미를 명확하게 제시함."
+      },
+      {
+       "points": 2,
+       "desc": "중요하게 여기는 가치와 의미를 제시하였으나 연계되지 않음."
+      },
+      {
+       "points": 2,
+       "desc": "중요하게 여기는 가치 또는 의미를 제시함."
+      },
+      {
+       "points": 1,
+       "desc": "중요하게 여기는 가치와 의미를 모두 제시하지 않음."
+      }
+     ]
+    },
+    {
+     "name": "가치가 개인 행동에 미친 영향 설명하기",
+     "levels": [
+      {
+       "points": 4,
+       "desc": "가치가 개인 행동에 미친 영향을 구체적인 경험과 연결하여 명확하게 설명함."
+      },
+      {
+       "points": 3,
+       "desc": "가치가 개인 행동에 미친 영향을 설명하였으나, 경험과의 연결이 부족함."
+      },
+      {
+       "points": 2,
+       "desc": "가치가 개인 행동에 미친 영향을 설명하였으나 개인의 경험이 나타나지 않음."
+      },
+      {
+       "points": 2,
+       "desc": "가치가 개인 행동에 미친 영향을 설명하지 않았으나, 개인의 경험이 나타남."
+      },
+      {
+       "points": 1,
+       "desc": "가치가 개인 행동에 미친 영향과 개인의 경험이 모두 나타나지 않음."
+      }
+     ]
+    },
+    {
+     "name": "지역사회나 세계에 미칠 긍정적 영향 설명하기",
+     "levels": [
+      {
+       "points": 4,
+       "desc": "지역사회나 세계에 미칠 긍정적 영향 및 그 이유에 대해 설득력 있게 설명함."
+      },
+      {
+       "points": 3,
+       "desc": "지역사회나 세계에 미칠 긍정적 영향 및 그 이유에 대해 설명하였으나 연계성이 부족함."
+      },
+      {
+       "points": 2,
+       "desc": "지역사회나 세계에 미칠 긍정적 영향을 설명하였으나 그 이유에 대해 설명하지 않음."
+      },
+      {
+       "points": 1,
+       "desc": "지역사회나 세계에 미칠 긍정적 영향 및 그 이유에 대해 모두 설명하지 않음."
+      }
+     ]
+    },
+    {
+     "name": "적절한 어휘와 언어 형식 사용하기",
+     "levels": [
+      {
+       "points": 4,
+       "desc": "다양한 어휘와 언어 형식을 정확하게 사용함."
+      },
+      {
+       "points": 3,
+       "desc": "어휘와 언어 형식의 사용이 반복되며 일부 오류가 있으나 의미 전달에 지장을 주지 않음."
+      },
+      {
+       "points": 2,
+       "desc": "어휘와 언어 형식의 사용이 반복되며 오류가 많아 의미 전달에 지장이 있음."
+      },
+      {
+       "points": 1,
+       "desc": "어휘와 언어 형식이 부정확하여 의미 전달이 어려움."
+      }
+     ]
+    }
+   ],
+   "notes": "문법, 철자 등의 오류가 일부 있더라도 전체 의미 전달이 명확하면 감점 폭을 최소화하고 학습자의 사고력, 표현 의도, 주장 전개 등 의미 중심 평가를 우선 적용함. 중학교 1학년 수준의 학생들에게 다소 어려울 수 있는 주제이므로, 창의적 표현 시도나 관점을 포용적으로 수용하며 이 과정에서 발생한 사소한 문법 오류는 감점 폭을 최소화하도록 함. 여러 명이 함께 채점하는 경우, 채점기준표를 함께 읽고 샘플 답안 채점을 같이하여 채점자 간 신뢰도를 높이기 위한 표준화 작업을 해야 함. <조건>에 글자 수를 100~120 단어로 제시하였으나 이는 충분한 내용을 쓸 수 있도록 권장하는 분량이며, 내용이 구체적이고 설득력이 있다면 글자 수로 감점 혹은 가점을 하지는 않음.",
+   "type_note": "최하 척도 1점(0점 척도 없음)."
+  },
+  "holistic": null,
+  "exemplar_answers": [
+   {
+    "level": "예시 1",
+    "text": "Respect is very important. It means being nice to others. I show respect by listening when people talk. I do not talk when my friend is speaking. At school, I respect my teachers and friends. I say \"please\" and \"thank you.\" I wait for my turn and share things. When we respect each other, we are happy and kind. There are not many fights and everyone feels safe. Respect helps people work and play together. When people respect others, the world becomes a better place. So, I try to respect others every day."
+   },
+   {
+    "level": "예시 2",
+    "text": "I am 13 years old. I believe in the power of kindness. Kindness means being nice, helping others, and thinking about their feelings. Every day, I smile at my classmates. I help them when they have problems. One day, I saw a new student sitting alone during lunch. I felt sad, so I walked to her and invited her to sit with me. I also introduced her to my friends. She smiled and looked much happier. I believe small acts of kindness can change someone's day. If more people are kind, the world will be more peaceful. There will be less hate and more love."
+   }
+  ],
+  "feedback": "글 작성 후 학생이 스스로 내용을 점검할 수 있도록 체크리스트(예: 가치와 의미의 언급 여부, 경험 제시 여부, 지역사회나 세계에 미칠 긍정적 영향, 어법 및 어휘의 적절성 등)를 제공함. A, B 수준의 학습자들에게는 동료 피드백 및 AI 피드백을 활용하여 상호 보완적 점검을 유도하고, C 이하 수준의 학생들에게는 교사의 간단한 구두 피드백을 제공하여 개선의 기회를 제공함. 글쓰기 과정에서 의견 전개나 내용 구성에 어려움을 겪는 학생이 있을 경우, 교사는 학생이 글의 내용을 논리적으로 전개하고 생각을 체계적으로 정리할 수 있도록 적절한 언어적 지원을 지속적으로 제공함. 최종 제출 전, 자신의 글을 쓰면서 느낀 점, 어려웠던 점, 다음 글쓰기에서 개선하고 싶은 점 등을 간단히 적어보게 함으로써 자기 성찰과 학습 개선 의지를 촉진함.",
+  "ai_use": "수업 7차시 자기평가에서 AI 피드백 및 자기 점검표 활용 후 최종 수정; A, B 수준 학습자에게 동료 피드백 및 AI 피드백 활용.",
+  "source": {
+   "file": "250725 경기 논술형평가 장학자료- 탑재용 최종.pdf",
+   "pages": [
+    107,
+    108,
+    109,
+    110,
+    111
+   ],
+   "page_range": [
+    107,
+    111
+   ],
+   "attribution": "경기도교육청(2025.7) 「학습 여정을 탐색하는 의미있는 경기 논술형 평가」 — 공공누리 공공저작물, 출처 표시"
+  }
+ },
+ {
+  "id": "gg25-eng-06",
+  "subject": "영어",
+  "school_level": "중",
+  "grade": 1,
+  "title": "환경 보호 캠페인을 위한 글쓰기",
+  "unit": "표현",
+  "standard_codes": [
+   "[9영02-04]",
+   "[9영02-05]",
+   "[9영02-06]"
+  ],
+  "competencies": [
+   "자기관리 역량",
+   "창의적 사고 역량"
+  ],
+  "evaluation_elements": [
+   "논리적 관계를 설명하기",
+   "경험을 설명하기",
+   "자신의 의견을 주장하기",
+   "적절한 어휘 및 언어 형식 사용하기"
+  ],
+  "kind": "논술형",
+  "assessment_mode": "수행평가",
+  "points": 20,
+  "time_min": 45,
+  "design_intent": "확장형 논술 평가로, 학생들의 사고력과 자기 표현 능력을 함께 평가할 수 있도록 구성. 학습 수준 차이를 반영하여 수업 시간에는 문장 틀 제공, 그래픽 오거나이저 활용, 루브릭에 기반한 피드백 제공 등을 병행함으로써 낮은 성취수준에 해당하는 학생들도 점진적으로 성취기준에 도달하게 함. 환경 문제에 관심을 가진 중학교 1학년 학생이 또래 친구들을 대상으로 환경 보호의 필요성과 실천 방안, 기대효과 등을 글의 양식(학교게시판, SNS, 블로그)에 맞게 도입-전개-결말의 구조로 자신의 생각을 체계적으로 정리하고 표현할 수 있도록 제작. 목적과 상황을 고려한 설득력 있는 의사소통 능력을 기를 수 있도록 하는 데 중점.",
+  "lesson_link": "최종 논술형 평가 전 수업 활동 중에 환경오염, 기후위기, 일회용 쓰레기 문제 등 일상과 밀접한 환경 이슈를 조사·탐구하며 뉴스, 영상, 통계자료, 주변 생활 사례 등을 활용하여 원인과 심각성을 이해. 단순히 정보를 나열하는 데 그치지 않고 자신의 생활과 연결된 가치 판단을 내릴 수 있도록 유도('나는 어떤 행동을 할 수 있을까?' 등 질문 중심). <수업활동 예시> 1 질문유도활동·소그룹 탐구 → 2 포스터 관찰 Think-Pair-Share('포스터 읽기 템플릿') → 3 브레인스토밍·그래픽 오거나이저(문제-원인-내가 할 수 있는 일-기대효과) → 4 다양한 표현을 사용한 짧은 글쓰기(I saw… and it made me feel… / If we all ___, the Earth will ___.) → 5 확장형 글쓰기(도입-전개-결말, 문단별 가이드 질문) → 6 동료 피드백 → 7 자기평가([자기 점검표]). 평가 후 '나의 환경 지키기 약속 포스터', 반별 환경 지킴이 캠페인 등 후속 활동으로 연계.",
+  "context": "최근 우리 학교에서 '환경을 생각하는 글쓰기 캠페인'이 진행되고 있다.",
+  "materials": [
+   {
+    "label": "사진 2장",
+    "type": "사진",
+    "summary": "(1) 바다를 뒤덮은 플라스틱 쓰레기 사진 (2) 입 안에 플라스틱 쓰레기가 가득한 고래 조형물 사진(해변)."
+   }
+  ],
+  "stem": "1. 최근 우리 학교에서 '환경을 생각하는 글쓰기 캠페인'이 진행되고 있다. 다음 환경오염 사진을 참고하여 이와 관련된 환경 문제의 심각성을 알리고, 작은 실천이 큰 변화를 만들 수 있다는 메시지를 전하는 글을 쓰고자 한다. 학교 게시판, SNS, 환경 캠페인 블로그 등에 게시할 설득력 있는 글을 아래 <조건>에 맞게 영어로 작성하시오. [20점]",
+  "conditions": [
+   "위 두 개의 사진에 나타난 환경문제를 파악하고 그 원인을 설명할 것",
+   "파악한 원인을 자신의 일상 속 경험과 연결해 성찰할 것",
+   "환경문제를 해결할 수 있는 실천 가능한 행동을 2개 제시하고, 기대효과를 설명할 것",
+   "친구들에게 함께 실천하자고 제안하는 문장을 포함할 것",
+   "100~150 단어로 쓸 것"
+  ],
+  "answer_format": "영어 캠페인 글 100~150 단어",
+  "requires_drawing": false,
+  "rubric": {
+   "type": "분석적",
+   "criteria": [
+    {
+     "name": "환경문제 파악하기 (논리적 관계를 설명하기)",
+     "levels": [
+      {
+       "points": 3,
+       "desc": "공통된 환경문제를 파악하여 정확한 표현으로 설명함."
+      },
+      {
+       "points": 2,
+       "desc": "공통된 환경문제를 파악하였으나 정확한 표현으로 설명하지 못함."
+      },
+      {
+       "points": 1,
+       "desc": "공통된 환경문제를 파악하지 못함."
+      }
+     ]
+    },
+    {
+     "name": "원인 설명하기",
+     "levels": [
+      {
+       "points": 3,
+       "desc": "환경문제의 원인을 논리적으로 제시함."
+      },
+      {
+       "points": 2,
+       "desc": "환경문제의 원인을 제시하였으나, 자료와의 연계성이 부족함."
+      },
+      {
+       "points": 1,
+       "desc": "환경문제의 원인을 제시하지 않음."
+      }
+     ]
+    },
+    {
+     "name": "개인의 경험에 대해 쓰고 성찰하기 (경험을 설명하기)",
+     "levels": [
+      {
+       "points": 4,
+       "desc": "개인의 경험과 환경문제의 원인을 깊이 있게 연결하고 성찰하여 행동 변화를 제시함."
+      },
+      {
+       "points": 3,
+       "desc": "개인의 경험과 환경문제의 원인을 연결하여 제시하였으나 행동 변화에 대해 제시하지 않음."
+      },
+      {
+       "points": 2,
+       "desc": "개인의 경험은 제시하였으나 환경문제의 원인과 연결되지 않고 행동 변화를 제시하지 않음."
+      },
+      {
+       "points": 1,
+       "desc": "개인의 경험과 행동 변화를 제시하지 않음."
+      }
+     ]
+    },
+    {
+     "name": "해결방안과 기대효과 제시하기 (자신의 의견을 주장하기)",
+     "levels": [
+      {
+       "points": 4,
+       "desc": "두 가지의 해결방안과 기대효과를 명확하게 제시함."
+      },
+      {
+       "points": 3,
+       "desc": "두 가지의 해결방안을 제시하고 기대효과를 제시하지 않음."
+      },
+      {
+       "points": 3,
+       "desc": "한 가지의 해결방안과 기대효과를 제시함."
+      },
+      {
+       "points": 2,
+       "desc": "한 가지의 해결방안을 제시하였으나 기대효과를 제시하지 않음."
+      },
+      {
+       "points": 2,
+       "desc": "기대효과를 제시하였으나 해결방안을 제시하지 않음."
+      },
+      {
+       "points": 1,
+       "desc": "해결방안과 기대효과를 제시하지 않음."
+      }
+     ]
+    },
+    {
+     "name": "실천 제안하기",
+     "levels": [
+      {
+       "points": 2,
+       "desc": "친구들에게 함께 실천하자고 제안하는 문장을 작성함."
+      },
+      {
+       "points": 1,
+       "desc": "친구들에게 함께 실천하자고 제안하는 문장을 작성하지 않음."
+      }
+     ]
+    },
+    {
+     "name": "적절한 어휘와 언어 형식 사용하기",
+     "levels": [
+      {
+       "points": 4,
+       "desc": "다양한 어휘와 언어 형식을 정확하게 사용함."
+      },
+      {
+       "points": 3,
+       "desc": "어휘와 언어 형식의 사용이 반복되며 일부 오류가 있으나 의미 전달에 지장을 주지 않음."
+      },
+      {
+       "points": 2,
+       "desc": "어휘와 언어 형식의 사용이 반복되며 오류가 많아 의미 전달에 지장이 있음."
+      },
+      {
+       "points": 1,
+       "desc": "어휘와 언어 형식이 부정확하여 의미 전달이 어려움."
+      }
+     ]
+    }
+   ],
+   "notes": "문장의 길이나 분량만으로 판단하지 않고, 정보 전달의 명확성, 독자(청중)에 대한 고려, 논리적 구성 여부를 종합적으로 고려함. 상위 수준(A, B)으로 갈수록 더 풍부하고 구체적인 표현을 사용하고, 내용을 조직적으로 분석하거나 정리하는 능력을 보여주고, 반대로 하위 수준(D, E)은 탐색의 깊이와 표현의 다양성이 부족하고, 근거 제시나 연결성이 약할 수 있음. 중간 이하 수준은 정보가 일관되지 않거나, 단순 나열 또는 반복적 표현이 많을 수 있음을 고려해야 함. <조건>에 글자 수가 100~150 단어로 제시되었으나 글자 수로 감점 혹은 가점을 하지는 않으며, 이는 충분한 내용을 쓸 수 있도록 권장하는 분량임.",
+   "type_note": "최하 척도 1점(0점 척도 없음)."
+  },
+  "holistic": null,
+  "exemplar_answers": [
+   {
+    "level": "예시 1",
+    "text": "These pictures show ocean pollution. In the first picture, there are many plastic bottles and bags in the sea. In the second picture, a whale has plastic in its mouth. This is a serious problem. Plastic is very harmful to sea animals and nature.\nBefore, I always bought drinks in plastic bottles. I threw them away without thinking. I did not know that my trash could go into the ocean. After I saw these pictures, I felt very bad. I want to change my habits.\nNow, I use my own water bottle. I also help clean up trash at school. These are small actions, but they can help the Earth.\nIf many students try together, we can reduce pollution. Let's care for the ocean and save the animals!"
+   },
+   {
+    "level": "예시 2",
+    "text": "The pictures show ocean pollution. One picture has many plastic bottles and bags. Another shows a whale with plastic in its mouth. This is very sad. Pollution is hurting sea animals.\nI used to drink juice in plastic bottles and throw them away. I didn't know they could go into the ocean. Now I feel sorry. I want to do something.\nFirst, we can bring our own bottles to school. Second, we can clean trash at the playground. These actions are small, but they help.\nIf we all try together, we can make a big change. Let's protect our ocean and animals!"
+   }
+  ],
+  "feedback": "성취기준([9영02-04], [9영02-05], [9영02-06])에 근거하여 학생의 글이 성취 수준에 얼마나 도달했는지를 분석하고, 문항의 난이도와 성취수준의 적절성을 함께 고려하여 피드백을 제공함. 학생의 현재 수준보다 높은 성취가 나타난 경우 그 점을 명확히 인식시켜 주고, 학생이 앞으로 도전해야 할 다음 단계의 표현이나 구조를 제안하여 학습 동기를 유발함. 수업 중 학생의 참여도, 쓰기 습관, 표현 시도 등을 관찰한 내용을 바탕으로, 결과물 중심이 아닌 과정 중심 피드백을 함께 제공하여 학생의 노력을 긍정적으로 평가함. 학생이 사용한 어휘나 문장 구조의 다양성, 문단 구성력 등 표현상의 강점을 구체적으로 언급하고, 개선이 필요한 부분은 실천 가능한 제안을 통해 안내함. 학생의 생각과 경험이 어떻게 글에 반영되었는지에 주목하여 글쓰기 과제가 단순 수행을 넘어 자기 성찰과 가치 판단의 기회가 됨을 인식함.",
+  "ai_use": null,
+  "source": {
+   "file": "250725 경기 논술형평가 장학자료- 탑재용 최종.pdf",
+   "pages": [
+    112,
+    113,
+    114,
+    115,
+    116,
+    117
+   ],
+   "page_range": [
+    112,
+    117
+   ],
+   "attribution": "경기도교육청(2025.7) 「학습 여정을 탐색하는 의미있는 경기 논술형 평가」 — 공공누리 공공저작물, 출처 표시"
+  }
+ },
+ {
+  "id": "gg25-eng-07",
+  "subject": "영어",
+  "school_level": "중",
+  "grade": 1,
+  "title": "동아리 개설 제안서 작성하기",
+  "unit": "표현",
+  "standard_codes": [
+   "[9영02-06]",
+   "[9영02-08]"
+  ],
+  "competencies": [
+   "창의적 사고 역량",
+   "협력적 소통 역량"
+  ],
+  "evaluation_elements": [
+   "자신의 의견 주장하기",
+   "적절한 어휘 및 언어 형식 사용하기",
+   "제안서 양식에 맞게 글 작성하기"
+  ],
+  "kind": "논술형",
+  "assessment_mode": "수행평가",
+  "points": 16,
+  "time_min": 45,
+  "design_intent": "학생들이 주어진 쓰기 맥락에 근거하여 같은 학교의 학생들을 대상으로 학교에 새로운 동아리를 개설하기 위한 제안서를 작성하도록 설계. 신규 동아리를 개설해야 하는 필요성과 활동 내용, 기대 효과 등을 창의적으로 구상하고, 여러 학생들이 함께 참여하고 의미 있게 즐길 수 있는 활동을 고민하게 함으로써 공동체에 대한 관심과 책임감을 기를 수 있음. 제안서를 통해 자신의 생각을 조리 있게 전달하고 글의 목적과 대상을 고려하여 설득하는 글쓰기 능력이 요구됨.",
+  "lesson_link": "실제적인 의사소통 상황을 바탕으로 양식(convention)에 맞게 자신의 생각을 조리 있게 표현하는 능력을 기르도록 수업과 연결. 창의적 체험활동의 동아리 활동과 연계하여 실제 학생들의 요구와 학교 환경 등을 고려한 새로운 동아리를 기획. 제안서 양식을 활용하여 대상(교사 및 학교 구성원들)과 목적(설득하기), 맥락(학생의 필요와 요구) 등을 고려하여 글을 씀. '초안 작성 → 동료 및 교사 피드백 → 수정 및 보완 → 최종 완성본 작성'의 글쓰기 과정 경험. <수업활동 예시> 1 동아리 활동에 대한 성찰 → 2 동아리 관련 설문 조사(영어 설문지 작성) → 3 동아리 요구 조사 결과 분석 → 4 영어 제안서의 양식 탐구(I would like to propose… We suggest…) → 5 동아리 활동 구상 및 구체화(항목별 제목 만들기) → 6 자기 성찰 및 동료 피드백(자기 점검표, TAG 활용 동료 피드백).",
+  "context": "당신이 재학 중인 학교에서는 신규 동아리 개설을 검토하고 있으며, 당신의 제안서는 선생님들께 제출될 예정이다.",
+  "materials": [
+   {
+    "label": "답안 양식",
+    "type": "양식",
+    "summary": "Proposal for a New ______ Club / 1. Introduction / 2. Why We Need This Club / 3. ______ (학생이 제목 작성) / 4. ______ (학생이 제목 작성) / 5. Conclusion — 각 항목 아래 두 줄 작성란."
+   }
+  ],
+  "stem": "1. 당신이 재학 중인 학교에서는 신규 동아리 개설을 검토하고 있으며, 당신의 제안서는 선생님들께 제출될 예정이다. 친구들의 흥미와 재능을 키울 수 있는 새로운 동아리를 하나 정하여 동아리의 개설을 제안하는 글을 다음 <조건>에 맞춰 작성하시오. [16점]",
+  "conditions": [
+   "제안서의 주어진 항목에 맞게 내용을 작성할 것",
+   "3번과 4번 항목의 제목과 내용을 주제와 목적에 맞게 작성할 것",
+   "100~150 단어로 쓸 것"
+  ],
+  "answer_format": "영어 제안서(주어진 5항목 양식), 100~150 단어",
+  "requires_drawing": false,
+  "rubric": {
+   "type": "분석적",
+   "criteria": [
+    {
+     "name": "동아리명 제시하기 (자신의 의견 주장하기)",
+     "levels": [
+      {
+       "points": 2,
+       "desc": "개설할 동아리명을 적절하게 제시함."
+      },
+      {
+       "points": 1,
+       "desc": "개설할 동아리명을 제시하지 못함."
+      }
+     ]
+    },
+    {
+     "name": "Introduction, Conclusion, Why We Need This Club 제시하기",
+     "levels": [
+      {
+       "points": 4,
+       "desc": "Introduction과 Conclusion, Why We Need This Club을 모두 명확하게 제시함."
+      },
+      {
+       "points": 3,
+       "desc": "Introduction과 Conclusion, Why We Need This Club 중 두 가지를 명확하게 제시함."
+      },
+      {
+       "points": 2,
+       "desc": "Introduction과 Conclusion, Why We Need This Club 중 한 가지를 명확하게 제시함."
+      },
+      {
+       "points": 1,
+       "desc": "Introduction과 Conclusion, Why We Need This Club 을 모두 제시하지 않음."
+      }
+     ]
+    },
+    {
+     "name": "적절한 어휘와 언어 형식 사용하기",
+     "levels": [
+      {
+       "points": 4,
+       "desc": "다양한 어휘와 언어 형식을 정확하게 사용함."
+      },
+      {
+       "points": 3,
+       "desc": "어휘와 언어 형식의 사용이 반복되며 일부 오류가 있으나 의미 전달에 지장을 주지 않음."
+      },
+      {
+       "points": 2,
+       "desc": "어휘와 언어 형식의 사용이 반복되며 오류가 많아 의미 전달에 지장이 있음."
+      },
+      {
+       "points": 1,
+       "desc": "어휘와 언어 형식이 부정확하여 의미 전달이 어려움."
+      }
+     ]
+    },
+    {
+     "name": "제안서 제목 구성 및 목적에 맞는 내용 작성하기(1) (제안서 양식에 맞게 글 작성하기)",
+     "levels": [
+      {
+       "points": 3,
+       "desc": "3번 항목의 제목과 내용을 주제에 맞게 작성함."
+      },
+      {
+       "points": 2,
+       "desc": "3번 항목의 제목만 주제에 맞게 작성함."
+      },
+      {
+       "points": 2,
+       "desc": "3번 항목의 내용만 주제에 맞게 작성함."
+      },
+      {
+       "points": 1,
+       "desc": "3번 항목의 제목과 내용을 주제에 맞게 작성하지 않음."
+      }
+     ]
+    },
+    {
+     "name": "제안서 제목 구성 및 목적에 맞는 내용 작성하기(2)",
+     "levels": [
+      {
+       "points": 3,
+       "desc": "4번 항목의 제목과 내용을 주제에 맞게 작성함."
+      },
+      {
+       "points": 2,
+       "desc": "4번 항목의 제목만 주제에 맞게 작성함."
+      },
+      {
+       "points": 2,
+       "desc": "4번 항목의 내용만 주제에 맞게 작성함."
+      },
+      {
+       "points": 1,
+       "desc": "4번 항목의 제목과 내용을 주제에 맞게 작성하지 않음."
+      }
+     ]
+    }
+   ],
+   "notes": "제안서가 주어진 양식의 5개 항목을 모두 충실히 활용했는지 확인하되, 단순히 항목을 채웠는지가 아니라 의견과 근거가 명확하게 제시되었는가를 중심으로 판단함. 제안하는 동아리의 목적과 필요성이 학교생활과 관련하여 실제로 타당한지 검토하며, 주장(동아리 제안)과 이를 뒷받침하는 근거(필요성, 활동 내용, 효과)가 논리적으로 연결되어야 높은 점수를 부여할 수 있음. 성취수준 E의 경우 제목을 적는 시도 자체에 대해 긍정적으로 평가함. <조건>에 글자 수가 100~150 단어로 제시되었으나 글자 수로 감점 혹은 가점을 하지는 않으며 이는 충분한 내용을 쓸 수 있도록 권장하는 분량임.",
+   "type_note": "최하 척도 1점(0점 척도 없음)."
+  },
+  "holistic": null,
+  "exemplar_answers": [
+   {
+    "level": "예시",
+    "text": "Proposal for a New Cooking Club\n1. Introduction\nI would like to propose a Cooking Club.\n2. Why We Need This Club\nMany students are interested in cooking, but they do not have a chance to enjoy it at school. They want to learn how to cook and have fun with food.\n3~4.\nWhat We Will Do / Plan\nIn this club, we will learn to make easy dishes like sandwiches, fruit salad, or rice balls. In addition, we are going to meet every Wednesday after school.\n또는 Expected Results\nThis club will help students learn basic cooking skills and healthy eating habits. Students can cook and share recipes with friends.\n또는 Resources\nWe need simple kitchen tools like a stove, table, and cooking tools. We also need money to buy food and a fridge to keep it fresh.\n5. Conclusion\nThe Cooking Club will be a great way to help students learn new skills and enjoy school life. I hope the school will accept this proposal and support the idea."
+   }
+  ],
+  "feedback": "성취기준을 확인하고, 내용과 문항의 난이도, 성취수준 부합 정도를 고려함. 학생 수준에 맞춘 유연한 해석과 맞춤형 피드백을 제공함. 특히 C~E 수준의 학생에게는 부분적인 성취도 긍정적으로 해석하고 구체적인 개선 방향을 제시함. 평가적 피드백이 아닌, 조언적 피드백을 단계적으로 제공함. 어휘·어법 오류는 글 전체의 의미 전달에 영향을 주는 오류를 중심으로 스스로 교정할 수 있는 기회를 제공함.",
+  "ai_use": null,
+  "source": {
+   "file": "250725 경기 논술형평가 장학자료- 탑재용 최종.pdf",
+   "pages": [
+    118,
+    119,
+    120,
+    121,
+    122
+   ],
+   "page_range": [
+    118,
+    122
+   ],
+   "attribution": "경기도교육청(2025.7) 「학습 여정을 탐색하는 의미있는 경기 논술형 평가」 — 공공누리 공공저작물, 출처 표시"
+  }
+ },
+ {
+  "id": "gg25-eng-08",
+  "subject": "영어",
+  "school_level": "중",
+  "grade": 1,
+  "title": "세계 음식 체험을 바탕으로 문화 이해 글쓰기",
+  "unit": "표현",
+  "standard_codes": [
+   "[9영02-04]",
+   "[9영02-06]",
+   "[9영02-08]"
+  ],
+  "competencies": [
+   "창의적 사고 역량",
+   "공동체 역량",
+   "협력적 소통 역량"
+  ],
+  "evaluation_elements": [
+   "자신의 경험과 의견 표현하기",
+   "글의 양식에 맞게 작성하기",
+   "적절한 어휘 및 언어 형식 사용하기"
+  ],
+  "kind": "논술형",
+  "assessment_mode": "수행평가",
+  "points": 20,
+  "time_min": 45,
+  "design_intent": "학생들이 개인적 경험을 구체적으로 서술하고, 그 경험을 문화적 맥락과 연결 지어 설명하며, 자신의 생각을 논리적으로 표현할 수 있는 능력을 평가. 핵심 아이디어는 세계의 음식 문화를 이해하는 과정에서 지역·국가·세계 공동체의 구성원으로서 다양성을 이해하고 공감, 배려, 관용 및 포용 능력을 갖추는 것. '세계 문화 이해' 주간의 음식 체험을 바탕으로 경험한 나라의 음식을 소개하고 문화와의 관련성을 설명하며 느낀 점과 문화 다양성의 중요성에 대한 의견을 표현. 설명적 글쓰기와 의견 표현이 통합된 복합적 쓰기 과제. 중학교 영어 교과서에서 다뤄보는 글의 양식(체험 보고서, 블로그 글, 일기)을 제시하여 쓰기 목적과 독자에 따라 적절한 표현과 구성을 선택하도록 유도하고, 글의 양식에 대한 이해와 적용 능력도 평가.",
+  "lesson_link": "'세계 문화 이해' 주간의 활동과 연계. 체험 활동 후 글쓰기 전 단계로 관찰 내용 정리, 키워드 추출, 문화적 요소와의 연결고리 찾기 활동. 2022 개정 중학교 사회 교육과정 [9사(지리)01-01~03], 도덕 [9도03-02]와 연결하여 융합 수업 가능. 체험 보고서, 블로그 글, 일기 등 다양한 글의 양식 분석 후 글쓰기 전략 익히기. <수업활동 예시> 1 세계 문화의 다양성에 대해 관심 갖기 → 2 음식과 문화의 관계 탐색하기('할랄 음식', '발효 음식' 등 키워드) → 3 다양한 나라 음식 알아보기(세계지도 위 표시) → 4 세계 음식 체험 활동에 참여하기(체험 일지) → 5 음식과 문화의 연관성 설명하기(활동지) → 6 느낀 점을 문화 다양성과 연결하기 → 7 글쓰기 수행하기(100~150 단어, 세 가지 조건 포함).",
+  "context": "학교에서는 '세계 문화 이해' 주간을 맞아, 세계 여러 나라의 음식을 통해 문화의 다양성을 경험하는 활동을 진행했다.",
+  "materials": [
+   {
+    "label": "글쓰기 양식 표",
+    "type": "목록",
+    "summary": "체험 보고서 / 블로그 글 / 일기 (세 가지 중 택1)"
+   }
+  ],
+  "stem": "1. 학교에서는 '세계 문화 이해' 주간을 맞아, 세계 여러 나라의 음식을 통해 문화의 다양성을 경험하는 활동을 진행했다. 이 활동에 참여한 경험을 바탕으로 아래 세 가지 글쓰기 양식 중 하나를 선택하여, <조건>에 맞게 영어로 작성하시오. [20점]",
+  "conditions": [
+   "경험한 음식(국가, 특징, 맛)을 소개할 것",
+   "경험한 음식이 그 나라 문화(예:기후, 종교, 생활 방식 등)와 어떻게 연관되어 있는지 설명할 것",
+   "이번 활동을 통해 느낀 점이나 배운 점을 문화 다양성과 연결하여 설명할 것",
+   "100~150단어로 쓸 것"
+  ],
+  "answer_format": "영어 체험 보고서/블로그 글/일기 중 택1, 100~150 단어",
+  "requires_drawing": false,
+  "rubric": {
+   "type": "분석적",
+   "criteria": [
+    {
+     "name": "경험한 음식 소개하기 (자신의 경험과 의견 표현하기)",
+     "levels": [
+      {
+       "points": 4,
+       "desc": "경험한 음식의 국가, 특징, 맛에 대해 구체적이고 명확하게 소개함."
+      },
+      {
+       "points": 3,
+       "desc": "경험한 음식의 국가, 특징, 맛 중에서 두 가지를 소개함."
+      },
+      {
+       "points": 2,
+       "desc": "경험한 음식의 국가, 특징, 맛 중에서 한 가지를 소개함."
+      },
+      {
+       "points": 1,
+       "desc": "경험한 음식의 국가, 특징, 맛을 모두 소개하지 않음."
+      }
+     ]
+    },
+    {
+     "name": "음식과 문화의 연관성 설명하기",
+     "levels": [
+      {
+       "points": 5,
+       "desc": "음식과 문화의 연관성을 설명하고 그 이유에 대해 설득력 있게 설명함."
+      },
+      {
+       "points": 3,
+       "desc": "음식과 문화의 연관성을 설명하였으나 그 이유에 대해 설명하지 않음."
+      },
+      {
+       "points": 1,
+       "desc": "음식과 문화의 연관성과 그 이유에 대해 모두 설명하지 않음."
+      }
+     ]
+    },
+    {
+     "name": "문화 다양성과 연결하여 설명하기",
+     "levels": [
+      {
+       "points": 5,
+       "desc": "느낀 점이나 배운 점을 문화적 다양성과 연결하여 명확하게 설명함."
+      },
+      {
+       "points": 3,
+       "desc": "느낀 점이나 배운 점을 설명하였으나 문화적 다양성과 연결되지 않음."
+      },
+      {
+       "points": 1,
+       "desc": "느낀 점이나 배운 점을 설명하지 않고 문화적 다양성과 연결되지 않음."
+      }
+     ]
+    },
+    {
+     "name": "선택한 양식에 맞게 작성하기 (글의 양식에 맞게 작성하기)",
+     "levels": [
+      {
+       "points": 2,
+       "desc": "선택한 양식(체험 보고서, 블로그 글, 일기)의 특성에 맞는 구성과 표현을 사용하여 작성함."
+      },
+      {
+       "points": 1,
+       "desc": "선택한 양식(체험 보고서, 블로그 글, 일기)의 특성에 맞는 구성과 표현을 사용하지 않음."
+      }
+     ]
+    },
+    {
+     "name": "적절한 어휘와 언어 형식 사용하기",
+     "levels": [
+      {
+       "points": 4,
+       "desc": "다양한 어휘와 언어 형식을 정확하게 사용함."
+      },
+      {
+       "points": 3,
+       "desc": "어휘와 언어 형식의 사용이 반복되며 일부 오류가 있으나 의미 전달에 지장을 주지 않음."
+      },
+      {
+       "points": 2,
+       "desc": "어휘와 언어 형식의 사용이 반복되며 오류가 많아 의미 전달에 지장이 있음."
+      },
+      {
+       "points": 1,
+       "desc": "어휘와 언어 형식이 부정확하여 의미 전달이 어려움."
+      }
+     ]
+    }
+   ],
+   "notes": "성취수준에 따라 경험의 구체성, 문화적 연결의 타당성, 의견 표현의 깊이에 차이가 나타남을 고려하여 평가해야 함. B 수준 이상의 경우, 체험 내용을 구체적으로 서술하고 음식과 문화의 연관성을 논리적으로 설명하며 문화 다양성에 대한 자신의 의견을 명확히 표현할 수 있음. C 수준 이하의 경우, 체험 사실만 단편적으로 나열하거나 문화적 의미 연결이 부족할 수 있으며, 자신의 의견이 간단한 감상에 그칠 수 있음. E 수준의 경우, 교사나 동료의 도움을 받아 글의 형식을 모방하거나 주어진 활동 경험을 단편적으로 서술하는 수준일 수 있으므로, 글의 흐름이나 논리적 연결 부족에 대해 감안하여 평가해야 함. 글의 양식(체험 보고서, 블로그 글, 일기)을 선택하고 그 양식의 특성을 어느 정도 반영했는지 평가에 반영함. 전달력, 체험의 진정성, 문화적 통찰, 의견의 타당성과 설득력 등 다양한 평가 요소를 균형 있게 반영하여, 단순히 분량이나 정보량만으로 평가하지 않도록 주의함.",
+   "type_note": "척도 5-3-1(2점 간격), 최하 척도 1점(0점 척도 없음)."
+  },
+  "holistic": null,
+  "exemplar_answers": [
+   {
+    "level": "예시 (Experience Report)",
+    "text": "Title: Experiencing Indian Food and Culture\n1. Date of Experience: May 20, 2025\n2. Place: School cafeteria\n3. Food I Tried: Naan and curry (Indian food)\n4. Description of the Experience: At school, we had Cultural Diversity Week. I tried Indian food for the first time. I ate naan and curry. The curry was a little spicy. The naan was soft and tasty. It was very different from Korean food, but I liked it.\n5. Cultural Connection: Indian food is often spicy because the weather is hot. In hot places, people use a lot of spices in food to stop it from going bad easily. Many people in India eat with their hands. In Hindu culture, this is a clean and respectful way to eat. The food shows their culture and way of life.\n6. My Feelings: This activity was fun. I learned that food is not only for eating — it shows a country's culture. I want to try more world foods and learn about their cultures too. I think learning about other cultures is interesting and important.\n(*체험 보고서 양식의 한 예시. 필수 내용을 담되, 체험 보고서 구성 방식은 개인별 자유)"
+   },
+   {
+    "level": "예시 (Blog Post)",
+    "text": "Title: A Taste of Mexico\nHi, everyone!\nLast week, we had Cultural Diversity Week at school. I tried Mexican food, tacos with beef, vegetables, and spicy salsa. It was very tasty and fun to eat!\nI learned that Mexican food is often spicy because the weather is hot. Spices help keep the food fresh. People in Mexico also use a lot of corn and beans in their food. These are traditional foods in their country.\nFood in Mexico is also part of family life. Families eat together and share food during special days.\nThis activity helped me learn about Mexican culture. I learned that food can help us understand other cultures. Now I want to try food from other countries too!\nThanks for reading my post!\n(*블로그 글 한 예시. 필수 내용을 담되, 구성 방식은 개인별 자유)"
+   },
+   {
+    "level": "예시 (Diary)",
+    "text": "Date:Saturday,May 24, 2025\nWeather: Sunny\nMood: Curious and Happy\nToday at school, we had a special activity for Cultural Diversity Week. I tried French food for the first time. I ate a croissant. It was soft, buttery, and very tasty. The teacher told us that French people often eat bread for breakfast. I was surprised that food can show how people in other countries live. I think it's important to learn about other cultures and respect their traditions. I hope I can travel and try more food in the future. It was a really fun and special day!\n(*Weather: Sunny, Mood: Curious and Happy는 생략 가능)"
+   }
+  ],
+  "feedback": "글쓰기 성취기준(정보 전달, 생각 표현, 글의 형식과 구조 이해 등)에 근거하여, 학생의 글이 주어진 양식(체험 보고서, 블로그 글, 일기)과 요구된 내용(음식 소개, 문화적 연관성, 느낀 점 및 의견 등)을 충실히 반영했는지 평가한 뒤 피드백을 진행함. 학생이 자신의 평소 수준보다 높은 성취를 보였을 경우, 그 발전적인 측면을 구체적으로 언급하며 격려하고, 그 원인을 함께 탐색해보는 방향으로 피드백을 진행함. 수업 시간 중 학생의 발언, 태도, 활동 참여 등을 바탕으로 학생의 관심 주제나 표현 방식에 맞춰 개별화된 피드백을 제공함. 글의 양식의 특징이 드러나는지, 글의 내용이 주제에서 벗어나지 않고 체험과 문화적 통찰, 느낀 점이 고르게 드러나는지를 함께 점검하여 지도함. 학생이 특정 문화나 음식을 소개할 때 편견 없이 존중하는 태도를 보였는지 확인하고, 부족한 경우 그에 대한 감수성과 시각을 키울 수 있도록 지도함. 문법적 정확성, 어휘의 적절성, 문단 간 연결성 등을 평가하며, 구체적인 문장을 예로 들어 개선점을 제시함.",
+  "ai_use": null,
+  "source": {
+   "file": "250725 경기 논술형평가 장학자료- 탑재용 최종.pdf",
+   "pages": [
+    123,
+    124,
+    125,
+    126,
+    127,
+    128,
+    129
+   ],
+   "page_range": [
+    123,
+    129
+   ],
+   "attribution": "경기도교육청(2025.7) 「학습 여정을 탐색하는 의미있는 경기 논술형 평가」 — 공공누리 공공저작물, 출처 표시"
+  }
+ }
+]
