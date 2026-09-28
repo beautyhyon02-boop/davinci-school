@@ -12,6 +12,7 @@ import { StandardsPicker, type StandardsBySubject } from './StandardsPicker'
 import type { Subject, Level } from '@/lib/studio/schemas'
 import { sharedMaterialsJson, type SharedMaterial } from '@/lib/studio/themes'
 import { fetchAll } from '@/lib/supabase/fetch-all'
+import { cleanMaterialTitle } from '@/lib/studio/materials'
 import { app } from '@/content/site'
 
 const copy = app.studio.sets
@@ -78,6 +79,9 @@ export default async function ThemeDetailPage({ params }: { params: Promise<{ th
 
   // themes.materials 는 래퍼 없는 배열로 저장된다 — textarea 에는 스키마 모양({materials:[...]})으로 씌워 보여 준다.
   const initialMaterialsJson = sharedMaterialsJson(theme.materials as SharedMaterial[] | null)
+  // 세트 만들기 폼의 「이 세트에서 쓸 공동 자료」 체크 목록(대표 결정 2026-09-28, 기본 = 아무것도 안 씀)
+  const sharedOptions = ((Array.isArray(theme.materials) ? theme.materials : []) as { id: string; title?: string; kind?: string }[])
+    .map((m) => ({ id: m.id, title: cleanMaterialTitle(m.title ?? ''), kind: m.kind ?? '' }))
 
   return (
     <>
@@ -120,7 +124,7 @@ export default async function ThemeDetailPage({ params }: { params: Promise<{ th
 
         <AddSubjectsPanel themeId={themeId} themeSubjects={themeSubjects} subjectsWithSets={existingSubjects} />
 
-        <StandardsPicker themeId={themeId} availableSubjects={availableSubjects} standardsBySubject={standardsBySubject} />
+        <StandardsPicker themeId={themeId} availableSubjects={availableSubjects} standardsBySubject={standardsBySubject} sharedOptions={sharedOptions} />
       </div>
     </>
   )

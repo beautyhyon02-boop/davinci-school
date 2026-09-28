@@ -84,7 +84,7 @@ function RubricTable({ criteria }: { criteria: Criterion[] }) {
   )
 }
 
-function ItemCard({ item, no, materials }: { item: Item; no: number; materials: MaterialLike[] }) {
+function ItemCard({ item, no, materials, sharedIds }: { item: Item; no: number; materials: MaterialLike[]; sharedIds: string[] }) {
   const cd = item.conditions
   const conds = cd?.items ?? []
   const criteria = item.rubric?.criteria ?? []
@@ -107,7 +107,7 @@ function ItemCard({ item, no, materials }: { item: Item; no: number; materials: 
       )}
 
       <p data-item-stem className="mt-3 whitespace-pre-wrap text-base font-semibold leading-relaxed">{item.stem}</p>
-      <ItemMaterials item={item} materials={materials} />
+      <ItemMaterials item={item} materials={materials} sharedIds={sharedIds} />
 
       <div data-item-conditions className="mt-3 rounded-lg bg-ink-100/40 p-3">
         <SubLabel>{copy.conditionsHeading}</SubLabel>
@@ -231,14 +231,17 @@ function CommonCriteria({ o }: { o: Stage5Output }) {
   )
 }
 
-/** materials = 4단계 세트 자료 + 이 세트가 가리키는 대주제 공유 자료(StageOutput 이 4단계 탭과 같은 규칙으로 고른다). */
-export function Stage5Summary({ output, materials = [] }: { output: unknown; materials?: MaterialLike[] }) {
+/**
+ * materials = 4단계 세트 자료 + 이 세트가 체크하고 가리키는 대주제 공동 자료(StageOutput 이 4단계 탭과 같은 규칙으로 고른다).
+ * sharedIds = 그중 공동 자료의 ID(문항 안 자료 상자에 「공동」 배지).
+ */
+export function Stage5Summary({ output, materials = [], sharedIds = [] }: { output: unknown; materials?: MaterialLike[]; sharedIds?: string[] }) {
   const o = output as Stage5Output
   return (
     <div className="mt-3 space-y-4">
       <div className="space-y-3">
         <p className="text-base font-bold">{copy.itemsHeading}</p>
-        {o.items?.map((it, i) => <ItemCard key={i} item={it} no={i + 1} materials={materials} />)}
+        {o.items?.map((it, i) => <ItemCard key={i} item={it} no={i + 1} materials={materials} sharedIds={sharedIds} />)}
       </div>
       <CommonCriteria o={o} />
     </div>

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import type { Subject } from '@/lib/studio/schemas'
 import { app } from '@/content/site'
+import { SharedMaterialCheckboxes, toggleSharedId, type SharedMaterialOption } from './SharedMaterialCheckboxes'
 
 const copy = app.studio.picker
 
@@ -17,14 +18,18 @@ export function StandardsPicker({
   themeId,
   availableSubjects,
   standardsBySubject,
+  sharedOptions = [],
 }: {
   themeId: string
   availableSubjects: Subject[]
   standardsBySubject: StandardsBySubject
+  /** 대주제 공동 자료(체크 목록용 평범한 데이터). 기본 선택은 없음(대표 결정 2026-09-28). */
+  sharedOptions?: SharedMaterialOption[]
 }) {
   const [subject, setSubject] = useState<string>(availableSubjects[0] ?? '')
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [sharedSelected, setSharedSelected] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
   const router = useRouter()
@@ -67,7 +72,7 @@ export function StandardsPicker({
   function submit() {
     setError(null)
     startTransition(async () => {
-      const res = await createItemSet(themeId, subject as Subject, Array.from(selected))
+      const res = await createItemSet(themeId, subject as Subject, Array.from(selected), sharedSelected)
       if (res.ok) router.push(`/admin/items/${themeId}/sets/${res.id}`)
       else setError(res.error)
     })
@@ -135,6 +140,15 @@ export function StandardsPicker({
 
       {unverifiedCodes.length > 0 && (
         <p className="mt-1 text-sm text-lemon-600">{copy.unverifiedWarning(unverifiedCodes)}</p>
+      )}
+
+      {/* 이 세트에서 쓸 공동 자료(대표 결정 2026-09-28) — 기본은 아무것도 안 씀. 대주제에 공동 자료가 없으면 칸을 두지 않는다. */}
+      {sharedOptions.length > 0 && (
+        <div className="mt-4 rounded-xl border border-ink-100 p-3">
+          <p className="text-sm font-semibold">{app.studio.sharedSelection.heading}</p>
+          <p className="mt-1 text-xs text-ink-500">{app.studio.sharedSelection.createDescription}</p>
+          <SharedMaterialCheckboxes options={sharedOptions} selected={sharedSelected} onToggle={(id) => setSharedSelected((s) => toggleSharedId(s, id))} disabled={pending} />
+        </div>
       )}
 
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}

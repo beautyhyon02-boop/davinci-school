@@ -10,9 +10,11 @@ import { syncAssessmentSessionMaterials } from '@/lib/studio/assessment-structur
 import { STAGE_ERRORS, stageNotes, type StageErrorCode, type StageStatus } from '@/lib/studio/stages'
 import { createSupabaseRepo } from '@/lib/studio/repo'
 import type { Issue } from '@/lib/studio/checks'
+import { validateSharedMaterialIds } from '@/lib/studio/shared-selection'
 import { app } from '@/content/site'
 
 const errors = app.studio.wizard.errors
+const sharedSelectionErrors = app.studio.sharedSelection.errors
 const attachmentErrors = app.studio.attachments.errors
 
 // 편집 게이트가 돌려준 STAGE_ERRORS 코드를 화면 문구로 옮긴다 — 문구는 content/site.ts 에서만 고친다.
@@ -197,6 +199,31 @@ export async function chooseKeyQuestion(setId: string, text: string): Promise<Ac
   return { ok: true }
 }
 
+/**
+ * 이 세트에서 쓸 대주제 공동 자료를 정한다(대표 결정 2026-09-28, 마이그레이션 0013 item_sets.shared_material_ids).
+ * 관리자 확인이 먼저, 그다음 보낸 ID가 모두 이 세트 대주제의 공동 자료(themes.materials[].id)인지 맞춰 본 뒤에만 저장한다.
+ * 뒤 단계(3~7)를 초기화하지 않는다 — 화면이 "다시 만들어야 할 수 있음" 안내만 보이고 저장은 막지 않는다(확인만 누르면 진행).
+ * 다음 생성·검토(loadContext)·미리보기·게시(buildSnapshot)부터 이 선택을 쓴다.
+ */
+export async function setSharedMaterialIds(setId: string, ids: string[]): Promise<ActionResult> {
+  await assertAdmin()
+  const supabase = await createClient()
+  const { data: itemSet, error: fetchErr } = await supabase.from('item_sets').select('theme_id').eq('id', setId).single()
+  if (fetchErr || !itemSet) return { ok: false, error: sharedSelectionErrors.saveFailed }
+  const { data: theme, error: themeErr } = await supabase.from('themes').select('materials').eq('id', itemSet.theme_id).single()
+  if (themeErr || !theme) return { ok: false, error: sharedSelectionErrors.saveFailed }
+
+  const themeIds = (Array.isArray(theme.materials) ? (theme.materials as { id?: unknown }[]) : []).map((m) => m.id).filter((id): id is string => typeof id === 'string')
+  const check = validateSharedMaterialIds(ids, themeIds)
+  if (!check.ok) return { ok: false, error: sharedSelectionErrors.invalid(check.invalid) }
+
+  const { error: updateErr } = await supabase.from('item_sets').update({ shared_material_ids: check.ids }).eq('id', setId)
+  if (updateErr) return { ok: false, error: sharedSelectionErrors.saveFailed }
+
+  revalidatePath(`/admin/items/${itemSet.theme_id}/sets/${setId}`)
+  return { ok: true }
+}
+
 type TargetKind = 'material' | 'lesson'
 
 // target 형식은 lib/studio/upload-rules.ts validateUpload의 TARGET_RE와 맞춰야 한다.
@@ -281,7 +308,7 @@ export async function publishItemSet(setId: string): Promise<PublishResult> {
 
   const { data: itemSet, error: fetchErr } = await supabase
     .from('item_sets')
-    .select('id, theme_id, subject, level, grade, version, reconstruction, reconstruction_detail, learning_goals, key_question, unit_plan, lessons, materials, assessment, teacher_guide, notice_plan, stage_status')
+    .select('id, theme_id, subject, level, grade, version, reconstruction, reconstruction_detail, learning_goals, key_question, unit_plan, lessons, materials, assessment, teacher_guide, notice_plan, stage_status, shared_material_ids')
     .eq('id', setId)
     .single()
   if (fetchErr || !itemSet) return { ok: false, blockers: ['saveFailed'] }

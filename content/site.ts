@@ -210,7 +210,7 @@ export const app = {
       standardSubjectMismatch: '대주제와 과목이 다른 성취기준이 있습니다.',
       standardUnverified: (codes: string[]) => `원문 미검증 성취기준: ${codes.join(', ')}`,
       invalidStandards: '선택한 성취기준을 확인할 수 없습니다. 다시 선택해 주세요.',
-      materialsInvalid: '공유 자료 형식을 확인하세요.',
+      materialsInvalid: '공동 자료 형식을 확인하세요.',
       themeNotFound: '대주제를 찾을 수 없습니다.',
       saveFailed: '저장 중 오류가 났습니다. 잠시 후 다시 시도해 주세요.',
     },
@@ -282,8 +282,8 @@ export const app = {
       },
     },
     materials: {
-      heading: '공유 자료',
-      description: '이 대주제의 모든 세트가 공유하는 자료입니다. 2A 스키마(JSON)를 그대로 붙여넣으세요.',
+      heading: '공동 자료',
+      description: '이 대주제의 세트들이 골라 쓸 수 있는 공동 자료입니다. 세트마다 「이 세트에서 쓸 공동 자료」에서 체크한 것만 그 세트에 쓰입니다(기본은 아무것도 안 씀). 2A 스키마(JSON)를 그대로 붙여넣으세요.',
       submit: '저장',
       submitting: '저장 중…',
       saved: '저장했습니다.',
@@ -314,6 +314,26 @@ export const app = {
       submit: '세트 만들기',
       submitting: '만드는 중…',
       empty: '해당 과목의 성취기준이 없습니다.',
+    },
+    // 세트별 공동 자료 선택(대표 결정 2026-09-28): 대주제 공동 자료 중 이 세트에서 쓸 것만 체크한다(기본 = 아무것도 안 씀).
+    // 세트 화면(제작 탭 위 카드)과 세트 만들기 폼이 같이 쓴다. 배지 글자는 app.packageView.materials.sharedBadge 하나만 쓴다.
+    sharedSelection: {
+      heading: '이 세트에서 쓸 공동 자료',
+      description: '체크한 대주제 공동 자료만 이 세트의 AI 생성·검토와 게시 판에 들어갑니다. 체크하지 않은 공동 자료는 이 세트에서 보이지도, 쓰이지도 않습니다.',
+      createDescription: '기본은 아무것도 쓰지 않음입니다. 이 과목 수업·문항에 꼭 필요한 공동 자료만 체크하세요(세트를 만든 뒤에도 바꿀 수 있습니다).',
+      empty: '이 대주제에는 공동 자료가 없습니다. 대주제 화면의 「공동 자료」 칸에서 먼저 넣을 수 있습니다.',
+      idLabel: (id: string) => `자료 ${id}`,
+      kindLabel: { table: '표', text: '글', chart: '그래프' } as Record<string, string>,
+      noneSelected: '지금은 공동 자료를 쓰지 않습니다.',
+      selectedSummary: (ids: string[]) => `쓰는 공동 자료: ${ids.map((id) => `자료 ${id}`).join(', ')}`,
+      save: '공동 자료 선택 저장',
+      saving: '저장 중…',
+      saved: '저장했습니다. 다음 생성·미리보기·게시부터 이 선택을 씁니다.',
+      regenNotice: '이미 3단계(차시 설계) 이후가 만들어져 있습니다. 공동 자료를 바꾸면 차시·자료·문항이 새 선택과 어긋날 수 있으니, 필요하면 3단계나 4단계부터 다시 생성하세요. 저장은 막지 않습니다.',
+      errors: {
+        invalid: (ids: string[]) => (ids.length ? `대주제에 없는 공동 자료입니다: ${ids.join(', ')}` : '공동 자료 선택을 확인하세요.'),
+        saveFailed: '저장 중 오류가 났습니다. 잠시 후 다시 시도해 주세요.',
+      },
     },
     wizard: {
       backToTheme: '← 세트 목록으로',
@@ -458,8 +478,8 @@ export const app = {
         guidePending: '각 차시의 「교사용 지침」 칸에 들어갈 지침서 메모는 6단계(교사용 지침서)를 만들면 함께 보입니다.',
       },
       stage4: {
-        sharedNote: '「공유」 표시는 대주제의 모든 과목이 함께 쓰는 자료입니다. 이 세트의 차시·문항이 가리키는 것만 보입니다.',
-        overriddenNote: (ids: string[]) => `${ids.map((id) => `자료 ${id}`).join(', ')}: 대주제 공유 자료와 ID가 겹쳐 게시 판에서는 공유 자료가 대신 실립니다.`,
+        sharedNote: '「공동」 표시는 이 세트에서 쓰기로 체크한 대주제 공동 자료입니다. 이 세트의 차시·문항이 가리키는 것만 보입니다.',
+        overriddenNote: (ids: string[]) => `${ids.map((id) => `자료 ${id}`).join(', ')}: 이 세트가 체크한 대주제 공동 자료와 ID가 겹쳐 게시 판에서는 공동 자료가 대신 실립니다.`,
       },
       // 5단계 요약(Stage5Summary.tsx): 문항 카드(조건·채점표·예시답안 전부) + 두 문항 공통 채점 기준표(등급표·피드백 틀)
       stage5: {
@@ -596,8 +616,9 @@ export const app = {
       sourceLabel: { 자작: '자작', 공개: '공개 자료' },
       aiBadge: 'AI 보조 · 확인 필요',
       roleLabel: { raw: '원자료', context: '배경' },
-      // 제작소 4단계 탭: 대주제 공유 자료(모든 과목이 함께 쓰는 자료)를 세트 자료와 구별
-      sharedBadge: '공유',
+      // 대주제 공동 자료(이 세트가 체크한 것, 대표 결정 2026-09-28)를 세트 자료와 구별하는 배지 — 제작소 4·5단계 탭, 원장 패키지 화면,
+      // 학생 화면, 문제지 인쇄, 공동 자료 선택 칸이 모두 이 한 키를 쓴다.
+      sharedBadge: '공동',
     },
     // 문항 = 자료 + 문항 한 덩어리(대표 연수 2기 p.18~20): 문항 카드 안에 그 문항의 자료를 <자료 1>·<자료 2> 상자로 넣는다.
     // 번호는 문항 안 번호(materials_used 순서), 옆의 작은 "자료 B"는 세트 자료 ID — 옛 문두("자료 B는 …")도 그대로 읽히게.

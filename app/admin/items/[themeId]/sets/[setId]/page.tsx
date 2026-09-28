@@ -12,6 +12,9 @@ import type { StageStatus } from '@/lib/studio/stages'
 import { app } from '@/content/site'
 import { WIZARD_STAGES, type WizardStage } from '@/lib/studio/wizard-stages'
 import { withMaterialDefaults } from '@/lib/studio/draft-defaults'
+import { parseSharedMaterialIds, selectSharedMaterials, selectionChangeNeedsNotice } from '@/lib/studio/shared-selection'
+import { cleanMaterialTitle } from '@/lib/studio/materials'
+import { SharedMaterialsSelector } from './SharedMaterialsSelector'
 
 const copy = app.studio.wizard
 
@@ -23,7 +26,7 @@ export default async function SetWizardPage({ params }: { params: Promise<{ them
 
   const { data: itemSet } = await supabase
     .from('item_sets')
-    .select('id, theme_id, subject, level, grade, status, version, key_question, stage_status, materials, unit_plan, lessons, reconstruction, reconstruction_detail, learning_goals, assessment, teacher_guide, notice_plan')
+    .select('id, theme_id, subject, level, grade, status, version, key_question, stage_status, materials, unit_plan, lessons, reconstruction, reconstruction_detail, learning_goals, assessment, teacher_guide, notice_plan, shared_material_ids')
     .eq('id', setId)
     .single()
   if (!itemSet || itemSet.theme_id !== themeId) notFound()
@@ -47,6 +50,11 @@ export default async function SetWizardPage({ params }: { params: Promise<{ them
     if (st) initialStatuses[s] = st
   }
   const stage2 = stageStatus.stage2
+
+  // 세트별 공동 자료 선택(대표 결정 2026-09-28): 체크 목록은 대주제 공동 자료 전부, 제작소 탭에는 체크한 것만 넘긴다.
+  const themeMaterials = (Array.isArray(theme.materials) ? theme.materials : []) as { id: string; title?: string; kind?: string }[]
+  const selectedSharedIds = parseSharedMaterialIds(itemSet.shared_material_ids)
+  const sharedOptions = themeMaterials.map((m) => ({ id: m.id, title: cleanMaterialTitle(m.title ?? ''), kind: m.kind ?? '' }))
   const candidates = (stage2?.output as { key_question_candidates?: string[] } | undefined)?.key_question_candidates ?? []
 
   // publishItemSet과 같은 규칙: 다음 버전은 item_sets.version이 아니라 item_set_versions 최댓값+1로 미리보기에서도 미리 계산한다.
@@ -88,7 +96,13 @@ export default async function SetWizardPage({ params }: { params: Promise<{ them
       <div className="mt-6">
         <SetPageTabs
           wizard={
-            <>
+            <div className="space-y-4">
+              <SharedMaterialsSelector
+                setId={setId}
+                options={sharedOptions}
+                initialSelected={selectedSharedIds}
+                showRegenNotice={selectionChangeNeedsNotice(stageStatus)}
+              />
               <StageWizard
                 setId={setId}
                 initialStatuses={initialStatuses}
@@ -96,10 +110,10 @@ export default async function SetWizardPage({ params }: { params: Promise<{ them
                 candidates={candidates}
                 materials={(itemSet.materials ?? []) as { id: string; images?: string[] }[]}
                 lessons={(itemSet.lessons ?? []) as { no: number; images?: string[] }[]}
-                // 4단계 탭에 이 세트가 가리키는 공유 자료를 함께 보인다 — 공유 자료는 v1 모양일 수 있어 v2 기본값을 입혀 넘긴다
-                sharedMaterials={(Array.isArray(theme.materials) ? theme.materials : []).map(withMaterialDefaults)}
+                // 4·5단계 탭에 이 세트가 체크하고 가리키는 공동 자료를 함께 보인다 — 공유 자료는 v1 모양일 수 있어 v2 기본값을 입혀 넘긴다
+                sharedMaterials={selectSharedMaterials(themeMaterials, selectedSharedIds).map(withMaterialDefaults)}
               />
-            </>
+            </div>
           }
           preview={
             <div className="space-y-4">

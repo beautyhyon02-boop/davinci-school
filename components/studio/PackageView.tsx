@@ -180,7 +180,7 @@ function AnswerSpace({ item }: { item: AssessmentItem }) {
   )
 }
 
-function AssessmentItemView({ item, no, materials, showAnswers, open }: { item: AssessmentItem; no: number; materials: MaterialLike[]; showAnswers: boolean; open: boolean }) {
+function AssessmentItemView({ item, no, materials, sharedIds, showAnswers, open }: { item: AssessmentItem; no: number; materials: MaterialLike[]; sharedIds: string[]; showAnswers: boolean; open: boolean }) {
   const c = copy.assessment
   const cd = c.conditions
   return (
@@ -204,7 +204,7 @@ function AssessmentItemView({ item, no, materials, showAnswers, open }: { item: 
       <p data-item-stem className="mt-3 whitespace-pre-wrap text-base font-semibold leading-relaxed">{item.stem}</p>
 
       {/* 전제문·발문 아래, 조건 위에 그 문항의 자료(대표 연수 2기 p.18~20: 자료와 문항은 한 덩어리) — 화면·문제지 인쇄 모두 */}
-      <ItemMaterials item={item} materials={materials} />
+      <ItemMaterials item={item} materials={materials} sharedIds={sharedIds} />
 
       <div data-item-conditions className="mt-3 space-y-2 rounded-lg bg-ink-100/40 p-3">
         {/* 조건 문장이 없는 문항(서술형, C-32)은 "조건" 머리글·빈 목록 없이 분량·형식 줄만(화면·문제지 인쇄 모두) */}
@@ -271,14 +271,14 @@ function AssessmentItemView({ item, no, materials, showAnswers, open }: { item: 
   )
 }
 
-function AssessmentSection({ assessment, materials, showAnswers, open }: { assessment: Snapshot['assessment']; materials: MaterialLike[]; showAnswers: boolean; open: boolean }) {
+function AssessmentSection({ assessment, materials, sharedIds, showAnswers, open }: { assessment: Snapshot['assessment']; materials: MaterialLike[]; sharedIds: string[]; showAnswers: boolean; open: boolean }) {
   if (!assessment) return null
   return (
     <>
       <Card print="keep">
         <SectionHeading>{copy.assessmentHeading}</SectionHeading>
         <div className="mt-3 space-y-3">
-          {assessment.items.map((item, i) => <AssessmentItemView key={i} item={item} no={i + 1} materials={materials} showAnswers={showAnswers} open={open} />)}
+          {assessment.items.map((item, i) => <AssessmentItemView key={i} item={item} no={i + 1} materials={materials} sharedIds={sharedIds} showAnswers={showAnswers} open={open} />)}
         </div>
       </Card>
 
@@ -401,11 +401,12 @@ export function PackageView({ snapshot, mode, showAnswers = false }: { snapshot:
       )}
 
       {/* 자료 칸은 화면에 그대로(차시도 쓴다). 문제지 인쇄에는 문항 안에 실린 자료를 빼고, 전부 실렸으면 칸째 뺀다 */}
-      <MaterialsSection materials={snapshot.materials} embeddedIds={[...embeddedMaterialIds(snapshot.assessment?.items)]} />
+      {/* 「공동」 배지: 게시 판에 실린 대주제 공동 자료(snapshot.shared_material_ids, 2026-09-28 이후 판) — 옛 판은 배지 없이 */}
+      <MaterialsSection materials={snapshot.materials} embeddedIds={[...embeddedMaterialIds(snapshot.assessment?.items)]} sharedIds={snapshot.shared_material_ids ?? []} />
       {mode === 'admin' && (snapshot.materials_omitted?.length ?? 0) > 0 && (
         <p data-print="omit" className="text-sm text-ink-500">{c.materialsOmitted(snapshot.materials_omitted!)}</p>
       )}
-      <AssessmentSection assessment={snapshot.assessment} materials={snapshot.materials} showAnswers={showAnswers} open={open} />
+      <AssessmentSection assessment={snapshot.assessment} materials={snapshot.materials} sharedIds={snapshot.shared_material_ids ?? []} showAnswers={showAnswers} open={open} />
       <TeacherGuideSection guide={snapshot.teacher_guide} lessons={snapshot.lessons} />
       <NoticePlanSection plan={snapshot.notice_plan} />
 

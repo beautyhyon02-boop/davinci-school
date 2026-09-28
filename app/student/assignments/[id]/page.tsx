@@ -64,7 +64,7 @@ export default async function StudentAssignmentPage({ params }: { params: Promis
           {isUnitAssessmentSession(lesson) && <p className="mt-2 rounded-xl bg-lemon-100 p-3 text-sm">{copy.assessmentIntro(SHORT_MINUTES, ESSAY_MINUTES)}</p>}
         </section>
         {/* 이 차시가 쓰는 자료(표·자동 그래프·설명글) — 결석생도 앱만 보고 풀 수 있어야 한다(스펙 §5.2). */}
-        <MaterialsSection materials={snapshot.materials.filter((m) => materialIds.includes(m.id))} />
+        <MaterialsSection materials={snapshot.materials.filter((m) => materialIds.includes(m.id))} sharedIds={snapshot.shared_material_ids ?? []} />
         {lesson.formative_check.quiz.length > 0 && (
           // 제출 전에는 정답·해설을 브라우저로 보내지 않는다(문제·유형·보기만). 제출한 뒤에야 결과 화면용으로 전체를 넘긴다.
           <QuizForm assignmentId={id} lessonNo={no}
@@ -84,7 +84,7 @@ export default async function StudentAssignmentPage({ params }: { params: Promis
             <div key={itemNo} className="space-y-5">
               <AnswerEditor assignmentId={id} itemNo={itemNo} attempt={1} initialBody={ans1?.body ?? ''} submitted={!!ans1?.submitted_at}
                 label={label} points={item.points} stem={item.stem} conditions={conditions}
-                materials={<ItemMaterials item={item} materials={snapshot.materials} />} />
+                materials={<ItemMaterials item={item} materials={snapshot.materials} sharedIds={snapshot.shared_material_ids ?? []} />} />
               {r1 && <ResultView label={label} points={item.points} attempt={1} grading={r1} />}
               {r1 && assignment.allow_retry && !ans2 && <RetryButton assignmentId={id} itemNo={itemNo} />}
               {ans2 && (

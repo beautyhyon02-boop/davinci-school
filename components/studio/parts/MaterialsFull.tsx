@@ -106,8 +106,14 @@ export function MaterialBody({ material: m }: { material: MaterialLike }) {
   )
 }
 
+/** 대주제 공동 자료 배지(대표 결정 2026-09-28: 「공동」) — 목록·문항 안 자료 상자가 같은 배지를 쓴다. 인쇄에도 남는다. */
+function SharedBadge() {
+  return <Badge tone="lavender">{copy.materials.sharedBadge}</Badge>
+}
+
 /**
- * 자료 목록(카드 틀 없이). sharedIds = 대주제 공유 자료의 ID — 제작소 4단계 탭에서 세트 자료와 구별해 '공유' 배지를 단다.
+ * 자료 목록(카드 틀 없이). sharedIds = 이 세트가 체크한 대주제 공동 자료의 ID — 세트 자료와 구별해 「공동」 배지를 단다
+ * (제작소 4단계 탭, 원장 패키지 화면·학생 화면의 자료 칸).
  * printOmitIds = 문항 카드 안에 이미 실린 자료 — 문제지 인쇄에서 두 번 나오지 않게 data-print="omit"으로 둔다(화면에는 그대로).
  */
 export function MaterialsFull({ materials, sharedIds = [], printOmitIds = [] }: { materials: MaterialLike[]; sharedIds?: string[]; printOmitIds?: string[] }) {
@@ -120,7 +126,7 @@ export function MaterialsFull({ materials, sharedIds = [], printOmitIds = [] }: 
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-full bg-mint-500 px-3 py-1 text-sm font-bold text-white">{c.idLabel} {m.id}</span>
             <p className="text-base font-bold">{cleanMaterialTitle(m.title ?? '')}</p>
-            {sharedIds.includes(m.id) && <Badge tone="lavender">{c.sharedBadge}</Badge>}
+            {sharedIds.includes(m.id) && <SharedBadge />}
             <SourceBadge material={m} />
           </div>
           <MaterialBody material={m} />
@@ -135,13 +141,13 @@ export function MaterialsFull({ materials, sharedIds = [], printOmitIds = [] }: 
  * embeddedIds = 문항 카드 안에 이미 실린 자료(문항 = 자료 + 문항 한 덩어리). 문제지 인쇄(print="keep")에는 문항 안에 없는 자료가
  * 하나라도 있을 때만 이 칸을 남기고, 남겨도 문항 안에 있는 자료는 빼서 같은 자료가 두 번 인쇄되지 않게 한다.
  */
-export function MaterialsSection({ materials, embeddedIds = [] }: { materials: MaterialLike[]; embeddedIds?: string[] }) {
+export function MaterialsSection({ materials, embeddedIds = [], sharedIds = [] }: { materials: MaterialLike[]; embeddedIds?: string[]; sharedIds?: string[] }) {
   if (materials.length === 0) return null
   const allEmbedded = materials.every((m) => embeddedIds.includes(m.id))
   return (
     <Card print={allEmbedded ? undefined : 'keep'}>
       <h2 className="text-lg font-bold">{copy.materialsHeading}</h2>
-      <MaterialsFull materials={materials} printOmitIds={embeddedIds} />
+      <MaterialsFull materials={materials} printOmitIds={embeddedIds} sharedIds={sharedIds} />
     </Card>
   )
 }
@@ -150,8 +156,9 @@ export function MaterialsSection({ materials, embeddedIds = [] }: { materials: M
  * 문항 안 자료 상자(대표 연수 2기 p.18~20 — 실제 서논술 문항은 전제문 바로 아래 <자료1>·<자료2> 상자, 그 뒤 발문).
  * materials_used 순서대로 <자료 1>, <자료 2> … 라벨(문항 안 번호)과 작은 세트 ID 표시("자료 B" — 옛 문두도 읽히게)를 단다.
  * 관리자·원장 문항 카드(PackageView), 제작소 5단계 탭(Stage5Summary), 학생 단원 평가 탭, 문제지 인쇄가 같은 상자를 쓴다.
+ * sharedIds = 대주제 공동 자료의 ID — 그 자료 상자의 제목 줄에 「공동」 배지를 단다.
  */
-export function ItemMaterials({ item, materials }: { item: { materials_used?: readonly unknown[] | null }; materials: MaterialLike[] }) {
+export function ItemMaterials({ item, materials, sharedIds = [] }: { item: { materials_used?: readonly unknown[] | null }; materials: MaterialLike[]; sharedIds?: string[] }) {
   const labels = itemMaterialLabels(item)
   if (labels.length === 0) return null
   const byId = new Map(materials.map((m) => [m.id, m]))
@@ -168,6 +175,7 @@ export function ItemMaterials({ item, materials }: { item: { materials_used?: re
               <>
                 <div className="mt-1 flex flex-wrap items-center justify-center gap-2">
                   {cleanMaterialTitle(m.title ?? '') !== '' && <p className="text-sm font-semibold">{cleanMaterialTitle(m.title ?? '')}</p>}
+                  {sharedIds.includes(m.id) && <SharedBadge />}
                   <SourceBadge material={m} />
                 </div>
                 <MaterialBody material={m} />

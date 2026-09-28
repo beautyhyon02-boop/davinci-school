@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getSessionProfile } from '@/lib/auth/session'
 import { canCreateSet, validateStandardSelection, validateStandardIds, parseSharedMaterialsInput, addThemeSubjects, removeThemeSubject, parseThemeGrade, GRADE_NONE } from '@/lib/studio/themes'
 import type { Subject } from '@/lib/studio/schemas'
+import { validateSharedMaterialIds } from '@/lib/studio/shared-selection'
 import { app } from '@/content/site'
 
 const errors = app.studio.errors
@@ -14,13 +15,17 @@ async function assertAdmin() {
   return s
 }
 
-export async function createItemSet(themeId: string, subject: Subject, standardIds: string[]) {
+/**
+ * sharedMaterialIds = 이 세트에서 쓸 대주제 공동 자료 ID(대표 결정 2026-09-28, 기본 [] = 아무것도 안 씀). 대주제 자료에 없는 ID가
+ * 섞이면 세트를 만들지 않는다(lib/studio/shared-selection.ts validateSharedMaterialIds). 만든 뒤에는 세트 화면에서 바꾼다.
+ */
+export async function createItemSet(themeId: string, subject: Subject, standardIds: string[], sharedMaterialIds: string[] = []) {
   await assertAdmin()
   const supabase = await createClient()
 
   const { data: theme, error: themeErr } = await supabase
     .from('themes')
-    .select('subjects, level, grade')
+    .select('subjects, level, grade, materials')
     .eq('id', themeId)
     .single()
   if (themeErr || !theme) return { ok: false as const, error: errors.themeNotFound }
@@ -52,6 +57,10 @@ export async function createItemSet(themeId: string, subject: Subject, standardI
   const validation = validateStandardSelection(standards, { level: theme.level as string, subject })
   if (!validation.ok) return { ok: false as const, error: validation.issues[0] }
 
+  const themeMaterialIds = (Array.isArray(theme.materials) ? (theme.materials as { id?: unknown }[]) : []).map((m) => m.id).filter((id): id is string => typeof id === 'string')
+  const sharedCheck = validateSharedMaterialIds(sharedMaterialIds, themeMaterialIds)
+  if (!sharedCheck.ok) return { ok: false as const, error: app.studio.sharedSelection.errors.invalid(sharedCheck.invalid) }
+
   const { data: itemSet, error: insertErr } = await supabase
     .from('item_sets')
     .insert({
@@ -60,6 +69,7 @@ export async function createItemSet(themeId: string, subject: Subject, standardI
       level: theme.level,
       grade: theme.grade,
       status: 'draft',
+      shared_material_ids: sharedCheck.ids,
       stage_status: {
         stage1: {
           state: 'accepted',
