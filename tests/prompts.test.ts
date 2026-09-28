@@ -158,6 +158,24 @@ describe('prompts v2', () => {
     expect(u).toContain('A, B'); expect(u).toMatch(/C부터 이어서/); expect(u).toMatch(/source\.kind는 "자작"/)
     expect(buildPrompt(3, { ...ctx, prior: { shared_materials: shared } }).user).not.toMatch(/이어서 붙여라/)
   })
+  // 대표 결정 2026-09-28(세트별 공동 자료 선택): 고른 것이 띄엄띄엄([B, D])이어도 세트 자료는 대주제 공동 자료 전체(A~D) 뒤 E부터
+  it('stage 4 lettering with a non-contiguous selection [B, D] continues after ALL theme letters and reserves A·C', () => {
+    const shared = ['B', 'D'].map((id) => ({ id, title: `자료 ${id}`, kind: 'text', body: 'x', table: null, source: { kind: '자작', attribution: null, ai_assisted: false } }))
+    const u = buildPrompt(4, { ...ctx, prior: { shared_materials: shared }, themeMaterialIds: ['A', 'B', 'C', 'D'] }).user
+    expect(u).toContain('대주제 공유 자료 ID: B, D'); expect(u).toMatch(/E부터 이어서/)
+    expect(u).toMatch(/대주제 공유 자료 A, C는 이 세트에서 쓰지 않으므로 인용하지 말고/)
+    expect(u).not.toMatch(/C부터/)
+    // 선택이 전체 뒤쪽 글자만이어도 같다: [D] → E
+    const u2 = buildPrompt(4, { ...ctx, prior: { shared_materials: shared.slice(1) }, themeMaterialIds: ['A', 'B', 'C', 'D'] }).user
+    expect(u2).toContain('대주제 공유 자료 ID: D'); expect(u2).toMatch(/E부터 이어서/)
+  })
+  it('stage 4 lettering with an empty selection still reserves the theme letters; no theme materials → no lettering line', () => {
+    const u = buildPrompt(4, { ...ctx, prior: {}, themeMaterialIds: ['A', 'B', 'C', 'D'] }).user
+    expect(u).toMatch(/이 세트는 대주제 공유 자료를 쓰지 않는다/); expect(u).toMatch(/E부터 붙여라\(A, B, C, D는 대주제 공유 자료 글자라 비워 둔다\)/)
+    expect(u).not.toContain('"shared_materials"')
+    expect(buildPrompt(4, { ...ctx, prior: {}, themeMaterialIds: [] }).user).not.toMatch(/부터 (이어서 )?붙여라/)
+    expect(buildPrompt(4, { ...ctx, prior: {} }).user).not.toMatch(/부터 (이어서 )?붙여라/)
+  })
   it('stage 4 task tells the model not to put source markers (자작·가상 등) in material titles — 출처는 source 필드에만(대표 2026-09-26)', () => {
     const task = buildPrompt(4, ctx).user.split('과제: ')[1]
     expect(task).toContain('자료 제목에는 자작·가상·본사·공개 자료 같은 출처 표기를 쓰지 않는다(출처는 source 필드에만)')

@@ -8,6 +8,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { StageOutput } from '@/app/admin/items/[themeId]/sets/[setId]/StageOutput'
 import { stageMaterialsView } from '@/lib/studio/materials'
 import { withMaterialDefaults } from '@/lib/studio/draft-defaults'
+import { selectSharedMaterials } from '@/lib/studio/shared-selection'
 import type { WizardStage } from '@/lib/studio/wizard-stages'
 import { app } from '@/content/site'
 
@@ -121,7 +122,7 @@ describe('stage 4 — theme shared materials the set references', () => {
     { id: 'Z', title: '안 쓰는 공유 자료', kind: 'text', body: '이 세트와 무관', table: null, source: '자작' },
   ].map(withMaterialDefaults)
 
-  it('shows referenced shared materials with the 공유 badge, hides unreferenced ones', () => {
+  it('shows referenced shared materials with the 공동 badge, hides unreferenced ones', () => {
     const lessons = structuredClone(outputs[3]) as { lessons: { materials_used: string[] }[] }
     lessons.lessons[0].materials_used = [...lessons.lessons[0].materials_used, 'C']
     const html = render(4, { ...outputs, 3: lessons }, shared)
@@ -144,6 +145,36 @@ describe('stage 4 — theme shared materials the set references', () => {
     expect(v.overridden).toEqual(['B'])
     expect(text(render(4, { 4: { materials: [{ id: 'B', title: '세트 B', kind: 'text', body: '세트 본문', table: null }] }, 3: { lessons: [{ no: 1, materials_used: ['B'] }] } }, [withMaterialDefaults({ id: 'B', title: '공유 B', kind: 'text', body: '공유 본문', table: null })])))
       .toContain(w.stage4.overriddenNote(['B']))
+  })
+})
+
+// 대표 결정 2026-09-28: 세트 화면(page.tsx)은 체크한 공동 자료만(selectSharedMaterials) 탭에 넘긴다 — 체크하지 않은 것은 가리켜도 보이지 않는다.
+describe('stage 4/5 — only the shared materials this set ticked, with the 공동 badge', () => {
+  const theme = ['A', 'B', 'C', 'D'].map((id) => withMaterialDefaults({ id, title: `공동 자료 ${id}`, kind: 'text', body: `공동 본문 ${id}`, table: null, source: '자작' }))
+  const s4 = { materials: [{ id: 'E', title: '세트 자료 E', kind: 'text', body: '세트 본문 E', table: null }] }
+  // 차시가 A·B·D·E 를 모두 가리켜도 체크한 B·D 만 공동 자료로 보인다
+  const s3 = { lessons: [{ no: 1, materials_used: ['A', 'B', 'D', 'E'] }] }
+
+  it('4단계 탭: selection [B, D] → B·D with the badge, A·C never shown', () => {
+    const html = render(4, { 3: s3, 4: s4 }, selectSharedMaterials(theme, ['B', 'D']))
+    const t = text(html)
+    expect(t).toContain('공동 본문 B'); expect(t).toContain('공동 본문 D'); expect(t).toContain('세트 본문 E')
+    expect(t).not.toContain('공동 본문 A'); expect(t).not.toContain('공동 본문 C')
+    expect(count(html, `>${c.materials.sharedBadge}<`)).toBe(2)
+    expect(c.materials.sharedBadge).toBe('공동')
+  })
+  it('4단계 탭: empty selection → no shared material, no badge, no shared note', () => {
+    const html = render(4, { 3: s3, 4: s4 }, selectSharedMaterials(theme, []))
+    expect(text(html)).not.toMatch(/공동 본문/)
+    expect(count(html, `>${c.materials.sharedBadge}<`)).toBe(0)
+    expect(text(html)).not.toContain(w.stage4.sharedNote)
+  })
+  it('5단계 탭: the item material box of a ticked shared material carries the badge', () => {
+    const items = [{ kind: '서술형', points: 6, stem: '문두', materials_used: ['B', 'E'], conditions: null, rubric: { criteria: [] } }]
+    const html = render(5, { 3: s3, 4: s4, 5: { items, grade_boundaries: [], feedback_templates: { 상: '', 중: '', 하: '' } } }, selectSharedMaterials(theme, ['B']))
+    const box = html.slice(html.indexOf('data-item-materials'))
+    expect(count(box, `>${c.materials.sharedBadge}<`)).toBe(1)
+    expect(text(box)).toContain('공동 본문 B')
   })
 })
 

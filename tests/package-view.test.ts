@@ -454,3 +454,38 @@ describe('학년 선택(대표 2026-09-26): 표지·문제지의 학교급 표�
     }
   })
 })
+
+// 대표 결정 2026-09-28: 대주제 공동 자료는 세트가 체크한 것만 게시 판에 실리고, 원장·학생·인쇄 화면에서 「공동」 배지를 단다.
+describe.each([['수학', ['A', 'B']], ['과학', ['B', 'D']]] as const)('PackageView 공동 badge (%s, selection %j)', (subject, selection) => {
+  const sfx = subject === '과학' ? '-과학' : ''
+  const themeMaterials = (JSON.parse(readFileSync('docs/samples/2026-09-20-중1-일회용품-공유자료.json', 'utf8')) as { materials: { id: string; title: string }[] }).materials
+  const s2 = fx(`stage2-generate${sfx}`); const s3 = fx(`stage3-generate${sfx}`)
+  const snap = buildSnapshot({
+    theme: { title: '학교 축제, 일회용품을 줄이자', level: '중', grade: 1, intro: '', materials: themeMaterials as never },
+    itemSet: {
+      subject, level: '중', grade: 1, reconstruction: s2.reconstruction, reconstruction_detail: s2.standards, learning_goals: s2.learning_goals,
+      key_question: s2.key_question_candidates[0], unit_plan: s3.unit_plan, lessons: s3.lessons, materials: fx(`stage4-generate${sfx}`).materials,
+      assessment: fx(`stage5-generate${sfx}`), teacher_guide: fx(`stage6-generate${sfx}`), notice_plan: fx(`stage7-generate${sfx}`),
+      stage_status: {}, shared_material_ids: [...selection],
+    },
+    standards: [], version: 1,
+  })
+  const html = render(snap, 'teacher')
+
+  it('only the ticked shared materials are in the snapshot, and they are the ones marked shared', () => {
+    expect(snap.shared_material_ids).toEqual([...selection])
+    const unticked = ['A', 'B', 'C', 'D'].filter((id) => !(selection as readonly string[]).includes(id))
+    for (const id of unticked) expect(snap.materials.find((m) => m.id === id)?.title ?? '').not.toBe(themeMaterials.find((m) => m.id === id)!.title)
+  })
+  it('every shared material carries the 공동 badge in the material list and in the item boxes (print too — no omit wrapper)', () => {
+    expect(c.materials.sharedBadge).toBe('공동')
+    const badges = html.split(`>${c.materials.sharedBadge}<`).length - 1
+    const inItems = snap.assessment!.items.flatMap((it) => it.materials_used).filter((id) => (selection as readonly string[]).includes(id)).length
+    expect(badges).toBeGreaterThanOrEqual(inItems)
+    expect(inItems).toBeGreaterThan(0)
+  })
+  it('an old snapshot without shared_material_ids renders without badges', () => {
+    const old = { ...snap }; delete (old as { shared_material_ids?: string[] }).shared_material_ids
+    expect(render(old, 'teacher')).not.toContain(`>${c.materials.sharedBadge}<`)
+  })
+})

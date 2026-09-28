@@ -4,7 +4,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync, readdirSync } from 'node:fs'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { MaterialsFull, MaterialsSection } from '@/components/studio/parts/MaterialsFull'
+import { MaterialsFull, MaterialsSection, ItemMaterials } from '@/components/studio/parts/MaterialsFull'
 import { LessonCards } from '@/components/studio/parts/LessonCards'
 import { TeacherGuideView } from '@/components/studio/parts/TeacherGuideView'
 import { NoticePlanView } from '@/components/studio/parts/NoticePlanView'
@@ -78,6 +78,16 @@ describe.each(['수학', '과학'] as const)('parts (%s fixtures)', (subject) =>
       expect(html).not.toContain(`>${c.materials.sharedBadge}<`)
       const shared = renderToStaticMarkup(createElement(MaterialsFull, { materials, sharedIds: [materials[0].id] }))
       expect(count(shared, `>${c.materials.sharedBadge}<`)).toBe(1)
+    })
+    // 대표 결정 2026-09-28: 「공동」 배지는 자료 칸(MaterialsSection)과 문항 안 자료 상자(ItemMaterials) 모두에 — 인쇄에서도 빠지지 않는다
+    it('MaterialsSection and ItemMaterials mark shared materials with the 공동 badge only when asked', () => {
+      const id = materials[0].id
+      const card = renderToStaticMarkup(createElement(MaterialsSection, { materials, sharedIds: [id] }))
+      expect(count(card, `>${c.materials.sharedBadge}<`)).toBe(1)
+      const box = renderToStaticMarkup(createElement(ItemMaterials, { item: { materials_used: [id] }, materials, sharedIds: [id] }))
+      expect(count(box, `>${c.materials.sharedBadge}<`)).toBe(1)
+      expect(box.slice(0, box.indexOf(`>${c.materials.sharedBadge}<`))).not.toMatch(/data-print="omit"[^>]*>[^<]*$/)
+      expect(renderToStaticMarkup(createElement(ItemMaterials, { item: { materials_used: [id] }, materials }))).not.toContain(`>${c.materials.sharedBadge}<`)
     })
     it('MaterialsSection wraps the same list in the print-kept card', () => {
       const card = renderToStaticMarkup(createElement(MaterialsSection, { materials }))

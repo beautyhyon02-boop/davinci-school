@@ -10,13 +10,22 @@ import { buildPrompt, buildReviewPrompt } from '@/lib/studio/prompts/stages'
 import { buildFixturesV2, serialize } from '@/scripts/upgrade-fixtures-v2'
 import { judgeQuiz } from '@/lib/classroom/quiz'
 import { statesAnswer } from '@/lib/studio/compat'
+import { selectSharedMaterials } from '@/lib/studio/shared-selection'
+import { withMaterialDefaults } from '@/lib/studio/draft-defaults'
 
 const STAGES = [2, 3, 4, 5, 6, 7] as const
-const SETS = [{ suffix: '', subject: '수학', standards: 'standards-math.json' }, { suffix: '-과학', subject: '과학', standards: 'standards-science.json' }] as const
+// shared = 이 세트에서 쓸 공동 자료(대표 결정 2026-09-28, item_sets.shared_material_ids) — 수학 fixture 차시·문항은 A·B, 과학은 B·D를 쓴다.
+// 기본값([])이면 공동 자료가 AI 입력·검사에서 빠지므로, 시연 세트는 이렇게 명시적으로 체크해야 e2e 가 공동 자료를 실제로 거친다.
+const SETS = [
+  { suffix: '', subject: '수학', standards: 'standards-math.json', shared: ['A', 'B'] },
+  { suffix: '-과학', subject: '과학', standards: 'standards-science.json', shared: ['B', 'D'] },
+] as const
 const std = (f: string) => JSON.parse(readFileSync(`data/studio-fixtures/${f}`, 'utf8')) as { code: string; text: string }[]
-// 시연 대주제(중1 일회용품)의 공유 자료 ID — docs/samples/2026-09-20-중1-일회용품-공유자료.json. 3·5단계 [TS] 자문
-// (sharedMaterialCitationIssues, checks.ts)을 실제 fixture로 e2e 돌리는 데 쓴다 — 시연 fixture는 자문이 없어야 한다.
-const SHARED_MATERIAL_IDS = ['A', 'B', 'C', 'D']
+// 시연 대주제(중1 일회용품)의 공동 자료 A~D — docs/samples/2026-09-20-중1-일회용품-공유자료.json. 세트가 체크한 것만 3·5단계 [TS] 자문
+// (sharedMaterialCitationIssues, checks.ts)과 runStage 의 prior.shared_materials 로 들어간다(repo.ts loadContext 와 같은 거르기) — 시연 fixture는 자문이 없어야 한다.
+const THEME_MATERIALS = (JSON.parse(readFileSync('docs/samples/2026-09-20-중1-일회용품-공유자료.json', 'utf8')) as { materials: { id: string; title: string }[] }).materials
+const THEME_MATERIAL_IDS = THEME_MATERIALS.map((m) => m.id)
+const sharedFor = (set: (typeof SETS)[number]) => selectSharedMaterials(THEME_MATERIALS, set.shared).map(withMaterialDefaults)
 
 describe('fixture keys', () => {
   const ctx = { theme: { title: 't', level: '중', grade: 1, subjects: ['수학', '과학'] }, subject: '과학', standards: [], prior: {} }
@@ -54,7 +63,7 @@ for (const set of SETS) describe(`${set.subject} fixtures (v2)`, () => {
     const gen = loadFixture(`stage${n}-generate${set.suffix}`)
     const parsed = STAGE_SCHEMAS[n].safeParse(gen)
     expect(parsed.error?.issues.map((i) => `${i.path.join('.')}: ${i.message}`) ?? []).toEqual([])
-    expect(staticIssues(n, gen, { standards, prior, sharedMaterialIds: SHARED_MATERIAL_IDS }).map((i) => `${i.kind}: ${i.detail}`)).toEqual([])
+    expect(staticIssues(n, gen, { standards, prior, sharedMaterialIds: [...set.shared] }).map((i) => `${i.kind}: ${i.detail}`)).toEqual([])
     expect(Review.safeParse(loadFixture(`stage${n}-review${set.suffix}`)).success).toBe(true)
     prior[`stage${n}`] = gen
   })
@@ -256,7 +265,8 @@ function mockRepo(set: (typeof SETS)[number], logs: unknown[] = []) {
   const standards = std(set.standards); const outputs: Record<number, unknown> = {}; const statuses: Record<number, StageStatus> = {}
   for (let s = 0; s < 2; s++) { outputs[s] = { placeholder: `stage${s}` }; statuses[s] = { state: 'accepted', attempt: 1, output: outputs[s], review: { pass: true, issues: [] }, updated_at: '' } }
   const repo: Repo = {
-    async loadContext() { return { theme: { title: '학교 축제, 일회용품을 줄이자', level: '중', grade: 1, subjects: ['수학', '과학'] }, subject: set.subject, standards, prior: {}, outputs, statuses } },
+    // 세트가 체크한 공동 자료만 prior.shared_materials 로(repo.ts loadContext 와 같은 규칙), 자료 ID 이어 붙이기용 대주제 ID 전체는 themeMaterialIds 로
+    async loadContext() { return { theme: { title: '학교 축제, 일회용품을 줄이자', level: '중', grade: 1, subjects: ['수학', '과학'] }, subject: set.subject, standards, prior: { shared_materials: sharedFor(set) }, themeMaterialIds: THEME_MATERIAL_IDS, outputs, statuses } },
     async saveOutput(_id, stage, out) { outputs[stage] = out }, async saveStatus(_id, stage, st) { statuses[stage] = st }, async log(e) { logs.push(e) },
   }
   return { repo, outputs, statuses }
@@ -286,5 +296,17 @@ describe('runStage end-to-end in mock mode (2~7단계)', () => {
       expect(r.status.review?.pass).toBe(true); expect(r.status.notes).toEqual([]); expect(r.status.error).toBeUndefined()
       expect((await runStage({ itemSetId: 'x', stage, action: 'accept', repo })).status.state).toBe('accepted')
     }
+  })
+})
+
+// 대표 결정 2026-09-28: 시연 세트의 공동 자료 선택이 e2e 문맥에 그대로 실리는지(수학 A·B, 과학 B·D) — 선택하지 않은 공동 자료는 프롬프트에 없다.
+describe('mock e2e context carries the explicit shared selection', () => {
+  for (const set of SETS) it(`${set.subject}: prior.shared_materials = ${set.shared.join('·')}, stage 4 lettering continues after all theme IDs`, async () => {
+    const ctx = await mockRepo(set).repo.loadContext('x')
+    expect((ctx.prior.shared_materials as { id: string }[]).map((m) => m.id)).toEqual([...set.shared])
+    const u = buildPrompt(4, ctx).user
+    expect(u).toContain(`대주제 공유 자료 ID: ${set.shared.join(', ')}`)
+    expect(u).toMatch(/E부터 이어서/)
+    for (const m of THEME_MATERIALS.filter((x) => !(set.shared as readonly string[]).includes(x.id))) expect(u).not.toContain(JSON.stringify(m.title))
   })
 })

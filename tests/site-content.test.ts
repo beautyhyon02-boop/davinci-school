@@ -224,13 +224,25 @@ describe('site content', () => {
     // 단계 탭은 완성본 그대로(오너 규칙 2026-09-26) — 옛 요약 문구(차시 표 열·표 미리보기·개수 요약)는 없다
     expect(app.studio.wizard.stage3.unitPlanHeading).toBe('평가 계획')
     expect(app.studio.wizard.stage3.guidePending).toContain('6단계')
-    expect(app.studio.wizard.stage4.sharedNote).toContain('공유')
+    expect(app.studio.wizard.stage4.sharedNote).toContain('「공동」')
     expect(app.studio.wizard.stage4.overriddenNote(['A', 'C'])).toContain('자료 A, 자료 C')
     expect(JSON.stringify(app.studio.wizard)).not.toMatch(/상위 5행|미리보기\(|용어 \d|차시별 메모 \d/)
     expect('stage6' in app.studio.wizard || 'stage7' in app.studio.wizard).toBe(false)
     expect(app.packageView.lessons.teacherBlockHeading).toBe('교사용 지침')
     expect(app.packageView.lessons.guideNotesHeading).toBeTruthy()
-    expect(app.packageView.materials.sharedBadge).toBe('공유')
+    // 대표 결정 2026-09-28: 대주제 공동 자료 배지는 「공동」 — 단계 탭·원장·학생·인쇄·선택 칸이 이 한 키를 쓴다
+    expect(app.packageView.materials.sharedBadge).toBe('공동')
+    const sel = app.studio.sharedSelection
+    expect(sel.heading).toBe('이 세트에서 쓸 공동 자료')
+    expect(sel.description).toBeTruthy(); expect(sel.createDescription).toMatch(/아무것도 쓰지 않음/)
+    expect(sel.empty).toBeTruthy(); expect(sel.noneSelected).toBeTruthy(); expect(sel.save).toBeTruthy(); expect(sel.saving).toBeTruthy(); expect(sel.saved).toBeTruthy()
+    expect(sel.idLabel('B')).toBe('자료 B')
+    expect(sel.kindLabel.table).toBe('표'); expect(sel.kindLabel.text).toBe('글'); expect(sel.kindLabel.chart).toBe('그래프')
+    expect(sel.selectedSummary(['B', 'D'])).toContain('자료 B, 자료 D')
+    expect(sel.regenNotice).toMatch(/다시 생성/); expect(sel.regenNotice).toMatch(/막지 않습니다/)
+    expect(sel.errors.invalid(['Q'])).toContain('Q'); expect(sel.errors.invalid([])).toBeTruthy(); expect(sel.errors.saveFailed).toBeTruthy()
+    // 배지 글자는 한 키만 — 선택 칸이 따로 배지 문구를 두지 않는다
+    expect(JSON.stringify(sel)).not.toMatch(/"공동"|"공유"/)
     expect(app.packageView.teacherGuide.lessonWithTopic(2, '도수분포표')).toBe('2차시 · 도수분포표')
     expect(app.studio.wizard.stage5.pointsLabel(3)).toContain('3')
     expect(app.studio.wizard.stage5.boundaryRange(15, 18)).toBe('15~18점')

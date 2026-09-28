@@ -121,7 +121,7 @@ describe.each(['수학', '과학'] as const)('student 단원 평가 tab embeds e
   it('the page wires it: section = sectionMaterialIds, first answer card gets ItemMaterials', () => {
     const src = readFileSync('app/student/assignments/[id]/page.tsx', 'utf8')
     expect(src).toContain('sectionMaterialIds(lesson, lessonItems)')
-    expect(src).toMatch(/materials=\{<ItemMaterials item=\{item\} materials=\{snapshot\.materials\} \/>\}/)
+    expect(src).toMatch(/materials=\{<ItemMaterials item=\{item\} materials=\{snapshot\.materials\} sharedIds=\{snapshot\.shared_material_ids \?\? \[\]\} \/>\}/)
     expect(src.match(/<ItemMaterials /g)).toHaveLength(1)   // 재도전 답안 칸에는 다시 싣지 않는다(바로 위에 있다)
   })
 })

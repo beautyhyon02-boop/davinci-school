@@ -150,6 +150,9 @@ const baseItemSet = {
   stage_status: { stage2: accepted('claude-a'), stage4: accepted('claude-b') } as Record<string, StageStatus | undefined>,
 }
 
+// 대표 결정 2026-09-28(마이그레이션 0013): 공동 자료는 세트가 체크한 것(shared_material_ids)만 실린다 — 대주제 자료가 섞이는 기존 테스트는 A~D 를 모두 체크한다.
+const ALL_SHARED = ['A', 'B', 'C', 'D']
+
 function material(id: string, title: string): MaterialT {
   return { id, title, kind: 'text', body: '본문', table: null, source: { kind: '자작', attribution: null, ai_assisted: false }, role: 'raw', images: [] }
 }
@@ -201,7 +204,7 @@ describe('buildSnapshot', () => {
   // 스펙 §1: 한 대주제의 모든 과목이 자료 A~D 를 공유한다 → id 가 겹치면 공유(대주제) 자료가 이기고 세트 자료는 버린다.
   it('merges theme materials and set materials by id, theme wins on conflict, sorted by id', () => {
     const theme = { ...baseTheme, materials: [material('A', '대주제 자료 A'), material('C', '대주제 자료 C')] }
-    const itemSet = { ...baseItemSet, materials: [material('B', '세트 자료 B'), material('A', '세트가 덮어쓰려 한 자료 A')] }
+    const itemSet = { ...baseItemSet, shared_material_ids: ['A', 'C'], materials: [material('B', '세트 자료 B'), material('A', '세트가 덮어쓰려 한 자료 A')] }
     const snap = buildSnapshot({ theme, itemSet, standards: [], version: 1 })
     expect(snap.materials.map((m) => m.id)).toEqual(['A', 'B', 'C'])
     expect(snap.materials.find((m) => m.id === 'A')!.title).toBe('대주제 자료 A')
@@ -224,7 +227,7 @@ describe('buildSnapshot', () => {
       mergeable_with: null,
     }
     const theme = { ...baseTheme, materials: [legacyMaterial] as never }
-    const itemSet = { ...baseItemSet, materials: null, lessons: [legacyLesson, legacyLesson, legacyLesson, legacyLesson] as never }
+    const itemSet = { ...baseItemSet, shared_material_ids: ['A'], materials: null, lessons: [legacyLesson, legacyLesson, legacyLesson, legacyLesson] as never }
     const snap = buildSnapshot({ theme, itemSet, standards: [], version: 1 })
     expect(snap.materials[0].images).toEqual([])
     expect(snap.lessons.every((l) => Array.isArray(l.images))).toBe(true)
@@ -280,7 +283,7 @@ describe('buildSnapshot: 참조하는 자료만 싣는다(materials_omitted)', (
   const assessment = { items, grade_boundaries: [], feedback_templates: { 상: '', 중: '', 하: '' } } as never
 
   it('shared A–D + set E–I, items use B·E·F → snapshot keeps B·E·F and lists the rest in materials_omitted', () => {
-    const snap = buildSnapshot({ theme, itemSet: { ...baseItemSet, materials: setMaterials, assessment }, standards: [], version: 1 })
+    const snap = buildSnapshot({ theme, itemSet: { ...baseItemSet, shared_material_ids: ALL_SHARED, materials: setMaterials, assessment }, standards: [], version: 1 })
     expect(snap.materials.map((m) => m.id)).toEqual(['B', 'E', 'F'])
     expect(snap.materials_omitted).toEqual(['A', 'C', 'D', 'G', 'H', 'I'])
   })
@@ -289,20 +292,20 @@ describe('buildSnapshot: 참조하는 자료만 싣는다(materials_omitted)', (
     const lessons = [
       { no: 1, materials_used: ['G'], worksheet: { tasks: [{ prompt: '자료 C와 D를 비교해 보자.' }], self_check: [] } },
     ] as never
-    const snap = buildSnapshot({ theme, itemSet: { ...baseItemSet, materials: setMaterials, assessment, lessons }, standards: [], version: 1 })
+    const snap = buildSnapshot({ theme, itemSet: { ...baseItemSet, shared_material_ids: ALL_SHARED, materials: setMaterials, assessment, lessons }, standards: [], version: 1 })
     expect(snap.materials.map((m) => m.id)).toEqual(['B', 'C', 'D', 'E', 'F', 'G'])
     expect(snap.materials_omitted).toEqual(['A', 'H', 'I'])
   })
 
   it('keeps B·C·D when the only reference to them is a range in a lesson sentence ("자료 A~D")', () => {
     const lessons = [{ no: 1, materials_used: [], flow: { intro: ['자료 A~D를 훑어보며 오늘 질문을 연다.'], main: [], wrapup: [] } }] as never
-    const snap = buildSnapshot({ theme, itemSet: { ...baseItemSet, materials: setMaterials, assessment, lessons }, standards: [], version: 1 })
+    const snap = buildSnapshot({ theme, itemSet: { ...baseItemSet, shared_material_ids: ALL_SHARED, materials: setMaterials, assessment, lessons }, standards: [], version: 1 })
     expect(snap.materials.map((m) => m.id)).toEqual(['A', 'B', 'C', 'D', 'E', 'F'])
     expect(snap.materials_omitted).toEqual(['G', 'H', 'I'])
   })
 
   it('keeps every material when nothing references any yet (early draft preview)', () => {
-    const snap = buildSnapshot({ theme, itemSet: { ...baseItemSet, materials: setMaterials }, standards: [], version: 1 })
+    const snap = buildSnapshot({ theme, itemSet: { ...baseItemSet, shared_material_ids: ALL_SHARED, materials: setMaterials }, standards: [], version: 1 })
     expect(snap.materials).toHaveLength(9)
     expect(snap.materials_omitted).toEqual([])
   })
@@ -324,7 +327,7 @@ describe('buildSnapshot: 단원 평가 차시 materials_used를 5단계 문항�
   ] as never
 
   it('overwrites the stale session materials_used (shared A·B·D) with the items\' actual F·H·I', () => {
-    const snap = buildSnapshot({ theme, itemSet: { ...baseItemSet, materials: setMaterials, assessment, lessons }, standards: [], version: 1 })
+    const snap = buildSnapshot({ theme, itemSet: { ...baseItemSet, shared_material_ids: ALL_SHARED, materials: setMaterials, assessment, lessons }, standards: [], version: 1 })
     const session = snap.lessons.find((l) => l.no === 2)!
     expect(session.materials_used).toEqual(['F', 'H', 'I'])
     // 교수 차시는 손대지 않는다
@@ -332,5 +335,46 @@ describe('buildSnapshot: 단원 평가 차시 materials_used를 5단계 문항�
     // 게시 판 자료 목록도 이제 실제로 쓰는 F·H·I만 남는다(A·B·D는 이 세트가 안 쓰므로 빠진다)
     expect(snap.materials.map((m) => m.id)).toEqual(['F', 'H', 'I'])
     expect(snap.materials_omitted).toEqual(['A', 'B', 'C', 'D'])
+  })
+})
+
+// 대표 결정 2026-09-28: 대주제 공동 자료는 세트별로 골라 쓴다(item_sets.shared_material_ids, 기본 []). 영어 세트에 수학 표가 섞이던 문제.
+describe('buildSnapshot: 세트가 체크한 공동 자료만 싣는다(shared_material_ids)', () => {
+  const theme = { ...baseTheme, materials: ['A', 'B', 'C', 'D'].map((id) => material(id, `공동 자료 ${id}`)) }
+  const setMaterials = [material('A', '세트 자료 A'), material('E', '세트 자료 E'), material('F', '세트 자료 F')]
+  const items = [{ materials_used: ['B', 'E'], references: [] }, { materials_used: ['E', 'F', 'A'], references: [] }]
+  const assessment = { items, grade_boundaries: [], feedback_templates: { 상: '', 중: '', 하: '' } } as never
+
+  it('selection [B, D]: only B·D can be merged, theme wins only for those; unselected A·C never appear (not even in materials_omitted)', () => {
+    const snap = buildSnapshot({ theme, itemSet: { ...baseItemSet, shared_material_ids: ['B', 'D'], materials: setMaterials, assessment }, standards: [], version: 1 })
+    expect(snap.materials.map((m) => m.id)).toEqual(['A', 'B', 'E', 'F'])
+    // A 는 체크하지 않은 공동 자료라 같은 ID 의 세트 자료를 누르지 않는다
+    expect(snap.materials.find((m) => m.id === 'A')!.title).toBe('세트 자료 A')
+    expect(snap.materials.find((m) => m.id === 'B')!.title).toBe('공동 자료 B')
+    // D 는 체크했지만 어느 문항·차시도 안 쓴다 → 빠지고 omitted 에 남는다(기존 규칙 그대로). C 는 이 세트의 자료가 아니라 omitted 에도 없다
+    expect(snap.materials_omitted).toEqual(['D'])
+    expect(snap.shared_material_ids).toEqual(['B'])
+  })
+
+  it('empty selection (default) → no shared material at all; the set material A stays', () => {
+    const snap = buildSnapshot({ theme, itemSet: { ...baseItemSet, shared_material_ids: [], materials: setMaterials, assessment }, standards: [], version: 1 })
+    expect(snap.materials.map((m) => m.id)).toEqual(['A', 'E', 'F'])
+    expect(snap.materials.find((m) => m.id === 'A')!.title).toBe('세트 자료 A')
+    expect(snap.materials_omitted).toEqual([])
+    expect(snap.shared_material_ids).toEqual([])
+  })
+
+  it('legacy set without the column (undefined / null / junk) behaves like the empty selection', () => {
+    for (const legacy of [undefined, null, 'B', [1, 'b', 'BB']]) {
+      const snap = buildSnapshot({ theme, itemSet: { ...baseItemSet, shared_material_ids: legacy, materials: setMaterials, assessment }, standards: [], version: 1 })
+      expect(snap.materials.map((m) => m.id), String(legacy)).toEqual(['A', 'E', 'F'])
+      expect(snap.shared_material_ids).toEqual([])
+    }
+  })
+
+  it('a selected ID the theme no longer has is ignored', () => {
+    const snap = buildSnapshot({ theme, itemSet: { ...baseItemSet, shared_material_ids: ['B', 'Q'], materials: setMaterials, assessment }, standards: [], version: 1 })
+    expect(snap.shared_material_ids).toEqual(['B'])
+    expect(snap.materials.map((m) => m.id)).toEqual(['A', 'B', 'E', 'F'])
   })
 })

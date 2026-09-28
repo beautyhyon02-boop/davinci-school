@@ -2,6 +2,7 @@
 import { describe, it, expect } from 'vitest'
 import { buildStatuses, createSupabaseRepo } from '@/lib/studio/repo'
 import type { StageStatus } from '@/lib/studio/stages'
+import { buildPrompt, buildReviewPrompt } from '@/lib/studio/prompts/stages'
 
 type Row = Record<string, unknown>
 type Result = { data: unknown; error: { message: string } | null }
@@ -115,6 +116,7 @@ describe('createSupabaseRepo (v2 columns)', () => {
   // 5단계 [TS] '원자료(raw) 1개 이상' 검사가 공유 자료만 인용한 문항을 잘못 반려하지 않게 한다. context 로 적힌 자료는 그대로.
   it('loadContext gives theme shared materials v2 defaults (source object, role raw unless context)', async () => {
     const tables = seed()
+    tables.item_sets[0].shared_material_ids = ['A', 'D']
     tables.themes[0].materials = [
       { id: 'A', title: '공유 A', kind: 'table', body: null, table: { columns: ['x'], rows: [[1]] }, source: '자작' },
       { id: 'D', title: '공유 D', kind: 'text', body: '배경', table: null, source: { kind: '공개', attribution: '환경부(2024)' }, role: 'context', images: ['https://x.test/a.png'] },
@@ -124,6 +126,48 @@ describe('createSupabaseRepo (v2 columns)', () => {
       { id: 'A', title: '공유 A', kind: 'table', body: null, table: { columns: ['x'], rows: [[1]] }, source: { kind: '자작', attribution: null, ai_assisted: false }, role: 'raw', images: [] },
       { id: 'D', title: '공유 D', kind: 'text', body: '배경', table: null, source: { kind: '공개', attribution: '환경부(2024)', ai_assisted: false }, role: 'context', images: ['https://x.test/a.png'] },
     ])
+  })
+
+  // 대표 결정 2026-09-28(마이그레이션 0013): 공동 자료는 세트가 체크한 것만 AI 입력(prior.shared_materials)·자동 검사로 간다.
+  describe('세트별 공동 자료 선택(shared_material_ids)', () => {
+    const themeMaterials = ['A', 'B', 'C', 'D'].map((id) => ({ id, title: `공동 ${id}`, kind: 'text', body: `본문 ${id}`, table: null, source: '자작' }))
+
+    it('passes only the selected shared materials [B, D] and exposes every theme ID for lettering', async () => {
+      const tables = seed()
+      tables.themes[0].materials = themeMaterials
+      tables.item_sets[0].shared_material_ids = ['D', 'B']
+      const ctx = await createSupabaseRepo(fakeSupabase(tables) as never).loadContext('set1')
+      expect((ctx.prior.shared_materials as { id: string }[]).map((m) => m.id)).toEqual(['B', 'D'])
+      expect(ctx.themeMaterialIds).toEqual(['A', 'B', 'C', 'D'])
+    })
+
+    it('empty selection (the default, and legacy rows) → no prior.shared_materials at all', async () => {
+      for (const sel of [[], null, undefined]) {
+        const tables = seed()
+        tables.themes[0].materials = themeMaterials
+        tables.item_sets[0].shared_material_ids = sel
+        const ctx = await createSupabaseRepo(fakeSupabase(tables) as never).loadContext('set1')
+        expect(ctx.prior.shared_materials, String(sel)).toBeUndefined()
+        expect(ctx.themeMaterialIds).toEqual(['A', 'B', 'C', 'D'])
+      }
+    })
+
+    it('unselected shared materials never reach the AI: stage 4·5 prompts carry only B·D, lettering continues after all theme IDs', async () => {
+      const tables = seed()
+      tables.themes[0].materials = themeMaterials
+      tables.item_sets[0].shared_material_ids = ['B', 'D']
+      const ctx = await createSupabaseRepo(fakeSupabase(tables) as never).loadContext('set1')
+      for (const stage of [4, 5] as const) {
+        const gen = buildPrompt(stage, ctx).user
+        const rev = buildReviewPrompt(stage, ctx, {}).user
+        for (const u of [gen, rev]) {
+          expect(u).toContain('본문 B'); expect(u).toContain('본문 D')
+          expect(u).not.toContain('본문 A'); expect(u).not.toContain('본문 C')
+        }
+      }
+      const u4 = buildPrompt(4, ctx).user
+      expect(u4).toContain('대주제 공유 자료 ID: B, D'); expect(u4).toMatch(/E부터 이어서/)
+    })
   })
 
   it('loadContext leaves outputs empty for stages whose columns are still null', async () => {
