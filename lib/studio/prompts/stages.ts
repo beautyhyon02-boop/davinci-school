@@ -145,7 +145,8 @@ export function fixtureKeyFor(stage: Stage, role: 'generate' | 'review', ctx: Ct
  */
 const GENERATE_PRIOR: Record<Stage, number[]> = { 0: [], 1: [0], 2: [0, 1], 3: [0, 2], 4: [0, 2, 3], 5: [0, 2, 3, 4], 6: [0, 3, 5], 7: [0, 3, 5] }
 /** 대주제 공유 자료(prior.shared_materials)를 같이 보여 줄 생성 단계: 4(공유 수치를 그대로 쓰고 ID를 이어 붙임)·5(문항이 공유 자료 ID를 참조). */
-const GENERATE_SHARED_MATERIALS = new Set<Stage>([4, 5])
+// 3단계도 받는다(2026-09-28): 차시가 공동 자료 중 무엇을 쓸지 고르려면 체크된 공동 자료를 봐야 한다(검토 지적).
+const GENERATE_SHARED_MATERIALS = new Set<Stage>([3, 4, 5])
 
 export function buildPrompt(stage: Stage, ctx: Ctx) {
   const lettering = stage === 4 ? sharedMaterialLettering(ctx) : ''
@@ -178,7 +179,7 @@ const REVIEW_FOCUS: Record<Stage, string> = {
  */
 const REVIEW_PRIOR: Record<Stage, number[]> = { 0: [], 1: [], 2: [1], 3: [2], 4: [3], 5: [3, 4], 6: [3, 5], 7: [3, 5] }
 /** 대주제 공유 자료(prior.shared_materials)를 같이 보여 줄 검토 단계: 4(공유 수치를 그대로 썼는지)·5(문항이 공유 자료 ID를 참조할 수 있음). */
-const REVIEW_SHARED_MATERIALS = new Set<Stage>([4, 5])
+const REVIEW_SHARED_MATERIALS = new Set<Stage>([3, 4, 5])
 
 /** 생성(GENERATE_PRIOR)·검토(REVIEW_PRIOR)가 같이 쓴다. scope 는 머리말 괄호 안 문구. */
 function priorBlockFor(ctx: Ctx, stages: number[], extraKeys: string[] = [], scope = '검토에 필요한 단계만'): string {

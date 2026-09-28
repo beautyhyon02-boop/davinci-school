@@ -457,3 +457,13 @@ describe('5단계 생성 입력 크기 가드(Hobby 300초, 5단계 effort high 
     })
   }
 })
+
+describe('stage 3 receives the ticked shared materials (2026-09-28)', () => {
+  it('generate and review priors for stage 3 include shared_materials; stage 2 does not', () => {
+    const shared = ['B', 'D'].map((id) => ({ id, title: `자료 ${id}`, kind: 'text', body: 'x', table: null, source: { kind: '자작', attribution: null, ai_assisted: false } }))
+    const c = { ...ctx, prior: { shared_materials: shared } }
+    expect(buildPrompt(3, c).user).toContain('"shared_materials"')
+    expect(buildReviewPrompt(3, c, { lessons: [] }).user).toContain('"shared_materials"')
+    expect(buildPrompt(2, c).user).not.toContain('"shared_materials"')
+  })
+})
