@@ -7,6 +7,7 @@ import { upgradeSnapshot as upgradeSnapshotCompat } from './compat'
 import { withMaterialDefaults, upgradeDraftColumns } from './draft-defaults'
 import { usedMaterialIds } from './materials'
 import { syncAssessmentSessionMaterials } from './assessment-structure'
+import { parseSharedMaterialIds, selectSharedMaterials } from './shared-selection'
 
 /** 게시 판 스냅샷(v2). 모양은 compat.ts 에 정의되어 있다 — 옛 v1 판은 읽을 때 upgradeSnapshot 으로 올린다. */
 export type Snapshot = SnapshotV2
@@ -100,6 +101,10 @@ export function selectUsedMaterials<M extends { id: string }>(materials: M[], us
 /**
  * 게시용 버전 스냅샷(v2)을 만든다. 자료는 대주제 공유 자료(theme.materials)와 세트 자료(itemSet.materials)를 id로 병합하되,
  * 같은 id가 있으면 대주제(공유) 자료가 이긴다(겹치는 세트 자료는 버린다) — 결과는 id 오름차순으로 정렬한다.
+ * 대표 결정 2026-09-28(마이그레이션 0013): 대주제 공동 자료는 이 세트가 고른 것(itemSet.shared_material_ids)만 병합한다 —
+ * 고르지 않은 것은 게시 판에 실리지 않고(materials_omitted 에도 넣지 않는다 — 처음부터 이 세트의 자료가 아니다), 같은 id 의
+ * 세트 자료를 누르지도 않는다(대주제 우선은 고른 것에만). 선택이 없거나 비었으면(옛 세트·열 없음) 공동 자료를 싣지 않는다.
+ * 실린 공동 자료의 ID는 snapshot.shared_material_ids 에 남겨 원장·학생·인쇄 화면이 「공동」 배지를 단다.
  * 병합한 자료 중 어느 문항·차시도 참조하지 않는 것(이 과목이 쓰지 않는 공유 자료 등)은 싣지 않고 materials_omitted 에 ID를 남긴다
  * (selectUsedMaterials — 관리자 미리보기에 한 줄로 보인다).
  * cover.version은 호출자가 넘긴다 — 다음 게시 버전 번호는 item_set_versions의 최댓값+1로 정하는데(고아 행에서도
@@ -113,6 +118,8 @@ export function buildSnapshot({ theme, itemSet, standards, version }: {
     reconstruction: string | null; reconstruction_detail: ReconstructedStandardT[] | null; learning_goals: LearningGoalT[] | null; key_question: string | null
     unit_plan: UnitPlanT | null; lessons: LessonT[] | null; materials: MaterialT[] | null; assessment: AssessmentT | null
     teacher_guide: TeacherGuideT | null; notice_plan: NoticePlanT | null; stage_status: Record<string, StageStatus | undefined> | null
+    /** 이 세트에서 쓸 대주제 공동 자료 ID(item_sets.shared_material_ids, jsonb). 없으면(옛 행) 빈 선택. */
+    shared_material_ids?: unknown
   }
   standards: PublishStandard[]
   version: number
@@ -122,7 +129,8 @@ export function buildSnapshot({ theme, itemSet, standards, version }: {
   // 같은 id 가 겹치면 대주제(공유) 자료가 이긴다 — 스펙 §1 대로 한 대주제의 모든 과목이 자료 A~D 를 공유하므로,
   // 세트 자료가 같은 글자를 다시 쓰면 공유 자료가 조용히 사라지는 대신 세트 쪽을 버린다.
   const merged = new Map<string, MaterialT>()
-  for (const m of materialsWithDefaults(theme.materials)) merged.set(m.id, m)
+  const selectedShared = new Set(parseSharedMaterialIds(itemSet.shared_material_ids))
+  for (const m of selectSharedMaterials(materialsWithDefaults(theme.materials), [...selectedShared])) merged.set(m.id, m)
   for (const m of materialsWithDefaults(up.materials)) if (!merged.has(m.id)) merged.set(m.id, m)
   // 단원 평가 차시 materials_used를 5단계 문항의 실제 자료로 맞춘다(오너 규칙 2026-09-26 보완) — 4단계보다 먼저 적어 둔
   // 대주제 공유 자료(예: 영어 세트의 수학 표 A~D)가 그대로 남아 있어도 다시 게시하면 여기서 항상 바로잡힌다.
@@ -144,6 +152,7 @@ export function buildSnapshot({ theme, itemSet, standards, version }: {
     lessons,
     materials,
     materials_omitted: omitted,
+    shared_material_ids: materials.filter((m) => selectedShared.has(m.id)).map((m) => m.id),
     assessment: up.assessment,
     teacher_guide: up.teacher_guide,
     notice_plan: itemSet.notice_plan ?? null,

@@ -4,6 +4,7 @@ import type { Repo, StageStatus, ThemeRepo } from './stages'
 import { keyQuestionAfterStage2 } from './edit-rules'
 import { withMaterialDefaults } from './draft-defaults'
 import { syncAssessmentSessionMaterials } from './assessment-structure'
+import { selectSharedMaterials } from './shared-selection'
 
 type Supabase = Awaited<ReturnType<typeof createClient>>
 
@@ -38,7 +39,7 @@ export function createSupabaseRepo(supabase: Supabase): Repo {
     async loadContext(itemSetId): Promise<Ctx & { outputs: Record<number, unknown>; statuses?: Record<number, StageStatus> }> {
       const { data: itemSet, error: itemSetErr } = await supabase
         .from('item_sets')
-        .select('theme_id, subject, level, grade, reconstruction, reconstruction_detail, learning_goals, unit_plan, lessons, materials, assessment, teacher_guide, notice_plan, stage_status')
+        .select('theme_id, subject, level, grade, reconstruction, reconstruction_detail, learning_goals, unit_plan, lessons, materials, assessment, teacher_guide, notice_plan, stage_status, shared_material_ids')
         .eq('id', itemSetId)
         .single()
       if (itemSetErr || !itemSet) throw new Error(`item_set not found: ${itemSetId}`)
@@ -85,9 +86,14 @@ export function createSupabaseRepo(supabase: Supabase): Repo {
       if (itemSet.notice_plan != null) outputs[7] = itemSet.notice_plan
 
       const prior: Record<string, unknown> = {}
+      // 대표 결정 2026-09-28(마이그레이션 0013): 대주제 공동 자료는 세트가 고른 것(item_sets.shared_material_ids)만 넘긴다 —
+      // 고르지 않은 것은 생성·검토 입력에도, 자동 검사의 sharedMaterialIds(stages.ts staticCheck 가 prior.shared_materials 에서 뽑는다)에도
+      // 들어가지 않는다. 고른 것이 없으면 prior.shared_materials 자체를 두지 않는다(빈 배열이 프롬프트에 실리지 않게).
       // 공유 자료는 v1 모양(source 문자열, role 없음)으로 저장돼 있을 수 있다 — v2 기본값(role raw, context 는 유지)을 입혀 넘긴다.
       // 빠지면 5단계 [TS] '원자료 1개 이상' 검사가 공유 자료만 인용한 문항을 잘못 반려한다(T6 관찰).
-      if (Array.isArray(theme.materials)) prior.shared_materials = (theme.materials as unknown[]).map(withMaterialDefaults)
+      const themeMaterials = Array.isArray(theme.materials) ? (theme.materials as { id: string }[]) : []
+      const selectedShared = selectSharedMaterials(themeMaterials, itemSet.shared_material_ids)
+      if (selectedShared.length > 0) prior.shared_materials = selectedShared.map(withMaterialDefaults)
 
       return {
         // 세트 학년은 대주제 학년의 복사본(updateThemeGrade 가 함께 바꾼다) — null 이면 학교급 학년군 전체(대표 2026-09-26)
@@ -95,6 +101,8 @@ export function createSupabaseRepo(supabase: Supabase): Repo {
         subject: itemSet.subject,
         standards,
         prior,
+        // 4단계 자료 ID 이어 붙이기는 고른 것만이 아니라 대주제 공동 자료 전체 뒤에서 잇는다(prompts/stages.ts sharedMaterialLettering)
+        themeMaterialIds: themeMaterials.map((m) => m.id).filter((id): id is string => typeof id === 'string'),
         outputs,
         statuses,
       }

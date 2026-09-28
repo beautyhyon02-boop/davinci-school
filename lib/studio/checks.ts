@@ -13,7 +13,10 @@ export type CheckCtx = {
   prior: Record<string, unknown>
   /** 대주제(선택) — 2단계 재구성 문장에 대주제 상황 낱말이 섞였을 때 반려 사유를 알아보기 쉽게 적는 데만 쓴다(판정은 바꾸지 않는다). */
   theme?: { title: string }
-  /** 대주제 공유 자료 ID(A~Z, 오름차순 불필요). 3·5단계 [TS] 자문(공유 자료를 가리키지만 문항·활동지 어디도 안 쓴다)이 참조한다 — loadContext의 prior.shared_materials에서 온다(stages.ts staticCheck). */
+  /**
+   * 대주제 공유 자료 ID(A~Z, 오름차순 불필요). 3·5단계 [TS] 자문(공유 자료를 가리키지만 문항·활동지 어디도 안 쓴다)이 참조한다 — loadContext의
+   * prior.shared_materials에서 온다(stages.ts staticCheck). 대표 결정 2026-09-28부터는 이 세트가 체크한 공동 자료만(item_sets.shared_material_ids).
+   */
   sharedMaterialIds?: string[]
 }
 type ReconstructionT = z.infer<typeof Reconstruction>; type LessonDesignT = z.infer<typeof LessonDesign>; type MaterialsT = z.infer<typeof Materials>

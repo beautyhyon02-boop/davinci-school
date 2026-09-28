@@ -5,6 +5,7 @@ import { NOTICE_DISCLAIMER, type Stage } from '@/lib/studio/schemas'
 import { SET_ITEM_COUNT, SET_TOTAL, SHORT_POINTS, ESSAY_POINTS, SHORT_TOTAL, SHORT_CRITERIA, ESSAY_CRITERIA, CRITERION_MAX, TEACHING_LESSONS, ASSESSMENT_SESSION } from '@/lib/studio/assessment-structure'
 import { SHORT_EXEMPLAR_STEPS, POINTS_SUM, ASSUMED_SHORT_RANGE, ITEM_NO_RANGE, SESSION_STEPS, SET_KINDS } from '@/lib/studio/structure-text'
 import { gradeLabel, standardCodePrefixes } from '@/lib/studio/level-map'
+import { nextSetMaterialLetter } from '@/lib/studio/shared-selection'
 
 export type Ctx = {
   /** grade null = 학년 지정 안 함 → 학교급 학년군 전체(대표 결정 2026-09-26, lib/studio/level-map.ts gradeLabel) */
@@ -14,6 +15,11 @@ export type Ctx = {
   prior: Record<string, unknown>
   /** 단원명(선택) — 예시 은행에서 같은 단원 예시를 고를 때만 쓴다. */
   unit?: string | null
+  /**
+   * 대주제 공동 자료 **전체**의 ID(선택하지 않은 것 포함, 대표 결정 2026-09-28). 4단계 세트 자료 ID를 이 전체의 마지막 글자 다음부터
+   * 잇게 하는 데만 쓴다(sharedMaterialLettering) — 자료 내용은 prior.shared_materials(이 세트가 고른 것만)로만 들어간다.
+   */
+  themeMaterialIds?: string[]
 }
 
 /**
@@ -104,13 +110,22 @@ function sharedMaterialIds(prior: Record<string, unknown>): string[] {
 /**
  * 4단계(자료)에서 세트 자료가 공유 자료와 같은 글자를 쓰면 게시 스냅샷이 세트 쪽을 버린다(publish.ts의 병합 규칙) —
  * 그래서 프롬프트에서 미리 공유 자료 ID를 알려 주고 그다음 글자부터 이어 붙이게 한다.
+ * 대표 결정 2026-09-28(세트별 공동 자료 선택): 이 세트가 고른 공동 자료(prior.shared_materials)만 "다시 만들지 말라"고 알리고,
+ * 새 세트 자료 ID는 고른 것 뒤가 아니라 대주제 공동 자료 **전체**(ctx.themeMaterialIds)의 마지막 글자 다음부터 잇는다 —
+ * [B, D]만 골라도 나중에 A·C를 체크할 수 있으므로 그 글자를 비워 둬야 ID가 겹치지 않는다(shared-selection.ts nextSetMaterialLetter).
+ * 고른 것이 없어도 대주제에 공동 자료가 있으면 그 글자들을 비워 두라고 알린다.
  */
 function sharedMaterialLettering(ctx: Ctx): string {
-  const ids = sharedMaterialIds(ctx.prior)
-  if (ids.length === 0) return ''
-  const last = ids[ids.length - 1]
-  const next = last < 'Z' ? String.fromCharCode(last.charCodeAt(0) + 1) : 'Z'
-  return `\n\n대주제 공유 자료 ID: ${ids.join(', ')} — 이 자료들은 다시 만들지 말고, 새로 만드는 세트 자료의 ID는 ${next}부터 이어서 붙여라(같은 ID를 다시 쓰면 그 자료는 버려진다). 새 자료의 source.kind는 "자작"이다.`
+  const selected = sharedMaterialIds(ctx.prior)
+  const all = [...new Set([...selected, ...(ctx.themeMaterialIds ?? []).filter((id) => /^[A-Z]$/.test(id))])].sort()
+  if (all.length === 0) return ''
+  const next = nextSetMaterialLetter(all) ?? 'Z'
+  if (selected.length === 0) {
+    return `\n\n이 세트는 대주제 공유 자료를 쓰지 않는다. 새로 만드는 세트 자료의 ID는 ${next}부터 붙여라(${all.join(', ')}는 대주제 공유 자료 글자라 비워 둔다). 새 자료의 source.kind는 "자작"이다.`
+  }
+  const reserved = all.filter((id) => !selected.includes(id))
+  const reservedNote = reserved.length > 0 ? ` 대주제 공유 자료 ${reserved.join(', ')}는 이 세트에서 쓰지 않으므로 인용하지 말고, 그 글자도 새 자료 ID로 쓰지 않는다.` : ''
+  return `\n\n대주제 공유 자료 ID: ${selected.join(', ')} — 이 자료들은 다시 만들지 말고, 새로 만드는 세트 자료의 ID는 ${next}부터 이어서 붙여라(같은 ID를 다시 쓰면 그 자료는 버려진다).${reservedNote} 새 자료의 source.kind는 "자작"이다.`
 }
 
 /**

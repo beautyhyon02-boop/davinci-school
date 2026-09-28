@@ -76,6 +76,8 @@ export function usedMaterialIds(parts: {
  * 제작소 4단계 탭에 보일 자료(오너 규칙 2026-09-26: 단계 탭은 완성본 그대로). 세트 자료(4단계 출력)는 전부, 대주제 공유 자료는
  * 이 세트가 가리키는 것(used — usedMaterialIds)만 싣고 ID 순으로 정렬한다. 게시 판(buildSnapshot)과 같은 규칙으로 같은 ID면
  * 공유 자료가 이긴다 — 그 세트 자료는 overridden 에 ID만 남긴다(화면에 한 줄 안내). sharedIds = 목록에 실린 공유 자료의 ID.
+ * shared 에는 이 세트가 체크한 대주제 공동 자료만 넘긴다(대표 결정 2026-09-28 — 세트 화면 page.tsx 가 selectSharedMaterials 로 거른다):
+ * 체크하지 않은 공동 자료는 탭에 보이지 않고, 같은 ID의 세트 자료를 누르지도 않는다(게시 판 buildSnapshot 과 같은 규칙).
  */
 export function stageMaterialsView<M extends { id: string }>(setMaterials: M[], shared: M[], used: Set<string>): { materials: M[]; sharedIds: string[]; overridden: string[] } {
   const sharedAll = new Set(shared.map((m) => m.id))
