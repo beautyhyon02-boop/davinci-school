@@ -314,7 +314,8 @@ describe('generate prior is scoped per stage (I2)', () => {
   it('stage 5 generate carries stage 2 (level_anchor), 3, 4 and the shared materials', () => expectOnly(5, ['INTRO_MARK', 'RECON_MARK', 'ANCHOR_MARK', 'LESSON_MARK', 'MATERIAL_BODY_MARK', 'SHARED_MARK']))
   it('stage 4 generate carries stage 2, 3 and the shared materials', () => expectOnly(4, ['INTRO_MARK', 'RECON_MARK', 'ANCHOR_MARK', 'LESSON_MARK', 'SHARED_MARK']))
   it('stages 1~3 carry only the previous stage (+ intro); stage 0 carries nothing', () => {
-    expectOnly(3, ['INTRO_MARK', 'RECON_MARK', 'ANCHOR_MARK']); expectOnly(2, ['INTRO_MARK', 'STAGE1_MARK']); expectOnly(1, ['INTRO_MARK']); expectOnly(0, [])
+    // 3단계는 체크된 공동 자료도 받는다(2026-09-28: 차시가 쓸 공동 자료를 보고 고르게)
+    expectOnly(3, ['INTRO_MARK', 'RECON_MARK', 'ANCHOR_MARK', 'SHARED_MARK']); expectOnly(2, ['INTRO_MARK', 'STAGE1_MARK']); expectOnly(1, ['INTRO_MARK']); expectOnly(0, [])
     expect(buildPrompt(0, { ...ctx, prior }).user).not.toContain('지금까지 확정된 내용')
   })
 })
