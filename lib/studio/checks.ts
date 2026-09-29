@@ -479,6 +479,60 @@ function guideIssues(o: GuideT, ctx: CheckCtx): Issue[] {
   // 흔한 오답의 문항 번호는 5단계 문항 번호 안(지금 구조 2개) — 5단계 확정본이 prior에 없으면 건너뛴다
   const itemCount = (ctx.prior.stage5 as Partial<AssessmentT> | undefined)?.items?.length ?? 0
   for (const e of o.grading_guide.common_errors) if (itemCount && e.item_no > itemCount) issues.push({ kind: 'other', detail: `흔한 오답의 문항 ${e.item_no} — 5단계 문항은 ${itemCount}개` })
+  issues.push(...translationIssues(o, ctx))
+  return issues
+}
+
+// ── S-영-08 교사용 번역(대표 2026-09-29: "영어 자료의 경우 비전공 원장님을 위해 영문 자료에 한국어 번역본을 첨부해서 교사용 지침서에 넣어줘") ──
+/** 영문으로 볼 글의 최소 길이와 글자(라틴 + 한글) 가운데 라틴 글자 비율. 한국어 자료에 섞인 단위(kg·cm)·기호는 이 비율에 못 미친다. */
+const ENGLISH_MIN_LENGTH = 30
+const ENGLISH_MIN_LATIN_RATIO = 0.4
+/** 영어(외국어) 글인가: 30자 이상이고 글자 가운데 라틴 글자가 40% 이상이며 라틴 낱말(두 글자 이상)이 셋 이상(수식 기호·자리 채움 글자만 있는 글은 아니다). */
+export function looksEnglish(text: string | null | undefined): boolean {
+  const t = (text ?? '').trim()
+  if (t.length < ENGLISH_MIN_LENGTH) return false
+  if (new Set(t.match(/[A-Za-z]{2,}/g) ?? []).size < 3) return false
+  const latin = (t.match(/[A-Za-z]/g) ?? []).length
+  const hangul = (t.match(/[가-힣ㄱ-ㅎㅏ-ㅣ]/g) ?? []).length
+  return latin + hangul > 0 && latin / (latin + hangul) >= ENGLISH_MIN_LATIN_RATIO
+}
+type TableLike = { columns?: string[] | null; rows?: (string | number)[][] | null } | null | undefined
+const tableText = (t: TableLike) => [...(t?.columns ?? []), ...(t?.rows ?? []).flat().map(String)].join(' ')
+/** 번역 메모 문구(원장·관리자가 읽는다). */
+export const TRANSLATION_MISSING = '한국어 번역이 없음(교사용 지침서)'
+/**
+ * [TS] 참고 메모(kind other, 막지 않음) — S-영-08. 4단계 확정본(prior.stage4)의 자료 가운데 본문이나 표가 영어(looksEnglish)인데
+ * translations.materials 에 그 material_id 가 없으면 "자료 X: 한국어 번역이 없음(교사용 지침서)". 번역이 있으면 원문 본문·표의 수(숫자 묶음,
+ * 쉼표 무시)가 번역(제목·본문·표)에 모두 있는지 보고 빠진 수마다 "자료 X 번역: 원문 수치 1,350이 빠짐". 5단계 확정본(prior.stage5)의
+ * 영어 예시답안은 문항 번호·단계(상/중/하 또는 점수)로 번역을 찾는다. 4·5단계가 prior 에 없으면 그 부분은 건너뛴다.
+ * 뜻이 맞게 옮겨졌는지(오역)는 [AI] 검토(REVIEW_FOCUS[6])가 본다.
+ */
+function translationIssues(o: GuideT, ctx: CheckCtx): Issue[] {
+  const issues: Issue[] = []
+  const tr = o.translations
+  const materials = (ctx.prior.stage4 as Partial<MaterialsT> | undefined)?.materials
+  for (const m of Array.isArray(materials) ? materials : []) {
+    if (!looksEnglish(m.body) && !looksEnglish(tableText(m.table))) continue
+    const t = tr?.materials?.find((x) => x.material_id === m.id)
+    if (!t) { issues.push({ kind: 'other', detail: `자료 ${m.id}: ${TRANSLATION_MISSING}` }); continue }
+    const translated = new Set([t.title_ko, t.body_ko ?? '', tableText(t.table_ko)].flatMap((s) => (s.match(NUMBER) ?? []).map(normNum)))
+    const seen = new Set<string>()
+    for (const n of [m.body ?? '', tableText(m.table)].flatMap((s) => s.match(NUMBER) ?? [])) {
+      const v = normNum(n)
+      if (seen.has(v)) continue
+      seen.add(v)
+      if (!translated.has(v)) issues.push({ kind: 'other', detail: `자료 ${m.id} 번역: 원문 수치 ${n}이 빠짐` })
+    }
+  }
+  const items = (ctx.prior.stage5 as Partial<AssessmentT> | undefined)?.items
+  for (const [i, it] of (Array.isArray(items) ? items : []).entries()) {
+    const mine = (tr?.exemplar_answers ?? []).filter((x) => x.item_no === i + 1)
+    for (const ex of it.exemplar_answers ?? []) {
+      if (!looksEnglish(ex.text)) continue
+      const found = mine.some((x) => (ex.level ? x.label.includes(ex.level) : (x.label.match(/\d+/g)?.includes(String(ex.points)) ?? false)))
+      if (!found) issues.push({ kind: 'other', detail: `문항 ${i + 1} 예시답안 ${ex.level ?? `${ex.points}점`}: ${TRANSLATION_MISSING}` })
+    }
+  }
   return issues
 }
 

@@ -1,6 +1,7 @@
 // tests/studio-schemas.test.ts
 import { describe, it, expect } from 'vitest'
-import { Reconstruction, Lesson, LessonDesign, PublishedLessonDesign, Lessons, Material, Assessment, PublishedAssessment, NoticePlan, Review, STAGE_SCHEMAS, AXES, ASSESSMENT_KINDS, QuizItem, QUIZ_LEVELS } from '@/lib/studio/schemas'
+import { Reconstruction, Lesson, LessonDesign, PublishedLessonDesign, Lessons, Material, Assessment, PublishedAssessment, NoticePlan, Review, STAGE_SCHEMAS, AXES, ASSESSMENT_KINDS, QuizItem, QUIZ_LEVELS, TeacherGuide } from '@/lib/studio/schemas'
+import { englishGuide } from './fixtures/english-guide'
 
 // 대표 2026-09-26: 퀴즈는 단답형만(객관식 폐지) — 새 세트 fixture 도 단답형이다.
 // 퀴즈 수준(L-10): 교수 차시 3문항은 D~E·C·B 하나씩 — 도우미는 '문항 1·2·3'에 차례로 붙인다(다른 발문은 수준 없음).
@@ -234,5 +235,19 @@ describe('schemas v2', () => {
     expect(NoticePlan.safeParse(plan).success).toBe(true)
     expect(Review.parse({ pass: false, issues: [{ kind: 'level', detail: 'x' }, { kind: 'notice', detail: 'y' }] }).issues).toHaveLength(2)
     expect(Object.keys(STAGE_SCHEMAS)).toEqual(['0', '1', '2', '3', '4', '5', '6', '7'])
+  })
+})
+
+// S-영-08(대표 2026-09-29): 지침서 번역은 선택 — 옛 지침서(번역 없음)·한국어 세트(null/빈 배열)도 유효
+describe('TeacherGuide.translations (S-영-08)', () => {
+  it('accepts a guide with translations, without them, with null and with empty arrays; rejects a bad material id', () => {
+    const g = englishGuide()
+    expect(TeacherGuide.safeParse(g).success).toBe(true)
+    const bare = { ...g, translations: undefined }
+    expect(TeacherGuide.safeParse(bare).success).toBe(true)
+    expect(TeacherGuide.safeParse({ ...bare, translations: null }).success).toBe(true)
+    expect(TeacherGuide.safeParse({ ...bare, translations: { materials: [], exemplar_answers: [] } }).success).toBe(true)
+    const bad = englishGuide(); bad.translations.materials[0].material_id = 'e1'
+    expect(TeacherGuide.safeParse(bad).success).toBe(false)
   })
 })

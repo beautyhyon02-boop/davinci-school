@@ -322,7 +322,8 @@ describe('generate prior is scoped per stage (I2)', () => {
   }
   // 0단계(확정된 대주제 소개)는 1~7단계 모두가 받는다(theme-intro.test.ts)
   it('stage 7 generate carries stage 3 and 5 only (not 2/4/6, not shared materials)', () => expectOnly(7, ['INTRO_MARK', 'LESSON_MARK', 'RUBRIC_MARK']))
-  it('stage 6 generate carries stage 3 and 5 only', () => expectOnly(6, ['INTRO_MARK', 'LESSON_MARK', 'RUBRIC_MARK']))
+  // 6단계는 4단계 자료도 받는다(S-영-08, 대표 2026-09-29 — 영문 자료를 한국어로 옮겨 지침서에 단다)
+  it('stage 6 generate carries stage 3, 4 and 5 (not shared materials)', () => expectOnly(6, ['INTRO_MARK', 'LESSON_MARK', 'MATERIAL_BODY_MARK', 'RUBRIC_MARK']))
   it('stage 5 generate carries stage 2 (level_anchor), 3, 4 and the shared materials', () => expectOnly(5, ['INTRO_MARK', 'RECON_MARK', 'ANCHOR_MARK', 'LESSON_MARK', 'MATERIAL_BODY_MARK', 'SHARED_MARK']))
   it('stage 4 generate carries stage 2, 3 and the shared materials', () => expectOnly(4, ['INTRO_MARK', 'RECON_MARK', 'ANCHOR_MARK', 'LESSON_MARK', 'SHARED_MARK']))
   it('stages 1~3 carry only the previous stage (+ intro); stage 0 carries nothing', () => {
@@ -479,4 +480,37 @@ describe('stage 3 receives the ticked shared materials (2026-09-28)', () => {
     expect(buildReviewPrompt(3, c, { lessons: [] }).user).toContain('"shared_materials"')
     expect(buildPrompt(2, c).user).not.toContain('"shared_materials"')
   })
+})
+
+// S-영-08(대표 2026-09-29 "영어 자료의 경우 비전공 원장님을 위해 영문 자료에 한국어 번역본을 첨부해서 교사용 지침서에 넣어줘")
+describe('stage 6 — 영문 자료·영어 예시답안 번역(S-영-08)', () => {
+  const task = buildPrompt(6, ctx).user.split('과제: ')[1]
+  const focus = buildReviewPrompt(6, ctx, {}).user.split('검토 초점: ')[1].split('\n\n생성 결과')[0]
+  it('task asks for translations of every English material (title·body·table) and exemplar, keeping numbers; empty for Korean-only sets', () => {
+    for (const s of ['자료나 예시답안에 영어(외국어) 문장이 있으면 translations에 한국어 번역을 단다', '자료마다 제목·본문(표는 열 이름과 칸)을 빠짐없이', '자연스러운 한국어로',
+      '수치·고유명사는 그대로', '예시답안은 문항 번호와 단계(상/중/하 또는 점수)별로', '한국어 자료만 있으면 translations는 비운다(null/빈 배열)', 'material_id', 'title_ko', 'body_ko', 'table_ko', 'text_ko']) expect(task, s).toContain(s)
+  })
+  it('review focus flags missing translations, mistranslation and number mismatch', () => {
+    for (const s of ['translations', '번역 누락', '오역', '수치 불일치']) expect(focus, s).toContain(s)
+  })
+  it('review prior for stage 6 carries stage 3, 4 and 5', () => {
+    const prior = { stage3: { lessons: [{ no: 1, topic: 'LESSON_MARK' }] }, stage4: { materials: [{ id: 'E', body: 'MATERIAL_BODY_MARK' }] }, stage5: { items: [{ rubric: { criteria: [{ name: 'RUBRIC_MARK' }] } }] } }
+    const u = buildReviewPrompt(6, { ...ctx, prior }, {}).user
+    for (const m of ['LESSON_MARK', 'MATERIAL_BODY_MARK', 'RUBRIC_MARK']) expect(u, m).toContain(m)
+  })
+})
+
+describe('6단계 생성 입력 크기 가드(S-영-08로 4단계 자료가 들어간 뒤에도 45k자 미만)', () => {
+  const j = (f: string) => JSON.parse(readFileSync(f, 'utf8'))
+  for (const [subject, suf, stdFile] of [['수학', '', 'standards-math.json'], ['과학', '-과학', 'standards-science.json']] as const) {
+    it(`${subject}: v2 fixture prior(0·3·4·5단계)로 만든 6단계 생성·검토 입력 < 45,000자`, () => {
+      const F = 'data/studio-fixtures/'
+      const prior = { stage0: j(`${F}stage0-generate.json`), stage3: j(`${F}stage3-generate${suf}.json`), stage4: j(`${F}stage4-generate${suf}.json`), stage5: j(`${F}stage5-generate${suf}.json`) }
+      const c = { theme: { title: '학교 축제 일회용품 줄이기', level: '중', grade: 1, subjects: [subject] }, subject, standards: j(`${F}${stdFile}`), prior }
+      const u = buildPrompt(6, c).user
+      expect(u.length).toBeLessThan(45_000)
+      expect(u).toContain('"stage4"'); expect(u).toContain('"stage5"')
+      expect(buildReviewPrompt(6, c, j(`${F}stage6-generate${suf}.json`)).user.length).toBeLessThan(45_000)
+    })
+  }
 })

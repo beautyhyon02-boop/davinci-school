@@ -1,6 +1,8 @@
 // tests/checks.test.ts
 import { describe, it, expect } from 'vitest'
-import { staticIssues, inventedActors, statesAnswer, quizCopySource, lessonSourceUnits, questionStems } from '@/lib/studio/checks'
+import { staticIssues, inventedActors, statesAnswer, quizCopySource, lessonSourceUnits, questionStems, looksEnglish, TRANSLATION_MISSING } from '@/lib/studio/checks'
+import { readFileSync } from 'node:fs'
+import { englishMaterials, englishItems, englishGuide } from './fixtures/english-guide'
 import { statesAnswer as compatStatesAnswer } from '@/lib/studio/compat'
 import { LessonDesign, Assessment } from '@/lib/studio/schemas'
 import { assessmentV2, lessonV2, assessmentSession } from './studio-schemas.test'
@@ -369,4 +371,54 @@ describe('zeroDistinguishesAttempt — 거나/또는으로 붙인 시도 서술(
     ]) expect(zeroDistinguishesAttempt(ok), ok).toBe(true)
     for (const bad of ['부족함', '답을 쓰지 않았다.', '수치가 없다.']) expect(zeroDistinguishesAttempt(bad), bad).toBe(false)
   })
+})
+
+// S-영-08(대표 2026-09-29 "영어 자료의 경우 비전공 원장님을 위해 영문 자료에 한국어 번역본을 첨부해서 교사용 지침서에 넣어줘"): 6단계 [TS] 참고 메모
+describe('stage 6: 영문 자료·영어 예시답안 번역 메모 (S-영-08, 막지 않음)', () => {
+  const prior = { stage4: { materials: englishMaterials }, stage5: { items: englishItems } }
+  const notes = (guide: unknown, p: Record<string, unknown> = prior) => staticIssues(6, guide, { standards, prior: p }).filter((i) => i.detail.includes('번역'))
+  it('looksEnglish: 영문 본문·표는 참, 한국어(단위·기호 섞임)·짧은 글·자리 채움 글자는 거짓', () => {
+    expect(looksEnglish(englishMaterials[0].body)).toBe(true)
+    expect(looksEnglish('Item Number Paper cups 1350 Plastic straws 420')).toBe(true)
+    expect(looksEnglish(englishMaterials[2].body)).toBe(false)
+    expect(looksEnglish('부스별 일회용 컵 사용량(kg)과 비율(%)을 조사한 표이다. 단위는 kg, cm이다.')).toBe(false)
+    expect(looksEnglish('Hello there, my friend')).toBe(false)   // 30자 미만
+    expect(looksEnglish('x'.repeat(40))).toBe(false)
+    expect(looksEnglish(null)).toBe(false)
+  })
+  it('번역이 다 있으면 메모가 없고, 예시답안 번역 하나가 빠지면 그 단계만 짚는다', () => {
+    expect(notes(englishGuide())).toEqual([])
+    const g = englishGuide(); g.translations.exemplar_answers = g.translations.exemplar_answers.filter((e: { label: string }) => e.label !== '중')
+    expect(notes(g)).toEqual([{ kind: 'other', detail: `문항 2 예시답안 중: ${TRANSLATION_MISSING}` }])
+  })
+  it('번역이 없으면(translations 없음·null) 영문 자료 E·F와 영어 예시답안마다 짚고, 한국어 자료 G는 짚지 않는다', () => {
+    const bare = { ...englishGuide(), translations: undefined }
+    const want = ['자료 E', '자료 F', '문항 1 예시답안 6점', '문항 2 예시답안 상', '문항 2 예시답안 중'].map((w) => `${w}: ${TRANSLATION_MISSING}`)
+    expect(notes(bare).map((i) => i.detail)).toEqual(want)
+    expect(notes({ ...bare, translations: null }).map((i) => i.detail)).toEqual(want)
+    expect(notes(bare).every((i) => i.kind === 'other')).toBe(true)
+    expect(want[0]).toBe('자료 E: 한국어 번역이 없음(교사용 지침서)')
+  })
+  it('번역에 원문 수치가 빠지면 그 수를 원문 표기(쉼표 포함) 그대로 짚는다 — 본문·표 모두, 쉼표 유무는 같은 수', () => {
+    const g = englishGuide()
+    g.translations.materials[0].body_ko = '그린 축제에 오신 것을 환영합니다! 3번 부스에 자기 컵을 가져오면 오백 원을 할인해 줍니다. 작년에는 이틀 동안 종이컵 1350개를 썼습니다.'
+    g.translations.materials[1].table_ko.rows = [['종이컵', 1350], ['플라스틱 빨대', '많음']]
+    expect(notes(g).map((i) => i.detail)).toEqual(['자료 E 번역: 원문 수치 500이 빠짐', '자료 F 번역: 원문 수치 420이 빠짐'])
+    g.translations.materials[0].body_ko = '종이컵을 많이 썼습니다.'
+    expect(notes(g).map((i) => i.detail)).toContain('자료 E 번역: 원문 수치 1,350이 빠짐')
+  })
+  it('4·5단계가 prior 에 없으면 건너뛴다', () => {
+    const bare = { ...englishGuide(), translations: undefined }
+    expect(notes(bare, {})).toEqual([])
+  })
+  for (const [subject, sfx] of [['수학', ''], ['과학', '-과학']] as const) {
+    it(`${subject} fixture(한국어 자료): 지침서에 번역이 없고(translations 없음) 번역 메모도 없다`, () => {
+      const fx = (k: string) => JSON.parse(readFileSync(`data/studio-fixtures/${k}${sfx}.json`, 'utf8'))
+      const guide = fx('stage6-generate')
+      expect(guide.translations ?? null).toBeNull()
+      const p = { stage3: fx('stage3-generate'), stage4: fx('stage4-generate'), stage5: fx('stage5-generate') }
+      expect(notes(guide, p)).toEqual([])
+      for (const m of p.stage4.materials) expect(looksEnglish(m.body), m.id).toBe(false)
+    })
+  }
 })

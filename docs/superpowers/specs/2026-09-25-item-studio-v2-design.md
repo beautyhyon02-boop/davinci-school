@@ -353,10 +353,17 @@ export const TeacherGuide = z.object({
     retry_guidance: z.string().min(10),                 // 재도전을 언제·어떻게 열어 줄지
   }),
   per_lesson: z.array(z.object({ no: z.number().int(), notes: z.array(z.string()).max(3) })).min(4),   // 지도안에 없는 것만(없으면 빈 배열)
+  // S-영-08(대표 2026-09-29): 영문 자료·영어 예시답안의 한국어 번역(교사용, 학생 비공개). 선택 — 한국어 세트·옛 지침서는 없음(null/빈 배열도 됨)
+  translations: z.object({
+    materials: z.array(z.object({ material_id: z.string(), title_ko: z.string(), body_ko: z.string().nullable(), table_ko: z.object({ columns: z.array(z.string()), rows: z.array(z.array(z.union([z.string(), z.number()]))) }).nullable() })),
+    exemplar_answers: z.array(z.object({ item_no: z.number().int().min(1), label: z.string(), text_ko: z.string() })),
+  }).nullable().optional(),
 })
 ```
 
-검토: [TS] `merge_guide.lessons`가 3단계 `mergeable_with` 쌍과 일치, `time_budget_120` 합 120, `per_lesson` 수 = 차시 수. [AI] 비전공자가 따라 할 수 있는 구체성(v1), `common_errors`가 채점표 요소와 연결되는지.
+6단계 생성·검토 입력에는 4단계 자료가 함께 들어간다(0·3·4·5단계 — 번역할 원문). 번역은 원장 패키지 화면·제작소 6단계 탭의 교사용 지침서 맨 끝 「영문 자료 번역 (교사용)」에만 보이고, 학생 화면·문제지 인쇄에는 없다.
+
+검토: [TS] `merge_guide.lessons`가 3단계 `mergeable_with` 쌍과 일치, `time_budget_120` 합 120, `per_lesson` 수 = 차시 수; 번역 참고 메모(S-영-08, 막지 않음) — 4단계 자료의 본문·표가 영어(30자 이상, 글자 중 라틴 40% 이상, 라틴 낱말 3개 이상)인데 `translations.materials`에 그 ID가 없으면 "자료 X: 한국어 번역이 없음(교사용 지침서)", 번역에 원문 수(숫자 묶음, 쉼표 무시)가 빠지면 "자료 X 번역: 원문 수치 1,350이 빠짐", 5단계 영어 예시답안의 번역이 문항 번호·단계로 없으면 "문항 N 예시답안 상: 한국어 번역이 없음(교사용 지침서)". [AI] 비전공자가 따라 할 수 있는 구체성(v1), `common_errors`가 채점표 요소와 연결되는지, 번역 누락·오역·수치 불일치.
 
 근거: 문항+수업 설계를 하나로 (wp13 §5-1), 압축한 차시를 피드백·정리에 재투자 (wp7 §4; 과학재구성 p.116), AI 초안 검수 흐름·채점자 신뢰도 QA (wp4 §9, §10 운영4·5; 경기AI p.25), 재도전은 부분 향상도 성공으로 (wp13 §2; 학습평가이해 p.37-38).
 
@@ -677,6 +684,7 @@ D1→D2·D3·D4는 병렬 가능(D2~D4는 D1의 타입만 있으면 됨). D5·D6
 | S-영-05 | 제시 어휘는 재배열만으로 풀리지 않을 최소한, 조건에 정답 어휘(비교급 등)를 노출하지 않음(C-32), 성취기준 무관 문법 조건 금지. | [WP4-운2][WP4 §8][C-07] |
 | S-영-06 | 예시답안에 만점 외 전형적 오류(관사·3인칭 단수·어순) 부분점수 예시를 포함하고 진단형 피드백을 적는다 | [WP5-영-5] |
 | S-영-07 | 학교급 학년군 어휘 범위(중학교는 1~3학년군 1,500단어)를 넘는 지문 어휘는 각주 처리. | [WP1 §4] |
+| S-영-08 | 영어 세트의 교사용 지침서에는 영문 자료와 영어 예시답안의 한국어 번역을 단다(비전공 원장용, 학생 비공개). 번역은 원문의 수치·고유명사를 바꾸지 않는다. | [대표] |
 
 ### A.4 채점·피드백(G-)
 

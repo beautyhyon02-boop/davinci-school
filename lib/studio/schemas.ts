@@ -320,6 +320,21 @@ export const PublishedAssessment = assessmentBase(z.array(AssessmentItem).min(SE
 })
 
 // ── 6단계 ──────────────────────────────────────────────────────────────
+/**
+ * S-영-08(대표 2026-09-29 "영어 자료의 경우 비전공 원장님을 위해 영문 자료에 한국어 번역본을 첨부해서 교사용 지침서에 넣어줘"):
+ * 영문 자료(4단계)와 영어 예시답안(5단계)의 한국어 번역 — 교사용(원장·관리자 화면만), 학생 화면·문제지 인쇄에는 없다.
+ * material_id 는 4단계 자료 ID, item_no 는 5단계 문항 번호(1부터), label 은 예시답안 단계(상/중/하 또는 "6점").
+ * 한국어 자료만 있는 세트(수학·과학 등)는 비우거나(null/빈 배열) 두지 않는다. 빠진 번역·원문 수치 누락은 [TS] 참고 메모(checks.ts translationIssues).
+ */
+export const GuideTranslations = z.object({
+  materials: z.array(z.object({
+    material_id: z.string().regex(/^[A-Z]$/),
+    title_ko: z.string(),
+    body_ko: z.string().nullable(),
+    table_ko: z.object({ columns: z.array(z.string()), rows: z.array(z.array(z.union([z.string(), z.number()]))) }).nullable(),
+  })),
+  exemplar_answers: z.array(z.object({ item_no: z.number().int().min(1), label: z.string(), text_ko: z.string() })),
+})
 export const TeacherGuide = z.object({
   general: z.object({ materials: z.array(z.string()), schedule_note: z.string(), purpose: z.string() }),
   glossary: z.array(z.object({ term: z.string(), explanation: z.string() })).min(3),
@@ -334,6 +349,8 @@ export const TeacherGuide = z.object({
     retry_guidance: z.string().min(10),
   }),
   per_lesson: z.array(z.object({ no: z.number().int(), notes: z.array(z.string()).max(3) })).min(4),
+  // 선택(S-영-08): 2026-09-29 이전에 저장·게시된 지침서에는 없다 — 없어도 유효
+  translations: GuideTranslations.nullable().optional(),
 }).superRefine((g, ctx) => {
   for (const m of g.merge_guide) { const t = m.time_budget_120; if (t.intro_min + t.main_min + t.wrapup_min !== 120) issue(ctx, '병합 차시 시간 합이 120분이 아님') }
 })

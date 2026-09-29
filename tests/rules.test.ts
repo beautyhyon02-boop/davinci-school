@@ -8,8 +8,8 @@ describe('rules v2', () => {
     expect(new Set(ids).size).toBe(ids.length)
     const spec = readFileSync('docs/superpowers/specs/2026-09-25-item-studio-v2-design.md', 'utf8')
     for (const id of ids) expect(spec.split(`| ${id} |`).length - 1, id).toBe(1)
-    // 부록 A: 공통 37(C-31 대표 확정값, C-32 조건=지침(2026-09-26), C-33 자료 설계·유형(대표 연수 2기), C-34·C-36·C-37 경기2025, C-39 배운 것만 채점(대표 2026-09-29) 포함) + 차시 12 + 과목 37(국6·수7·사6·역3·과8·영7) + 채점 10(G-10 경기2025) + 안내장 12
-    expect(ids.length).toBe(37 + 12 + 37 + 10 + 12)
+    // 부록 A: 공통 37(C-31 대표 확정값, C-32 조건=지침(2026-09-26), C-33 자료 설계·유형(대표 연수 2기), C-34·C-36·C-37 경기2025, C-39 배운 것만 채점(대표 2026-09-29) 포함) + 차시 12 + 과목 38(국6·수7·사6·역3·과8·영8 — S-영-08 번역(대표 2026-09-29)) + 채점 10(G-10 경기2025) + 안내장 12 = 109
+    expect(ids.length).toBe(37 + 12 + 38 + 10 + 12)
   })
   it('the spec appendix has no rule row that the code lacks', () => {
     const spec = readFileSync('docs/superpowers/specs/2026-09-25-item-studio-v2-design.md', 'utf8')
@@ -215,5 +215,19 @@ describe('C-39 채점 요소는 교수 차시에서 가르친 것만 (대표 202
     expect(row('C-39')).toBe(`| C-39 | ${c39.text} | P+S | [대표] |`)
     for (const subject of ['수학', '과학', '영어']) expect(rulesFor(subject)).toMatch(/^C-39 채점 요소는 이 세트의 교수 차시에서/m)
     expect(COMMON_RULES.some((r) => r.id === 'C-35' || r.id === 'C-38')).toBe(false)
+  })
+})
+
+// 대표 2026-09-29 "영어 자료의 경우 비전공 원장님을 위해 영문 자료에 한국어 번역본을 첨부해서 교사용 지침서에 넣어줘"
+describe('S-영-08 영문 자료·영어 예시답안 한국어 번역 (대표 2026-09-29)', () => {
+  const spec = readFileSync('docs/superpowers/specs/2026-09-25-item-studio-v2-design.md', 'utf8')
+  const row = (id: string) => spec.split('\n').find((line) => line.startsWith(`| ${id} |`))!
+  it('exists as PS/대표 in the English rules; spec row identical; reaches only the English generation prompt', () => {
+    const s08 = SUBJECT_RULES['영어'].find((r) => r.id === 'S-영-08')!
+    expect(s08.nature).toBe('PS'); expect(s08.tags).toEqual(['대표'])
+    for (const s of ['교사용 지침서', '영문 자료와 영어 예시답안의 한국어 번역', '비전공 원장용', '학생 비공개', '수치·고유명사를 바꾸지 않는다']) expect(s08.text, s).toContain(s)
+    expect(row('S-영-08')).toBe(`| S-영-08 | ${s08.text} | [대표] |`)
+    expect(rulesFor('영어')).toMatch(/^S-영-08 영어 세트의 교사용 지침서에는/m)
+    expect(rulesFor('수학')).not.toMatch(/S-영-08/)
   })
 })
