@@ -19,6 +19,7 @@ import { STAGE_SCHEMAS, type Lesson, type Material, type Assessment, type QuizLe
 import { staticIssues } from '../lib/studio/checks'
 import { levelMapFor } from '../lib/studio/level-map'
 import { ASSESSMENT_SESSION, SET_ORDER, SHORT_POINTS } from '../lib/studio/assessment-structure'
+import type { Competency } from '../lib/studio/competency'
 
 type LessonT = z.infer<typeof Lesson>; type MaterialT = z.infer<typeof Material>; type AssessmentT = z.infer<typeof Assessment>
 type V1Lesson = Parameters<typeof upgradeLessonV1>[0]; type V1Material = Parameters<typeof upgradeMaterialV1>[0]; type V1Assessment = Parameters<typeof upgradeAssessmentV1>[0]
@@ -169,6 +170,36 @@ function setTaughtIn(a: AssessmentT, byCriterion: Record<string, number[]>) {
       const taught = byCriterion[name]
       if (!taught?.length) throw new Error(`PATCHES: setTaughtIn — 채점 요소 "${name}"의 배운 차시가 없음`)
       return { name, axis, condition_nos, taught_in: taught, max, scale }
+    })
+  }
+}
+/**
+ * C-40(대표 2026-09-29, 단원 리포트 R-1 — 육각형 6축): 채점 요소마다 역량 꼬리표(competency) 하나. 요소 이름마다 한 번씩 — 빠진 요소나
+ * 없는 이름이 있으면 멈춘다. 키 순서는 taught_in 바로 뒤. setTaughtIn 뒤에 부른다.
+ */
+function setCompetencies(a: AssessmentT, byCriterion: Record<string, Competency>) {
+  const names = a.items.flatMap((it) => it.rubric.criteria.map((c) => c.name))
+  for (const n of Object.keys(byCriterion)) if (!names.includes(n)) throw new Error(`PATCHES: setCompetencies — 채점 요소 "${n}"이 없음`)
+  for (const it of a.items) {
+    it.rubric.criteria = it.rubric.criteria.map(({ name, axis, condition_nos, taught_in, max, scale }) => {
+      const competency = byCriterion[name]
+      if (!competency) throw new Error(`PATCHES: setCompetencies — 채점 요소 "${name}"의 역량이 없음`)
+      return { name, axis, condition_nos, taught_in, competency, max, scale }
+    })
+  }
+}
+/**
+ * C-40: 교수 차시 퀴즈 3문항마다 역량 꼬리표 하나 — [발문 앞부분, 역량]. 발문 앞부분이 다르면(퀴즈가 바뀌었으면) 멈춘다 — 꼬리표가
+ * 다른 문항에 붙지 않게. setLeveledQuizzes 뒤에 부른다(키 순서는 level_ref 뒤).
+ */
+function setQuizCompetencies(lessons: LessonT[], byLesson: Record<number, [qStart: string, competency: Competency][]>) {
+  for (const [no, defs] of Object.entries(byLesson)) {
+    const l = lessons.find((x) => x.no === Number(no))
+    const quiz = l?.formative_check.quiz ?? []
+    if (!l || quiz.length !== defs.length) throw new Error(`PATCHES: setQuizCompetencies — ${no}차시 퀴즈가 ${defs.length}문항이 아님`)
+    l.formative_check.quiz = quiz.map((q, i) => {
+      if (!q.q.startsWith(defs[i][0])) throw new Error(`PATCHES: setQuizCompetencies — ${no}차시 퀴즈 ${i + 1}이 "${defs[i][0]}…"가 아님`)
+      return { ...q, competency: defs[i][1] }
     })
   }
 }
@@ -378,6 +409,15 @@ const SETS: SetDef[] = [
         ['B', 'A 축제는 일회용품 전체 200개 가운데 컵이 60개, B 축제는 전체 400개 가운데 컵이 100개였다. 컵 개수는 B가 많지만, 전체에서 컵이 차지하는 비율이 더 큰 축제의 컵 상대도수는?', '0.3', 'A는 60 ÷ 200 = 0.3, B는 100 ÷ 400 = 0.25이다. 전체 개수가 다르면 개수보다 상대도수로 견주어야 비율이 보인다.'],
         ['D~E', '근거로 쓴 수치 옆에 "(자료 B)"처럼 그 수치를 가져온 곳을 밝혀 적는 것을 무엇이라 하는가?', '출처', '수치를 가져온 곳이 출처이다. 근거에는 수치·단위와 함께 출처를 적는다.'],
       ])
+      // C-40(단원 리포트 6축): 퀴즈마다 역량 하나 — 용어를 떠올리는 문항은 지식·이해, 자료 A·문장에서 찾아 읽는 문항은 자료 읽기,
+      // 계산·계급 나누기는 과정·기능, 출처를 밝혀 적기는 글로 표현하기. 억지로 여섯 축에 맞추지 않았다(가치·태도·근거 들어 설명하기는 단원 평가 채점 요소에).
+      setQuizCompetencies(lessons, {
+        1: [['"우리 반 학생들은', '지식·이해'], ['"우리 학교 1학년 학생들은', '자료 읽기'], ['A반은 30명이', '과정·기능']],
+        2: [['도수분포표에서 "20개 이상', '지식·이해'], ['자료 A를 계급의 크기 10으로', '자료 읽기'], ['어느 반 10명의 턱걸이', '과정·기능']],
+        3: [['도수분포다각형에서 각 점의', '지식·이해'], ['자료 A의 히스토그램(계급의 크기 10)에서', '자료 읽기'], ['자료 A의 히스토그램에서 직사각형 넓이의', '지식·이해']],
+        4: [['어떤 계급의 도수가', '지식·이해'], ['어느 반 학생 25명', '과정·기능'], ['도수의 총합이 50인', '과정·기능']],
+        5: [['작년 종이컵의 상대도수를', '과정·기능'], ['A 축제는 일회용품', '과정·기능'], ['근거로 쓴 수치 옆에', '글로 표현하기']],
+      })
     },
     patchAssessment: (a) => {
       const [, i2, essay] = a.items
@@ -452,6 +492,12 @@ const SETS: SetDef[] = [
       setTaughtIn(a, {
         '상대도수 계산': [4], '비율 변화 해석': [4], '상대도수로 비교하는 이유': [1, 4],
         '자료 정리의 정확성': [2, 4, 5], '해석의 타당성': [4, 5], '제안과 근거의 연결': [5], '수학적 표현과 서술': [2, 4, 5],
+      })
+      // C-40(단원 리포트 6축): 요소마다 역량 하나 — axis(3차원)와 따로 고른다. 척도가 실제로 보는 것: 계산 = 과정·기능, 두 값을 읽어 견줌·수치와 출처 = 자료 읽기,
+      // 까닭·판단 = 근거 들어 설명하기, 목표를 정해 제안 = 가치·태도, 용어·분량·종결어미 = 글로 표현하기.
+      setCompetencies(a, {
+        '상대도수 계산': '과정·기능', '비율 변화 해석': '자료 읽기', '상대도수로 비교하는 이유': '근거 들어 설명하기',
+        '자료 정리의 정확성': '자료 읽기', '해석의 타당성': '근거 들어 설명하기', '제안과 근거의 연결': '가치·태도', '수학적 표현과 서술': '글로 표현하기',
       })
     },
     session: {
@@ -593,6 +639,15 @@ const SETS: SetDef[] = [
         'C',
         ['B', '교사가 뼈대를 보여 준 비닐봉지에도 자료 D의 과학적 이유(분해·재활용)를 근거로 쓸 수 있다. 비닐봉지도 무엇의 한 종류이기 때문인가?', '플라스틱', '비닐봉지도 석유에서 얻은 원료로 만든 플라스틱이다. 그래서 자료 D의 분해·재활용 내용을 근거로 쓸 수 있다.'],
       ])
+      // C-40(단원 리포트 6축): 퀴즈마다 역량 하나 — 용어·개념은 지식·이해, 관찰 결과·자료에서 찾아 읽기는 자료 읽기, 탐구 단계·설계·계산은 과정·기능,
+      // 까닭을 대는 문항은 근거 들어 설명하기, 실천 방안의 차원을 가르는 문항은 가치·태도.
+      setQuizCompetencies(lessons, {
+        1: [['실험·관찰·조사로 얻은', '지식·이해'], ['한 모둠이 가설을', '과정·기능'], ['가설 "부스에 다회용컵을', '과정·기능']],
+        2: [['생물이 물질을', '지식·이해'], ['쓸 때는 플라스틱의 장점', '지식·이해'], ['땅에 묻힌 나무젓가락은', '근거 들어 설명하기']],
+        3: [['컵 조각을 물에 넣는', '자료 읽기'], ['종이 상자에 비닐 테이프가', '지식·이해'], ['종이컵은 안쪽에', '과정·기능']],
+        4: [['자원을 아껴 쓰고', '지식·이해'], ['마트에 갈 때', '가치·태도'], ['자료 E에서 스테인리스', '과정·기능']],
+        5: [['제안서 뼈대의 "과학적 이유" 칸', '자료 읽기'], ['자료 B에서 비닐봉지는', '자료 읽기'], ['교사가 뼈대를 보여 준', '근거 들어 설명하기']],
+      })
     },
     patchMaterials: (materials) => materials.map((m) => (m.id === 'D' ? { ...m, role: 'context' as const } : m)),
     patchAssessment: (a) => {
@@ -668,6 +723,12 @@ const SETS: SetDef[] = [
       setTaughtIn(a, {
         '재활용을 어렵게 하는 요인': [3], '자료를 근거로 밝히기': [2, 3], '새 사례에 적용한 예측': [3],
         '과학적 근거의 정확성': [2, 3, 5], '문제와 해결 방안의 연결': [4, 5], '실천 가능성(개인·사회 구분)': [4, 5], '서술': [5],
+      })
+      // C-40(단원 리포트 6축): 요소마다 역량 하나 — axis(3차원)와 따로 고른다. 요인·과학적 내용 = 지식·이해, 자료에서 근거 찾기 = 자료 읽기,
+      // 예측과 까닭·문제와 방안의 연결 = 근거 들어 설명하기, 실천 방안 = 가치·태도, 분량·종결어미·용어 = 글로 표현하기.
+      setCompetencies(a, {
+        '재활용을 어렵게 하는 요인': '지식·이해', '자료를 근거로 밝히기': '자료 읽기', '새 사례에 적용한 예측': '근거 들어 설명하기',
+        '과학적 근거의 정확성': '지식·이해', '문제와 해결 방안의 연결': '근거 들어 설명하기', '실천 가능성(개인·사회 구분)': '가치·태도', '서술': '글로 표현하기',
       })
     },
     session: {

@@ -138,6 +138,26 @@ describe('Stage5Summary', () => {
       expect(crit).not.toContain('배운 차시')
     }
   })
+  // C-40(단원 리포트 6축): 채점표의 요소 이름 옆에 역량 배지(교사용) — 학생에게 보이는 평가 요소 목록에는 없다. 꼬리표가 없으면(옛 초안) 배지도 없다.
+  it('shows the competency badge next to each criterion name in the rubric table (teacher-only), not in the 평가 요소 list', () => {
+    expect(app.packageView.rubric.competencyBadge('자료 읽기')).toBe('역량: 자료 읽기')
+    const tagged = structuredClone(fx)
+    delete tagged.items[0].rubric.criteria[0].competency
+    const segs = render(tagged).split('data-stage5-item').slice(1)
+    const rubricPart = (seg: string) => seg.slice(seg.indexOf(`>${copy.rubricHeading}</p>`))
+    for (const [i, seg] of segs.entries()) {
+      const part = rubricPart(seg)
+      for (const [k, c] of (tagged.items[i].rubric.criteria as (Crit & { competency?: string })[]).entries()) {
+        const at = part.indexOf(esc(copy.criterionLabel(c.name, c.max)))
+        const nameLine = part.slice(at, part.indexOf('</p>', at))
+        if (i === 0 && k === 0) expect(nameLine).not.toContain('data-competency')
+        else expect(nameLine).toContain(`<span data-print="omit" data-competency="${c.competency}">`)
+        if (c.competency) expect(text(nameLine)).toContain(app.packageView.rubric.competencyBadge(c.competency))
+      }
+      const crit = seg.slice(seg.indexOf('data-item-criteria'), seg.indexOf(`>${copy.rubricHeading}</p>`))
+      expect(crit).not.toContain('data-competency'); expect(crit).not.toContain('역량')
+    }
+  })
   it('puts 등급표(7행, level_ref) and 피드백 틀 in a separate 채점 기준표(공통) box after the items', () => {
     const common = html.indexOf('data-stage5-common')
     const lastItem = html.lastIndexOf('data-stage5-item')

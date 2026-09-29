@@ -137,7 +137,10 @@ function RubricView({ rubric }: { rubric: Rubric }) {
       {rubric.criteria.map((cr, i) => (
         <div key={i} className="overflow-x-auto">
           <p className="flex flex-wrap items-center gap-2 font-semibold">
-            {c.criterionLabel(cr.name, cr.max)} <Badge tone="gray">{cr.axis}</Badge> <span className="font-normal text-ink-500">{c.conditionsLabel(cr.condition_nos)}</span>
+            {c.criterionLabel(cr.name, cr.max)} <Badge tone="gray">{cr.axis}</Badge>
+            {/* C-40 역량 꼬리표(단원 리포트 6축) — 교사용. 옛 판(competency 없음)은 배지를 두지 않는다 */}
+            {cr.competency && <span data-print="omit" data-competency={cr.competency}><Badge tone="lavender">{c.competencyBadge(cr.competency)}</Badge></span>}
+            <span className="font-normal text-ink-500">{c.conditionsLabel(cr.condition_nos)}</span>
           </p>
           {/* C-39: 이 요소를 가르친 교수 차시(요소 이름 아랫줄). 옛 판(taught_in 없음)은 그리지 않는다 */}
           {(cr.taught_in?.length ?? 0) > 0 && <p data-taught-in className="text-ink-500">{c.taughtIn(cr.taught_in!)}</p>}

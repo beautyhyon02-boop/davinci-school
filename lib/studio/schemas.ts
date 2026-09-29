@@ -3,6 +3,8 @@ import {
   SET_ORDER, SET_ITEMS, SET_ITEM_COUNT, SHORT_TOTAL, SHORT_CRITERIA, ESSAY_CRITERIA, CRITERION_MAX, LEGACY_ITEM_COUNT, LESSON_KINDS,
   structureIssues, structureOf, sessionPlacementIssues, isAssessmentSession,
 } from './assessment-structure'
+import { COMPETENCIES } from './competency'
+export { COMPETENCIES, type Competency } from './competency'
 
 export const SUBJECTS = ['국어', '영어', '수학', '과학', '사회', '한국사', '세계사'] as const
 export type Subject = (typeof SUBJECTS)[number]
@@ -72,6 +74,9 @@ export const QuizItem = z.object({
   explanation: z.string().min(3),
   // 선택(모든 경로): 2026-09-26 이전에 저장·게시된 퀴즈에는 없다. 분포는 [TS] 참고 메모가 본다(막지 않음).
   level_ref: z.enum(QUIZ_LEVELS).optional(),
+  // 역량 꼬리표(C-40, 단원 리포트 육각형 6축 — 설계 2026-09-29 §3). 선택(모든 경로): 옛 판·기존 세트에는 없다 — 읽을 때 competencyOf 가 채운다.
+  // 빠지면 [TS] 참고 메모만(checks.ts, 막지 않음). 교사용 표시이고 학생 화면·문제지에는 보이지 않는다.
+  competency: z.enum(COMPETENCIES).optional(),
 })
 /** 새 세트 퀴즈 규칙(L-09) 위반 사유 — zod(LessonDesign)와 [TS](checks.ts)가 같은 문장을 쓴다. */
 export const QUIZ_SHORT_ONLY = '퀴즈는 단답형만(선택지 금지)'
@@ -218,6 +223,8 @@ export const Criterion = z.object({
    * 선택(모든 경로): 2026-09-29 이전에 저장·게시된 채점표에는 없다 — 빠졌거나 교수 차시가 아닌 번호면 [TS] 참고 메모만(checks.ts, 막지 않음).
    */
   taught_in: z.array(z.number().int().min(1)).optional(),
+  /** 역량 꼬리표(C-40, 단원 리포트 6축). 선택(모든 경로): 옛 판에는 없다 — 읽을 때 competencyOf 가 axis 로 채운다. 빠지면 [TS] 참고 메모만. */
+  competency: z.enum(COMPETENCIES).optional(),
   max: z.number().int().min(1).max(CRITERION_MAX), scale: z.array(ScaleStep).min(2),
 }).superRefine((c, ctx) => {
   const pts = [...c.scale].map((s) => s.points).sort((a, b) => a - b)

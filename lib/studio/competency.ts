@@ -3,6 +3,18 @@
 export const COMPETENCIES = ['지식·이해', '자료 읽기', '근거 들어 설명하기', '글로 표현하기', '과정·기능', '가치·태도'] as const
 export type Competency = (typeof COMPETENCIES)[number]
 
+/** 역량마다 쉬운 말 한 줄(생성 프롬프트·규칙 C-40 이 같은 문장을 쓴다). */
+export const COMPETENCY_MEANING: Record<Competency, string> = {
+  '지식·이해': '개념·용어를 안다',
+  '자료 읽기': '표·글·그림에서 정보를 찾는다',
+  '근거 들어 설명하기': '이유·근거를 들어 설명·주장한다',
+  '글로 표현하기': '읽는 사람에게 맞게 문장·글로 쓴다',
+  '과정·기능': '계산·절차·탐구 방법을 수행한다',
+  '가치·태도': '가치를 판단하고 실천 의지를 보인다',
+}
+/** "지식·이해(개념·용어를 안다), 자료 읽기(…), …" — 여섯 역량과 뜻을 한 줄로. */
+export const COMPETENCY_GLOSS = COMPETENCIES.map((c) => `${c}(${COMPETENCY_MEANING[c]})`).join(', ')
+
 const isCompetency = (v: unknown): v is Competency => typeof v === 'string' && (COMPETENCIES as readonly string[]).includes(v)
 
 /**

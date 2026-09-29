@@ -138,6 +138,22 @@ describe('prompts v2', () => {
     expect(buildPrompt(3, ctx).user.split('과제: ')[1]).toContain('단원 평가에서 채점할 표현·기능은 교수 차시의 활동·발문·활동지에 반드시 포함한다')
     expect(buildPrompt(5, ctx).system).toMatch(/^C-39 /m)
   })
+  // 단원 리포트(대표 2026-09-29 R-1, 육각형 6축): 퀴즈 문항·채점 요소마다 역량 꼬리표 하나(C-40)
+  it('stages 3·5 (C-40): every quiz item / criterion gets exactly one competency with the six plain meanings; spread is a guideline; review flags missing or mismatched tags', () => {
+    const gloss = '지식·이해(개념·용어를 안다), 자료 읽기(표·글·그림에서 정보를 찾는다), 근거 들어 설명하기(이유·근거를 들어 설명·주장한다), 글로 표현하기(읽는 사람에게 맞게 문장·글로 쓴다), 과정·기능(계산·절차·탐구 방법을 수행한다), 가치·태도(가치를 판단하고 실천 의지를 보인다)'
+    const task3 = buildPrompt(3, ctx).user.split('과제: ')[1]
+    expect(task3).toContain(`문항마다 competency(역량)를 정확히 하나 붙인다 — ${gloss} 가운데 그 문항이 실제로 보는 것 하나(C-40`)
+    expect(task3).toMatch(/여러 역량에 걸치게 하되 억지로 맞추지 않는다/)
+    const task5 = buildPrompt(5, ctx).user.split('과제: ')[1]
+    expect(task5).toContain(`competency(역량 정확히 하나 — ${gloss} 가운데 그 요소가 실제로 보는 것; axis와 따로 고른다`)
+    expect(task5).toMatch(/여러 역량에 걸치게 하되 억지로 맞추지 않는다, C-40/)
+    for (const stage of [3, 5] as const) {
+      const focus = buildReviewPrompt(stage, ctx, {}).user.split('검토 초점: ')[1]
+      expect(focus, String(stage)).toMatch(/competency\(역량\)가 하나 있고/)
+      expect(focus, String(stage)).toMatch(/빠졌거나 눈에 띄게 어긋나면\(예: [^)]+\) other\(C-40; 역량이 고르게 퍼지지 않았다는 것만으로는 짚지 않는다\)/)
+      expect(buildPrompt(stage, ctx).system).toMatch(/^C-40 /m)
+    }
+  })
   it('stage 5 conditions are guidelines only (C-32, 대표 2026-09-26): 서술형 none, 논술형 2~4, no solving hints', () => {
     const task = buildPrompt(5, ctx).user.split('과제: ')[1]
     expect(task).toMatch(/서술형은 conditions\.items를 빈 배열/); expect(task).toMatch(/논술형은 items 2~4개/)

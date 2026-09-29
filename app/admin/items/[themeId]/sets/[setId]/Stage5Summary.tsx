@@ -18,7 +18,7 @@ const copy = app.studio.wizard.stage5
 const rubricCopy = app.packageView.rubric
 
 type Step = { points: number; descriptor: string; example?: string | null }
-type Criterion = { name: string; axis?: string; condition_nos?: number[]; taught_in?: number[]; max: number; scale?: Step[] }
+type Criterion = { name: string; axis?: string; condition_nos?: number[]; taught_in?: number[]; competency?: string; max: number; scale?: Step[] }
 type Levels = { 상: string; 중: string; 하: string }
 type Item = {
   kind: string
@@ -60,7 +60,11 @@ function RubricTable({ criteria }: { criteria: Criterion[] }) {
             return (
               <tr key={i} className="border-b border-ink-50 align-top">
                 <td className="py-1 pr-2">
-                  <p className="font-semibold">{copy.criterionLabel(c.name, c.max)}</p>
+                  <p className="font-semibold">
+                    {copy.criterionLabel(c.name, c.max)}
+                    {/* C-40 역량 꼬리표(단원 리포트 6축) — 교사용 채점표에만(학생에게 보이는 평가 요소 목록에는 없다). 빠졌으면 [TS] 참고 메모가 짚는다 */}
+                    {c.competency && <> <span data-print="omit" data-competency={c.competency}><Badge tone="lavender">{rubricCopy.competencyBadge(c.competency)}</Badge></span></>}
+                  </p>
                   {/* C-39: 이 요소를 가르친 교수 차시(요소 이름 아랫줄) — 빠졌으면 [TS] 참고 메모가 짚는다 */}
                   {(c.taught_in?.length ?? 0) > 0 && <p data-taught-in className="text-ink-500">{rubricCopy.taughtIn(c.taught_in!)}</p>}
                   {c.axis && <p className="text-ink-500">{c.axis}</p>}

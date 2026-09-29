@@ -69,7 +69,10 @@ export default async function StudentAssignmentPage({ params }: { params: Promis
         {lesson.formative_check.quiz.length > 0 && (
           // 제출 전에는 정답·해설을 브라우저로 보내지 않는다(문제·유형·보기만). 제출한 뒤에야 결과 화면용으로 전체를 넘긴다.
           <QuizForm assignmentId={id} lessonNo={no}
-            quiz={done.length ? lesson.formative_check.quiz : lesson.formative_check.quiz.map(({ q, type, choices }) => ({ q, type, choices }))}
+            // 퀴즈 수준·역량 꼬리표는 교사용 표시라 어느 때도 넘기지 않는다(문제·유형·보기·정답·해설만 골라 넘긴다).
+            quiz={done.length
+              ? lesson.formative_check.quiz.map(({ q, type, choices, answer, explanation }) => ({ q, type, choices, answer, explanation }))
+              : lesson.formative_check.quiz.map(({ q, type, choices }) => ({ q, type, choices }))}
             done={done.length ? done.map((d) => ({ response: d.response, correct: d.correct })) : null} />
         )}
         {itemNos.map((itemNo, k) => {

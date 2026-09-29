@@ -1,3 +1,4 @@
+import { COMPETENCIES } from '@/lib/studio/competency'
 import { describe, it, expect, beforeAll } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { loadFixture } from '@/lib/ai/mock'
@@ -76,6 +77,19 @@ for (const set of SETS) describe(`${set.subject} fixtures (v2)`, () => {
       expect(c.taught_in?.length, c.name).toBeGreaterThan(0)
       for (const n of c.taught_in!) expect(teaching.has(n), `${c.name} ${n}차시`).toBe(true)
     }
+  })
+  // C-40(대표 2026-09-29, 단원 리포트 6축): 교수 차시 퀴즈와 두 문항의 채점 요소마다 역량 꼬리표 — scripts/upgrade-fixtures-v2.ts setQuizCompetencies·setCompetencies
+  it('stages 3·5 (C-40): every quiz item and every criterion carries one of the six competencies, together covering all six axes', () => {
+    const s3 = loadFixture(`stage3-generate${set.suffix}`) as { lessons: { no: number; formative_check: { quiz: { q: string; competency?: string }[] } }[] }
+    const s5 = loadFixture(`stage5-generate${set.suffix}`) as { items: { rubric: { criteria: { name: string; competency?: string }[] } }[] }
+    const quizzes = s3.lessons.flatMap((l) => l.formative_check.quiz)
+    const criteria = s5.items.flatMap((it) => it.rubric.criteria)
+    expect(quizzes).toHaveLength(15)
+    for (const q of quizzes) expect(COMPETENCIES as readonly string[], q.q).toContain(q.competency)
+    for (const c of criteria) expect(COMPETENCIES as readonly string[], c.name).toContain(c.competency)
+    expect(new Set(quizzes.map((q) => q.competency)).size).toBeGreaterThanOrEqual(3)
+    expect(new Set(criteria.map((c) => c.competency)).size).toBeGreaterThanOrEqual(4)
+    expect(new Set([...quizzes, ...criteria].map((x) => x.competency)).size).toBe(COMPETENCIES.length)
   })
   it('stage2 standards carry the verbatim originals and the reconstruction is faithful', () => {
     const gen = loadFixture(`stage2-generate${set.suffix}`) as { standards: { code: string; original_text: string }[]; level_anchor: unknown[]; reconstruction: string; learning_goals: { axis: string }[] }

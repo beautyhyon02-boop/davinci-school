@@ -4,15 +4,19 @@
  *
  * 경로 문법: 점으로 잇고, 배열은 `[]`(원소마다 펼친다). 예: `lessons[].flow.main[].activities[]`.
  * 끝값이 문자열인 곳만 칸이 된다 — null(없는 총체적 기준·표 자료의 본문 등)이나 없는 키는 건너뛴다.
+ * 고르기 칸(options — 역량 꼬리표 competency, C-40)만 예외: 키가 없는 옛 출력에도 빈 값('')의 칸을 내어 새로 붙일 수 있게 한다.
  * 저장은 고친 출력 전체를 기존 saveStageEdit(zod 검증 → 저장 → 뒤 단계 초기화 → 자동 검사 메모)로 보낸다.
  */
 import { STAGE_SCHEMAS } from './schemas'
+import { COMPETENCIES } from './competency'
 import type { WizardStage as EditableStage } from './wizard-stages'
 
-export type FieldSpec = { pattern: string; multiline: boolean }
+/** options 가 있으면 글 칸이 아니라 고르기 칸(select) — 값은 options 가운데 하나(빈 값 '' = 아직 없음). */
+export type FieldSpec = { pattern: string; multiline: boolean; options?: readonly string[] }
 
 const line = (pattern: string): FieldSpec => ({ pattern, multiline: false })
 const text = (pattern: string): FieldSpec => ({ pattern, multiline: true })
+const pick = (pattern: string, options: readonly string[]): FieldSpec => ({ pattern, multiline: false, options })
 
 export const EDITABLE_FIELDS: Record<EditableStage, FieldSpec[]> = {
   2: [
@@ -38,6 +42,7 @@ export const EDITABLE_FIELDS: Record<EditableStage, FieldSpec[]> = {
     text('lessons[].formative_check.quiz[].q'),
     line('lessons[].formative_check.quiz[].answer'),
     text('lessons[].formative_check.quiz[].explanation'),
+    pick('lessons[].formative_check.quiz[].competency', COMPETENCIES),
   ],
   4: [
     line('materials[].title'),
@@ -49,6 +54,7 @@ export const EDITABLE_FIELDS: Record<EditableStage, FieldSpec[]> = {
     line('items[].conditions.length'),
     line('items[].conditions.format'),
     line('items[].rubric.criteria[].name'),
+    pick('items[].rubric.criteria[].competency', COMPETENCIES),
     text('items[].rubric.criteria[].scale[].descriptor'),
     text('items[].rubric.holistic.상'),
     text('items[].rubric.holistic.중'),
@@ -96,6 +102,8 @@ export type EditableField = {
   path: FieldPath
   pattern: string
   multiline: boolean
+  /** 고르기 칸이면 고를 수 있는 값들. value 가 ''이면 아직 값이 없는 칸(옛 출력). */
+  options?: readonly string[]
   /** 경로의 배열 번호들(0부터) — 라벨 문구가 쓴다. */
   indices: number[]
   /** 끝값을 담은 객체(배열 원소 끝값이면 그 배열을 가진 객체) — 라벨 문구가 점수·등급 같은 곁값을 읽는다. */
@@ -160,6 +168,7 @@ export function expandFields(stage: EditableStage, output: unknown): EditableFie
         path,
         pattern: node.spec.pattern,
         multiline: node.spec.multiline,
+        ...(node.spec.options ? { options: node.spec.options } : {}),
         indices,
         parent,
         value,
@@ -173,7 +182,10 @@ export function expandFields(stage: EditableStage, output: unknown): EditableFie
         if (!Array.isArray(value)) continue
         value.forEach((v, i) => walk(child, v, [...path, i], [...indices, i], parent))
       } else if (isObject(value) && seg in value) {
-        walk(child, value[seg], [...path, seg], indices, value)
+        walk(child, child.spec?.options ? value[seg] ?? '' : value[seg], [...path, seg], indices, value)
+      } else if (isObject(value) && child.spec?.options) {
+        // 고르기 칸: 키가 없는 옛 출력에도 빈 칸을 낸다(골라서 새로 붙인다)
+        walk(child, '', [...path, seg], indices, value)
       }
     }
   }
@@ -191,8 +203,8 @@ export function groupFields(fields: EditableField[]): { key: string; top: string
   return [...groups.values()]
 }
 
-/** path 의 값을 value 로 바꾼 새 출력(원본은 건드리지 않는다). 경로가 없으면 오류. */
-export function setAtPath<T>(output: T, path: FieldPath, value: string): T {
+/** path 의 값을 value 로 바꾼 새 출력(원본은 건드리지 않는다). 경로가 없으면 오류 — allowNew(고르기 칸)면 마지막 키는 새로 만들 수 있다. */
+export function setAtPath<T>(output: T, path: FieldPath, value: string, allowNew = false): T {
   const next = structuredClone(output) as unknown
   let cur = next as Record<string | number, unknown>
   for (const seg of path.slice(0, -1)) {
@@ -201,7 +213,7 @@ export function setAtPath<T>(output: T, path: FieldPath, value: string): T {
     cur = child as Record<string | number, unknown>
   }
   const last = path[path.length - 1]
-  if (!cur || !(last in cur)) throw new Error(`no such path: ${path.join('.')}`)
+  if (!cur || (!(last in cur) && !allowNew)) throw new Error(`no such path: ${path.join('.')}`)
   cur[last] = value
   return next as T
 }
@@ -211,7 +223,9 @@ export function applyFieldEdits<T>(output: T, fields: EditableField[], values: R
   let next = output
   for (const f of fields) {
     const v = values[f.id]
-    if (v !== undefined && v !== f.value) next = setAtPath(next, f.path, v)
+    // 고르기 칸은 빈 값으로 되돌릴 수 없다(지우려면 JSON 편집) — 빈 값은 건너뛴다
+    if (f.options && v === '') continue
+    if (v !== undefined && v !== f.value) next = setAtPath(next, f.path, v, !!f.options)
   }
   return next
 }

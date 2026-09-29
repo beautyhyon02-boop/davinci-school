@@ -4,7 +4,7 @@ import { staticIssues, inventedActors, statesAnswer, quizCopySource, lessonSourc
 import { readFileSync } from 'node:fs'
 import { englishMaterials, englishItems, englishGuide } from './fixtures/english-guide'
 import { statesAnswer as compatStatesAnswer } from '@/lib/studio/compat'
-import { LessonDesign, Assessment } from '@/lib/studio/schemas'
+import { Lesson, LessonDesign, Assessment } from '@/lib/studio/schemas'
 import { assessmentV2, lessonV2, assessmentSession } from './studio-schemas.test'
 
 const standards = [{ code: '[9수04-02]', text: '자료를 줄기와 잎 그림, 도수분포표, 히스토그램, 도수분포다각형으로 나타내고 해석할 수 있다.' }, { code: '[9수04-03]', text: '상대도수를 구하고, 상대도수의 분포를 표나 그래프로 나타내고 해석할 수 있다.' }]
@@ -227,6 +227,50 @@ describe('staticIssues', () => {
     // 3단계가 prior 에 없으면 번호 대조는 건너뛴다(빈 칸만 본다)
     expect(notes(wrong, { stage4: { materials } })).toEqual([])
     expect(notes(missing, { stage4: { materials } })).toHaveLength(2)
+  })
+  // C-40(대표 2026-09-29, 단원 리포트 R-1 — 육각형 6축): 퀴즈 문항·채점 요소마다 역량 꼬리표. 참고 메모(other)일 뿐 막지 않는다.
+  it('stage 3 (C-40): a teaching-lesson quiz item without competency gets an advisory note; zod still accepts it', () => {
+    const lessons = [{ ...lessonV2, no: 1 }, { ...lessonV2, no: 2 }, assessmentSession(3)]
+    const notes = (ls: unknown[]) => staticIssues(3, { lessons: ls }, { standards, prior: {} }).filter((i) => i.detail.includes('competency'))
+    expect(notes(lessons)).toEqual([])
+    // 두 차시가 같은 퀴즈 배열을 가리키므로(structuredClone 은 그 공유를 지킨다) JSON 으로 떼어 복사한다
+    const missing = JSON.parse(JSON.stringify(lessons)) as typeof lessons
+    delete missing[1].formative_check.quiz[0].competency
+    Object.assign(missing[1].formative_check.quiz[2], { competency: '창의성' })
+    expect(notes(missing)).toEqual([
+      { kind: 'other', detail: '2차시 퀴즈 1: 역량이 적혀 있지 않음(competency)' },
+      { kind: 'other', detail: '2차시 퀴즈 3: 역량이 적혀 있지 않음(competency)' },
+    ])
+    delete missing[1].formative_check.quiz[2].competency
+    for (const l of missing) expect(Lesson.safeParse(l).error?.issues ?? [], `${l.no}차시`).toEqual([])
+  })
+  it('stage 5 (C-40): a criterion without competency gets an advisory note; tags on ≤2 axes (criteria + stage-3 quizzes) get the 육각형 note; zod still accepts both', () => {
+    const prior = { stage4: { materials }, stage3: { lessons: [{ ...lessonV2, no: 1 }, { ...lessonV2, no: 2 }, assessmentSession(3)] } }
+    const notes = (a: unknown, p: Record<string, unknown> = prior) => staticIssues(5, a, { standards, prior: p }).filter((i) => i.detail.includes('역량'))
+    expect(notes(assessmentV2)).toEqual([])
+    const missing = structuredClone(assessmentV2)
+    delete missing.items[0].rubric.criteria[1].competency
+    delete missing.items[1].rubric.criteria[3].competency
+    expect(notes(missing)).toEqual([
+      { kind: 'other', detail: '문항 1 요소 해석: 역량이 적혀 있지 않음(competency)' },
+      { kind: 'other', detail: '문항 2 요소 구성: 역량이 적혀 있지 않음(competency)' },
+    ])
+    expect(Assessment.safeParse(missing).success).toBe(true)
+    // 요소가 모두 두 축(과정·기능, 지식·이해)에만 있어도 3단계 퀴즈가 세 번째 축(자료 읽기)을 채우면 몰림이 아니다
+    const narrow = structuredClone(assessmentV2)
+    for (const it of narrow.items) for (const [k, c] of it.rubric.criteria.entries()) c.competency = k % 2 ? '과정·기능' : '지식·이해'
+    expect(notes(narrow)).toEqual([])
+    // 3단계가 prior 에 없으면 요소만으로 센다 — 2개 축
+    expect(notes(narrow, { stage4: { materials } })).toEqual([{ kind: 'other', detail: '역량이 2개 축에만 몰려 있음 — 리포트 육각형이 비게 된다' }])
+    const one = structuredClone(assessmentV2)
+    for (const it of one.items) for (const c of it.rubric.criteria) c.competency = '지식·이해'
+    const sameQuiz = { stage4: { materials }, stage3: { lessons: [{ ...lessonV2, no: 1, formative_check: { quiz: lessonV2.formative_check.quiz.map((q) => ({ ...q, competency: '지식·이해' })) } }, assessmentSession(2)] } }
+    expect(notes(one, sameQuiz)).toEqual([{ kind: 'other', detail: '역량이 1개 축에만 몰려 있음 — 리포트 육각형이 비게 된다' }])
+    expect(Assessment.safeParse(one).success).toBe(true)
+    // 꼬리표가 하나도 없는 옛 초안: 빠짐 메모만(요소마다), 몰림은 말하지 않는다
+    const none = structuredClone(assessmentV2)
+    for (const it of none.items) for (const c of it.rubric.criteria) delete c.competency
+    expect(notes(none, { stage4: { materials } }).map((i) => i.detail)).toEqual(none.items.flatMap((it, i) => it.rubric.criteria.map((c) => `문항 ${i + 1} 요소 ${c.name}: 역량이 적혀 있지 않음(competency)`)))
   })
   it('stage 5: grade_boundaries level_ref must follow the 7등급↔수준 table', () => {
     const prior = { stage4: { materials }, stage3: { lessons: [] } }

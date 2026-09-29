@@ -391,6 +391,8 @@ export const app = {
         resetWarning: (from: number) => `${from}~7단계가 초기화됩니다. 계속할까요?`,
         resetConfirm: '네, 뒤 단계를 초기화하고 저장합니다',
         fieldError: (label: string, message: string) => `${label}: ${message}`,
+        // 고르기 칸(역량 꼬리표)에서 아직 값이 없을 때의 첫 줄
+        optionEmpty: '고르지 않음',
         groups: {
           reconstruction: () => '세트 재구성 문장',
           standards: (tag: string) => `성취기준 ${tag}`,
@@ -430,6 +432,7 @@ export const app = {
           'lessons[].formative_check.quiz[].q': (ix: number[]) => `퀴즈 ${nth(ix[1])} 문제`,
           'lessons[].formative_check.quiz[].answer': (ix: number[]) => `퀴즈 ${nth(ix[1])} 정답`,
           'lessons[].formative_check.quiz[].explanation': (ix: number[]) => `퀴즈 ${nth(ix[1])} 해설`,
+          'lessons[].formative_check.quiz[].competency': (ix: number[]) => `퀴즈 ${nth(ix[1])} 역량`,
           // 4단계
           'materials[].title': () => '제목',
           'materials[].body': () => '본문',
@@ -439,6 +442,7 @@ export const app = {
           'items[].conditions.length': () => '분량',
           'items[].conditions.format': () => '형식',
           'items[].rubric.criteria[].name': (ix: number[]) => `채점 요소 ${nth(ix[1])} 이름`,
+          'items[].rubric.criteria[].competency': (ix: number[]) => `채점 요소 ${nth(ix[1])} 역량`,
           'items[].rubric.criteria[].scale[].descriptor': (ix: number[], p: FieldParent) => `채점 요소 ${nth(ix[1])} · ${String(p.points ?? '')}점 기준`,
           'items[].rubric.holistic.상': () => '총체적 기준 상',
           'items[].rubric.holistic.중': () => '총체적 기준 중',
@@ -671,6 +675,8 @@ export const app = {
         const names: Record<string, string> = { 'D~E': '회상', C: '이해·적용', B: '관계·추론' }
         return level ? `${no}번 ${level}${names[level] ? `(${names[level]})` : ''}` : `${no}번 수준 없음`
       },
+      // 역량 꼬리표(C-40, 단원 리포트 육각형 6축) — 퀴즈 문항·채점 요소 이름 옆 작은 배지. 관리자·원장 화면만, 학생 화면·문제지에는 없다
+      competencyBadge: (competency: string) => `역량: ${competency}`,
       worksheetHeading: '활동지',
       worksheetTier: (tier: string, ref: string) => `${tier}(${ref})`,
       worksheetExpected: '기대 답',
@@ -747,6 +753,8 @@ export const app = {
       conditionsLabel: (nos: number[]) => (nos.length ? `조건 ${nos.join('·')}` : ''),
       // C-39(대표 2026-09-29): 요소가 평가하는 내용·표현을 가르친 교수 차시 — 교사용(원장 문항 카드·제작소 5단계 채점표), 학생 화면에는 없다
       taughtIn: (nos: number[]) => `배운 차시: ${nos.join('·')}차시`,
+      // 역량 꼬리표(C-40, 단원 리포트 육각형 6축) — 요소 이름 옆 작은 배지. 교사용(원장 문항 카드·제작소 5단계 채점표), 학생 화면·문제지에는 없다
+      competencyBadge: (competency: string) => `역량: ${competency}`,
       pointLabel: (n: number) => `${n}점`,
       exampleLabel: '예',
       holisticHeading: '총체적 기준',

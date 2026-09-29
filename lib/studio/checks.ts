@@ -6,6 +6,7 @@ import type { Stage, ReviewKind, Reconstruction, LessonDesign, Materials, Assess
 import { QUIZ_SHORT_ONLY, isShortQuiz, quizLevelSpreadOk } from './schemas'
 import { titleHasSourceMarker, usedMaterialIds, mentionedMaterialIds, MAX_SET_MATERIALS } from './materials'
 import { sortScale, zeroStep } from './scale'
+import { COMPETENCIES } from './competency'
 
 export type Issue = { kind: ReviewKind; detail: string }
 export type CheckCtx = {
@@ -266,6 +267,8 @@ function lessonIssues(o: LessonDesignT, ctx: CheckCtx): Issue[] {
     // 참고 메모(kind other)일 뿐 막지 않는다 — zod 는 수준을 보지 않는다(옛 초안의 이미지 첨부·문장 고치기가 그대로 되게).
     if (!isAssessmentSession(l)) {
       if (!quizLevelSpreadOk(l.formative_check.quiz)) issues.push({ kind: 'other', detail: `${l.no}차시 ${QUIZ_LEVEL_NOTE}` })
+      // C-40(단원 리포트 6축): 퀴즈 문항마다 역량 하나 — 없으면 참고 메모(막지 않음, 리포트는 competencyOf 로 지식·이해에 넣는다)
+      for (const [i, q] of l.formative_check.quiz.entries()) if (!hasCompetency(q)) issues.push({ kind: 'other', detail: `${l.no}차시 퀴즈 ${i + 1}: ${COMPETENCY_MISSING}` })
       const units = lessonSourceUnits(l, materials)
       for (const [i, q] of l.formative_check.quiz.entries()) {
         const where = quizCopySource(q, units)
@@ -443,6 +446,33 @@ function taughtInIssues(items: AssessmentT['items'], ctx: CheckCtx): Issue[] {
   return issues
 }
 
+/** [TS] 역량 꼬리표 메모(C-40). 대표 결정(마법사는 아무것도 막지 않는다): zod 는 competency 를 요구하지 않고 이 참고 메모만 남긴다. */
+export const COMPETENCY_MISSING = '역량이 적혀 있지 않음(competency)'
+/** 역량이 이 수 이하의 축에만 놓이면 몰림 메모를 남긴다. */
+export const COMPETENCY_NARROW_MAX = 2
+export const competencyNarrowNote = (n: number) => `역량이 ${n}개 축에만 몰려 있음 — 리포트 육각형이 비게 된다`
+const hasCompetency = (t: { competency?: unknown }) => typeof t.competency === 'string' && (COMPETENCIES as readonly string[]).includes(t.competency)
+/**
+ * C-40(대표 2026-09-29, 단원 리포트 R-1 — 육각형 6축): 채점 요소마다 역량이 없으면 참고 메모(kind other). 그리고 두 문항의 요소 전부와
+ * 3단계 확정본(prior.stage3)이 있으면 그 퀴즈 전부의 역량을 모아, 적힌 역량이 2개 축 이하에만 놓이면 몰림 메모를 남긴다 — 꼬리표가
+ * 하나도 없으면(옛 초안) 빠짐 메모만 남기고 몰림은 말하지 않는다. 역량이 문항이 실제로 보는 것과 맞는지는 [AI] 검토(REVIEW_FOCUS[3]·[5])가 본다.
+ */
+function competencyIssues(items: AssessmentT['items'], ctx: CheckCtx): Issue[] {
+  const issues: Issue[] = []
+  const tagged: { competency?: unknown }[] = []
+  for (const [i, it] of items.entries()) {
+    for (const c of it.rubric.criteria) {
+      tagged.push(c)
+      if (!hasCompetency(c)) issues.push({ kind: 'other', detail: `문항 ${i + 1} 요소 ${c.name}: ${COMPETENCY_MISSING}` })
+    }
+  }
+  const lessons = (ctx.prior.stage3 as Partial<LessonDesignT> | undefined)?.lessons
+  if (Array.isArray(lessons)) for (const l of lessons) tagged.push(...(l.formative_check?.quiz ?? []))
+  const axes = new Set(tagged.filter(hasCompetency).map((t) => t.competency))
+  if (axes.size > 0 && axes.size <= COMPETENCY_NARROW_MAX) issues.push({ kind: 'other', detail: competencyNarrowNote(axes.size) })
+  return issues
+}
+
 function assessmentIssues(o: AssessmentT, ctx: CheckCtx): Issue[] {
   const issues: Issue[] = []
   // 세트 구조(대표 2026-09-26): zod 가 생성 때 거르지만, 검토는 저장된 출력(옛 판·손으로 고친 판)에도 돌므로 다시 본다
@@ -483,6 +513,7 @@ function assessmentIssues(o: AssessmentT, ctx: CheckCtx): Issue[] {
   }
   issues.push(...placementIssues(o, ctx))
   issues.push(...taughtInIssues(o.items, ctx))
+  issues.push(...competencyIssues(o.items, ctx))
   const setMaterials = (ctx.prior.stage4 as MaterialsT | undefined)?.materials
   if (Array.isArray(setMaterials)) issues.push(...materialUseIssues(setMaterials, ctx, o.items))
   const lessons3 = (ctx.prior.stage3 as Partial<LessonDesignT> | undefined)?.lessons

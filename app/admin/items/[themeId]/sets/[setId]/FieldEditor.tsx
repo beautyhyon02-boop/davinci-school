@@ -97,7 +97,13 @@ export function FieldEditor({
               return (
                 <label key={f.id} className="block text-xs font-semibold text-ink-500">
                   {label}
-                  {f.multiline ? (
+                  {f.options ? (
+                    // 고르기 칸(역량 꼬리표, C-40): 값이 없는 옛 출력만 첫 줄에 '고르지 않음'을 둔다
+                    <select name={f.id} value={values[f.id] ?? ''} onChange={(e) => setValue(f.id, e.target.value)} className={cls}>
+                      {f.value === '' && <option value="">{copy.optionEmpty}</option>}
+                      {f.options.map((o) => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                  ) : f.multiline ? (
                     <textarea
                       name={f.id}
                       value={values[f.id] ?? ''}

@@ -96,6 +96,9 @@ describe.each(['수학', '과학'] as const)('PackageView v2 (%s mock snapshot)'
     expect(render(old, 'teacher')).not.toContain('data-quiz-levels')
     // 학생 화면(자기 차시 패널·퀴즈 폼)은 수준을 보이지 않는다
     for (const f of ['page.tsx', 'QuizForm.tsx', 'LessonTabs.tsx', 'ResultView.tsx']) expect(readFileSync(`app/student/assignments/[id]/${f}`, 'utf8'), f).not.toMatch(/level_ref|quizLevel/)
+    // 역량 꼬리표(C-40)도 학생 화면으로 가지 않는다 — 퀴즈는 칸을 골라 넘긴다(통째로 넘기지 않는다)
+    for (const f of readdirSync('app/student/assignments/[id]')) expect(readFileSync(`app/student/assignments/[id]/${f}`, 'utf8'), f).not.toMatch(/competency/i)
+    expect(readFileSync('app/student/assignments/[id]/page.tsx', 'utf8')).not.toMatch(/\? lesson\.formative_check\.quiz\s*:/)
     // 학생 화면은 패키지 조립·차시 카드를 쓰지 않는다(자기 차시 패널 + 자료 조각만) — 교사용 지침 칸이 학생에게 갈 길이 없다
     const student = readFileSync('app/student/assignments/[id]/page.tsx', 'utf8')
     expect(student).not.toMatch(/PackageView|LessonCards|LessonCard\b/)
@@ -135,6 +138,36 @@ describe.each(['수학', '과학'] as const)('PackageView v2 (%s mock snapshot)'
     const old = structuredClone(snap)
     for (const it of old.assessment!.items) for (const cr of it.rubric.criteria) delete cr.taught_in
     expect(render(old, 'teacher')).not.toContain('data-taught-in')
+  })
+  // C-40(단원 리포트 6축): 퀴즈 문항·채점 요소 이름 옆 역량 배지 — 교사용(문제지 인쇄에는 omit). 옛 판(competency 없음)은 배지 없이.
+  it('shows the competency badge next to each quiz item and each rubric criterion name (print-omitted), and nothing for old versions', () => {
+    const h = render(snap, 'teacher')
+    const badge = (competency: string) => `<span data-print="omit" data-competency="${competency}"><span class="rounded-full px-2.5 py-0.5 text-xs font-semibold bg-lavender-100 text-lavender-700">${c.rubric.competencyBadge(competency)}</span></span>`
+    expect(c.lessons.competencyBadge('과정·기능')).toBe('역량: 과정·기능')
+    const quizzes = snap.lessons.flatMap((l) => l.formative_check.quiz)
+    const criteria = snap.assessment!.items.flatMap((it) => it.rubric.criteria)
+    expect(quizzes.every((q) => q.competency)).toBe(true); expect(criteria.every((cr) => cr.competency)).toBe(true)
+    expect(h.split('data-competency=').length - 1).toBe(quizzes.length + criteria.length)
+    for (const q of quizzes) {
+      const at = h.indexOf(`<p class="font-semibold">${esc(q.q)}`)
+      expect(at, q.q).toBeGreaterThanOrEqual(0)
+      expect(h.slice(at, h.indexOf('</p>', at)), q.q).toContain(badge(q.competency!))
+    }
+    for (const seg of h.split('data-print="item"').slice(1)) {
+      // 채점표 접이식 안에만 — 평가 요소 목록(학생·문제지)에는 없다
+      expect(seg.indexOf('data-competency=')).toBeGreaterThan(seg.indexOf('<details'))
+      const crit = seg.slice(seg.indexOf('data-item-criteria'), seg.indexOf('data-answer-kind'))
+      expect(crit).not.toContain('data-competency'); expect(crit).not.toContain('역량')
+    }
+    for (const cr of criteria) {
+      const at = h.indexOf(esc(c.rubric.criterionLabel(cr.name, cr.max)))
+      expect(h.slice(at, h.indexOf('</p>', at)), cr.name).toContain(badge(cr.competency!))
+    }
+    const old = structuredClone(snap)
+    for (const l of old.lessons) for (const q of l.formative_check.quiz) delete q.competency
+    for (const it of old.assessment!.items) for (const cr of it.rubric.criteria) delete cr.competency
+    const oldHtml = render(old, 'teacher')
+    expect(oldHtml).not.toContain('data-competency'); expect(text(oldHtml)).not.toContain('역량:')
   })
   it('shows each item card: stem ending [N점], numbered conditions, rubric criteria with max, notes, exemplars, A~E', () => {
     for (const it of snap.assessment!.items) {

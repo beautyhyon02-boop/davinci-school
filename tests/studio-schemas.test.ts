@@ -1,14 +1,21 @@
 // tests/studio-schemas.test.ts
 import { describe, it, expect } from 'vitest'
-import { Reconstruction, Lesson, LessonDesign, PublishedLessonDesign, Lessons, Material, Assessment, PublishedAssessment, NoticePlan, Review, STAGE_SCHEMAS, AXES, ASSESSMENT_KINDS, QuizItem, QUIZ_LEVELS, TeacherGuide } from '@/lib/studio/schemas'
+import { Reconstruction, Lesson, LessonDesign, PublishedLessonDesign, Lessons, Material, Assessment, PublishedAssessment, NoticePlan, Review, STAGE_SCHEMAS, AXES, ASSESSMENT_KINDS, QuizItem, QUIZ_LEVELS, TeacherGuide, Criterion, COMPETENCIES } from '@/lib/studio/schemas'
+import { jsonSchemaText } from '@/lib/ai/claude'
 import { englishGuide } from './fixtures/english-guide'
 
 // 대표 2026-09-26: 퀴즈는 단답형만(객관식 폐지) — 새 세트 fixture 도 단답형이다.
 // 퀴즈 수준(L-10): 교수 차시 3문항은 D~E·C·B 하나씩 — 도우미는 '문항 1·2·3'에 차례로 붙인다(다른 발문은 수준 없음).
 type QuizLevelT = (typeof QUIZ_LEVELS)[number] | undefined
 const LEVEL_OF: Record<string, QuizLevelT> = { '문항 1': 'D~E', '문항 2': 'C', '문항 3': 'B' }
-const quiz = (q: string) => ({ q, type: 'short' as 'short' | 'choice', choices: null as string[] | null, answer: '6', explanation: '표에서 센다.', level_ref: LEVEL_OF[q] })
-const choiceQuiz = (q: string) => ({ q, type: 'choice' as 'short' | 'choice', choices: ['가', '나'] as string[] | null, answer: '가', explanation: '표에서 센다.', level_ref: LEVEL_OF[q] })
+// 역량 꼬리표(C-40, 단원 리포트 6축): 문항·요소마다 하나 — 도우미는 '문항 1·2·3'과 채점 요소 이름에 붙인다(다른 이름은 꼬리표 없음).
+type CompetencyT = (typeof COMPETENCIES)[number] | undefined
+const COMPETENCY_OF: Record<string, CompetencyT> = {
+  '문항 1': '지식·이해', '문항 2': '자료 읽기', '문항 3': '과정·기능',
+  계산: '과정·기능', 해석: '자료 읽기', 이유: '근거 들어 설명하기', '자료 정리': '자료 읽기', 근거: '근거 들어 설명하기', 제안: '가치·태도', 구성: '글로 표현하기',
+}
+const quiz = (q: string) => ({ q, type: 'short' as 'short' | 'choice', choices: null as string[] | null, answer: '6', explanation: '표에서 센다.', level_ref: LEVEL_OF[q], competency: COMPETENCY_OF[q] })
+const choiceQuiz = (q: string) => ({ q, type: 'choice' as 'short' | 'choice', choices: ['가', '나'] as string[] | null, answer: '가', explanation: '표에서 센다.', level_ref: LEVEL_OF[q], competency: COMPETENCY_OF[q] })
 export const lessonV2 = {
   no: 1, standards: ['[9수04-02]'], topic: '도수분포표 만들기',
   key_question: '자료를 계급으로 나누면 무엇이 보이는가?', goal: '자료를 계급으로 나누어 도수분포표로 나타낼 수 있다.',
@@ -33,7 +40,7 @@ export const assessmentSession = (no: number) => ({
   assessment: ['서술형', '논술형'],
 })
 // taught_in(C-39): 이 요소를 가르친 교수 차시 — 예시는 1차시
-const criterion = (name: string, max: number) => ({ name, axis: '과정·기능', condition_nos: [1], taught_in: [1] as number[] | undefined, max,
+const criterion = (name: string, max: number) => ({ name, axis: '과정·기능', condition_nos: [1], taught_in: [1] as number[] | undefined, competency: COMPETENCY_OF[name], max,
   scale: Array.from({ length: max + 1 }, (_, p) => ({ points: p, descriptor: p === 0 ? '무응답 또는 시도했으나 관련 내용 없음' : `${name} ${p}단계 충족`, example: null })) })
 const noCond = (c: ReturnType<typeof criterion>) => ({ ...c, condition_nos: [] as number[] })
 const exemplar = (points: number, scores: number[], text: string) => ({ level: null, points, scores, assumed_short_points: null, text, rationale: `요소별 ${scores.join('·')}점으로 ${points}점 단계에 해당함` })
@@ -169,6 +176,34 @@ describe('schemas v2', () => {
     expect(PublishedLessonDesign.safeParse({ unit_plan, lessons: withLevels('strip') }).error?.issues ?? []).toEqual([])
     // 옛 3단계 초안(수준 없음)도 새 세트 zod 를 통과한다 — 차시 이미지 첨부(applyImages)·문장 고치기(saveStageEdit·validateEdited)가 막히지 않는다
     expect(messages(withLevels('strip'))).toEqual([])
+  })
+  // 단원 리포트(대표 2026-09-29 R-1): 역량 꼬리표 — 선택 필드라 옛 저장본·게시 판도 읽히고, JSON 모드(3·5단계) 스키마 글에 칸이 보인다
+  it('competency (C-40): optional on QuizItem and Criterion, one of the six, visible in the JSON-mode schema text', () => {
+    expect(COMPETENCIES).toEqual(['지식·이해', '자료 읽기', '근거 들어 설명하기', '글로 표현하기', '과정·기능', '가치·태도'])
+    const crit = assessmentV2.items[0].rubric.criteria[0]
+    expect(QuizItem.parse(quiz('문항 2')).competency).toBe('자료 읽기')
+    expect(Criterion.parse(crit).competency).toBe('과정·기능')
+    for (const c of COMPETENCIES) {
+      expect(QuizItem.safeParse({ ...quiz('문항 1'), competency: c }).success, c).toBe(true)
+      expect(Criterion.safeParse({ ...crit, competency: c }).success, c).toBe(true)
+    }
+    expect(QuizItem.safeParse({ ...quiz('문항 1'), competency: '창의성' }).success).toBe(false)
+    expect(Criterion.safeParse({ ...crit, competency: '창의성' }).success).toBe(false)
+    // 옛 판(꼬리표 없음): 퀴즈·채점 요소·새 세트·게시 판 모두 읽힌다
+    const { competency: _q, ...oldQuiz } = quiz('문항 1'); void _q
+    const { competency: _c, ...oldCrit } = crit; void _c
+    expect(QuizItem.safeParse(oldQuiz).success).toBe(true)
+    expect(Criterion.safeParse(oldCrit).success).toBe(true)
+    const stripped = structuredClone(assessmentV2)
+    for (const it of stripped.items) for (const c of it.rubric.criteria) delete c.competency
+    expect(Assessment.safeParse(stripped).error?.issues ?? []).toEqual([])
+    expect(PublishedAssessment.safeParse(stripped).error?.issues ?? []).toEqual([])
+    expect(Lesson.safeParse({ ...lessonV2, formative_check: { quiz: [oldQuiz, oldQuiz, oldQuiz] } }).success).toBe(true)
+    // JSON 모드 스키마 글: 칸이 보이고 필수는 아니다
+    const quizSchema = JSON.parse(jsonSchemaText(STAGE_SCHEMAS[3] as never)).properties.lessons.items.properties.formative_check.properties.quiz.items
+    expect(quizSchema.properties.competency.enum).toEqual([...COMPETENCIES]); expect(quizSchema.required).not.toContain('competency')
+    const critSchema = JSON.parse(jsonSchemaText(STAGE_SCHEMAS[5] as never)).properties.items.items.properties.rubric.properties.criteria.items
+    expect(critSchema.properties.competency.enum).toEqual([...COMPETENCIES]); expect(critSchema.required).not.toContain('competency')
   })
   it('material source is an object and role defaults to raw', () => {
     const m = Material.parse({ id: 'A', title: 't', kind: 'table', body: null, table: { columns: ['부스', '개수'], rows: [[1, 18]] }, source: { kind: '자작', attribution: null, ai_assisted: false } })

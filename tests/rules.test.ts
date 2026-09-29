@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { COMPETENCIES, COMPETENCY_MEANING } from '@/lib/studio/competency'
 import { readFileSync } from 'node:fs'
 import { rulesFor, allRuleIds, COMMON_RULES, LESSON_RULES, SUBJECT_RULES, NOTICE_RULES, GRADING_RULES_V2, GRADING_PROMPT_RULES } from '@/lib/studio/prompts/rules/index'
 
@@ -8,8 +9,8 @@ describe('rules v2', () => {
     expect(new Set(ids).size).toBe(ids.length)
     const spec = readFileSync('docs/superpowers/specs/2026-09-25-item-studio-v2-design.md', 'utf8')
     for (const id of ids) expect(spec.split(`| ${id} |`).length - 1, id).toBe(1)
-    // 부록 A: 공통 37(C-31 대표 확정값, C-32 조건=지침(2026-09-26), C-33 자료 설계·유형(대표 연수 2기), C-34·C-36·C-37 경기2025, C-39 배운 것만 채점(대표 2026-09-29) 포함) + 차시 12 + 과목 39(국6·수7·사6·역3·과8·영9 — S-영-08 번역·S-영-09 공동 자료 영어판(대표 2026-09-29)) + 채점 10(G-10 경기2025) + 안내장 12 = 110
-    expect(ids.length).toBe(37 + 12 + 39 + 10 + 12)
+    // 부록 A: 공통 38(C-31 대표 확정값, C-32 조건=지침(2026-09-26), C-33 자료 설계·유형(대표 연수 2기), C-34·C-36·C-37 경기2025, C-39 배운 것만 채점·C-40 역량 꼬리표(대표 2026-09-29) 포함) + 차시 12 + 과목 39(국6·수7·사6·역3·과8·영9 — S-영-08 번역·S-영-09 공동 자료 영어판(대표 2026-09-29)) + 채점 10(G-10 경기2025) + 안내장 12 = 111
+    expect(ids.length).toBe(38 + 12 + 39 + 10 + 12)
   })
   it('the spec appendix has no rule row that the code lacks', () => {
     const spec = readFileSync('docs/superpowers/specs/2026-09-25-item-studio-v2-design.md', 'utf8')
@@ -214,6 +215,22 @@ describe('C-39 채점 요소는 교수 차시에서 가르친 것만 (대표 202
     for (const s of ['교수 차시에서 가르친 내용·표현만 평가한다', 'taught_in', '비교급·최상급', '채점 요소로 넣지 않는다', '3단계 차시 활동에 먼저 있어야 한다']) expect(c39.text, s).toContain(s)
     expect(row('C-39')).toBe(`| C-39 | ${c39.text} | P+S | [대표] |`)
     for (const subject of ['수학', '과학', '영어']) expect(rulesFor(subject)).toMatch(/^C-39 채점 요소는 이 세트의 교수 차시에서/m)
+    expect(COMMON_RULES.some((r) => r.id === 'C-35' || r.id === 'C-38')).toBe(false)
+  })
+})
+
+// 대표 2026-09-29(단원 리포트 R-1, 육각형 6축): 퀴즈 문항·채점 요소마다 역량 꼬리표 하나. C-35·C-38은 비워 둔 번호라 새 규칙은 C-40.
+describe('C-40 역량 꼬리표 (대표 2026-09-29, 단원 리포트 6축)', () => {
+  const spec = readFileSync('docs/superpowers/specs/2026-09-25-item-studio-v2-design.md', 'utf8')
+  const row = (id: string) => spec.split('\n').find((line) => line.startsWith(`| ${id} |`))!
+  it('exists as PS/대표 with the six competencies and their plain meanings; spec row identical; reaches the generation prompt; C-35·C-38 stay unused', () => {
+    const c40 = COMMON_RULES.find((r) => r.id === 'C-40')!
+    expect(c40.nature).toBe('PS'); expect(c40.tags).toEqual(['대표'])
+    for (const s of ['역량(competency)을 하나씩', '지식·이해(개념·용어를 안다)', '자료 읽기(표·글·그림에서 정보를 찾는다)', '근거 들어 설명하기(이유·근거를 들어 설명·주장한다)',
+      '글로 표현하기(읽는 사람에게 맞게 문장·글로 쓴다)', '과정·기능(계산·절차·탐구 방법을 수행한다)', '가치·태도(가치를 판단하고 실천 의지를 보인다)', '억지로 맞추지 않는다']) expect(c40.text, s).toContain(s)
+    for (const c of COMPETENCIES) expect(c40.text).toContain(`${c}(${COMPETENCY_MEANING[c]})`)
+    expect(row('C-40')).toBe(`| C-40 | ${c40.text} | P+S | [대표] |`)
+    for (const subject of ['수학', '과학', '영어']) expect(rulesFor(subject)).toMatch(/^C-40 퀴즈 문항과 채점 요소에는 역량/m)
     expect(COMMON_RULES.some((r) => r.id === 'C-35' || r.id === 'C-38')).toBe(false)
   })
 })

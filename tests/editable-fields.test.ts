@@ -15,6 +15,8 @@ const issues = (stage: (typeof WIZARD_STAGES)[number], o: unknown) => STAGE_SCHE
 const tweak = (v: string) => (v.length >= 4 ? `고침${v.slice(2)}` : v === '고침' ? '수정' : '고침')
 /** 영어 세트에만 있는 칸(S-영-08 번역) — 한국어 시연 fixture 에는 없으므로 아래 영어 합성 예로 따로 시험한다. */
 const ENGLISH_ONLY = (pattern: string) => pattern.startsWith('translations.')
+/** 고르기 칸(역량 꼬리표)은 글을 고치지 않고 다른 값을 고른다. */
+const tweakField = (f: { value: string; options?: readonly string[] }) => (f.options ? f.options.find((o) => o !== f.value)! : tweak(f.value))
 
 for (const set of SETS) describe(`editable fields on the ${set.subject} fixtures`, () => {
   for (const stage of WIZARD_STAGES) {
@@ -35,12 +37,12 @@ for (const set of SETS) describe(`editable fields on the ${set.subject} fixtures
     it(`stage ${stage}: changing any one field — or all of them — still validates with STAGE_SCHEMAS[${stage}]`, () => {
       const fields = expandFields(stage, output)
       for (const f of fields) {
-        const next = setAtPath(output, f.path, tweak(f.value))
+        const next = setAtPath(output, f.path, tweakField(f))
         expect(issues(stage, next), f.id).toEqual([])
       }
-      const all = applyFieldEdits(output, fields, Object.fromEntries(fields.map((f) => [f.id, tweak(f.value)])))
+      const all = applyFieldEdits(output, fields, Object.fromEntries(fields.map((f) => [f.id, tweakField(f)])))
       expect(issues(stage, all)).toEqual([])
-      expect(expandFields(stage, all).every((f) => f.value === tweak(fields.find((x) => x.id === f.id)!.value))).toBe(true)
+      expect(expandFields(stage, all).every((f) => f.value === tweakField(fields.find((x) => x.id === f.id)!))).toBe(true)
     })
   }
 })
@@ -83,6 +85,36 @@ describe('helpers', () => {
     for (const m of fx('stage4-generate').materials as { id: string; body: string | null }[]) {
       expect(fields.some((f) => f.group.tag === m.id && f.pattern === 'materials[].body')).toBe(m.body !== null)
     }
+  })
+
+  // C-40(단원 리포트 6축): 역량 꼬리표는 고르기 칸 — 꼬리표가 없는 옛 출력에도 빈 칸을 내어 새로 붙일 수 있다
+  it('competency is a pick field (six options); old outputs without the key get an empty field that can be filled, never cleared', () => {
+    const s5 = fx('stage5-generate')
+    const picks = expandFields(5, s5).filter((f) => f.options)
+    expect(picks.map((f) => f.pattern)).toEqual(picks.map(() => 'items[].rubric.criteria[].competency'))
+    expect(picks).toHaveLength(s5.items.reduce((n: number, it: { rubric: { criteria: unknown[] } }) => n + it.rubric.criteria.length, 0))
+    expect(picks[0].options).toEqual(['지식·이해', '자료 읽기', '근거 들어 설명하기', '글로 표현하기', '과정·기능', '가치·태도'])
+    expect(picks[0].value).toBe(s5.items[0].rubric.criteria[0].competency)
+    expect(expandFields(3, output).filter((f) => f.options)).toHaveLength(15)
+
+    const old = structuredClone(s5)
+    for (const it of old.items) for (const c of it.rubric.criteria) delete c.competency
+    const fields = expandFields(5, old)
+    const empty = fields.filter((f) => f.options)
+    expect(empty).toHaveLength(picks.length)
+    expect(empty.every((f) => f.value === '')).toBe(true)
+    // 아무것도 고르지 않으면 출력은 그대로(키가 생기지 않는다)
+    expect(applyFieldEdits(old, fields, Object.fromEntries(fields.map((f) => [f.id, f.value])))).toEqual(old)
+    const next = applyFieldEdits(old, fields, { [empty[1].id]: '자료 읽기' })
+    expect(next.items[0].rubric.criteria[1].competency).toBe('자료 읽기')
+    expect(next.items[0].rubric.criteria[0]).not.toHaveProperty('competency')
+    expect(validateEdited(5, next, fields)).toBeNull()
+    // 빈 값으로는 되돌리지 않는다, 목록 밖의 값은 형식 검사가 그 칸을 짚는다
+    expect(applyFieldEdits(s5, expandFields(5, s5), { [picks[0].id]: '' })).toEqual(s5)
+    const bad = applyFieldEdits(s5, expandFields(5, s5), { [picks[0].id]: '창의성' })
+    expect(validateEdited(5, bad, expandFields(5, s5))?.fieldId).toBe(picks[0].id)
+    // 글 칸은 여전히 없는 키를 만들지 않는다
+    expect(() => setAtPath(s5, ['items', 0, 'nope'], 'x')).toThrow(/no such path/)
   })
 
   it('validateEdited points at the field whose sentence broke the schema', () => {

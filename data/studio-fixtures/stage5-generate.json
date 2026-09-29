@@ -28,6 +28,7 @@
             "taught_in": [
               4
             ],
+            "competency": "과정·기능",
             "max": 2,
             "scale": [
               {
@@ -54,6 +55,7 @@
             "taught_in": [
               4
             ],
+            "competency": "자료 읽기",
             "max": 2,
             "scale": [
               {
@@ -81,6 +83,7 @@
               1,
               4
             ],
+            "competency": "근거 들어 설명하기",
             "max": 2,
             "scale": [
               {
@@ -290,6 +293,7 @@
               4,
               5
             ],
+            "competency": "자료 읽기",
             "max": 4,
             "scale": [
               {
@@ -329,6 +333,7 @@
               4,
               5
             ],
+            "competency": "근거 들어 설명하기",
             "max": 4,
             "scale": [
               {
@@ -367,6 +372,7 @@
             "taught_in": [
               5
             ],
+            "competency": "가치·태도",
             "max": 4,
             "scale": [
               {
@@ -408,6 +414,7 @@
               4,
               5
             ],
+            "competency": "글로 표현하기",
             "max": 4,
             "scale": [
               {
