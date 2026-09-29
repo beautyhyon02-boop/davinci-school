@@ -2,7 +2,7 @@
 import { describe, it, expect } from 'vitest'
 import { staticIssues, inventedActors, statesAnswer, quizCopySource, lessonSourceUnits, questionStems } from '@/lib/studio/checks'
 import { statesAnswer as compatStatesAnswer } from '@/lib/studio/compat'
-import { LessonDesign } from '@/lib/studio/schemas'
+import { LessonDesign, Assessment } from '@/lib/studio/schemas'
 import { assessmentV2, lessonV2, assessmentSession } from './studio-schemas.test'
 
 const standards = [{ code: '[9수04-02]', text: '자료를 줄기와 잎 그림, 도수분포표, 히스토그램, 도수분포다각형으로 나타내고 해석할 수 있다.' }, { code: '[9수04-03]', text: '상대도수를 구하고, 상대도수의 분포를 표나 그래프로 나타내고 해석할 수 있다.' }]
@@ -203,6 +203,28 @@ describe('staticIssues', () => {
     const dup = structuredClone(assessmentV2); dup.items[0].rubric.criteria[0].name = dup.items[1].rubric.criteria[0].name
     expect(staticIssues(5, dup, { standards, prior }).filter((i) => i.detail.includes('겹침')).map((i) => i.kind)).toEqual(['rubric'])
     expect(staticIssues(5, assessmentV2, { standards, prior }).filter((i) => i.detail.includes('겹침'))).toEqual([])
+  })
+  // C-39(대표 2026-09-29, 영어 서술형 "비교급·최상급 표현을 쓰면 2점" — 그 표현을 배웠어야 채점 요소로 넣을 수 있다): 요소마다 가르친 교수 차시(taught_in).
+  // 참고 메모(other)일 뿐 막지 않는다 — zod 는 taught_in 을 요구하지 않는다(옛 판·옛 초안).
+  it('stage 5 (C-39): a criterion without taught_in, or naming a non-teaching lesson of stage 3, gets an advisory note; zod still accepts it', () => {
+    const teaching = { ...lessonV2, no: 1 }
+    const prior = { stage4: { materials }, stage3: { lessons: [teaching, { ...lessonV2, no: 2 }, assessmentSession(3)] } }
+    const notes = (a: unknown, p: Record<string, unknown> = prior) => staticIssues(5, a, { standards, prior: p }).filter((i) => i.detail.includes('taught_in'))
+    expect(notes(assessmentV2)).toEqual([])
+    const missing = structuredClone(assessmentV2)
+    delete missing.items[0].rubric.criteria[1].taught_in
+    missing.items[1].rubric.criteria[2].taught_in = []
+    expect(notes(missing)).toEqual([
+      { kind: 'other', detail: '문항 1 요소 해석: 배운 차시가 적혀 있지 않음(taught_in)' },
+      { kind: 'other', detail: '문항 2 요소 제안: 배운 차시가 적혀 있지 않음(taught_in)' },
+    ])
+    expect(Assessment.safeParse(missing).success).toBe(true)
+    // 단원 평가 차시(3)·없는 차시(9)는 가르친 차시가 아니다
+    const wrong = structuredClone(assessmentV2); wrong.items[0].rubric.criteria[0].taught_in = [2, 3, 9]
+    expect(notes(wrong)).toEqual([{ kind: 'other', detail: '문항 1 요소 계산: 배운 차시가 적혀 있지 않음(taught_in) — 3·9차시는 교수 차시가 아님(C-39)' }])
+    // 3단계가 prior 에 없으면 번호 대조는 건너뛴다(빈 칸만 본다)
+    expect(notes(wrong, { stage4: { materials } })).toEqual([])
+    expect(notes(missing, { stage4: { materials } })).toHaveLength(2)
   })
   it('stage 5: grade_boundaries level_ref must follow the 7등급↔수준 table', () => {
     const prior = { stage4: { materials }, stage3: { lessons: [] } }

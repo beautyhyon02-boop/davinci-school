@@ -118,6 +118,26 @@ describe('Stage5Summary', () => {
     })
     expect(pv.criterionLine('자료의 사실적 정보 설명하기', 3)).toBe('자료의 사실적 정보 설명하기 (3점)')
   })
+  // C-39(대표 2026-09-29): 채점표의 요소 이름 아랫줄에 "배운 차시: 2·3차시"(교사용) — 학생에게 보이는 평가 요소 목록에는 없다. taught_in 이 없으면(옛 초안) 그 줄도 없다.
+  it('shows 배운 차시 under each criterion name in the rubric table (teacher-only), not in the 평가 요소 list', () => {
+    const taught = structuredClone(fx)
+    for (const it of taught.items) for (const c of it.rubric.criteria) c.taught_in = [2, 3]
+    delete taught.items[0].rubric.criteria[0].taught_in
+    const segs = render(taught).split('data-stage5-item').slice(1)
+    const rubricPart = (seg: string) => seg.slice(seg.indexOf(`>${copy.rubricHeading}</p>`))
+    const first = taught.items[0].rubric.criteria[0] as Crit
+    const second = taught.items[0].rubric.criteria[1] as Crit
+    expect(rubricPart(segs[0])).toContain(`<p data-taught-in="true" class="text-ink-500">${app.packageView.rubric.taughtIn([2, 3])}</p>`)
+    expect(app.packageView.rubric.taughtIn([2, 3])).toBe('배운 차시: 2·3차시')
+    separated(rubricPart(segs[0]), copy.criterionLabel(second.name, second.max), app.packageView.rubric.taughtIn([2, 3]))
+    // 첫 요소(taught_in 없음) 이름 칸에는 배운 차시 줄이 없다
+    const cell = rubricPart(segs[0]).slice(rubricPart(segs[0]).indexOf(esc(copy.criterionLabel(first.name, first.max))), rubricPart(segs[0]).indexOf('</td>', rubricPart(segs[0]).indexOf(esc(copy.criterionLabel(first.name, first.max)))))
+    expect(cell).not.toContain('data-taught-in')
+    for (const seg of segs) {
+      const crit = seg.slice(seg.indexOf('data-item-criteria'), seg.indexOf(`>${copy.rubricHeading}</p>`))
+      expect(crit).not.toContain('배운 차시')
+    }
+  })
   it('puts 등급표(7행, level_ref) and 피드백 틀 in a separate 채점 기준표(공통) box after the items', () => {
     const common = html.indexOf('data-stage5-common')
     const lastItem = html.lastIndexOf('data-stage5-item')

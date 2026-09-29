@@ -31,7 +31,8 @@ export const assessmentSession = (no: number) => ({
   materials_needed: [], caution_notes: ['작성 시간을 안내한다'], formative_check: { quiz: [] as typeof lessonV2.formative_check.quiz },
   assessment: ['서술형', '논술형'],
 })
-const criterion = (name: string, max: number) => ({ name, axis: '과정·기능', condition_nos: [1], max,
+// taught_in(C-39): 이 요소를 가르친 교수 차시 — 예시는 1차시
+const criterion = (name: string, max: number) => ({ name, axis: '과정·기능', condition_nos: [1], taught_in: [1] as number[] | undefined, max,
   scale: Array.from({ length: max + 1 }, (_, p) => ({ points: p, descriptor: p === 0 ? '무응답 또는 시도했으나 관련 내용 없음' : `${name} ${p}단계 충족`, example: null })) })
 const noCond = (c: ReturnType<typeof criterion>) => ({ ...c, condition_nos: [] as number[] })
 const exemplar = (points: number, scores: number[], text: string) => ({ level: null, points, scores, assumed_short_points: null, text, rationale: `요소별 ${scores.join('·')}점으로 ${points}점 단계에 해당함` })

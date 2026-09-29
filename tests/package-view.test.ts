@@ -118,6 +118,23 @@ describe.each(['수학', '과학'] as const)('PackageView v2 (%s mock snapshot)'
     expect(html).not.toMatch(new RegExp(`>${c.materials.roleLabel.raw}<`))
     expect(html).not.toMatch(new RegExp(`>${c.materials.aiBadge}<`))
   })
+  // C-39(대표 2026-09-29): 채점표 요소 이름 아랫줄에 배운 차시(교사용 접이식 안 — 문제지 인쇄에는 omit). 옛 판(taught_in 없음)은 그 줄 없이.
+  it('shows 배운 차시 under each rubric criterion name inside the grading fold, and nothing for old versions without taught_in', () => {
+    const withTaught = structuredClone(snap)
+    for (const it of withTaught.assessment!.items) for (const cr of it.rubric.criteria) cr.taught_in = [2, 4]
+    const h = render(withTaught, 'teacher')
+    const line = `<p data-taught-in="true" class="text-ink-500">${c.rubric.taughtIn([2, 4])}</p>`
+    expect(h.split(line).length - 1).toBe(withTaught.assessment!.items.reduce((s, it) => s + it.rubric.criteria.length, 0))
+    // 접이식(data-print="omit") 안에만 있다 — 평가 요소 목록(학생·문제지)에는 없다
+    for (const seg of h.split('data-print="item"').slice(1)) {
+      expect(seg.indexOf(line)).toBeGreaterThan(seg.indexOf('<details'))
+      const crit = seg.slice(seg.indexOf('data-item-criteria'), seg.indexOf('data-answer-kind'))
+      expect(crit).not.toContain('배운 차시')
+    }
+    const old = structuredClone(snap)
+    for (const it of old.assessment!.items) for (const cr of it.rubric.criteria) delete cr.taught_in
+    expect(render(old, 'teacher')).not.toContain('data-taught-in')
+  })
   it('shows each item card: stem ending [N점], numbered conditions, rubric criteria with max, notes, exemplars, A~E', () => {
     for (const it of snap.assessment!.items) {
       expect(t).toContain(norm(it.stem))

@@ -15,9 +15,10 @@ import { conditionDisplayText } from '@/lib/studio/condition-text'
 // 읽기 위계(오너 요청 2026-09-26, 모든 과목): 원장 문항 카드(PackageView)와 같게 — 문두 text-base 굵게, 조건은 번호 붙은 세로 목록,
 // 분량·형식·초과 응답·유의점·예시답안·A~E(수준마다 한 줄)·참고 예시는 한 줄에 하나씩. 틀은 parts/common.tsx.
 const copy = app.studio.wizard.stage5
+const rubricCopy = app.packageView.rubric
 
 type Step = { points: number; descriptor: string; example?: string | null }
-type Criterion = { name: string; axis?: string; condition_nos?: number[]; max: number; scale?: Step[] }
+type Criterion = { name: string; axis?: string; condition_nos?: number[]; taught_in?: number[]; max: number; scale?: Step[] }
 type Levels = { 상: string; 중: string; 하: string }
 type Item = {
   kind: string
@@ -60,6 +61,8 @@ function RubricTable({ criteria }: { criteria: Criterion[] }) {
               <tr key={i} className="border-b border-ink-50 align-top">
                 <td className="py-1 pr-2">
                   <p className="font-semibold">{copy.criterionLabel(c.name, c.max)}</p>
+                  {/* C-39: 이 요소를 가르친 교수 차시(요소 이름 아랫줄) — 빠졌으면 [TS] 참고 메모가 짚는다 */}
+                  {(c.taught_in?.length ?? 0) > 0 && <p data-taught-in className="text-ink-500">{rubricCopy.taughtIn(c.taught_in!)}</p>}
                   {c.axis && <p className="text-ink-500">{c.axis}</p>}
                   {(c.condition_nos?.length ?? 0) > 0 && <p className="text-ink-500">{copy.conditionRefs(c.condition_nos!)}</p>}
                 </td>

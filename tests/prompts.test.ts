@@ -126,6 +126,18 @@ describe('prompts v2', () => {
     const u3 = buildPrompt(3, ctx).user
     expect(u3).not.toContain('예시 문항 전체('); expect(u3).not.toContain('채점 기준표(')
   })
+  // 대표 2026-09-29: 평가 요소(채점 요소 이름·만점)는 학생에게 보이고, 채점 요소는 교수 차시에서 가르친 것만(C-39, taught_in)
+  it('stage 5 (C-39): each criterion carries taught_in (teaching lessons only), untaught skills are not scored, and criterion names are student-visible', () => {
+    const task = buildPrompt(5, ctx).user.split('과제: ')[1]
+    expect(task).toMatch(/taught_in\(그 요소가 평가하는 내용·표현·기능을 가르친 교수 차시 번호 배열/)
+    expect(task).toMatch(/단원 평가 차시 번호는 적지 않는다/); expect(task).toMatch(/비교급·최상급/); expect(task).toMatch(/채점 요소로 넣지 않는다, C-39/)
+    expect(task).toMatch(/채점 요소 이름·만점\(평가 요소/); expect(task).not.toMatch(/conditions만 보인다/)
+    const focus = buildReviewPrompt(5, ctx, { items: [] }).user.split('검토 초점: ')[1]
+    expect(focus).toMatch(/taught_in/); expect(focus).toMatch(/coverage\(C-39/); expect(focus).toMatch(/요소 이름은 학생에게 보이므로/)
+    // 3단계: 단원 평가에서 채점할 표현·기능은 교수 차시에 먼저
+    expect(buildPrompt(3, ctx).user.split('과제: ')[1]).toContain('단원 평가에서 채점할 표현·기능은 교수 차시의 활동·발문·활동지에 반드시 포함한다')
+    expect(buildPrompt(5, ctx).system).toMatch(/^C-39 /m)
+  })
   it('stage 5 conditions are guidelines only (C-32, 대표 2026-09-26): 서술형 none, 논술형 2~4, no solving hints', () => {
     const task = buildPrompt(5, ctx).user.split('과제: ')[1]
     expect(task).toMatch(/서술형은 conditions\.items를 빈 배열/); expect(task).toMatch(/논술형은 items 2~4개/)

@@ -8,8 +8,8 @@ describe('rules v2', () => {
     expect(new Set(ids).size).toBe(ids.length)
     const spec = readFileSync('docs/superpowers/specs/2026-09-25-item-studio-v2-design.md', 'utf8')
     for (const id of ids) expect(spec.split(`| ${id} |`).length - 1, id).toBe(1)
-    // 부록 A: 공통 36(C-31 대표 확정값, C-32 조건=지침(2026-09-26), C-33 자료 설계·유형(대표 연수 2기), C-34·C-36·C-37 경기2025 포함) + 차시 12 + 과목 37(국6·수7·사6·역3·과8·영7) + 채점 10(G-10 경기2025) + 안내장 12
-    expect(ids.length).toBe(36 + 12 + 37 + 10 + 12)
+    // 부록 A: 공통 37(C-31 대표 확정값, C-32 조건=지침(2026-09-26), C-33 자료 설계·유형(대표 연수 2기), C-34·C-36·C-37 경기2025, C-39 배운 것만 채점(대표 2026-09-29) 포함) + 차시 12 + 과목 37(국6·수7·사6·역3·과8·영7) + 채점 10(G-10 경기2025) + 안내장 12
+    expect(ids.length).toBe(37 + 12 + 37 + 10 + 12)
   })
   it('the spec appendix has no rule row that the code lacks', () => {
     const spec = readFileSync('docs/superpowers/specs/2026-09-25-item-studio-v2-design.md', 'utf8')
@@ -200,5 +200,20 @@ describe('경기2025: 사다리 설계·동점 두 줄·답안 틀·오류 이�
     expect(c32.text).toContain('논술형 문항에만 2~4개')
     const docs = readFileSync('docs/STATUS.md', 'utf8')
     expect(docs).toContain('C-35')
+  })
+})
+
+// 대표 2026-09-29(영어 서술형 "비교급·최상급 표현을 쓰면 2점"은 그 표현을 이 단원이나 그 이전에 배웠어야 넣을 수 있다): 채점 요소는 배운 것만.
+// C-38은 "피드백 시 유의점" 필드안(C-16에 접음)이라 비워 두고, C-35는 대표님 결정 대기 — 새 규칙은 C-39.
+describe('C-39 채점 요소는 교수 차시에서 가르친 것만 (대표 2026-09-29)', () => {
+  const spec = readFileSync('docs/superpowers/specs/2026-09-25-item-studio-v2-design.md', 'utf8')
+  const row = (id: string) => spec.split('\n').find((line) => line.startsWith(`| ${id} |`))!
+  it('exists as PS/대표 with taught_in and the 비교급·최상급 example; spec row identical; reaches the generation prompt; C-35·C-38 stay unused', () => {
+    const c39 = COMMON_RULES.find((r) => r.id === 'C-39')!
+    expect(c39.nature).toBe('PS'); expect(c39.tags).toEqual(['대표'])
+    for (const s of ['교수 차시에서 가르친 내용·표현만 평가한다', 'taught_in', '비교급·최상급', '채점 요소로 넣지 않는다', '3단계 차시 활동에 먼저 있어야 한다']) expect(c39.text, s).toContain(s)
+    expect(row('C-39')).toBe(`| C-39 | ${c39.text} | P+S | [대표] |`)
+    for (const subject of ['수학', '과학', '영어']) expect(rulesFor(subject)).toMatch(/^C-39 채점 요소는 이 세트의 교수 차시에서/m)
+    expect(COMMON_RULES.some((r) => r.id === 'C-35' || r.id === 'C-38')).toBe(false)
   })
 })

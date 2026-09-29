@@ -208,6 +208,11 @@ export const Conditions = z.object({
 export const ScaleStep = z.object({ points: z.number().int().min(0), descriptor: z.string().min(5), example: z.string().nullable() })
 export const Criterion = z.object({
   name: z.string().min(2), axis: z.enum(AXES), condition_nos: z.array(z.number().int()),   // 조건을 가리키지 않는 요소(서술형 전부 포함)는 빈 배열
+  /**
+   * C-39(대표 2026-09-29 "그 표현을 배웠어야 채점 요소로 넣을 수 있다"): 이 요소가 평가하는 내용·표현·기능을 가르친 교수 차시 번호(3단계 lessons[].no).
+   * 선택(모든 경로): 2026-09-29 이전에 저장·게시된 채점표에는 없다 — 빠졌거나 교수 차시가 아닌 번호면 [TS] 참고 메모만(checks.ts, 막지 않음).
+   */
+  taught_in: z.array(z.number().int().min(1)).optional(),
   max: z.number().int().min(1).max(CRITERION_MAX), scale: z.array(ScaleStep).min(2),
 }).superRefine((c, ctx) => {
   const pts = [...c.scale].map((s) => s.points).sort((a, b) => a - b)

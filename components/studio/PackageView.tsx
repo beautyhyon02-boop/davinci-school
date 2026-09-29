@@ -139,6 +139,8 @@ function RubricView({ rubric }: { rubric: Rubric }) {
           <p className="flex flex-wrap items-center gap-2 font-semibold">
             {c.criterionLabel(cr.name, cr.max)} <Badge tone="gray">{cr.axis}</Badge> <span className="font-normal text-ink-500">{c.conditionsLabel(cr.condition_nos)}</span>
           </p>
+          {/* C-39: 이 요소를 가르친 교수 차시(요소 이름 아랫줄). 옛 판(taught_in 없음)은 그리지 않는다 */}
+          {(cr.taught_in?.length ?? 0) > 0 && <p data-taught-in className="text-ink-500">{c.taughtIn(cr.taught_in!)}</p>}
           <table className="mt-1 w-full min-w-[420px] text-left">
             <thead>
               <tr className="border-b border-ink-100 text-ink-500">

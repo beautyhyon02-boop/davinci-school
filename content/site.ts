@@ -724,6 +724,8 @@ export const app = {
       criterionLabel: (name: string, max: number) => `${name} (0~${max}점)`,
       axisLabel: '축',
       conditionsLabel: (nos: number[]) => (nos.length ? `조건 ${nos.join('·')}` : ''),
+      // C-39(대표 2026-09-29): 요소가 평가하는 내용·표현을 가르친 교수 차시 — 교사용(원장 문항 카드·제작소 5단계 채점표), 학생 화면에는 없다
+      taughtIn: (nos: number[]) => `배운 차시: ${nos.join('·')}차시`,
       pointLabel: (n: number) => `${n}점`,
       exampleLabel: '예',
       holisticHeading: '총체적 기준',

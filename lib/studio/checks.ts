@@ -375,6 +375,30 @@ function scenarioCorpus(ctx: CheckCtx, materials: MaterialsT['materials']): stri
   return parts.filter((p) => typeof p === 'string' || typeof p === 'number').map(String).join('').replace(/\s+/g, '')
 }
 
+/** [TS] 채점 요소 배운 차시 메모(C-39). 대표 결정(마법사는 아무것도 막지 않는다): zod 는 taught_in 을 요구하지 않고 이 참고 메모만 남긴다. */
+export const TAUGHT_IN_MISSING = '배운 차시가 적혀 있지 않음(taught_in)'
+/**
+ * C-39(대표 2026-09-29 — 영어 서술형 "비교급·최상급 표현을 쓰면 2점"은 그 표현을 이 단원이나 그 이전에 배웠어야 넣을 수 있다):
+ * 채점 요소마다 taught_in 이 비었거나 없으면, 또는 3단계 확정본(prior.stage3)의 교수 차시가 아닌 번호(단원 평가 차시·없는 차시)를
+ * 하나라도 담으면 참고 메모(kind other). 3단계가 prior 에 없으면 번호 대조는 건너뛰고 빈 칸만 본다. 그 차시 활동에 요소의 표현·기능이
+ * 실제로 있는지는 뜻을 봐야 하므로 [AI] 검토(REVIEW_FOCUS[5], coverage)가 본다.
+ */
+function taughtInIssues(items: AssessmentT['items'], ctx: CheckCtx): Issue[] {
+  const lessons = (ctx.prior.stage3 as Partial<LessonDesignT> | undefined)?.lessons
+  const teaching = Array.isArray(lessons) && lessons.length ? new Set(lessons.filter((l) => !isAssessmentSession(l)).map((l) => l.no)) : null
+  const issues: Issue[] = []
+  for (const [i, it] of items.entries()) {
+    for (const c of it.rubric.criteria) {
+      const taught = c.taught_in ?? []
+      const where = `문항 ${i + 1} 요소 ${c.name}: ${TAUGHT_IN_MISSING}`
+      if (taught.length === 0) { issues.push({ kind: 'other', detail: where }); continue }
+      const bad = teaching ? [...new Set(taught.filter((n) => !teaching.has(n)))] : []
+      if (bad.length) issues.push({ kind: 'other', detail: `${where} — ${bad.join('·')}차시는 교수 차시가 아님(C-39)` })
+    }
+  }
+  return issues
+}
+
 function assessmentIssues(o: AssessmentT, ctx: CheckCtx): Issue[] {
   const issues: Issue[] = []
   // 세트 구조(대표 2026-09-26): zod 가 생성 때 거르지만, 검토는 저장된 출력(옛 판·손으로 고친 판)에도 돌므로 다시 본다
@@ -414,6 +438,7 @@ function assessmentIssues(o: AssessmentT, ctx: CheckCtx): Issue[] {
     if (it.kind === '논술형' && !it.rubric.criteria.some((c) => c.axis === '가치·태도')) issues.push({ kind: 'level', detail: '논술형 4요소 중 가치·태도 축이 없음(정당화 가능성 기준으로 서술)' })
   }
   issues.push(...placementIssues(o, ctx))
+  issues.push(...taughtInIssues(o.items, ctx))
   const setMaterials = (ctx.prior.stage4 as MaterialsT | undefined)?.materials
   if (Array.isArray(setMaterials)) issues.push(...materialUseIssues(setMaterials, ctx, o.items))
   const lessons3 = (ctx.prior.stage3 as Partial<LessonDesignT> | undefined)?.lessons
