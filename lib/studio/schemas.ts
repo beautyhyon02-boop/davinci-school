@@ -8,10 +8,11 @@ export { COMPETENCIES, type Competency } from './competency'
 
 /**
  * 안에서 쓰는 전체 과목 목록(DB enum·성취기준 subject = 교육부 분류). 한국사·세계사는 옛 값으로 계속 읽힌다.
+ * 도덕(2026-09-30, 마이그레이션 0015)은 성취기준 분류로만 쓴다 — 도덕·윤리 성취기준은 사회 세트에서 고른다(세트 과목이 되지 않는다).
  * 새 대주제·세트에서 고르는 과목은 STUDIO_SUBJECTS 다섯(사회가 한국사·세계사를 품는다, 대표 결정 2026-09-30 — lib/studio/subjects.ts).
  */
-export const SUBJECTS = ['국어', '영어', '수학', '과학', '사회', '한국사', '세계사'] as const
-export { STUDIO_SUBJECTS, standardSubjectsFor, studioSubjectOf, isStudioSubject, isLegacySubject, type StudioSubject } from './subjects'
+export const SUBJECTS = ['국어', '영어', '수학', '과학', '사회', '한국사', '세계사', '도덕'] as const
+export { STUDIO_SUBJECTS, standardSubjectsFor, setSubjectsFor, studioSubjectOf, isStudioSubject, isLegacySubject, isMergedSubject, type StudioSubject } from './subjects'
 export type Subject = (typeof SUBJECTS)[number]
 export const LEVELS = ['초', '중', '고'] as const
 export type Level = (typeof LEVELS)[number]

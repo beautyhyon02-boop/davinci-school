@@ -130,6 +130,14 @@ const SOCIAL_FAMILY_LABELS: Record<string, string> = {
   '12세사': '세계사',
   '12동역': '동아시아 역사 기행',
   '12역현': '역사로 탐구하는 현대 세계',
+  // 도덕·윤리(2026-09-30) — 고등학교 과목 이름은 별책4 과목 표제 그대로
+  '4도': '도덕 (초등 3~4학년군)',
+  '6도': '도덕 (초등 5~6학년군)',
+  '9도': '도덕',
+  '12현윤': '현대사회와 윤리',
+  '12윤사': '윤리와 사상',
+  '12인윤': '인문학과 윤리',
+  '12윤탐': '윤리문제 탐구',
 }
 
 export const app = {
@@ -206,7 +214,7 @@ export const app = {
       levelAll: '전체',
       subjectLabel: '과목 (교육부 분류)',
       subjectAll: '전체',
-      subjectHelp: '제작소의 「사회」는 사회 + 한국사 + 세계사를 묶은 것입니다.',
+      subjectHelp: '제작소의 「사회」는 사회 + 한국사 + 세계사 + 도덕을 묶은 것입니다.',
       searchLabel: '검색',
       searchPlaceholder: '코드 또는 원문 검색',
       submit: '검색',
@@ -236,7 +244,7 @@ export const app = {
       gradeInvalid: '학년을 확인하세요. (초 1~6, 중·고 1~3, 또는 학년 지정 안 함)',
       subjectsRequired: '과목을 1개 이상 선택하세요.',
       subjectInvalid: '알 수 없는 과목입니다.',
-      subjectMerged: '한국사·세계사는 사회로 묶였습니다. 사회를 선택하세요.',
+      subjectMerged: '한국사·세계사·도덕(윤리)은 사회로 묶였습니다. 사회를 선택하세요.',
       subjectNotInTheme: '대주제에 포함되지 않은 과목입니다.',
       subjectDuplicate: '이미 세트가 만들어진 과목입니다.',
       standardCountInvalid: '성취기준은 2~6개 선택하세요.',
@@ -265,7 +273,7 @@ export const app = {
     newTheme: {
       title: '새 대주제',
       labels: { title: '제목', level: '학교급', grade: '학년(선택)', subjects: '과목' },
-      subjectsHelp: '사회는 지리·일반사회·역사(한국사·세계사)를 묶은 통합 과목입니다.',
+      subjectsHelp: '사회는 지리·일반사회·역사(한국사·세계사)·윤리(도덕)를 묶은 통합 과목입니다.',
       gradeNone: '학년 지정 안 함(학년군 전체)',
       gradeOption: (grade: number) => `${grade}학년`,
       gradeHelp: '2022 개정 성취기준은 학년군 단위입니다. 학년을 정하지 않으면 중학교는 1~3학년군, 초등학교는 3~6학년 수준으로 만듭니다. 초등은 1~6학년, 중등은 1~3학년 중에서 고를 수 있습니다.',
@@ -343,7 +351,7 @@ export const app = {
       uncategorized: '미분류',
       // 사회 세트의 성취기준 묶음 제목(대표 결정 2026-09-30: 사회는 지리·일반사회·역사 등을 묶은 통합 과목).
       // 열쇠 = 코드 머리(lib/studio/subjects.ts standardFamilyKey). 표에 없는 코드 머리는 "사회 (코드 머리)"로 보인다.
-      familyHelp: '사회는 통합 과목입니다. 지리·일반사회·역사 어느 묶음에서든 골라 2~6개를 채우세요.',
+      familyHelp: '사회는 통합 과목입니다. 지리·일반사회·역사·도덕(윤리) 어느 묶음에서든 골라 2~6개를 채우세요.',
       familyLabel: (key: string): string => SOCIAL_FAMILY_LABELS[key] ?? `사회 (${key})`,
       searchPlaceholder: '코드 또는 원문 검색',
       selectedCount: (n: number) => `${n}개 선택 (2~6개)`,

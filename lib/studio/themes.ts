@@ -1,6 +1,6 @@
 import type { z } from 'zod'
 import { LEVELS, Materials, type Subject, type Level } from '@/lib/studio/schemas'
-import { isStudioSubject, isLegacySubject, standardSubjectsFor } from '@/lib/studio/subjects'
+import { isStudioSubject, isMergedSubject, standardSubjectsFor } from '@/lib/studio/subjects'
 import { app } from '@/content/site'
 
 const errors = app.studio.errors
@@ -35,11 +35,11 @@ export function parseThemeGrade(level: string, raw: FormDataEntryValue | string 
 
 /**
  * 새로 고르는 과목은 제작소 과목 다섯(국어·영어·수학·과학·사회)만 된다(대표 결정 2026-09-30).
- * 한국사·세계사는 사회로 묶였다는 안내를, 그 밖의 값은 "알 수 없는 과목"을 돌려준다. 문제 없으면 null.
+ * 한국사·세계사·도덕은 사회로 묶였다는 안내를, 그 밖의 값은 "알 수 없는 과목"을 돌려준다. 문제 없으면 null.
  */
 function newSubjectError(s: string): string | null {
   if (isStudioSubject(s)) return null
-  return isLegacySubject(s) ? errors.subjectMerged : errors.subjectInvalid
+  return isMergedSubject(s) ? errors.subjectMerged : errors.subjectInvalid
 }
 
 /** grade 가 null 이면 학년 지정 안 함 — 모든 문구가 "중학교(1~3학년군)" 수준이 된다(lib/studio/level-map.ts gradeLabel). */
@@ -117,7 +117,7 @@ export function canCreateSet(
   existingSubjects: string[],
 ): { ok: boolean; reason?: string } {
   if (!theme.subjects.includes(subject)) return { ok: false, reason: errors.subjectNotInTheme }
-  if (!isStudioSubject(subject)) return { ok: false, reason: isLegacySubject(subject) ? errors.subjectMerged : errors.subjectInvalid }
+  if (!isStudioSubject(subject)) return { ok: false, reason: isMergedSubject(subject) ? errors.subjectMerged : errors.subjectInvalid }
   if (existingSubjects.includes(subject)) return { ok: false, reason: errors.subjectDuplicate }
   return { ok: true }
 }
@@ -126,7 +126,7 @@ export type StandardCandidate = { code: string; level: string; subject: string; 
 
 /**
  * 성취기준 선택 규칙: 2~6개, 모두 대주제 학교급·과목과 일치해야 issues 없음.
- * 과목은 묶음으로 본다 — 사회 세트는 사회·한국사·세계사 성취기준을 모두 고를 수 있다(standardSubjectsFor).
+ * 과목은 묶음으로 본다 — 사회 세트는 사회·한국사·세계사·도덕 성취기준을 모두 고를 수 있다(standardSubjectsFor).
  * 원문 미검증 성취기준은 게시를 막지 않고 warnings로만 알린다.
  */
 export function validateStandardSelection(

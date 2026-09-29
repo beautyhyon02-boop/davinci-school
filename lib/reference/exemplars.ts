@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
-import { isHistoryCode } from '@/lib/studio/subjects'
+import { isHistoryCode, isMoralCode } from '@/lib/studio/subjects'
 
 export type ExemplarRecord = {
   id: string; subject: string; school_level: '초' | '중' | '고'; grade: number | null; unit: string | null; standard_codes: string[]
@@ -62,14 +62,18 @@ export function scoreExemplar(r: ExemplarRecord, q: ExemplarQuery): number {
 
 /**
  * 사회 세트(통합 과목)의 영역 가점: 세트가 고른 성취기준이 모두 역사 영역이면 역사 예시를 먼저(역사 3 · 사회 1),
- * 그 밖에는 사회 예시를 먼저(사회 3 · 역사는 역사 코드가 섞였을 때만 1). 도덕은 가점 없음. 다른 과목은 0.
+ * 모두 도덕·윤리 영역이면 도덕 예시를 먼저(도덕 3 · 사회 1), 그 밖에는 사회 예시를 먼저
+ * (사회 3 · 역사·도덕은 그 영역 코드가 섞였을 때만 1). 다른 과목은 0.
  */
 function domainBonus(r: ExemplarRecord, q: ExemplarQuery): number {
   if (q.subject !== '사회') return 0
   const history = q.codes.filter(isHistoryCode).length
+  const moral = q.codes.filter(isMoralCode).length
   const allHistory = q.codes.length > 0 && history === q.codes.length
+  const allMoral = q.codes.length > 0 && moral === q.codes.length
   if (r.subject === '역사') return allHistory ? 3 : history > 0 ? 1 : 0
-  if (r.subject === '사회') return allHistory ? 1 : 3
+  if (r.subject === '도덕') return allMoral ? 3 : moral > 0 ? 1 : 0
+  if (r.subject === '사회') return allHistory || allMoral ? 1 : 3
   return 0
 }
 

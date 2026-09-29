@@ -13,12 +13,12 @@ type Std = { level: string; subject: string; grade_band: string; domain: string;
 const standards = (f: string) => JSON.parse(readFileSync(`data/standards/${f}.json`, 'utf8')) as Std[]
 
 describe('과목 목록', () => {
-  it('제작소 과목은 다섯, 안쪽 목록은 옛 값까지 그대로(순서: 국어·영어·수학·과학·사회 다음에 한국사·세계사)', () => {
+  it('제작소 과목은 다섯, 안쪽 목록은 옛 값까지 그대로(순서: 국어·영어·수학·과학·사회 다음에 한국사·세계사, 맨 끝에 도덕)', () => {
     expect([...STUDIO_SUBJECTS]).toEqual(['국어', '영어', '수학', '과학', '사회'])
-    expect([...SUBJECTS]).toEqual(['국어', '영어', '수학', '과학', '사회', '한국사', '세계사'])
+    expect([...SUBJECTS]).toEqual(['국어', '영어', '수학', '과학', '사회', '한국사', '세계사', '도덕'])
   })
-  it('standardSubjectsFor: 사회 → 사회·한국사·세계사, 그 밖에는 자기 자신', () => {
-    expect(standardSubjectsFor('사회')).toEqual(['사회', '한국사', '세계사'])
+  it('standardSubjectsFor: 사회 → 사회·한국사·세계사·도덕, 그 밖에는 자기 자신', () => {
+    expect(standardSubjectsFor('사회')).toEqual(['사회', '한국사', '세계사', '도덕'])
     for (const s of ['국어', '영어', '수학', '과학', '한국사', '세계사']) expect(standardSubjectsFor(s)).toEqual([s])
   })
   it('studioSubjectOf folds legacy names into 사회', () => {

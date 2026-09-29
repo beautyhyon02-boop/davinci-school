@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { Badge } from '@/components/ui/Badge'
 import { Card } from '@/components/ui/Card'
 import { app } from '@/content/site'
-import { STUDIO_SUBJECTS, LEVELS, standardSubjectsFor } from '@/lib/studio/schemas'
+import { STUDIO_SUBJECTS, LEVELS, setSubjectsFor } from '@/lib/studio/schemas'
 
 const copy = app.teacherItems
 
@@ -22,8 +22,9 @@ export default async function TeacherItemsPage({ searchParams }: { searchParams:
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let q2: any = query
     if (level) q2 = q2.eq('level', level)
-    // 과목은 묶음으로 찾는다 — 「사회」는 옛 한국사·세계사 세트도 함께 보여 준다(대표 결정 2026-09-30)
-    if (subject) q2 = q2.in('subject', standardSubjectsFor(subject))
+    // 과목은 묶음으로 찾는다 — 「사회」는 옛 한국사·세계사 세트도 함께 보여 준다(대표 결정 2026-09-30).
+    // 세트 과목 값만 넣는다(도덕은 세트 과목이 아니고, 0015 전의 DB 에서는 enum 에 없는 값이라 조회가 오류가 된다)
+    if (subject) q2 = q2.in('subject', setSubjectsFor(subject))
     return q2
   }
 
