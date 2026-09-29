@@ -12,7 +12,8 @@ import { loadReportSource, canViewStudent, type ReportViewer } from './report-da
  * 학생의 원 확인은 loadReportSource 가 가장 먼저 한다(통과 전에는 아무것도 읽거나 쓰지 않는다).
  */
 
-export type SaveReason = 'forbidden' | 'not-found' | 'no-assignments' | 'invalid' | 'save-failed' | 'no-report'
+/** 'already-confirmed' = 이미 확정한 리포트(다른 창에서 확정했을 수 있다) — 덮어쓰지 않고 [다시 고치기]를 안내한다. */
+export type SaveReason = 'forbidden' | 'not-found' | 'no-assignments' | 'load-failed' | 'invalid' | 'save-failed' | 'no-report' | 'already-confirmed'
 export type SaveResult = { ok: true; body: UnitReportBody } | { ok: false; reason: SaveReason }
 
 export async function saveUnitReport(a: {
@@ -24,6 +25,10 @@ export async function saveUnitReport(a: {
   const loaded = await loadReportSource(a.db, a.viewer, a.themeId, a.studentId)
   if (!loaded.ok) return loaded
   const src = loaded.source
+  if (!src.reportsAvailable) return { ok: false, reason: 'save-failed' }
+  // 이미 확정한 리포트는 저장으로 덮어쓰지 않는다 — 확정을 푸는 길은 [다시 고치기] 하나뿐이다.
+  // 저장된 본문을 읽지 못한 줄(body null)은 화면이 「저장 전」으로 보여 주므로 새 본문으로 덮어쓴다.
+  if (src.stored?.status === 'confirmed' && src.stored.body) return { ok: false, reason: 'already-confirmed' }
   const asked = Array.isArray(a.subjects) ? a.subjects.filter((s): s is string => typeof s === 'string') : []
   const chosen = src.subjects.filter((s) => asked.includes(s))
   const include = chosen.length ? chosen : src.subjects
@@ -41,8 +46,18 @@ export async function saveUnitReport(a: {
     updated_at: a.now,
   }
   try {
-    const { error } = await a.db.from('unit_reports').upsert(row, { onConflict: 'student_id,theme_id' })
-    if (error) return { ok: false, reason: 'save-failed' }
+    if (!src.stored) {
+      // 그 사이 다른 창이 먼저 저장했으면 unique(student_id, theme_id) 에 걸려 실패한다 — 덮어쓰지 않는다
+      const { error } = await a.db.from('unit_reports').insert(row)
+      if (error) return { ok: false, reason: 'save-failed' }
+    } else {
+      let q = a.db.from('unit_reports').update(row).eq('student_id', a.studentId).eq('theme_id', a.themeId)
+      // 읽은 뒤 저장하기 전에 다른 창이 확정했으면 고쳐지는 줄이 없다(confirmed_at 이 비어 있는 줄만 고친다)
+      if (src.stored.body) q = q.is('confirmed_at', null)
+      const { data, error } = await q.select('id')
+      if (error || !data) return { ok: false, reason: 'save-failed' }
+      if (data.length === 0) return { ok: false, reason: src.stored.body ? 'already-confirmed' : 'save-failed' }
+    }
   } catch {
     return { ok: false, reason: 'save-failed' }
   }

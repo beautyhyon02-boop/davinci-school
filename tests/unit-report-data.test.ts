@@ -1,7 +1,7 @@
 // 단원 리포트 자료 모으기·저장(가짜 DB) — 설계 2026-09-29 §5.1, §5.4, §6. 마이그레이션 0014 전(표 없음)에도 깨지지 않아야 한다.
 import { describe, it, expect } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { loadReportSource, loadReportIndex, confirmedFirstAttempts, canViewStudent, type ReportViewer } from '@/lib/classroom/report-data'
+import { loadReportSource, loadReportIndex, confirmedFirstAttempts, canViewStudent, IN_CHUNK, type ReportViewer } from '@/lib/classroom/report-data'
 import { saveUnitReport, reopenUnitReport } from '@/lib/classroom/report-save'
 import { buildUnitReport } from '@/lib/classroom/report'
 import { UnitReportBody } from '@/lib/classroom/report-schema'
@@ -162,6 +162,26 @@ describe('loadReportSource', () => {
     if (!r.ok) throw new Error(r.reason)
     expect(r.source.stored).toEqual({ status: 'draft', body: null, confirmedAt: null, updatedAt: NOW })
   })
+
+  it('a subject whose published version cannot be read is named, not dropped', async () => {
+    const t = tables()
+    t.item_set_versions = t.item_set_versions.filter((v) => v.item_set_id !== 'set-eng')
+    const r = await loadReportSource(db(t).client, teacher, 't1', 's1')
+    if (!r.ok) throw new Error(r.reason)
+    expect(r.source.subjects).toEqual(['수학'])
+    expect(r.source.unreadableSubjects).toEqual(['영어'])
+    // 읽을 수 있는 과목이 하나도 없으면 "배정 없음"이 아니라 "읽지 못함"
+    t.item_set_versions = []
+    expect(await loadReportSource(db(t).client, teacher, 't1', 's1')).toEqual({ ok: false, reason: 'load-failed' })
+    const ok = await loadReportSource(db().client, teacher, 't1', 's1')
+    expect(ok.ok && ok.source.unreadableSubjects).toEqual([])
+  })
+
+  it('a read error is reported, never turned into empty numbers', async () => {
+    for (const table of ['quiz_responses', 'answers', 'gradings', 'assignments', 'item_sets', 'themes', 'profiles', 'academies', 'students']) {
+      expect(await loadReportSource(db(tables(), { failOn: [`select:${table}`] }).client, teacher, 't1', 's1'), table).toEqual({ ok: false, reason: 'load-failed' })
+    }
+  })
 })
 
 describe('loadReportIndex', () => {
@@ -185,12 +205,109 @@ describe('loadReportIndex', () => {
   })
   it('shows the report status, and tolerates the missing tables', async () => {
     const t = tables()
-    t.unit_reports.push({ student_id: 's1', theme_id: 't1', status: 'confirmed', confirmed_at: NOW }, { student_id: 's2', theme_id: 't1', status: 'draft', confirmed_at: null })
+    const body = async (sid: string) => {
+      const r = await loadReportSource(db().client, admin, 't1', sid)
+      if (!r.ok) throw new Error(r.reason)
+      return buildUnitReport(r.source.input, copy)
+    }
+    t.unit_reports.push({ id: 'r1', student_id: 's1', theme_id: 't1', status: 'confirmed', confirmed_at: NOW, body: await body('s1') }, { id: 'r2', student_id: 's2', theme_id: 't1', status: 'draft', confirmed_at: null, body: await body('s2') })
     expect((await loadReportIndex(db(t).client, teacher)).themes[0].students.map((s) => s.status)).toEqual(['confirmed', 'draft'])
+    // 본문을 읽을 수 없는 줄은 「확정」으로 보이지 않는다 — 학생별 화면이 새로 만들기 때문
+    t.unit_reports[0].body = { broken: true }
+    expect((await loadReportIndex(db(t).client, teacher)).themes[0].students.map((s) => s.status)).toEqual(['none', 'draft'])
     const idx = await loadReportIndex(db(tables(), { missing: ['quiz_finalizations', 'unit_reports'] }).client, teacher)
     expect([idx.finalizeAvailable, idx.reportsAvailable]).toEqual([false, false])
     expect(idx.themes[0].students[0].subjects[1]).toEqual({ subject: '수학', finalizedLessons: 0, teachingLessons: 5, confirmedItems: 2, items: 2 })
     expect(idx.themes[0].students.map((s) => s.status)).toEqual(['none', 'none'])
+    expect(idx.loadFailed).toBe(false)
+  })
+
+  it('themes come newest first, by the latest assignment of each theme', async () => {
+    const t = tables()
+    t.themes.push({ id: 't0', title: '가장 먼저 오는 제목' }, { id: 't3', title: '하천과 우리 마을' })
+    t.item_sets.push({ id: 'set-old', theme_id: 't0', subject: '수학', key_question: '' }, { id: 'set-new', theme_id: 't3', subject: '수학', key_question: '' })
+    t.item_set_versions.push({ item_set_id: 'set-old', version: 1, snapshot: snapMath }, { item_set_id: 'set-new', version: 1, snapshot: snapMath })
+    const stamped = t.assignments.map((a, i) => ({ ...a, created_at: `2026-09-1${i}T00:00:00.000Z` }))
+    t.assignments = [
+      ...stamped,
+      { id: 'a-old', item_set_id: 'set-old', item_set_version: 1, academy_id: 'ac1', student_id: 's1', created_at: '2026-08-01T00:00:00.000Z' },
+      { id: 'a-new', item_set_id: 'set-new', item_set_version: 1, academy_id: 'ac1', student_id: 's2', created_at: '2026-09-28T00:00:00.000Z' },
+    ] as typeof t.assignments
+    const idx = await loadReportIndex(db(t).client, teacher)
+    expect(idx.themes.map((x) => x.title)).toEqual(['하천과 우리 마을', '학교 축제, 일회용품을 줄이자', '가장 먼저 오는 제목'])
+  })
+
+  it('a subject whose published version cannot be read stays in the list with a flag', async () => {
+    const t = tables()
+    t.item_set_versions = t.item_set_versions.filter((v) => v.item_set_id !== 'set-eng')
+    const st = (await loadReportIndex(db(t).client, teacher)).themes[0].students[0]
+    expect(st.subjects.map((s) => [s.subject, s.unreadable ?? false])).toEqual([['영어', true], ['수학', false]])
+  })
+
+  it('a read error shows as loadFailed, not as zero counts', async () => {
+    for (const table of ['assignments', 'item_sets', 'profiles', 'answers', 'gradings', 'themes']) {
+      const idx = await loadReportIndex(db(tables(), { failOn: [`select:${table}`] }).client, teacher)
+      expect([table, idx.loadFailed, idx.themes]).toEqual([table, true, []])
+    }
+  })
+})
+
+describe('loadReportIndex — 줄이 많을 때(1000줄 한도·긴 .in() 목록)', () => {
+  /** 학생 1300명 × 수학 1세트. 학생마다 1~2차시 확인, 서술형 1문항 확정. 저장된 리포트는 앞의 250명만(초안). */
+  const N = 1300
+  const id = (p: string, i: number) => `${p}${String(i).padStart(5, '0')}`
+  function big() {
+    const t = tables()
+    const body = buildUnitReport({ student: { name: '학생', seq: 1 }, theme: { title: 't' }, subjects: [] }, copy)
+    const many = Array.from({ length: N }, (_, i) => i)
+    return {
+      ...t,
+      students: many.map((i) => ({ profile_id: id('s', i), academy_id: 'ac1', seq: i })),
+      profiles: many.map((i) => ({ id: id('s', i), name: id('학생', i) })),
+      assignments: many.map((i) => ({ id: id('a', i), item_set_id: 'set-math', item_set_version: 1, academy_id: 'ac1', student_id: id('s', i), created_at: NOW })),
+      quiz_responses: [],
+      quiz_finalizations: many.flatMap((i) => [1, 2].map((lesson_no) => ({ id: id('f', i * 2 + lesson_no), assignment_id: id('a', i), lesson_no, finalized_at: NOW }))),
+      answers: many.map((i) => ({ id: id('ans', i), assignment_id: id('a', i), item_no: 1, attempt: 1 })),
+      gradings: many.map((i) => ({ id: id('g', i), answer_id: id('ans', i), status: 'confirmed', confirmed_at: NOW, final_criteria: criteria(snapMath, 1, 0) })),
+      unit_reports: many.slice(0, 250).map((i) => ({ id: id('r', i), student_id: id('s', i), theme_id: 't1', status: 'draft', confirmed_at: null, body })),
+    }
+  }
+
+  it('the fake DB really cuts a plain select at 1000 rows', async () => {
+    const { m } = db(big())
+    const { data } = await (m.from('assignments').select() as unknown as Promise<{ data: unknown[] }>)
+    expect(data).toHaveLength(1000)
+  })
+
+  it('reads every row: all 1300 students, each with the right counts and status', async () => {
+    const { m, client } = db(big(), { maxIn: IN_CHUNK })
+    const idx = await loadReportIndex(client, teacher)
+    expect(idx.loadFailed).toBe(false)
+    expect(idx.themes).toHaveLength(1)
+    const st = idx.themes[0].students
+    expect(st).toHaveLength(N)
+    expect(new Set(st.map((s) => s.studentId)).size).toBe(N)
+    for (const s of st) expect(s.subjects, s.studentId).toEqual([{ subject: '수학', finalizedLessons: 2, teachingLessons: 5, confirmedItems: 1, items: 2 }])
+    expect(st.filter((s) => s.status === 'draft')).toHaveLength(250)
+    expect(st.filter((s) => s.name === '')).toHaveLength(0)
+    // 긴 id 목록은 100개씩 나눠 보냈고, 모든 읽기에 범위가 걸려 있다
+    const listReads = m.reads.filter((r) => r.table !== 'item_set_versions')
+    expect(Math.max(...listReads.flatMap((r) => r.inCounts))).toBeLessThanOrEqual(IN_CHUNK)
+    expect(listReads.every((r) => r.range !== null)).toBe(true)
+    expect(m.reads.filter((r) => r.table === 'assignments').map((r) => r.range)).toEqual([[0, 999], [1000, 1999]])
+    expect(m.reads.filter((r) => r.table === 'answers')).toHaveLength(N / IN_CHUNK)
+  })
+
+  it('more than 1000 rows inside one chunk of ids are paged too', async () => {
+    const t = big()
+    // 배정 100개에 답안을 12개씩(문항 번호는 1만 확정) — 한 묶음(100개)에 1200줄
+    t.answers = t.assignments.slice(0, 100).flatMap((a, i) => Array.from({ length: 12 }, (_, k) => ({ id: id('ans', i * 12 + k), assignment_id: a.id, item_no: k === 11 ? 1 : 3, attempt: 1 })))
+    t.gradings = t.answers.map((a, i) => ({ id: id('g', i), answer_id: a.id, status: 'confirmed', confirmed_at: NOW, final_criteria: criteria(snapMath, 1, 0) }))
+    const idx = await loadReportIndex(db(t, { maxIn: IN_CHUNK }).client, teacher)
+    const st = idx.themes[0].students
+    // 1000줄에서 잘렸다면 뒤쪽 배정의 확정 문항(묶음의 마지막 줄들)이 0 으로 보인다
+    expect(st.slice(0, 100).map((s) => s.subjects[0].confirmedItems)).toEqual(Array(100).fill(1))
+    expect(st.slice(100).every((s) => s.subjects[0].confirmedItems === 0)).toBe(true)
   })
 })
 
@@ -230,9 +347,53 @@ describe('saveUnitReport — 숫자는 서버가 만든다', () => {
     const c = await saveUnitReport({ ...base, db: client, subjects: [], edits: {}, status: 'confirmed' })
     expect(c.ok).toBe(true)
     expect(m.tables.unit_reports[0]).toMatchObject({ status: 'confirmed', confirmed_at: NOW, confirmed_by: 'u-teacher', subjects: ['영어', '수학'] })
+    expect(await reopenUnitReport({ db: client, viewer: teacher, themeId: 't1', studentId: 's1', now: NOW })).toEqual({ ok: true })
     await saveUnitReport({ ...base, db: client, subjects: ['영어'], edits: {}, status: 'draft' })
     expect(m.tables.unit_reports).toHaveLength(1)
     expect(m.tables.unit_reports[0]).toMatchObject({ status: 'draft', confirmed_at: null, subjects: ['영어'] })
+  })
+
+  it('a confirmed report is never overwritten by a save — the teacher is asked to press [다시 고치기]', async () => {
+    const { m, client } = db()
+    await saveUnitReport({ ...base, db: client, subjects: [], edits: { [editKey.overall()]: '확정한 문장' }, status: 'confirmed' })
+    const before = JSON.stringify(m.tables.unit_reports[0])
+    expect(await saveUnitReport({ ...base, db: client, subjects: ['영어'], edits: { [editKey.overall()]: '다른 창에서 쓴 문장' }, status: 'draft' })).toEqual({ ok: false, reason: 'already-confirmed' })
+    expect(await saveUnitReport({ ...base, db: client, subjects: ['영어'], edits: {}, status: 'confirmed' })).toEqual({ ok: false, reason: 'already-confirmed' })
+    expect(JSON.stringify(m.tables.unit_reports[0])).toBe(before)
+    expect(app.classroom.report.errors.alreadyConfirmed).toContain('[다시 고치기]')
+  })
+
+  it('confirmed in another window between reading and saving: the guarded update touches nothing', async () => {
+    const { m, client } = db()
+    await saveUnitReport({ ...base, db: client, subjects: [], edits: {}, status: 'draft' })
+    // 읽기(unit_reports select)가 끝난 바로 뒤에 다른 창이 확정한다
+    const from = m.from
+    ;(m as { from: typeof from }).from = (table: string) => {
+      const q = from(table)
+      if (table !== 'unit_reports') return q
+      return { ...q, update: (patch: Record<string, unknown>) => { Object.assign(m.tables.unit_reports[0], { status: 'confirmed', confirmed_at: NOW }); return q.update(patch) } }
+    }
+    const before = JSON.stringify(m.tables.unit_reports[0].body)
+    expect(await saveUnitReport({ ...base, db: client, subjects: ['영어'], edits: {}, status: 'draft' })).toEqual({ ok: false, reason: 'already-confirmed' })
+    expect(m.tables.unit_reports[0]).toMatchObject({ status: 'confirmed', confirmed_at: NOW })
+    expect(JSON.stringify(m.tables.unit_reports[0].body)).toBe(before)
+  })
+
+  it('a stored row whose body cannot be read is replaced by the new one, even if it says confirmed', async () => {
+    const t = tables()
+    t.unit_reports.push({ id: 'r1', student_id: 's1', theme_id: 't1', academy_id: 'ac1', body: { broken: true }, status: 'confirmed', confirmed_at: NOW, updated_at: NOW })
+    const { m, client } = db(t)
+    const r = await saveUnitReport({ ...base, db: client, subjects: [], edits: {}, status: 'draft' })
+    expect(r.ok).toBe(true)
+    expect(m.tables.unit_reports).toHaveLength(1)
+    expect(m.tables.unit_reports[0]).toMatchObject({ id: 'r1', status: 'draft', confirmed_at: null })
+    expect(UnitReportBody.safeParse(m.tables.unit_reports[0].body).success).toBe(true)
+  })
+
+  it('a read error stops the save', async () => {
+    const { m, client } = db(tables(), { failOn: ['select:quiz_responses'] })
+    expect(await saveUnitReport({ ...base, db: client, subjects: [], edits: {}, status: 'draft' })).toEqual({ ok: false, reason: 'load-failed' })
+    expect(m.writes).toEqual([])
   })
 
   it('another academy: nothing is read beyond the student row and nothing is written', async () => {

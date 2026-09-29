@@ -5,7 +5,7 @@ import { getSessionProfile } from '@/lib/auth/session'
 import { loadReportSource, type ReportViewer } from '@/lib/classroom/report-data'
 import { buildUnitReport } from '@/lib/classroom/report'
 import { editsFromStored, reportDataKey, restrictReport } from '@/lib/classroom/report-edit'
-import { todayKst } from '@/lib/classroom/notice'
+import { todayKst, kstDateTime } from '@/lib/classroom/notice'
 import { Badge } from '@/components/ui/Badge'
 import { ReportEditor } from './ReportEditor'
 import { app } from '@/content/site'
@@ -29,7 +29,8 @@ export default async function UnitReportPage({ params }: { params: Promise<{ the
   const loaded = await loadReportSource(supabase, viewer, themeId, studentId)
 
   if (!loaded.ok) {
-    const why = loaded.reason === 'forbidden' ? pg.notReady.forbidden : loaded.reason === 'not-found' ? pg.notReady.notFound : pg.notReady.noAssignments
+    const why = loaded.reason === 'forbidden' ? pg.notReady.forbidden : loaded.reason === 'not-found' ? pg.notReady.notFound
+      : loaded.reason === 'load-failed' ? pg.notReady.loadFailed : pg.notReady.noAssignments
     return (
       <>
         <Link href="/teacher/reports" className="text-sm text-mint-700 underline">{pg.back}</Link>
@@ -42,7 +43,8 @@ export default async function UnitReportPage({ params }: { params: Promise<{ the
   const src = loaded.source
   const fresh = buildUnitReport(src.input, copy.build)
   const storedBody = src.stored?.body ?? null
-  const stored = src.stored && storedBody ? { status: src.stored.status, body: storedBody, confirmedAt: src.stored.confirmedAt } : null
+  // 확정 시각은 서울 시각으로 바꿔 넘긴다(화면·인쇄 모두 같은 날짜)
+  const stored = src.stored && storedBody ? { status: src.stored.status, body: storedBody, confirmedAt: src.stored.confirmedAt ? kstDateTime(src.stored.confirmedAt) : null } : null
   const stale = stored ? reportDataKey(stored.body) !== reportDataKey(restrictReport(fresh, stored.body.included_subjects, copy.build)) : false
   const initialEdits = stored ? editsFromStored(stored.body, fresh, copy.build) : {}
   const status = stored?.status ?? 'none'
@@ -56,7 +58,9 @@ export default async function UnitReportPage({ params }: { params: Promise<{ the
           <h1 className="text-2xl font-bold">{pg.title(src.student.name)}</h1>
           <Badge tone={status === 'confirmed' ? 'mint' : status === 'draft' ? 'lemon' : 'gray'}>{pg.status[status]}</Badge>
         </div>
-        {stored?.status === 'confirmed' && stored.confirmedAt && <p className="mt-1 text-sm text-ink-500">{pg.confirmedAt(stored.confirmedAt.slice(0, 16).replace('T', ' '))}</p>}
+        {stored?.status === 'confirmed' && stored.confirmedAt && <p className="mt-1 text-sm text-ink-500">{pg.confirmedAt(stored.confirmedAt)}</p>}
+        {src.stored && !storedBody && <p className="mt-3 rounded-xl bg-lemon-50 p-3 text-sm text-ink-700">{pg.storedUnreadable}</p>}
+        {src.unreadableSubjects.length > 0 && <p className="mt-3 rounded-xl bg-lemon-50 p-3 text-sm text-ink-700">{pg.unreadableSubjects(src.unreadableSubjects)}</p>}
         {!src.finalizeAvailable && <p className="mt-3 rounded-xl bg-lemon-50 p-3 text-sm text-ink-700">{pg.finalizeUnavailable}</p>}
       </div>
       <ReportEditor

@@ -9,6 +9,7 @@ import { COMPETENCIES } from '@/lib/studio/competency'
 import { NOTICE_DISCLAIMER } from '@/lib/studio/schemas'
 import { UnitReportView } from '@/components/classroom/UnitReportView'
 import { app } from '@/content/site'
+import { kstDateTime, todayKst } from '@/lib/classroom/notice'
 import { fullSubject, snapshotFor, quizRows, gradingFor, student, theme, SIX_AXIS_TAGS } from './fixtures/unit-report'
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }))
@@ -199,23 +200,44 @@ describe('ReportEditor — 원장 화면', () => {
     expect(html.slice(html.indexOf(copy.edit.heading) - 400, html.indexOf(copy.edit.heading))).toContain('no-print')
     expect(html.slice(report - 200, report)).not.toContain('no-print')
   })
-  it('stored draft whose numbers changed: shows the stored body and the calm note with the reload button', () => {
+  it('stored draft whose numbers changed: shows the stored body, the reload button, and rests save/confirm until the numbers are seen', () => {
     const stored = applyEdits(buildUnitReport({ student, theme, subjects: [fullSubject('영어', { wrong: ['2-1'], drop: 1, tags: SIX_AXIS_TAGS }), fullSubject('수학', { wrong: ['1-2'], tags: SIX_AXIS_TAGS })] }, copy.build), { [editKey.overall()]: '원장이 쓴 종합' })
     const html = renderEditor({ stored: { status: 'draft', body: stored, confirmedAt: null }, initialEdits: editsFromStored(stored, two, copy.build), stale: true })
     const t = text(html)
     expect(t).toContain(copy.page.stale); expect(t).toContain(copy.page.reload)
     expect(t).toContain(stored.subjects[0].summary)                   // 저장해 둔 숫자
     expect(t).toContain('원장이 쓴 종합')
-    expect(html).not.toContain('disabled=""')                         // 막지 않는다
+    // 원장이 보지 않은 숫자가 저장되지 않게: [초안 저장]·[확정]만 쉬고, 순서를 알려 주는 한 줄이 있다. 나머지는 그대로 누를 수 있다
+    expect(t).toContain(copy.page.staleFirst)
+    expect(copy.page.staleFirst).toContain(`[${copy.page.reload}]`)
+    const buttons = [...html.matchAll(/<button[^>]*>([^<]*)<\/button>/g)].map((m) => [m[1], m[0].includes('disabled=""')])
+    expect(buttons.filter(([, off]) => off).map(([label]) => label)).toEqual([copy.page.saveDraft, copy.page.confirm])
+    expect(buttons.filter(([label]) => label === copy.page.reload || label === copy.page.print).map(([, off]) => off)).toEqual([false, false])
+  })
+  it('stored draft whose numbers did not change: nothing rests', () => {
+    const html = renderEditor({ stored: { status: 'draft', body: two, confirmedAt: null }, initialEdits: {}, stale: false })
+    expect(html).not.toContain('disabled=""')
+    expect(text(html)).not.toContain(copy.page.staleFirst)
   })
   it('confirmed: no checkboxes and no editors, only reopen and print, and no draft mark', () => {
-    const html = renderEditor({ stored: { status: 'confirmed', body: two, confirmedAt: '2026-09-28T03:00:00.000Z' }, initialEdits: {} })
+    const html = renderEditor({ stored: { status: 'confirmed', body: two, confirmedAt: kstDateTime('2026-09-28T03:00:00.000Z') }, initialEdits: {} })
     const t = text(html)
     expect(html).not.toContain('type="checkbox"'); expect(html).not.toContain('<textarea')
     expect(t).toContain(copy.page.reopen); expect(t).toContain(copy.page.print)
     expect(t).not.toContain(copy.page.saveDraft)
     expect(html).not.toContain('data-report-draft')
-    expect(t).toContain('2026-09-28')
+    expect(t).toContain(`${v.date} 2026-09-28`)
+  })
+  it('confirmed late in the evening (UTC): the date on the report is the Seoul date', () => {
+    // 2026-09-28 16:30 UTC = 서울 2026-09-29 01:30
+    expect(kstDateTime('2026-09-28T16:30:00.000Z')).toBe('2026-09-29 01:30')
+    expect(kstDateTime('2026-09-28T16:30:00+00:00')).toBe('2026-09-29 01:30')
+    expect(kstDateTime('2026-09-28T03:00:00.000Z')).toBe('2026-09-28 12:00')
+    expect(kstDateTime('모름')).toBe('')
+    expect(todayKst(new Date('2026-09-28T16:30:00.000Z'))).toBe('2026-09-29')
+    const html = renderEditor({ stored: { status: 'confirmed', body: two, confirmedAt: kstDateTime('2026-09-28T16:30:00.000Z') }, initialEdits: {} })
+    expect(text(html)).toContain(`${v.date} 2026-09-29`)
+    expect(text(html)).not.toContain('2026-09-28')
   })
   it('migration 0014 not applied: a calm note, preview and print still there', () => {
     const t = text(renderEditor({ reportsAvailable: false }))
@@ -262,6 +284,11 @@ describe('화면 문구 — 조사·비교 낱말', () => {
     expect(css).toMatch(/@page unit-report \{[^}]*size: A4/)
     expect(css).toMatch(/\[data-report-page="detail"\] \{[^}]*break-before: page/)
     expect(css).toMatch(/\[data-unit-report\] \{[^}]*print-color-adjust: exact/)
+  })
+  it('print rules: the radar shrinks on paper and the draft mark repeats on every page', () => {
+    const css = readFileSync('app/globals.css', 'utf8')
+    expect(css).toMatch(/\[data-unit-report\] svg \{[^}]*max-width: \d+mm !important/)
+    expect(css).toMatch(/\[data-unit-report\] \[data-report-draft\] \{[^}]*position: fixed/)
   })
   it('the teacher menu has the report entry', () => {
     expect(app.nav.teacher.map((n) => n.href)).toContain('/teacher/reports')

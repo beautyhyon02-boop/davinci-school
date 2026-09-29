@@ -12,6 +12,7 @@ export type ReportActionResult = { ok: true } | { ok: false; error: string }
 const ERRORS: Record<SaveReason, string> = {
   forbidden: copy.errors.forbidden, 'not-found': copy.errors.notFound, 'no-assignments': copy.errors.noAssignments,
   invalid: copy.errors.invalid, 'save-failed': copy.errors.saveFailed, 'no-report': copy.errors.noReport,
+  'load-failed': copy.errors.loadFailed, 'already-confirmed': copy.errors.alreadyConfirmed,
 }
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 

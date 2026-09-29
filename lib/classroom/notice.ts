@@ -35,6 +35,13 @@ export function todayKst(now: Date = new Date()): string {
   return new Date(now.getTime() + 9 * 3600_000).toISOString().slice(0, 10)
 }
 
+/** 저장된 시각(ISO, UTC)을 서울 시각 'YYYY-MM-DD HH:mm' 으로. 읽을 수 없는 값이면 빈 문자열. */
+export function kstDateTime(iso: string): string {
+  const t = Date.parse(iso)
+  if (Number.isNaN(t)) return ''
+  return new Date(t + 9 * 3600_000).toISOString().slice(0, 16).replace('T', ' ')
+}
+
 /**
  * 학생별 안내장 뼈대(순수). data 필드는 스냅샷·퀴즈·확정 채점에서 복사하고, 틀(notice_plan) 문장을 기본값으로 넣는다.
  * 확정되지 않은 채점(status 가 confirmed 가 아니거나 confirmed_at 없음 — 다시 고치기 중 포함)은 무시한다 — 문항마다 1회차 확정 채점이

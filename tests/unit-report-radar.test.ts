@@ -55,6 +55,8 @@ describe('RadarChart', () => {
     expect(html.match(/<line/g)).toHaveLength(6)
     expect(html.match(/data-marker="solid"/g)).toHaveLength(6)
     expect(html).not.toContain('문항 수 적음')
+    // 모든 축에 자료가 있으면 따로 그은 변이 없다
+    expect(html).not.toContain('data-edge=')
   })
 
   it('sparse axes get a hollow dashed marker and the note; null axes get "–" and no marker', () => {
@@ -67,6 +69,33 @@ describe('RadarChart', () => {
     // 자료 없는 축의 꼭짓점은 중심 — 다각형은 여전히 여섯 점
     const pts = pointsOf(valuePolygon(html))
     expect(pts).toHaveLength(6); expect(pts[2]).toBe('250,170'); expect(pts[4]).toBe('250,170')
+  })
+
+  it('edges touching a null axis are dashed and lighter; only edges between two data axes are solid', () => {
+    // 축 0·1·3·5 에 자료, 2·4 는 없음 → 실선: 0–1, 5–0 / 점선: 1–2, 2–3, 3–4, 4–5
+    const html = render(axesOf([0.8, 1, null, 0.5, null, 0.6]))
+    const poly = valuePolygon(html)
+    expect(poly).toContain('stroke="none"')
+    expect(poly).toContain('fill="#f59e0b"')
+    const solid = html.match(/<path[^>]*data-edge="solid"[^>]*>/)?.[0] ?? ''
+    const gap = html.match(/<path[^>]*data-edge="gap"[^>]*>/)?.[0] ?? ''
+    const segments = (tag: string) => (tag.match(/ d="([^"]*)"/)?.[1] ?? '').split('M').filter(Boolean).map((s) => s.trim())
+    expect(segments(solid)).toHaveLength(2)
+    expect(segments(gap)).toHaveLength(4)
+    expect(solid).toContain('stroke="#c2410c"'); expect(solid).not.toContain('stroke-dasharray')
+    expect(gap).toContain('stroke-dasharray'); expect(gap).not.toContain('stroke="#c2410c"')
+    expect(Number(gap.match(/stroke-width="([\d.]+)"/)?.[1])).toBeLessThan(Number(solid.match(/stroke-width="([\d.]+)"/)?.[1]))
+    // 점선 변은 모두 중심(250,170)에 닿고, 실선 변은 닿지 않는다
+    for (const s of segments(gap)) expect(s).toContain('250,170')
+    for (const s of segments(solid)) expect(s).not.toContain('250,170')
+    expect(html.match(/>–<\/tspan>/g)).toHaveLength(2)
+  })
+
+  it('a single data axis: no solid edge at all', () => {
+    const html = render(axesOf([null, 0.7, null, null, null, null]))
+    expect(html).not.toContain('data-edge="solid"')
+    expect(html).toContain('data-edge="gap"')
+    expect(html.match(/data-marker=/g)).toHaveLength(1)
   })
 
   it('draws no value polygon when no axis has data, but keeps the grid and labels', () => {

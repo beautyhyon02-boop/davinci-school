@@ -9,6 +9,8 @@ const copy = app.classroom.report.view
  * 앞면(data-report-page="front"): 학생·단원, 육각형, 역량별 점수, 과목별 한 줄 요약, 종합 코멘트.
  * 뒷면(data-report-page="detail"): 과목마다 한 덩어리 — 인쇄할 때 새 쪽에서 시작한다(app/globals.css).
  * 내용은 옆으로 잇지 않는다: 한 줄에 하나, 위계는 글자 크기·굵기·줄바꿈으로. 다른 학생과의 비교는 없다(R-7).
+ * 인쇄: 앞면은 과목이 다섯이어도 A4 한 쪽에 들어가게 줄 간격·육각형 크기를 줄인다(app/globals.css 의 [data-unit-report] 규칙).
+ * 「초안」 표시(data-report-draft)는 인쇄할 때 쪽마다 오른쪽 위에 찍힌다.
  */
 
 function Heading({ children }: { children: React.ReactNode }) {

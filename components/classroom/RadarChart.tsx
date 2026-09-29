@@ -15,6 +15,7 @@ const LINE = 14
 
 const FILL = '#f59e0b' // orange(amber-500) — 반투명으로 칠한다
 const STROKE = '#c2410c' // orange-700 — 흑백 인쇄에서도 테두리가 진하게 남는다
+const STROKE_LIGHT = '#fb923c' // orange-400 — 자료 없는 축에 닿는 변(점선)
 const AXIS_COLOR = '#1f2430' // ink-900 (app/globals.css)
 const MUTED_COLOR = '#6b7280' // 문항 수가 적은 축·자료 없는 축의 글자
 const GRID_COLOR = '#cfd4dd' // ink-300 (app/globals.css)
@@ -41,15 +42,23 @@ export function RadarChart({
   if (n === 0) return null
 
   // 자료 없는 축(ratio null): 다각형은 닫혀야 하므로 그 축의 꼭짓점을 중심(0)에 두고 양옆 축의 값과 잇는다.
-  // 다만 0점으로 읽히지 않도록 그 축에는 꼭짓점 표시를 그리지 않고, 이름 아래 백분율 자리에 "–" 를 흐리게 쓴다.
+  // 다만 0점으로 읽히지 않도록 (1) 그 축에 닿는 두 변은 진한 실선이 아니라 옅은 점선으로 긋고, (2) 그 축에는 꼭짓점 표시를
+  // 그리지 않고, (3) 이름 아래 백분율 자리에 "–" 를 흐리게 쓴다. 자료가 있는 두 축 사이의 변만 진한 실선이다.
   const points = radarPoints(axes.map((a) => a.ratio), RADIUS, CX, CY)
   const hasData = axes.some((a) => a.ratio !== null)
+  const hasGap = axes.some((a) => a.ratio === null)
+  const edges = axes.map((a, i) => {
+    const j = (i + 1) % n
+    return { d: `M${points[i].x},${points[i].y} L${points[j].x},${points[j].y}`, gap: a.ratio === null || axes[j].ratio === null }
+  })
+  const solidEdges = edges.filter((e) => !e.gap).map((e) => e.d).join(' ')
+  const gapEdges = edges.filter((e) => e.gap).map((e) => e.d).join(' ')
 
   return (
     <svg
       viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
       width="100%"
-      className="h-auto w-full"
+      className="mx-auto block h-auto w-full"
       style={size ? { maxWidth: size } : undefined}
       role="img"
       aria-label={ariaLabel}
@@ -75,17 +84,23 @@ export function RadarChart({
         return <line key={i} x1={CX} y1={CY} x2={end.x} y2={end.y} stroke={GRID_COLOR} strokeWidth={1} />
       })}
 
-      {/* 학생 값 */}
+      {/* 학생 값: 모든 축에 자료가 있으면 테두리까지 한 도형으로. 빈 축이 있으면 칠만 하고 변은 따로 긋는다 */}
       {hasData && (
         <polygon
           data-series="value"
           points={pointsAttr(points)}
           fill={FILL}
-          fillOpacity={0.35}
-          stroke={STROKE}
+          fillOpacity={hasGap ? 0.22 : 0.35}
+          stroke={hasGap ? 'none' : STROKE}
           strokeWidth={2.5}
           strokeLinejoin="round"
         />
+      )}
+      {hasData && hasGap && solidEdges && (
+        <path data-edge="solid" d={solidEdges} fill="none" stroke={STROKE} strokeWidth={2.5} strokeLinecap="round" />
+      )}
+      {hasData && hasGap && gapEdges && (
+        <path data-edge="gap" d={gapEdges} fill="none" stroke={STROKE_LIGHT} strokeWidth={1.5} strokeDasharray="5 4" strokeLinecap="round" />
       )}
 
       {/* 꼭짓점 표시: 보통은 채운 점, 문항 수가 적은 축은 속이 빈 점선 원, 자료 없는 축은 없음 */}

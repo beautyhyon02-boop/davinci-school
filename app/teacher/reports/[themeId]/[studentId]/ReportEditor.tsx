@@ -45,6 +45,7 @@ export function ReportEditor({ themeId, studentId, academyName, today, subjects,
   subjects: string[]
   /** 지금 기록으로 새로 만든 본문(모든 과목, 기본 문장). */
   fresh: UnitReportBody
+  /** confirmedAt 은 서울 시각 'YYYY-MM-DD HH:mm'(서버가 바꿔 준다). */
   stored: { status: 'draft' | 'confirmed'; body: UnitReportBody; confirmedAt: string | null } | null
   /** 저장된 본문에서 골라낸 고친 문장. */
   initialEdits: ReportEdits
@@ -69,6 +70,9 @@ export function ReportEditor({ themeId, studentId, academyName, today, subjects,
   const base = stored && (confirmed || showStored) ? stored.body : restrictReport(fresh, effective, copy.build)
   const preview = confirmed ? base : applyEdits(base, edits)
   const fields = confirmed ? [] : fieldsOf(base)
+  // 저장해 둔 숫자를 보고 있는 동안에는 저장·확정을 잠시 쉰다 — 서버는 지금 기록으로 본문을 만들기 때문에,
+  // 그대로 저장하면 원장이 보지 않은 숫자가 들어간다. [점수 다시 불러오기]를 누르면 바로 풀린다(순서 안내).
+  const unseen = !confirmed && stale && showStored
 
   const toggle = (subject: string) => {
     setIncluded((cur) => (cur.includes(subject) ? cur.filter((s) => s !== subject) : subjects.filter((s) => s === subject || cur.includes(s))))
@@ -93,6 +97,7 @@ export function ReportEditor({ themeId, studentId, academyName, today, subjects,
         {stale && !confirmed && showStored && (
           <div className="space-y-2 rounded-xl bg-lemon-50 p-3">
             <p className="text-sm text-ink-700">{pg.stale}</p>
+            <p className="text-sm font-semibold text-ink-900">{pg.staleFirst}</p>
             <Button type="button" variant="accent" onClick={reload}>{pg.reload}</Button>
           </div>
         )}
@@ -124,8 +129,8 @@ export function ReportEditor({ themeId, studentId, academyName, today, subjects,
               <Button type="button" variant="accent" disabled={pending} onClick={() => run(() => reopenReport(themeId, studentId), pg.reopened)}>{pg.reopen}</Button>
             ) : (
               <>
-                <Button type="button" variant="accent" disabled={pending} onClick={() => run(() => saveReportDraft(themeId, studentId, effective, edits), pg.saved)}>{pending ? pg.saving : pg.saveDraft}</Button>
-                <Button type="button" disabled={pending} onClick={() => run(() => confirmReport(themeId, studentId, effective, edits), pg.confirmed)}>{pg.confirm}</Button>
+                <Button type="button" variant="accent" disabled={pending || unseen} onClick={() => run(() => saveReportDraft(themeId, studentId, effective, edits), pg.saved)}>{pending ? pg.saving : pg.saveDraft}</Button>
+                <Button type="button" disabled={pending || unseen} onClick={() => run(() => confirmReport(themeId, studentId, effective, edits), pg.confirmed)}>{pg.confirm}</Button>
               </>
             )}
             <PrintButton label={pg.print} />
