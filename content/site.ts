@@ -705,7 +705,7 @@ export const app = {
         overflowLabel: '초과 응답',
         pointsLabel: (p: number) => `${p}점`,
       },
-      elementsLabel: '평가 요소',
+      elementsLabel: '출제 의도',
       situationLabel: '과제 상황',
       situation: (role: string, audience: string, purpose: string, product: string) => `${role} → ${audience} · ${purpose} · ${product}`,
       materialsLabel: '사용 자료',
