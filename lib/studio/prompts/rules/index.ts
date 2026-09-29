@@ -13,12 +13,15 @@ import { ENGLISH_RULES } from './subjects/영어'
 export type { Rule }
 export { COMMON_RULES, LESSON_RULES, GRADING_RULES_V2, GRADING_PROMPT_RULES, NOTICE_RULES, NOTICE_PROMPT_RULES }
 
-/** 과목 이름 → 과목 규칙. 한국사·세계사는 역사 규칙을 쓴다. */
+/** 과목 이름 → 과목 규칙. 옛 한국사·세계사는 역사 규칙을 쓴다. 사회 세트의 프롬프트에는 rulesFor 가 역사 규칙을 덧붙인다. */
 export const SUBJECT_RULES: Record<string, Rule[]> = {
   '국어': KOREAN_RULES, '수학': MATH_RULES, '사회': SOCIAL_RULES,
   '역사': HISTORY_RULES, '한국사': HISTORY_RULES, '세계사': HISTORY_RULES,
   '과학': SCIENCE_RULES, '영어': ENGLISH_RULES,
 }
+
+const SUBJECT_HEADING: Record<string, string> = { '사회': '사회 — 역사 포함', '한국사': '역사', '세계사': '역사' }
+const HISTORY_BLOCK_HEADING = '[사회 — 역사 영역(역사 성취기준을 고른 세트에 적용)]'
 
 /** 운영 성격(O)이 섞인 규칙(O·SO)은 모델이 할 일이 아니므로 생성·검토 프롬프트에서 뺀다. */
 const promptable = (r: Rule) => r.nature !== 'O' && r.nature !== 'SO'
@@ -35,7 +38,9 @@ export function rulesFor(subject: string): string {
     '당신은 다빈치스쿨 본사의 서·논술형 문항 설계자다. 아래 규칙을 항상 지킨다. 출력은 요청된 JSON 형식만.',
     '[공통]', ...COMMON_RULES.filter(promptable).map(line),
     '[재구성·차시]', ...LESSON_RULES.filter(promptable).map(line),
-    ...(subjectRules ? [`[${key === '한국사' || key === '세계사' ? '역사' : key}]`, ...subjectRules.filter(promptable).map(line)] : []),
+    ...(subjectRules ? [`[${SUBJECT_HEADING[key] ?? key}]`, ...subjectRules.filter(promptable).map(line)] : []),
+    // 사회는 통합 과목(대표 결정 2026-09-30) — 역사 영역 성취기준을 고를 수 있으므로 역사 규칙을 함께 싣는다(문장·ID는 그대로)
+    ...(key === '사회' ? [HISTORY_BLOCK_HEADING, ...HISTORY_RULES.filter(promptable).map(line)] : []),
   ]
   const text = parts.join('\n')
   cache.set(key, text)

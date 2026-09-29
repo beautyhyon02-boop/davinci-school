@@ -1,5 +1,6 @@
 import type { z } from 'zod'
-import { SUBJECTS, LEVELS, Materials, type Subject, type Level } from '@/lib/studio/schemas'
+import { LEVELS, Materials, type Subject, type Level } from '@/lib/studio/schemas'
+import { isStudioSubject, isLegacySubject, standardSubjectsFor } from '@/lib/studio/subjects'
 import { app } from '@/content/site'
 
 const errors = app.studio.errors
@@ -32,6 +33,15 @@ export function parseThemeGrade(level: string, raw: FormDataEntryValue | string 
   return { ok: true, grade }
 }
 
+/**
+ * 새로 고르는 과목은 제작소 과목 다섯(국어·영어·수학·과학·사회)만 된다(대표 결정 2026-09-30).
+ * 한국사·세계사는 사회로 묶였다는 안내를, 그 밖의 값은 "알 수 없는 과목"을 돌려준다. 문제 없으면 null.
+ */
+function newSubjectError(s: string): string | null {
+  if (isStudioSubject(s)) return null
+  return isLegacySubject(s) ? errors.subjectMerged : errors.subjectInvalid
+}
+
 /** grade 가 null 이면 학년 지정 안 함 — 모든 문구가 "중학교(1~3학년군)" 수준이 된다(lib/studio/level-map.ts gradeLabel). */
 export type ThemeInput = { title: string; level: Level; grade: number | null; subjects: Subject[] }
 
@@ -51,14 +61,15 @@ export function parseTheme(formData: FormData): { ok: true; data: ThemeInput } |
   const subjects = Array.from(new Set(subjectsRaw))
   if (subjects.length === 0) return { ok: false, error: errors.subjectsRequired }
   for (const s of subjects) {
-    if (!(SUBJECTS as readonly string[]).includes(s)) return { ok: false, error: errors.subjectInvalid }
+    const e = newSubjectError(s)
+    if (e) return { ok: false, error: e }
   }
 
   return { ok: true, data: { title, level, grade, subjects: subjects as Subject[] } }
 }
 
 /**
- * 대주제 생성 후 과목을 추가한다. toAdd 는 SUBJECTS 안의 값이어야 하고, current(기존 순서)에
+ * 대주제 생성 후 과목을 추가한다. toAdd 는 STUDIO_SUBJECTS 안의 값이어야 하고(current 의 옛 한국사·세계사는 그대로 남는다), current(기존 순서)에
  * 이미 있는 과목은 건너뛴다(중복 방지). toAdd 가 비어 있으면(중복만 보냈거나 아예 안 보냈으면) 저장할 게 없다는 오류를 낸다.
  */
 export function addThemeSubjects(
@@ -68,7 +79,8 @@ export function addThemeSubjects(
   const requested = Array.from(new Set(toAdd.map((s) => s.trim()).filter((s) => s.length > 0)))
   if (requested.length === 0) return { ok: false, error: errors.subjectsRequired }
   for (const s of requested) {
-    if (!(SUBJECTS as readonly string[]).includes(s)) return { ok: false, error: errors.subjectInvalid }
+    const e = newSubjectError(s)
+    if (e) return { ok: false, error: e }
   }
 
   // 이미 대주제에 있는 과목을 다시 보냈다면 더할 게 없다 — 중복만 있는 요청도 "추가 없음"으로 취급한다.
@@ -95,13 +107,17 @@ export function removeThemeSubject(
   return { ok: true, subjects: subjects as Subject[] }
 }
 
-/** subject가 theme.subjects 안에 있고, existingSubjects(이미 세트가 만들어진 과목)와 겹치지 않는지 확인한다. */
+/**
+ * subject가 theme.subjects 안에 있고, existingSubjects(이미 세트가 만들어진 과목)와 겹치지 않는지 확인한다.
+ * 새 세트는 제작소 과목 다섯만 된다 — 옛 대주제에 남은 한국사·세계사로는 세트를 새로 만들지 않는다(사회로 만든다).
+ */
 export function canCreateSet(
   theme: { subjects: string[] },
   subject: string,
   existingSubjects: string[],
 ): { ok: boolean; reason?: string } {
   if (!theme.subjects.includes(subject)) return { ok: false, reason: errors.subjectNotInTheme }
+  if (!isStudioSubject(subject)) return { ok: false, reason: isLegacySubject(subject) ? errors.subjectMerged : errors.subjectInvalid }
   if (existingSubjects.includes(subject)) return { ok: false, reason: errors.subjectDuplicate }
   return { ok: true }
 }
@@ -110,6 +126,7 @@ export type StandardCandidate = { code: string; level: string; subject: string; 
 
 /**
  * 성취기준 선택 규칙: 2~6개, 모두 대주제 학교급·과목과 일치해야 issues 없음.
+ * 과목은 묶음으로 본다 — 사회 세트는 사회·한국사·세계사 성취기준을 모두 고를 수 있다(standardSubjectsFor).
  * 원문 미검증 성취기준은 게시를 막지 않고 warnings로만 알린다.
  */
 export function validateStandardSelection(
@@ -121,7 +138,8 @@ export function validateStandardSelection(
 
   if (standards.length < 2 || standards.length > 6) issues.push(errors.standardCountInvalid)
   if (standards.some((s) => s.level !== theme.level)) issues.push(errors.standardLevelMismatch)
-  if (standards.some((s) => s.subject !== theme.subject)) issues.push(errors.standardSubjectMismatch)
+  const allowed = standardSubjectsFor(theme.subject)
+  if (standards.some((s) => !allowed.includes(s.subject))) issues.push(errors.standardSubjectMismatch)
 
   const unverified = standards.filter((s) => !s.verified).map((s) => s.code)
   if (unverified.length > 0) warnings.push(errors.standardUnverified(unverified))

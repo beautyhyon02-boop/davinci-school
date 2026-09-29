@@ -4,7 +4,7 @@ import { addSubjectsToTheme, removeSubjectFromTheme } from './actions'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
-import { SUBJECTS, type Subject } from '@/lib/studio/schemas'
+import { STUDIO_SUBJECTS, type Subject } from '@/lib/studio/schemas'
 import { app } from '@/content/site'
 
 const copy = app.studio.theme.addSubjects
@@ -17,7 +17,8 @@ export function AddSubjectsPanel({ themeId, themeSubjects, subjectsWithSets }: {
   /** 이미 세트가 만들어진 과목 — 이 과목들에는 [빼기]를 두지 않는다(서버도 item_sets 로 다시 확인한다). */
   subjectsWithSets: string[]
 }) {
-  const remaining = SUBJECTS.filter((s) => !themeSubjects.includes(s))
+  // 새로 더할 수 있는 과목은 제작소 과목 다섯뿐(대표 결정 2026-09-30) — 옛 한국사·세계사는 배지로 보이고 [빼기]만 된다
+  const remaining = STUDIO_SUBJECTS.filter((s) => !themeSubjects.includes(s))
 
   async function submit(_prev: State, formData: FormData): Promise<State> {
     return addSubjectsToTheme(themeId, formData)

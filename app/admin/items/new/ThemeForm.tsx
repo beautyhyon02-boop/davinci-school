@@ -2,7 +2,7 @@
 import { useActionState, useState } from 'react'
 import { createTheme } from '../actions'
 import { THEME_FIELDS, GRADE_NONE, gradeOptions } from '@/lib/studio/themes'
-import { SUBJECTS, LEVELS, type Level } from '@/lib/studio/schemas'
+import { STUDIO_SUBJECTS, LEVELS, type Level } from '@/lib/studio/schemas'
 import { Button } from '@/components/ui/Button'
 import { app } from '@/content/site'
 
@@ -37,13 +37,14 @@ export function ThemeForm() {
       <fieldset className="grid gap-1 text-sm font-semibold">
         <legend>{copy.labels.subjects}</legend>
         <div className="flex flex-wrap gap-3 font-normal">
-          {SUBJECTS.map((s) => (
+          {STUDIO_SUBJECTS.map((s) => (
             <label key={s} className="flex items-center gap-1.5">
               <input type="checkbox" name={THEME_FIELDS.subjects} value={s} />
               {s}
             </label>
           ))}
         </div>
+        <span className="text-xs font-normal text-ink-500">{copy.subjectsHelp}</span>
       </fieldset>
       {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
       <Button type="submit" disabled={pending}>{pending ? copy.submitting : copy.submit}</Button>

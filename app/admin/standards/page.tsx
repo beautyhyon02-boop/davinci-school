@@ -81,6 +81,7 @@ export default async function StandardsPage({ searchParams }: { searchParams: Pr
             <option value="">{copy.filters.subjectAll}</option>
             {SUBJECTS.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
+          <span className="mt-1 block text-xs text-ink-500">{copy.filters.subjectHelp}</span>
         </label>
         <label className="text-sm">
           <span className="block text-ink-500">{copy.filters.searchLabel}</span>

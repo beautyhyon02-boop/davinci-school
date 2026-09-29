@@ -12,7 +12,9 @@ import { SharedMaterialCheckboxes, toggleSharedId, type SharedMaterialOption } f
 const copy = app.studio.picker
 
 export type PickerStandard = { id: string; code: string; text: string; domain: string; verified: boolean }
-export type StandardsBySubject = Record<string, Record<string, PickerStandard[]>>
+/** 묶음(사회 세트만 제목이 있다 — 지리·일반사회·역사…) 아래에 영역(domain)별 목록. */
+export type PickerFamily = { key: string; label: string; domains: { domain: string; rows: PickerStandard[] }[] }
+export type StandardsBySubject = Record<string, PickerFamily[]>
 
 export function StandardsPicker({
   themeId,
@@ -34,19 +36,19 @@ export function StandardsPicker({
   const [pending, startTransition] = useTransition()
   const router = useRouter()
 
-  const domains = useMemo(() => standardsBySubject[subject] ?? {}, [standardsBySubject, subject])
-  const allRows = useMemo(() => Object.values(domains).flat(), [domains])
+  const families = useMemo(() => standardsBySubject[subject] ?? [], [standardsBySubject, subject])
+  const allRows = useMemo(() => families.flatMap((f) => f.domains.flatMap((d) => d.rows)), [families])
   const q = search.trim().toLowerCase()
-  const filteredByDomain = useMemo(() => {
-    const result: Record<string, PickerStandard[]> = {}
-    for (const [domain, rows] of Object.entries(domains)) {
-      const filtered = q
-        ? rows.filter((r) => r.code.toLowerCase().includes(q) || r.text.toLowerCase().includes(q))
-        : rows
-      if (filtered.length) result[domain] = filtered
+  const filteredFamilies = useMemo(() => {
+    const result: PickerFamily[] = []
+    for (const f of families) {
+      const domains = f.domains
+        .map((d) => ({ domain: d.domain, rows: q ? d.rows.filter((r) => r.code.toLowerCase().includes(q) || r.text.toLowerCase().includes(q)) : d.rows }))
+        .filter((d) => d.rows.length > 0)
+      if (domains.length) result.push({ ...f, domains })
     }
     return result
-  }, [domains, q])
+  }, [families, q])
 
   const selectedRows = allRows.filter((r) => selected.has(r.id))
   const unverifiedCodes = selectedRows.filter((r) => !r.verified).map((r) => r.code)
@@ -110,28 +112,36 @@ export function StandardsPicker({
         className="mt-3 w-full rounded-xl border border-ink-300 px-3 py-2 text-sm"
       />
 
-      <div className="mt-3 max-h-96 space-y-3 overflow-y-auto">
-        {Object.entries(filteredByDomain).map(([domain, rows]) => (
-          <details key={domain} open className="rounded-xl border border-ink-100 p-3">
-            <summary className="cursor-pointer text-sm font-semibold">{domain}</summary>
-            <ul className="mt-2 space-y-2">
-              {rows.map((r) => (
-                <li key={r.id} className="flex items-start gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={selected.has(r.id)}
-                    onChange={() => toggle(r.id)}
-                    className="mt-1"
-                  />
-                  <span className="font-mono text-xs text-ink-500">{r.code}</span>
-                  <span className="flex-1">{r.text}</span>
-                  <Badge tone={r.verified ? 'mint' : 'gray'}>{r.verified ? copy.verified : copy.unverified}</Badge>
-                </li>
-              ))}
-            </ul>
-          </details>
+      {families.some((f) => f.label) && <p className="mt-3 text-xs text-ink-500">{copy.familyHelp}</p>}
+
+      <div className="mt-3 max-h-96 space-y-4 overflow-y-auto">
+        {filteredFamilies.map((f) => (
+          <section key={f.key || 'all'} className="space-y-2">
+            {/* 묶음 제목은 한 줄에 하나씩 세로로(대표: 옆으로 잇지 않는다) */}
+            {f.label && <h3 className="border-b border-ink-100 pb-1 text-sm font-bold text-ink-700">{f.label}</h3>}
+            {f.domains.map((d) => (
+              <details key={`${f.key}|${d.domain}`} open className="rounded-xl border border-ink-100 p-3">
+                <summary className="cursor-pointer text-sm font-semibold">{d.domain}</summary>
+                <ul className="mt-2 space-y-2">
+                  {d.rows.map((r) => (
+                    <li key={r.id} className="flex items-start gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={selected.has(r.id)}
+                        onChange={() => toggle(r.id)}
+                        className="mt-1"
+                      />
+                      <span className="font-mono text-xs text-ink-500">{r.code}</span>
+                      <span className="flex-1">{r.text}</span>
+                      <Badge tone={r.verified ? 'mint' : 'gray'}>{r.verified ? copy.verified : copy.unverified}</Badge>
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            ))}
+          </section>
         ))}
-        {!Object.keys(filteredByDomain).length && <p className="text-sm text-ink-500">{copy.empty}</p>}
+        {!filteredFamilies.length && <p className="text-sm text-ink-500">{copy.empty}</p>}
       </div>
 
       <p className={`mt-3 text-sm font-semibold ${countOk ? 'text-mint-700' : 'text-ink-500'}`}>

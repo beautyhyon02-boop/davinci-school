@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
+import { isHistoryCode } from '@/lib/studio/subjects'
 
 export type ExemplarRecord = {
   id: string; subject: string; school_level: '초' | '중' | '고'; grade: number | null; unit: string | null; standard_codes: string[]
@@ -14,7 +15,12 @@ export type ExemplarRecord = {
 export type ExemplarQuery = { subject: string; school_level: '초' | '중' | '고'; grade?: number | null; codes: string[]; unit: string | null; kind: '서술형' | '논술형' | '수행' | 'any'; answerMode?: 'screen' | 'paper' }
 
 const ROOT = ['data', 'reference', 'exemplars']
-const FOLDER_FOR: Record<string, string[]> = { '국어': ['국어'], '수학': ['수학'], '영어': ['영어'], '과학': ['과학', '2025'], '사회': ['사회', '2025'], '한국사': ['역사', '2025'], '세계사': ['역사', '2025'], '역사': ['역사', '2025'] }
+/**
+ * 세트 과목 → 예시 은행 레코드의 subject 값들(앞에 있을수록 먼저). 사회는 통합 과목(대표 결정 2026-09-30)이라
+ * 사회 + 역사(한국사는 읽을 때 역사로 합친다) + 도덕 레코드를 모두 후보로 둔다. 옛 한국사·세계사 세트는 역사.
+ */
+const POOL_FOR: Record<string, string[]> = { '사회': ['사회', '역사', '도덕'], '한국사': ['역사'], '세계사': ['역사'] }
+const poolSubjects = (subject: string) => POOL_FOR[subject] ?? [subject]
 
 let bank: ExemplarRecord[] | null = null
 export function loadExemplarBank(): ExemplarRecord[] {
@@ -50,15 +56,27 @@ export function scoreExemplar(r: ExemplarRecord, q: ExemplarQuery): number {
   if (r.exemplar_answers?.length) s += 1
   if (r.id.startsWith('k25-')) s += 1
   if (r.requires_drawing && q.answerMode === 'screen') s -= 2
+  s += domainBonus(r, q)
   return s
 }
 
-const subjectKey = (subject: string) => (subject === '한국사' || subject === '세계사' ? '역사' : subject)
+/**
+ * 사회 세트(통합 과목)의 영역 가점: 세트가 고른 성취기준이 모두 역사 영역이면 역사 예시를 먼저(역사 3 · 사회 1),
+ * 그 밖에는 사회 예시를 먼저(사회 3 · 역사는 역사 코드가 섞였을 때만 1). 도덕은 가점 없음. 다른 과목은 0.
+ */
+function domainBonus(r: ExemplarRecord, q: ExemplarQuery): number {
+  if (q.subject !== '사회') return 0
+  const history = q.codes.filter(isHistoryCode).length
+  const allHistory = q.codes.length > 0 && history === q.codes.length
+  if (r.subject === '역사') return allHistory ? 3 : history > 0 ? 1 : 0
+  if (r.subject === '사회') return allHistory ? 1 : 3
+  return 0
+}
 
-/** 과목(과 그 과목을 담는 폴더 이름)이 같은 레코드. 새 하위 폴더(예: 경기논술형)의 레코드도 subject 로 여기에 들어온다. */
+/** 세트 과목의 후보 레코드. 새 하위 폴더(예: 경기논술형)의 레코드도 subject 로 여기에 들어온다. */
 function subjectPool(q: Pick<ExemplarQuery, 'subject'>, source: ExemplarRecord[]): ExemplarRecord[] {
-  const folders = FOLDER_FOR[q.subject] ?? [q.subject]
-  return source.filter((r) => r.subject === subjectKey(q.subject) || folders.includes(r.subject))
+  const subjects = poolSubjects(q.subject)
+  return source.filter((r) => subjects.includes(r.subject))
 }
 const rankBy = (q: ExemplarQuery) => (list: ExemplarRecord[]) => [...list].sort((a, b) => scoreExemplar(b, q) - scoreExemplar(a, q) || a.id.localeCompare(b.id))
 

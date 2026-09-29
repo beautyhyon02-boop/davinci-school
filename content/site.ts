@@ -53,7 +53,7 @@ export const programDetails: Record<ProgramSlug, { headline: string; paragraphs:
   essay: {
     headline: '성취기준에서 출발하는 서논술형 수업과 AI 피드백',
     paragraphs: ['2022 개정 교육과정 성취기준 원문에서 문항을 설계합니다. 학생이 답안을 제출하면 루브릭에 따라 AI가 채점하고, 잘한 점과 보완할 점을 나누어 피드백합니다.', '한 가지 대주제를 국어·영어·수학·과학·사회가 함께 다루는 융합(STEAM) 방식으로 문항을 구성합니다.'],
-    bullets: ['초·중·고 × 국·영·수·과·사·한국사', '루브릭 기반 AI 채점, 30초 안에 피드백', '교사용 지침서·차시 설계·예시답안 제공'],
+    bullets: ['초·중·고 × 국어·영어·수학·과학·사회(역사 포함)', '루브릭 기반 AI 채점, 30초 안에 피드백', '교사용 지침서·차시 설계·예시답안 제공'],
   },
   consulting: { headline: '탐구 이력을 대입 전략으로', paragraphs: ['준비 중입니다.'], bullets: [] },
   lab: { headline: '자기주도 학습관 다빈치랩', paragraphs: ['준비 중입니다.'], bullets: [] },
@@ -99,6 +99,37 @@ const levelGradeLong = (level: string, grade: number | null) => {
   if (grade != null) return `${level} ${grade}학년`
   const b = GRADE_BAND[level]
   return b ? `${b.school}(${b.band})` : level
+}
+
+/**
+ * 사회 세트 성취기준 고르기의 묶음 제목(대표 결정 2026-09-30). 열쇠는 성취기준 코드 머리(학년 숫자 + 과목 글자).
+ * 고등학교 과목 이름은 2022 개정 교육과정 과목 이름이다. 표에 없는 머리는 "사회 (머리)"로 보인다.
+ */
+const SOCIAL_FAMILY_LABELS: Record<string, string> = {
+  '4사': '사회 (초등 3~4학년군)',
+  '6사': '사회 (초등 5~6학년군)',
+  '9사(지리)': '지리',
+  '9사(일사)': '일반사회',
+  '9역-세계사': '역사 (세계사 영역)',
+  '9역-한국사': '역사 (한국사 영역)',
+  '9역': '역사',
+  '10통사': '통합사회',
+  '10한사': '한국사',
+  '12세지': '세계시민과 지리',
+  '12사문': '사회와 문화',
+  '12한탐': '한국지리 탐구',
+  '12도탐': '도시의 미래 탐구',
+  '12정치': '정치',
+  '12법사': '법과 사회',
+  '12경제': '경제',
+  '12국관': '국제 관계의 이해',
+  '12여지': '여행지리',
+  '12사탐': '사회문제 탐구',
+  '12금융': '금융과 경제생활',
+  '12기지': '기후변화와 지속가능한 세계',
+  '12세사': '세계사',
+  '12동역': '동아시아 역사 기행',
+  '12역현': '역사로 탐구하는 현대 세계',
 }
 
 export const app = {
@@ -173,8 +204,9 @@ export const app = {
     filters: {
       levelLabel: '학교급',
       levelAll: '전체',
-      subjectLabel: '과목',
+      subjectLabel: '과목 (교육부 분류)',
       subjectAll: '전체',
+      subjectHelp: '제작소의 「사회」는 사회 + 한국사 + 세계사를 묶은 것입니다.',
       searchLabel: '검색',
       searchPlaceholder: '코드 또는 원문 검색',
       submit: '검색',
@@ -192,7 +224,7 @@ export const app = {
         `검증됨 ${verifiedCount}건 · 불일치 ${mismatchedCount}건 · 대조 불가 ${unmatchedCount}건`,
       mismatchHeading: '불일치 — 직접 확인 필요',
       mismatchColumns: { code: '코드', dbText: 'DB 원문', levelText: '성취수준 원문' },
-      unmatchedNote: '성취수준 원문 자료가 없는 항목(고등학교 전 과목, 세계사 일부 등)은 자동 대조 대상이 아니며 미검증 상태로 남습니다.',
+      unmatchedNote: '성취수준 원문 자료가 없는 항목(고등학교 전 과목, 사회의 역사 영역 일부 등)은 자동 대조 대상이 아니며 미검증 상태로 남습니다.',
       error: '대조 중 오류가 났습니다. 잠시 후 다시 시도해 주세요.',
     },
   },
@@ -204,6 +236,7 @@ export const app = {
       gradeInvalid: '학년을 확인하세요. (초 1~6, 중·고 1~3, 또는 학년 지정 안 함)',
       subjectsRequired: '과목을 1개 이상 선택하세요.',
       subjectInvalid: '알 수 없는 과목입니다.',
+      subjectMerged: '한국사·세계사는 사회로 묶였습니다. 사회를 선택하세요.',
       subjectNotInTheme: '대주제에 포함되지 않은 과목입니다.',
       subjectDuplicate: '이미 세트가 만들어진 과목입니다.',
       standardCountInvalid: '성취기준은 2~6개 선택하세요.',
@@ -232,6 +265,7 @@ export const app = {
     newTheme: {
       title: '새 대주제',
       labels: { title: '제목', level: '학교급', grade: '학년(선택)', subjects: '과목' },
+      subjectsHelp: '사회는 지리·일반사회·역사(한국사·세계사)를 묶은 통합 과목입니다.',
       gradeNone: '학년 지정 안 함(학년군 전체)',
       gradeOption: (grade: number) => `${grade}학년`,
       gradeHelp: '2022 개정 성취기준은 학년군 단위입니다. 학년을 정하지 않으면 중학교는 1~3학년군, 초등학교는 3~6학년 수준으로 만듭니다. 초등은 1~6학년, 중등은 1~3학년 중에서 고를 수 있습니다.',
@@ -307,6 +341,10 @@ export const app = {
       subjectPlaceholder: '과목을 선택하세요',
       noSubjectsAvailable: '모든 과목에 이미 세트가 있습니다.',
       uncategorized: '미분류',
+      // 사회 세트의 성취기준 묶음 제목(대표 결정 2026-09-30: 사회는 지리·일반사회·역사 등을 묶은 통합 과목).
+      // 열쇠 = 코드 머리(lib/studio/subjects.ts standardFamilyKey). 표에 없는 코드 머리는 "사회 (코드 머리)"로 보인다.
+      familyHelp: '사회는 통합 과목입니다. 지리·일반사회·역사 어느 묶음에서든 골라 2~6개를 채우세요.',
+      familyLabel: (key: string): string => SOCIAL_FAMILY_LABELS[key] ?? `사회 (${key})`,
       searchPlaceholder: '코드 또는 원문 검색',
       selectedCount: (n: number) => `${n}개 선택 (2~6개)`,
       verified: '검증됨',

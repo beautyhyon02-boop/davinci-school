@@ -9,8 +9,8 @@ describe('rules v2', () => {
     expect(new Set(ids).size).toBe(ids.length)
     const spec = readFileSync('docs/superpowers/specs/2026-09-25-item-studio-v2-design.md', 'utf8')
     for (const id of ids) expect(spec.split(`| ${id} |`).length - 1, id).toBe(1)
-    // 부록 A: 공통 38(C-31 대표 확정값, C-32 조건=지침(2026-09-26), C-33 자료 설계·유형(대표 연수 2기), C-34·C-36·C-37 경기2025, C-39 배운 것만 채점·C-40 역량 꼬리표(대표 2026-09-29) 포함) + 차시 12 + 과목 39(국6·수7·사6·역3·과8·영9 — S-영-08 번역·S-영-09 공동 자료 영어판(대표 2026-09-29)) + 채점 10(G-10 경기2025) + 안내장 12 = 111
-    expect(ids.length).toBe(38 + 12 + 39 + 10 + 12)
+    // 부록 A: 공통 38(C-31 대표 확정값, C-32 조건=지침(2026-09-26), C-33 자료 설계·유형(대표 연수 2기), C-34·C-36·C-37 경기2025, C-39 배운 것만 채점·C-40 역량 꼬리표(대표 2026-09-29) 포함) + 차시 12 + 과목 40(국6·수7·사7·역3·과8·영9 — S-영-08 번역·S-영-09 공동 자료 영어판(대표 2026-09-29), S-사-07 사회 통합(대표 2026-09-30)) + 채점 10(G-10 경기2025) + 안내장 12 = 112
+    expect(ids.length).toBe(38 + 12 + 40 + 10 + 12)
   })
   it('the spec appendix has no rule row that the code lacks', () => {
     const spec = readFileSync('docs/superpowers/specs/2026-09-25-item-studio-v2-design.md', 'utf8')
@@ -246,5 +246,34 @@ describe('S-영-08 영문 자료·영어 예시답안 한국어 번역 (대표 2
     expect(row('S-영-08')).toBe(`| S-영-08 | ${s08.text} | [대표] |`)
     expect(rulesFor('영어')).toMatch(/^S-영-08 영어 세트의 교사용 지침서에는/m)
     expect(rulesFor('수학')).not.toMatch(/S-영-08/)
+  })
+})
+
+// 대표 2026-09-30 "사회, 한국사, 세계사를 따로 분리하지 않고 사회 한 과목으로 묶는다. 사회 서논술은 통합"
+describe('S-사-07 사회는 통합 과목 — 사회 세트 프롬프트는 역사 규칙을 함께 싣는다 (대표 2026-09-30)', () => {
+  const spec = readFileSync('docs/superpowers/specs/2026-09-25-item-studio-v2-design.md', 'utf8')
+  const row = (id: string) => spec.split('\n').find((line) => line.startsWith(`| ${id} |`))!
+  it('S-사-07 exists as PS/대표; spec row identical; reaches only the 사회 prompt', () => {
+    const s07 = SUBJECT_RULES['사회'].find((r) => r.id === 'S-사-07')!
+    expect(s07.nature).toBe('PS'); expect(s07.tags).toEqual(['대표'])
+    for (const s of ['사회 세트는 통합 과목이다', '세트가 고른 성취기준의 영역에 맞춰', '경제와 역사', '억지로 섞지 않는다', '역사 규칙(S-역)을 함께 따른다']) expect(s07.text, s).toContain(s)
+    expect(row('S-사-07')).toBe(`| S-사-07 | ${s07.text} | [대표] |`)
+    expect(rulesFor('수학')).not.toMatch(/S-사-07/)
+  })
+  it('rulesFor(사회) carries S-사-01..07 and S-역-01..03 under headings that say 역사 is included', () => {
+    const social = rulesFor('사회')
+    for (const id of ['S-사-01', 'S-사-02', 'S-사-03', 'S-사-04', 'S-사-05', 'S-사-06', 'S-사-07', 'S-역-01', 'S-역-02', 'S-역-03']) expect(social, id).toMatch(new RegExp(`^${id} `, 'm'))
+    expect(social).toContain('[사회 — 역사 포함]')
+    expect(social).toContain('[사회 — 역사 영역(역사 성취기준을 고른 세트에 적용)]')
+    expect(social.indexOf('S-사-07')).toBeLessThan(social.indexOf('S-역-01'))
+    // 역사 규칙 문장은 그대로다(스펙 부록 A와 같은 ID·문장)
+    for (const r of SUBJECT_RULES['역사']) expect(social).toContain(`${r.id} ${r.text}`)
+  })
+  it('legacy 한국사·세계사 keep the 역사 rules only (no 사회 rules), other subjects get no 역사 rules', () => {
+    for (const legacy of ['한국사', '세계사']) {
+      const t = rulesFor(legacy)
+      expect(t).toContain('[역사]'); expect(t).toMatch(/^S-역-03 /m); expect(t).not.toMatch(/S-사-0/)
+    }
+    for (const subject of ['국어', '영어', '수학', '과학']) expect(rulesFor(subject)).not.toMatch(/^S-역-/m)
   })
 })

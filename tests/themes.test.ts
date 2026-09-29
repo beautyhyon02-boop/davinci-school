@@ -205,9 +205,9 @@ describe('parseSharedMaterialsInput / sharedMaterialsJson', () => {
 
 describe('addThemeSubjects', () => {
   it('appends new subjects after the existing ones, keeping the existing order', () => {
-    const r = addThemeSubjects(['국어', '수학'], ['영어', '세계사'])
+    const r = addThemeSubjects(['국어', '수학'], ['영어', '사회'])
     expect(r.ok).toBe(true)
-    expect(r.ok && r.subjects).toEqual(['국어', '수학', '영어', '세계사'])
+    expect(r.ok && r.subjects).toEqual(['국어', '수학', '영어', '사회'])
   })
 
   it('dedupes an addition that is already in the theme', () => {
@@ -303,5 +303,47 @@ describe('학년 선택(대표 2026-09-26): 대주제는 학교급만 필수, �
       expect(app.studio.gradeBand[level]?.band).toBe(SCHOOL_BANDS[level].band)
       expect(app.packageView.cover.meta(level, null, '수학')).toBe(`${gradeLabel(level, null)} · 수학`)
     }
+  })
+})
+
+// 대표 2026-09-30: 사회·한국사·세계사를 사회 한 과목으로 묶는다 — 새로 고를 수 있는 과목은 다섯, 옛 값은 읽기·빼기만
+describe('과목 묶음(대표 2026-09-30): 새 대주제·세트는 국어·영어·수학·과학·사회', () => {
+  const base = { [THEME_FIELDS.title]: '기후 위기', [THEME_FIELDS.level]: '중', [THEME_FIELDS.grade]: '' }
+  it('parseTheme accepts 사회 and rejects 한국사·세계사 with the "사회로 묶였습니다" message', () => {
+    expect(parseTheme(fd({ ...base, [THEME_FIELDS.subjects]: ['국어', '사회'] })).ok).toBe(true)
+    for (const legacy of ['한국사', '세계사']) {
+      const r = parseTheme(fd({ ...base, [THEME_FIELDS.subjects]: ['국어', legacy] }))
+      expect(r).toEqual({ ok: false, error: app.studio.errors.subjectMerged })
+    }
+    expect(parseTheme(fd({ ...base, [THEME_FIELDS.subjects]: ['체육'] }))).toEqual({ ok: false, error: app.studio.errors.subjectInvalid })
+  })
+  it('addThemeSubjects rejects 한국사·세계사 as new subjects but keeps legacy ones already in the theme', () => {
+    expect(addThemeSubjects(['국어'], ['세계사'])).toEqual({ ok: false, error: app.studio.errors.subjectMerged })
+    expect(addThemeSubjects(['국어', '한국사'], ['사회'])).toEqual({ ok: true, subjects: ['국어', '한국사', '사회'] })
+  })
+  it('removeThemeSubject still removes a legacy subject', () => {
+    expect(removeThemeSubject(['국어', '세계사'], '세계사', [])).toEqual({ ok: true, subjects: ['국어'] })
+  })
+  it('canCreateSet: 사회 yes; a legacy subject left in an old theme cannot get a NEW set', () => {
+    const theme = { subjects: ['국어', '사회', '한국사'] }
+    expect(canCreateSet(theme, '사회', []).ok).toBe(true)
+    expect(canCreateSet(theme, '한국사', [])).toEqual({ ok: false, reason: app.studio.errors.subjectMerged })
+    // 옛 한국사 세트가 있어도 사회 세트는 따로 만들 수 있다
+    expect(canCreateSet(theme, '사회', ['한국사']).ok).toBe(true)
+  })
+  it('validateStandardSelection: a 사회 set accepts 사회 + 한국사 + 세계사 standards', () => {
+    const s = (code: string, subject: string) => ({ code, level: '중', subject, verified: true })
+    const r = validateStandardSelection([s('[9사(일사)10-01]', '사회'), s('[9역08-01]', '한국사'), s('[9역03-01]', '세계사')], { level: '중', subject: '사회' })
+    expect(r).toEqual({ ok: true, issues: [], warnings: [] })
+  })
+  it('validateStandardSelection: a 수학 set still rejects 과학 standards, and a 사회 set rejects 과학 standards', () => {
+    const s = (code: string, subject: string) => ({ code, level: '중', subject, verified: true })
+    const math = validateStandardSelection([s('[9수04-02]', '수학'), s('[9과01-01]', '과학')], { level: '중', subject: '수학' })
+    expect(math.ok).toBe(false); expect(math.issues).toContain(app.studio.errors.standardSubjectMismatch)
+    const social = validateStandardSelection([s('[9사(지리)01-01]', '사회'), s('[9과01-01]', '과학')], { level: '중', subject: '사회' })
+    expect(social.issues).toContain(app.studio.errors.standardSubjectMismatch)
+    // 옛 한국사 세트는 한국사 성취기준만(묶음은 사회에서만 넓어진다)
+    const legacy = validateStandardSelection([s('[9역08-01]', '한국사'), s('[9사(지리)01-01]', '사회')], { level: '중', subject: '한국사' })
+    expect(legacy.issues).toContain(app.studio.errors.standardSubjectMismatch)
   })
 })

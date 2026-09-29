@@ -10,6 +10,7 @@ import { AddSubjectsPanel } from './AddSubjectsPanel'
 import { GradeEditor } from './GradeEditor'
 import { StandardsPicker, type StandardsBySubject } from './StandardsPicker'
 import type { Subject, Level } from '@/lib/studio/schemas'
+import { isStudioSubject, standardSubjectsFor, groupStandardFamilies } from '@/lib/studio/subjects'
 import { sharedMaterialsJson, type SharedMaterial } from '@/lib/studio/themes'
 import { fetchAll } from '@/lib/supabase/fetch-all'
 import { cleanMaterialTitle } from '@/lib/studio/materials'
@@ -50,7 +51,10 @@ export default async function ThemeDetailPage({ params }: { params: Promise<{ th
 
   const setRows = sets ?? []
   const existingSubjects = setRows.map((s) => s.subject as string)
-  const availableSubjects = themeSubjects.filter((s) => !existingSubjects.includes(s))
+  // 새 세트는 제작소 과목 다섯만(대표 결정 2026-09-30) — 옛 대주제에 남은 한국사·세계사는 배지로만 보이고 세트는 사회로 만든다
+  const availableSubjects = themeSubjects.filter((s) => isStudioSubject(s) && !existingSubjects.includes(s))
+  // 사회 세트는 사회·한국사·세계사 성취기준을 모두 고를 수 있다(과목 묶음)
+  const standardSubjects = Array.from(new Set(availableSubjects.flatMap((s) => standardSubjectsFor(s))))
 
   // 이미 세트가 만들어진 과목은 picker에 필요 없으니 조회 대상에서 뺀다. level당 과목이 여러 개면
   // 성취기준이 PostgREST 기본 페이지 한도(1000행)를 넘을 수 있어 fetchAll로 끝까지 이어 받는다.
@@ -61,7 +65,7 @@ export default async function ThemeDetailPage({ params }: { params: Promise<{ th
           .from('standards')
           .select('id, code, text, domain, subject, verified_at')
           .eq('level', theme.level)
-          .in('subject', availableSubjects)
+          .in('subject', standardSubjects)
           .order('subject')
           .order('domain')
           .order('code')
@@ -69,12 +73,18 @@ export default async function ThemeDetailPage({ params }: { params: Promise<{ th
       )
     : []
 
+  // 과목 → 묶음(사회만: 지리·일반사회·역사… 코드 머리로 나눔) → 영역 → 성취기준. 묶음 제목은 content/site.ts 에서 온다.
   const standardsBySubject: StandardsBySubject = {}
-  for (const r of standardRows) {
-    const domain = r.domain.trim() ? r.domain : app.studio.picker.uncategorized
-    const bySubject = (standardsBySubject[r.subject] ??= {})
-    const byDomain = (bySubject[domain] ??= [])
-    byDomain.push({ id: r.id, code: r.code, text: r.text, domain, verified: !!r.verified_at })
+  for (const subject of availableSubjects) {
+    const allowed = standardSubjectsFor(subject)
+    const rows = standardRows
+      .filter((r) => allowed.includes(r.subject))
+      .map((r) => ({ id: r.id, code: r.code, text: r.text, subject: r.subject, domain: r.domain.trim() ? r.domain : app.studio.picker.uncategorized, verified: !!r.verified_at }))
+    standardsBySubject[subject] = groupStandardFamilies(rows, subject).map((f) => ({
+      key: f.key,
+      label: f.key ? app.studio.picker.familyLabel(f.key) : '',
+      domains: f.domains.map((d) => ({ domain: d.domain, rows: d.rows.map((r) => ({ id: r.id, code: r.code, text: r.text, domain: r.domain, verified: r.verified })) })),
+    }))
   }
 
   // themes.materials 는 래퍼 없는 배열로 저장된다 — textarea 에는 스키마 모양({materials:[...]})으로 씌워 보여 준다.

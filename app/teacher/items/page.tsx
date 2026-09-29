@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { Badge } from '@/components/ui/Badge'
 import { Card } from '@/components/ui/Card'
 import { app } from '@/content/site'
-import { SUBJECTS, LEVELS } from '@/lib/studio/schemas'
+import { STUDIO_SUBJECTS, LEVELS, standardSubjectsFor } from '@/lib/studio/schemas'
 
 const copy = app.teacherItems
 
@@ -22,7 +22,8 @@ export default async function TeacherItemsPage({ searchParams }: { searchParams:
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let q2: any = query
     if (level) q2 = q2.eq('level', level)
-    if (subject) q2 = q2.eq('subject', subject)
+    // 과목은 묶음으로 찾는다 — 「사회」는 옛 한국사·세계사 세트도 함께 보여 준다(대표 결정 2026-09-30)
+    if (subject) q2 = q2.in('subject', standardSubjectsFor(subject))
     return q2
   }
 
@@ -49,7 +50,7 @@ export default async function TeacherItemsPage({ searchParams }: { searchParams:
           <span className="block text-ink-500">{copy.filters.subjectLabel}</span>
           <select name="subject" defaultValue={subject} className="mt-1 rounded-lg border border-ink-100 px-3 py-2 text-sm">
             <option value="">{copy.filters.subjectAll}</option>
-            {SUBJECTS.map((s) => <option key={s} value={s}>{s}</option>)}
+            {STUDIO_SUBJECTS.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
         </label>
         <button type="submit" className="rounded-full bg-mint-500 px-5 py-2 text-sm font-semibold text-white hover:bg-mint-600">{copy.filters.submit}</button>
