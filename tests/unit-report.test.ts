@@ -231,6 +231,33 @@ describe('buildRadar · overallComment', () => {
     expect(overallComment(radar, { studentName: 'a', themeTitle: 't' }, reportCopy)).toBe(reportCopy.overall.strongAndWeak({ studentName: 'a', themeTitle: 't', strong: '자료 읽기', weak: '글로 표현하기' }))
   })
 
+  it('with two or more non-sparse axes, strongest/weakest come from the non-sparse axes only', () => {
+    const radar = buildRadar([
+      { competency: '지식·이해', earned: 1, possible: 1 },                                                        // 1문항(sparse) 100%
+      { competency: '자료 읽기', earned: 3, possible: 4 }, { competency: '자료 읽기', earned: 3, possible: 4 },       // 75%
+      { competency: '글로 표현하기', earned: 1, possible: 4 }, { competency: '글로 표현하기', earned: 2, possible: 4 }, // 37.5%
+      { competency: '가치·태도', earned: 0, possible: 1 },                                                        // 1문항(sparse) 0%
+    ])
+    expect(overallComment(radar, { studentName: 'a', themeTitle: 't' }, reportCopy)).toBe(reportCopy.overall.strongAndWeak({ studentName: 'a', themeTitle: 't', strong: '자료 읽기', weak: '글로 표현하기' }))
+  })
+
+  it('non-sparse axes that tie give the even sentence even when a sparse axis differs', () => {
+    const radar = buildRadar([
+      { competency: '지식·이해', earned: 0, possible: 1 },
+      { competency: '자료 읽기', earned: 1, possible: 2 }, { competency: '자료 읽기', earned: 1, possible: 2 },
+      { competency: '과정·기능', earned: 2, possible: 4 }, { competency: '과정·기능', earned: 2, possible: 4 },
+    ])
+    expect(overallComment(radar, { studentName: 'a', themeTitle: 't' }, reportCopy)).toBe(reportCopy.overall.even({ studentName: 'a', themeTitle: 't' }))
+  })
+
+  it('only one non-sparse axis → falls back to every axis with data', () => {
+    const radar = buildRadar([
+      { competency: '지식·이해', earned: 1, possible: 1 },
+      { competency: '자료 읽기', earned: 1, possible: 4 }, { competency: '자료 읽기', earned: 1, possible: 4 },
+    ])
+    expect(overallComment(radar, { studentName: 'a', themeTitle: 't' }, reportCopy)).toBe(reportCopy.overall.strongAndWeak({ studentName: 'a', themeTitle: 't', strong: '지식·이해', weak: '자료 읽기' }))
+  })
+
   it('ties are broken by axis order so the sentence never flips', () => {
     const radar = buildRadar([
       { competency: '지식·이해', earned: 1, possible: 1 }, { competency: '자료 읽기', earned: 1, possible: 1 },

@@ -186,12 +186,16 @@ export function buildRadar(tallies: { competency: Competency; earned: number; po
 /**
  * 종합 코멘트: 자료가 있는 축 가운데 가장 높은 축과 가장 낮은 축. 비율이 같으면 높은 쪽은 앞 축, 낮은 쪽은 뒤 축
  * (COMPETENCIES 순서)으로 정해 늘 같은 문장이 나온다. 자료가 있는 축이 2개 미만이면 중립 문장.
+ * 문항 수가 충분한(sparse 가 아닌) 축이 2개 이상이면 그 축들 안에서만 고른다 — 문항 하나짜리 축이 "가장 높은/낮은 역량"으로
+ * 불리지 않게. 그런 축이 2개 미만이면 자료가 있는 축 전체에서 고른다(종전 동작).
  */
 export function overallComment(radar: RadarAxis[], who: ReportOverallArgs, copy: UnitReportCopy): string {
   const withData = radar.filter((a): a is RadarAxis & { ratio: number } => a.ratio !== null)
   if (withData.length < 2) return copy.overall.neutral(who)
-  let strong = withData[0]; let weak = withData[0]
-  for (const a of withData) {
+  const solid = withData.filter((a) => !a.sparse)
+  const pool = solid.length >= 2 ? solid : withData
+  let strong = pool[0]; let weak = pool[0]
+  for (const a of pool) {
     if (a.ratio > strong.ratio) strong = a
     if (a.ratio <= weak.ratio) weak = a
   }
