@@ -229,7 +229,14 @@ export async function runStage({ itemSetId, stage, action, repo }: { itemSetId: 
     const notes = staticCheck(stage, status.output, ctx)
     await logStatic(attempt, notes)
     status = { ...status, notes }
-    await repo.saveStatus(itemSetId, stage, status); return { status }
+    await repo.saveStatus(itemSetId, stage, status)
+    // 확인한 단계를 다시 생성하면(대표 2026-09-29) 뒤 단계는 낡은 근거 위의 출력이다 — 준비 전으로 되돌린다(JSON 편집과 같은 규칙).
+    for (let s = stage + 1; s <= 7; s++) {
+      const later = ctx.statuses?.[s]
+      if (!later || later.state === 'idle') continue
+      await repo.saveStatus(itemSetId, s as Stage, { state: 'idle', attempt: 0, updated_at: now() })
+    }
+    return { status }
   }
 
   const output = ctx.outputs[stage]

@@ -49,6 +49,18 @@ describe('runStage', () => {
     expect(a.status.review).toBeUndefined()
     expect(repo.logs.filter(l => l.role === 'review')).toEqual([])
   })
+  // 대표 2026-09-29: 확인한 단계도 다시 생성할 수 있다 — 뒤 단계는 준비 전으로 되돌린다
+  it('regenerating an accepted stage resets the later non-idle stages to idle', async () => {
+    const repo = fakeRepo({ acceptedUpTo: 5 })
+    const g = await runStage({ itemSetId: 'x', stage: 2, action: 'generate', repo })
+    expect(g.status.state).toBe('generated')
+    expect(g.status.attempt).toBe(2)
+    expect(repo.statuses[3]).toMatchObject({ state: 'idle', attempt: 0 })
+    expect(repo.statuses[4]).toMatchObject({ state: 'idle', attempt: 0 })
+    expect(repo.statuses[3].output).toBeUndefined()
+    expect(repo.statuses[5]).toBeUndefined()
+    expect(repo.statuses[1].state).toBe('accepted')
+  })
   it('optional review still works: generate → review → accept (records model and review result)', async () => {
     const repo = fakeRepo({ acceptedUpTo: 2 })
     await runStage({ itemSetId: 'x', stage: 2, action: 'generate', repo })

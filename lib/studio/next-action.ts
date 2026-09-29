@@ -15,11 +15,16 @@ export function nextAction(status: StageStatus | undefined): WizardAction {
 }
 
 /**
- * 사람이 [생성](다시 생성)을 누를 수 있는지. 확인(accepted)하기 전에는 언제든 누를 수 있다 — 생성됨·검토 의견 받음 상태에서도
- * 결과가 마음에 들지 않으면 다시 만든다. 확인한 단계는 [JSON 편집]으로 고친다(하위 단계가 함께 초기화된다).
+ * 사람이 [생성](다시 생성)을 누를 수 있는지. 언제든 누를 수 있다 — 확인한 단계도 다시 만들 수 있다(대표 2026-09-29).
+ * 확인한 단계나 뒤 단계가 있는 단계를 다시 생성하면 뒤 단계가 초기화되므로 화면이 먼저 묻는다(needsRegenerateConfirm).
  */
-export function canGenerate(status: StageStatus | undefined): boolean {
-  return status?.state !== 'accepted'
+export function canGenerate(_status: StageStatus | undefined): boolean {
+  return true
+}
+
+/** 다시 생성하기 전에 물어야 하는지 — 이미 확인한 단계이거나, 뒤에 준비 전이 아닌 단계가 있으면 묻는다. */
+export function needsRegenerateConfirm(status: StageStatus | undefined, laterStages: readonly number[]): boolean {
+  return status?.state === 'accepted' || laterStages.length > 0
 }
 
 /** [확인]을 누를 수 있는지 — 확인할 출력이 있고(생성됨·검토 의견 받음) 아직 확인하지 않았으면 언제나. 검토 결과는 보지 않는다. */

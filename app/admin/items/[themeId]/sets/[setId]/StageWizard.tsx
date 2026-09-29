@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { app } from '@/content/site'
-import { canAccept as canAcceptStage, canGenerate as canGenerateStage, canReview as canReviewStage } from '@/lib/studio/next-action'
+import { canAccept as canAcceptStage, canGenerate as canGenerateStage, canReview as canReviewStage, needsRegenerateConfirm } from '@/lib/studio/next-action'
 import type { StageStatus } from '@/lib/studio/stages'
 import type { Issue } from '@/lib/studio/checks'
 import { EXHAUSTED_ERROR } from '@/lib/studio/max-attempts'
@@ -242,7 +242,15 @@ function StagePanel({
 
       {!editing && (
         <div className="mt-4 flex flex-wrap gap-2">
-          <Button variant="ghost" disabled={busy || !canGenerate} onClick={() => onRun(stage, 'generate')}>
+          <Button
+            variant="ghost"
+            disabled={busy || !canGenerate}
+            onClick={() => {
+              // 확인한 단계·뒤 단계가 있는 단계를 다시 생성하면 뒤 단계가 초기화된다 — 먼저 묻는다
+              if (needsRegenerateConfirm(status, laterStages) && !window.confirm(copy.regenerateConfirm(stage, laterStages.length > 0))) return
+              onRun(stage, 'generate')
+            }}
+          >
             {busy ? copy.busy : copy.actions.generate}
           </Button>
           <Button disabled={busy || !canAccept} onClick={() => onRun(stage, 'accept')}>
@@ -331,7 +339,8 @@ export function StageWizard({
           prevAccepted={prevAccepted}
           laterStages={WIZARD_STAGES.filter((s) => s > active && (effective[s]?.state ?? 'idle') !== 'idle')}
           busy={busy}
-          onRun={run}
+          // 다시 생성은 뒤 단계를 준비 전으로 되돌릴 수 있으므로(runStage), 생성 뒤에는 전체를 다시 읽는다
+          onRun={async (s, action) => { await run(s, action); if (action === 'generate') void refresh() }}
           // JSON 편집 저장은 하위 단계를 준비 전으로 되돌리므로(saveStageEdit), 고친 단계를 바로 반영한 뒤 전체를 다시 읽는다
           onSaved={(s, st) => { setStageStatus(s, st); void refresh() }}
         />

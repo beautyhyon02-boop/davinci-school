@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { nextAction, canGenerate, canAccept, canReview, autoConfirm } from '@/lib/studio/next-action'
+import { nextAction, canGenerate, needsRegenerateConfirm, canAccept, canReview, autoConfirm } from '@/lib/studio/next-action'
 import type { StageStatus } from '@/lib/studio/stages'
 
 const base = { attempt: 0, updated_at: '' }
@@ -30,7 +30,7 @@ describe('nextAction (생성 → 확인)', () => {
   })
 })
 
-describe('canGenerate (확인 전에는 언제나 다시 생성)', () => {
+describe('canGenerate (언제나 다시 생성 — 확인한 단계 포함)', () => {
   it('allows generate from undefined/idle/failed/generated/reviewed, at any attempt count', () => {
     expect(canGenerate(undefined)).toBe(true)
     expect(canGenerate(st({ state: 'idle' }))).toBe(true)
@@ -38,8 +38,13 @@ describe('canGenerate (확인 전에는 언제나 다시 생성)', () => {
     expect(canGenerate(st({ state: 'generated', attempt: 1, output: {} }))).toBe(true)
     expect(canGenerate(failingReview(5))).toBe(true)
   })
-  it('does not allow generate once accepted (고치려면 JSON 편집)', () => {
-    expect(canGenerate(st({ state: 'accepted', attempt: 3, output: {} }))).toBe(false)
+  it('allows generate once accepted too (대표 2026-09-29), but asks first', () => {
+    const accepted = st({ state: 'accepted', attempt: 3, output: {} })
+    expect(canGenerate(accepted)).toBe(true)
+    expect(needsRegenerateConfirm(accepted, [])).toBe(true)
+    expect(needsRegenerateConfirm(st({ state: 'generated', attempt: 1, output: {} }), [4, 5])).toBe(true)
+    expect(needsRegenerateConfirm(st({ state: 'generated', attempt: 1, output: {} }), [])).toBe(false)
+    expect(needsRegenerateConfirm(undefined, [])).toBe(false)
   })
 })
 

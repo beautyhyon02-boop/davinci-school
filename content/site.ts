@@ -344,6 +344,9 @@ export const app = {
       mockBadge: '가짜 응답',
       editedBadge: '편집됨',
       attemptLabel: (n: number) => `시도 ${n}`,
+      regenerateConfirm: (stage: number, hasLater: boolean) => hasLater
+        ? `이 단계를 다시 생성하면 지금 내용이 새 내용으로 바뀌고, ${stage + 1}~7단계가 초기화됩니다. 계속할까요?`
+        : '이 단계를 다시 생성하면 지금 내용이 새 내용으로 바뀝니다. 계속할까요?',
       actions: {
         generate: '생성',
         review: 'AI 검토 의견 보기',
