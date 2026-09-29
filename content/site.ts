@@ -1129,6 +1129,14 @@ export const app = {
         subjectsHeading: '넣을 과목',
         subjectsHint: '체크한 과목만 리포트에 들어갑니다. 육각형과 종합 코멘트도 체크한 과목으로 다시 계산합니다.',
         subjectsNone: '과목을 하나도 고르지 않으면 배정된 과목이 모두 들어갑니다.',
+        attitudeHeading: '수업 태도 한 줄',
+        attitudeHint: '낱말만 고르면 종합 코멘트의 첫 줄이 완성됩니다.',
+        attitudeGroups: { participation: '참여', traits: '수업 모습', closing: '마무리' } as Record<'participation' | 'traits' | 'closing', string>,
+        attitudeTraitsHint: '한 개나 두 개를 골라 주세요.',
+        attitudePreview: '완성된 문장',
+        attitudeEmpty: '수업 태도 줄이 비어 있습니다. 낱말을 고르면 종합 코멘트 첫 줄에 들어갑니다. 고르지 않아도 저장·확정·인쇄는 그대로 할 수 있습니다.',
+        attitudeIncomplete: (missing: string[]) => `세 가지를 모두 고르면 문장이 완성됩니다. 아직 고르지 않은 것: ${missing.join(', ')}`,
+        attitudeClear: '고른 낱말 지우기',
         previewHeading: '미리보기',
         saveDraft: '초안 저장', confirm: '확정', reopen: '다시 고치기', print: '인쇄', saving: '저장 중…',
         saved: '초안을 저장했습니다.',
@@ -1162,11 +1170,22 @@ export const app = {
         radarHeading: '역량 육각형',
         radarAria: (name: string) => `${name} 학생 역량 육각형`,
         sparseNote: '문항 수 적음',
-        axesHeading: '역량별 점수',
-        axisLine: (competency: string, earned: number, possible: number, count: number) => `${competency} — ${earned}/${possible}점 (문항 ${count}개)`,
-        axisEmpty: (competency: string) => `${competency} — 이번 단원 기록 없음`,
+        // 역량 뜻 표(학부모가 읽는다): 역량 | 뜻 | 점수 — 한 줄에 역량 하나
+        axesHeading: '역량은 이렇게 봅니다',
+        axesColumns: { competency: '역량', meaning: '뜻', score: '점수' },
+        meanings: {
+          '지식·이해': '배운 개념과 용어를 정확히 알고 있는가',
+          '자료 읽기': '표·글·그림에서 필요한 정보를 찾아내는가',
+          '근거 들어 설명하기': '이유와 근거를 들어 자기 생각을 설명하는가',
+          '글로 표현하기': '읽는 사람이 이해하기 쉽게 문장과 글로 쓰는가',
+          '과정·기능': '계산, 절차, 탐구 방법을 순서에 맞게 해내는가',
+          '가치·태도': '무엇이 중요한지 판단하고 실천하려는 마음을 보이는가',
+        } as Record<'지식·이해' | '자료 읽기' | '근거 들어 설명하기' | '글로 표현하기' | '과정·기능' | '가치·태도', string>,
+        axisScore: (earned: number, possible: number, count: number) => `${earned}/${possible}점 · 문항 ${count}개`,
+        axisEmpty: '이번 단원 기록 없음',
         summaryHeading: '과목별 한 줄 요약',
         overallHeading: '종합 코멘트',
+        overallLabels: { attitude: '수업 태도', strength: '잘한 점', practice: '더 연습할 점', subject: '과목 한마디' } as Record<'attitude' | 'strength' | 'practice' | 'subject', string>,
         basisNote: '이번 단원 수업 기준의 기록입니다.',
         detailHeading: '과목별 상세',
         keyQuestion: '핵심 질문',
@@ -1190,7 +1209,7 @@ export const app = {
       edit: {
         heading: '문장 고치기',
         hint: '문장만 고칠 수 있습니다. 점수와 O/X 는 확인한 기록에서 그대로 옵니다. 칸을 비우면 그 줄은 리포트에서 빠집니다.',
-        overall: '종합 코멘트',
+        overallLine: { attitude: '종합 코멘트 · 수업 태도', strength: '종합 코멘트 · 잘한 점', practice: '종합 코멘트 · 더 연습할 점', subject: '종합 코멘트 · 과목 한마디' } as Record<'attitude' | 'strength' | 'practice' | 'subject', string>,
         summary: (subject: string) => `${subject} 한 줄 요약`,
         quizNote: (subject: string, lessonNo: number, quizNo: number) => `${subject} ${lessonNo}차시 퀴즈 ${quizNo}번 코멘트`,
         phrase: (subject: string, kind: string, name: string) => `${subject} ${kind} · ${name}`,
@@ -1214,6 +1233,36 @@ export const app = {
             `${a.studentName} 학생은 이번 단원에서 「${a.strong}」 역량이 돋보였고, 「${a.weak}」 역량은 조금 더 연습하면 좋겠습니다.`,
           even: (a: { studentName: string }) => `${a.studentName} 학생은 이번 단원에서 여러 역량을 고르게 보여 주었습니다.`,
           neutral: (a: { studentName: string; themeTitle: string }) => `${a.studentName} 학생의 「${a.themeTitle}」 단원 학습 기록입니다.`,
+          // 첫 줄(수업 태도): 원장이 낱말만 골라 완성한다. 낱말 뒤에는 늘 같은 말(참여하였고·모습과·모습을)이 온다.
+          attitudeWords: {
+            participation: { active: '적극적으로', steady: '꾸준히', calm: '차분하게', growing: '조금씩 더 활발하게' } as Record<'active' | 'steady' | 'calm' | 'growing', string>,
+            traits: {
+              asks: '질문을 자주 하는', speaks: '자기 생각을 분명히 말하는', listens: '친구의 의견을 잘 듣는',
+              focuses: '끝까지 집중하는', completes: '맡은 활동을 성실히 마치는', retries: '어려운 문제도 다시 시도하는',
+            } as Record<'asks' | 'speaks' | 'listens' | 'focuses' | 'completes' | 'retries', string>,
+            closing: { expect: '앞으로가 더 기대됩니다', steady: '꾸준함이 돋보입니다', confidence: '자신감이 자라고 있습니다', growth: '성장이 눈에 보입니다' } as Record<'expect' | 'steady' | 'confidence' | 'growth', string>,
+          },
+          attitude: (a: { studentName: string; participation: 'active' | 'steady' | 'calm' | 'growing'; traits: ('asks' | 'speaks' | 'listens' | 'focuses' | 'completes' | 'retries')[]; closing: 'expect' | 'steady' | 'confidence' | 'growth' }): string => {
+            const w = app.classroom.report.build.overall.attitudeWords
+            const looks = a.traits.map((t, i) => `${w.traits[t]} ${i < a.traits.length - 1 ? '모습과' : '모습을'}`).join(' ')
+            return `${a.studentName} 학생은 이번 단원 수업에 ${w.participation[a.participation]} 참여하였고, ${looks} 보였습니다. ${w.closing[a.closing]}.`
+          },
+          // 근거 한 문장: 채점 요소(과목·문항 종류·요소 이름·점수) 또는 퀴즈(과목·역량·문항 수)
+          evidence: (axis: string, e: { kind: 'criterion'; subject: string; itemKind: string; name: string; points: number; max: number } | { kind: 'quiz'; subject: string; correct: number; total: number }): string =>
+            e.kind === 'criterion'
+              ? `${e.subject} ${e.itemKind} 「${e.name}」 요소에서 ${e.max}점 중 ${e.points}점을 받았습니다.`
+              : `${e.subject} 퀴즈의 「${axis}」 문항 ${e.total}개 중 ${e.correct}개를 맞혔습니다.`,
+          strength: (a: { axis: string; evidence: { kind: 'criterion'; subject: string; itemKind: string; name: string; points: number; max: number } | { kind: 'quiz'; subject: string; correct: number; total: number } }): string =>
+            `「${a.axis}」 역량이 가장 돋보였습니다. ${app.classroom.report.build.overall.evidence(a.axis, a.evidence)}`,
+          practiceGeneric: '배운 내용을 하루에 한 가지씩 다시 읽고 짧게 써 보면 좋겠습니다.',
+          practice: (a: { axis: string; evidence: { kind: 'criterion'; subject: string; itemKind: string; name: string; points: number; max: number } | { kind: 'quiz'; subject: string; correct: number; total: number }; action: string | null }): string =>
+            `「${a.axis}」 역량은 조금 더 연습하면 좋겠습니다. ${app.classroom.report.build.overall.evidence(a.axis, a.evidence)} ${a.action ?? app.classroom.report.build.overall.practiceGeneric}`,
+          subject: (a: { best: string; focus: string | null }): string =>
+            a.focus
+              ? `이번 단원에서는 ${a.best} 과목의 기록이 가장 좋았습니다. 다음 단원에서는 ${a.focus} 과목에 조금 더 힘을 실어 보면 좋겠습니다.`
+              : `이번 단원에서는 ${a.best} 과목을 공부하였습니다. 다음 단원에서도 지금처럼 이어 가면 좋겠습니다.`,
+          subjectEven: () => '이번 단원에서는 여러 과목을 고르게 공부하였습니다. 다음 단원에서도 지금처럼 이어 가면 좋겠습니다.',
+          pending: () => '퀴즈 확인과 평가 문항 채점이 끝나면 역량과 과목의 기록이 채워집니다.',
         },
       },
       errors: {

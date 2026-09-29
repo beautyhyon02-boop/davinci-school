@@ -25,6 +25,9 @@ const render = (body: ReturnType<typeof buildUnitReport>, draft = false) =>
 /** 비교·등수 낱말(R-7). */
 const COMPARISON = ['등수', '석차', '순위', '평균', '다른 학생', '상위', '하위', '백분위', '반에서']
 
+/** 본문에 있는 종합 코멘트 줄의 열쇠(자리 + 가리키는 것). */
+const lineKey = (body: ReturnType<typeof buildUnitReport>, kind: 'attitude' | 'strength' | 'practice' | 'subject') => editKey.overallLine(kind, body.overall_lines!.find((l) => l.kind === kind)!.ref)
+
 const two = buildUnitReport({ student, theme, subjects: [fullSubject('영어', { wrong: ['2-1', '4-3'], drop: 1, tags: SIX_AXIS_TAGS }), fullSubject('수학', { wrong: ['1-2'], tags: SIX_AXIS_TAGS })] }, copy.build)
 const FIVE = ['국어', '영어', '수학', '과학', '사회']
 const five = buildUnitReport({ student, theme, subjects: FIVE.map((s, i) => fullSubject(s, { variant: s === '과학' ? '과학' : '수학', wrong: [`${i + 1}-1`, `${i + 1}-3`], drop: i % 3, tags: s === '과학' ? undefined : SIX_AXIS_TAGS })) }, copy.build)
@@ -41,15 +44,28 @@ describe('UnitReportView — 두 과목', () => {
     expect(count(front, 'data-series="value"')).toBe(1)
     expect(front).toContain('#f59e0b')                                 // 오렌지색 육각형
     for (const s of two.subjects) expect(ft).toContain(s.summary)
-    expect(ft).toContain(two.overall_comment)
+    for (const l of two.overall_lines!) { expect(ft).toContain(l.text); expect(ft).toContain(v.overallLabels[l.kind]) }
     expect(front).not.toContain('data-report-draft')
   })
 
-  it('six axes are a stacked list: one <li> per competency with points and item count', () => {
+  it('역량 뜻 표: one row per competency — name, what it means (for parents), points and item count', () => {
     const list = html.slice(html.indexOf('data-report-axes'))
-    const axes = list.slice(0, list.indexOf('</ul>'))
-    expect(count(axes, '<li')).toBe(COMPETENCIES.length)
-    for (const a of two.radar) expect(text(axes)).toContain(a.ratio === null ? v.axisEmpty(a.competency) : v.axisLine(a.competency, a.earned, a.possible, a.count))
+    const axes = list.slice(0, list.indexOf('</table>'))
+    expect(html.indexOf('<svg')).toBeLessThan(html.indexOf('data-report-axes'))      // 육각형 바로 아래
+    expect(text(html.slice(html.indexOf('</svg>'), html.indexOf('data-report-axes')))).toContain(v.axesHeading)
+    expect(v.axesHeading).toBe('역량은 이렇게 봅니다')
+    const rows = axes.split('<tr').slice(2)                                            // 머리 줄 다음부터
+    expect(rows).toHaveLength(COMPETENCIES.length)
+    for (const [i, a] of two.radar.entries()) {
+      const cells = rows[i].split(/<t[hd]/).slice(1).map((c) => text(`<x${c}`).trim())
+      expect(cells).toHaveLength(3)
+      expect(cells[0]).toBe(a.competency)
+      expect(cells[1]).toBe(v.meanings[a.competency])
+      expect(cells[2]).toContain(a.ratio === null ? v.axisEmpty : v.axisScore(a.earned, a.possible, a.count))
+      expect(rows[i]).toMatch(/<th scope="row"[^>]*font-bold/)
+    }
+    for (const c of COMPETENCIES) expect(v.meanings[c].length).toBeLessThanOrEqual(40)
+    expect(text(axes.split('<tr')[1])).toContain(`${v.axesColumns.competency} ${v.axesColumns.meaning} ${v.axesColumns.score}`)
     const sums = html.slice(html.indexOf('data-report-summaries'))
     expect(count(sums.slice(0, sums.indexOf('</ul>')), '<li')).toBe(2)
   })
@@ -93,8 +109,8 @@ describe('UnitReportView — 두 과목', () => {
     expect(after.indexOf('</p>')).toBeLessThan(after.indexOf(c.phrase!.slice(0, 8)))
   })
 
-  it('has no tables and no comparison with other students', () => {
-    expect(html).not.toContain('<table')
+  it('the only table is the competency table, and there is no comparison with other students', () => {
+    expect(count(html, '<table')).toBe(1)
     for (const w of COMPARISON) expect(t).not.toContain(w)
   })
 
@@ -105,9 +121,12 @@ describe('UnitReportView — 두 과목', () => {
 
   it('shows edited sentences and drops a removed line', () => {
     const c = two.subjects[0].assessment[0].criteria[0]
-    const edited = applyEdits(two, { [editKey.overall()]: '원장이 고친 종합 코멘트', [editKey.phrase('영어', 1, c.name)]: '', [editKey.summary('수학')]: '' })
+    const edited = applyEdits(two, { [lineKey(two, 'strength')]: '원장이 고친 종합 코멘트', [lineKey(two, 'subject')]: '', [editKey.phrase('영어', 1, c.name)]: '', [editKey.summary('수학')]: '' })
     const h = render(edited)
     expect(text(h)).toContain('원장이 고친 종합 코멘트')
+    // 비운 줄은 이름표까지 빠진다
+    expect([...h.matchAll(/data-report-overall-line="([^"]+)"/g)].map((m) => m[1])).toEqual(['strength', 'practice'])
+    expect(text(h)).not.toContain(v.overallLabels.subject)
     // 지운 문구: 그 요소 줄 바로 다음이 다음 요소 줄이다(같은 문구가 다른 요소에 있을 수 있어 자리로 확인한다)
     const next = two.subjects[0].assessment[0].criteria[1]
     const th = text(h)
@@ -123,7 +142,8 @@ describe('UnitReportView — 다섯 과목', () => {
   it('keeps the same structure: one radar, six axes, five summaries, five blocks in order', () => {
     expect(count(html, '<svg')).toBe(1)
     const axes = html.slice(html.indexOf('data-report-axes'))
-    expect(count(axes.slice(0, axes.indexOf('</ul>')), '<li')).toBe(6)
+    expect(count(axes.slice(0, axes.indexOf('</table>')), '<tr')).toBe(1 + 6)
+    expect(count(html, 'data-report-overall-line=')).toBeGreaterThanOrEqual(3)
     const sums = html.slice(html.indexOf('data-report-summaries'))
     expect(count(sums.slice(0, sums.indexOf('</ul>')), '<li')).toBe(5)
     expect([...html.matchAll(/data-report-subject="([^"]+)"/g)].map((m) => m[1])).toEqual(FIVE)
@@ -161,7 +181,9 @@ describe('UnitReportView — 빠진 것', () => {
     expect(t).toContain(v.quizNone); expect(t).toContain(v.assessmentNone)
     expect(html).not.toContain('data-series="value"')
     expect(count(html, '<svg')).toBe(1)
-    for (const c of COMPETENCIES) expect(t).toContain(v.axisEmpty(c))
+    expect(count(t, v.axisEmpty)).toBe(COMPETENCIES.length)
+    // 기록이 없어도 종합 코멘트는 두 줄(중립 문장 + 기록이 채워진다는 안내)
+    expect(count(html, 'data-report-overall-line=')).toBe(2)
   })
   it('no full report without a missing note', () => {
     expect(render(two)).not.toContain('data-report-missing')
@@ -175,9 +197,11 @@ describe('ReportEditor — 원장 화면', () => {
   it('nothing stored: subject checkboxes all checked, preview with the draft mark, editors, and every button enabled', () => {
     const html = renderEditor()
     const t = text(html)
-    expect(count(html, 'type="checkbox"')).toBe(2)
+    // 과목 체크 2개 + 수업 모습 낱말 6개(처음에는 아무것도 고르지 않았다)
+    expect(count(html, 'type="checkbox"')).toBe(2 + 6)
     expect(count(html, 'checked=""')).toBe(2)
-    for (const s of [copy.page.subjectsHeading, copy.page.saveDraft, copy.page.confirm, copy.page.print, copy.edit.heading, copy.edit.overall, copy.edit.summary('영어')]) expect(t).toContain(s)
+    for (const s of [copy.page.subjectsHeading, copy.page.saveDraft, copy.page.confirm, copy.page.print, copy.edit.heading, copy.edit.overallLine.strength, copy.edit.overallLine.practice, copy.edit.overallLine.subject, copy.edit.summary('영어')]) expect(t).toContain(s)
+    expect(t).not.toContain(copy.edit.overallLine.attitude)
     expect(html).toContain('data-report-draft')
     expect(html).not.toContain('disabled=""')
     expect(t).not.toContain(copy.page.reload)
@@ -187,7 +211,7 @@ describe('ReportEditor — 원장 화면', () => {
     expect(html).not.toContain('type="number"')
     const wrongCount = two.subjects.reduce((n, s) => n + s.quizzes.filter((q) => !q.correct).length, 0)
     const criteria = two.subjects.reduce((n, s) => n + s.assessment.reduce((k, a) => k + a.criteria.length, 0), 0)
-    expect(count(html, '<textarea')).toBe(1 + two.subjects.length + wrongCount + criteria)
+    expect(count(html, '<textarea')).toBe(two.overall_lines!.length + two.subjects.length + wrongCount + criteria)
     // 라벨은 칸 위(라벨이 먼저, 칸이 다음)
     const first = html.slice(html.indexOf(copy.edit.heading))
     expect(first.indexOf('<label')).toBeLessThan(first.indexOf('<textarea'))
@@ -201,7 +225,8 @@ describe('ReportEditor — 원장 화면', () => {
     expect(html.slice(report - 200, report)).not.toContain('no-print')
   })
   it('stored draft whose numbers changed: shows the stored body, the reload button, and rests save/confirm until the numbers are seen', () => {
-    const stored = applyEdits(buildUnitReport({ student, theme, subjects: [fullSubject('영어', { wrong: ['2-1'], drop: 1, tags: SIX_AXIS_TAGS }), fullSubject('수학', { wrong: ['1-2'], tags: SIX_AXIS_TAGS })] }, copy.build), { [editKey.overall()]: '원장이 쓴 종합' })
+    const storedBase = buildUnitReport({ student, theme, subjects: [fullSubject('영어', { wrong: ['2-1'], drop: 1, tags: SIX_AXIS_TAGS }), fullSubject('수학', { wrong: ['1-2'], tags: SIX_AXIS_TAGS })] }, copy.build)
+    const stored = applyEdits(storedBase, { [lineKey(storedBase, 'subject')]: '원장이 쓴 종합' })
     const html = renderEditor({ stored: { status: 'draft', body: stored, confirmedAt: null }, initialEdits: editsFromStored(stored, two, copy.build), stale: true })
     const t = text(html)
     expect(t).toContain(copy.page.stale); expect(t).toContain(copy.page.reload)

@@ -66,9 +66,15 @@ describe('buildUnitReport — 두 과목(영어·수학)', () => {
     for (const name of ['자료 읽기', '근거 들어 설명하기', '글로 표현하기']) expect(axis(body.radar, name)).toEqual({ competency: name, earned: 0, possible: 0, count: 0, ratio: null, sparse: true })
   })
 
-  it('overall comment names the strongest and the weakest axis with data', () => {
+  it('overall comment: one line for the strongest axis, one for the weakest, one for the subjects — each with its evidence', () => {
     // 지식·이해 37/42 ≈ 0.881, 과정·기능 0.833, 가치·태도 0.875
-    expect(body.overall_comment).toBe(reportCopy.overall.strongAndWeak({ studentName: '김OO', themeTitle: theme.title, strong: '지식·이해', weak: '과정·기능' }))
+    const lines = body.overall_lines!
+    expect(lines.map((l) => l.kind)).toEqual(['strength', 'practice', 'subject'])
+    expect(lines[0].ref.startsWith('지식·이해|수학|')).toBe(true)
+    expect(lines[1].ref.startsWith('과정·기능|영어|')).toBe(true)
+    expect(lines[2]).toEqual({ kind: 'subject', ref: '수학>영어', text: reportCopy.overall.subject({ studentName: '김OO', themeTitle: theme.title, best: '수학', focus: '영어' }) })
+    expect(body.overall_comment).toBe(lines.map((l) => l.text).join('\n'))
+    expect(body.attitude).toBeNull()
   })
 
   it('never mentions other students (no rank, average or comparison field)', () => {
@@ -147,9 +153,16 @@ describe('buildUnitReport — 옛 세트·빠진 자료', () => {
     const empty = of([], [], [])
     expect(empty.subjects[0].summary).toBe('영어: 아직 확인된 기록이 없습니다.')
     expect(empty.radar.every((a) => a.ratio === null && a.count === 0)).toBe(true)
-    expect(empty.overall_comment).toBe(reportCopy.overall.neutral({ studentName: '김OO', themeTitle: theme.title }))
-    // 퀴즈만(꼬리표 없음) → 자료 있는 축이 하나뿐 → 중립 문장
-    expect(of(quizRows([1], ['1-1']), [1], []).overall_comment).toBe(empty.overall_comment)
+    const who = { studentName: '김OO', themeTitle: theme.title }
+    expect(empty.overall_lines).toEqual([
+      { kind: 'strength', ref: 'neutral', text: reportCopy.overall.neutral(who) },
+      { kind: 'subject', ref: 'pending', text: reportCopy.overall.pending(who) },
+    ])
+    // 퀴즈만(꼬리표 없음) → 자료 있는 축이 하나뿐 → 중립 문장 + 과목 한마디(과목 하나)
+    expect(of(quizRows([1], ['1-1']), [1], []).overall_lines).toEqual([
+      { kind: 'strength', ref: 'neutral', text: reportCopy.overall.neutral(who) },
+      { kind: 'subject', ref: '영어>', text: reportCopy.overall.subject({ ...who, best: '영어', focus: null }) },
+    ])
     expect(UnitReportBody.safeParse(empty).success).toBe(true)
   })
 
@@ -205,7 +218,8 @@ describe('과목 고르기(includeSubjects)', () => {
     const mathOnly = buildUnitReport({ student, theme, subjects, includeSubjects: ['수학'] }, reportCopy)
     expect(mathOnly.included_subjects).toEqual(['수학']); expect(mathOnly.subjects.map((s) => s.subject)).toEqual(['수학'])
     expect(mathOnly.radar.filter((a) => a.ratio !== null).every((a) => a.ratio === 1)).toBe(true)
-    expect(mathOnly.overall_comment).toBe(reportCopy.overall.even({ studentName: '김OO', themeTitle: theme.title }))
+    expect(mathOnly.overall_lines!.map((l) => [l.kind, l.ref])).toEqual([['strength', 'even'], ['subject', '수학>']])
+    expect(mathOnly.overall_lines![0].text).toBe(reportCopy.overall.even({ studentName: '김OO', themeTitle: theme.title }))
     expect(axis(all.radar, '지식·이해').possible).toBe(3 * 21); expect(axis(mathOnly.radar, '지식·이해').possible).toBe(21)
     expect(all.overall_comment).not.toBe(mathOnly.overall_comment)
   })
