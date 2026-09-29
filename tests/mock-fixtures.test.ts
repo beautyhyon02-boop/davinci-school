@@ -67,6 +67,16 @@ for (const set of SETS) describe(`${set.subject} fixtures (v2)`, () => {
     expect(Review.safeParse(loadFixture(`stage${n}-review${set.suffix}`)).success).toBe(true)
     prior[`stage${n}`] = gen
   })
+  // C-39(대표 2026-09-29): 두 문항의 채점 요소마다 가르친 교수 차시(taught_in, 1~5)가 있다 — scripts/upgrade-fixtures-v2.ts setTaughtIn
+  it('stage5 (C-39): every criterion names the teaching lessons that taught it (taught_in ⊆ 1..5, never the 단원 평가 차시)', () => {
+    const s3 = loadFixture(`stage3-generate${set.suffix}`) as { lessons: { no: number; kind: string }[] }
+    const teaching = new Set(s3.lessons.filter((l) => l.kind === 'teaching').map((l) => l.no))
+    const s5 = loadFixture(`stage5-generate${set.suffix}`) as { items: { rubric: { criteria: { name: string; taught_in?: number[] }[] } }[] }
+    for (const c of s5.items.flatMap((it) => it.rubric.criteria)) {
+      expect(c.taught_in?.length, c.name).toBeGreaterThan(0)
+      for (const n of c.taught_in!) expect(teaching.has(n), `${c.name} ${n}차시`).toBe(true)
+    }
+  })
   it('stage2 standards carry the verbatim originals and the reconstruction is faithful', () => {
     const gen = loadFixture(`stage2-generate${set.suffix}`) as { standards: { code: string; original_text: string }[]; level_anchor: unknown[]; reconstruction: string; learning_goals: { axis: string }[] }
     for (const s of gen.standards) expect(standards.find((x) => x.code === s.code)?.text).toBe(s.original_text)

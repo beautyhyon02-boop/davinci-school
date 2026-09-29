@@ -26,6 +26,9 @@
             "name": "재활용을 어렵게 하는 요인",
             "axis": "지식·이해",
             "condition_nos": [],
+            "taught_in": [
+              3
+            ],
             "max": 2,
             "scale": [
               {
@@ -49,6 +52,10 @@
             "name": "자료를 근거로 밝히기",
             "axis": "과정·기능",
             "condition_nos": [],
+            "taught_in": [
+              2,
+              3
+            ],
             "max": 2,
             "scale": [
               {
@@ -72,6 +79,9 @@
             "name": "새 사례에 적용한 예측",
             "axis": "과정·기능",
             "condition_nos": [],
+            "taught_in": [
+              3
+            ],
             "max": 2,
             "scale": [
               {
@@ -276,6 +286,11 @@
               1,
               2
             ],
+            "taught_in": [
+              2,
+              3,
+              5
+            ],
             "max": 4,
             "scale": [
               {
@@ -312,6 +327,10 @@
               1,
               2
             ],
+            "taught_in": [
+              4,
+              5
+            ],
             "max": 4,
             "scale": [
               {
@@ -347,6 +366,10 @@
             "condition_nos": [
               3
             ],
+            "taught_in": [
+              4,
+              5
+            ],
             "max": 4,
             "scale": [
               {
@@ -381,6 +404,9 @@
             "axis": "과정·기능",
             "condition_nos": [
               4
+            ],
+            "taught_in": [
+              5
             ],
             "max": 4,
             "scale": [

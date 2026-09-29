@@ -25,6 +25,9 @@
             "name": "상대도수 계산",
             "axis": "지식·이해",
             "condition_nos": [],
+            "taught_in": [
+              4
+            ],
             "max": 2,
             "scale": [
               {
@@ -48,6 +51,9 @@
             "name": "비율 변화 해석",
             "axis": "과정·기능",
             "condition_nos": [],
+            "taught_in": [
+              4
+            ],
             "max": 2,
             "scale": [
               {
@@ -71,6 +77,10 @@
             "name": "상대도수로 비교하는 이유",
             "axis": "과정·기능",
             "condition_nos": [],
+            "taught_in": [
+              1,
+              4
+            ],
             "max": 2,
             "scale": [
               {
@@ -275,6 +285,11 @@
               2,
               3
             ],
+            "taught_in": [
+              2,
+              4,
+              5
+            ],
             "max": 4,
             "scale": [
               {
@@ -309,6 +324,10 @@
             "axis": "과정·기능",
             "condition_nos": [
               2
+            ],
+            "taught_in": [
+              4,
+              5
             ],
             "max": 4,
             "scale": [
@@ -345,6 +364,9 @@
             "condition_nos": [
               1
             ],
+            "taught_in": [
+              5
+            ],
             "max": 4,
             "scale": [
               {
@@ -380,6 +402,11 @@
             "condition_nos": [
               3,
               4
+            ],
+            "taught_in": [
+              2,
+              4,
+              5
             ],
             "max": 4,
             "scale": [
