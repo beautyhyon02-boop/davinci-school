@@ -38,6 +38,9 @@ export function snapshotFor(subject: string, opts: { variant?: '수학' | '과�
   const s3 = clone(json(`data/studio-fixtures/stage3-generate${sfx}.json`)) as Fx
   const s5 = clone(json(`data/studio-fixtures/stage5-generate${sfx}.json`)) as Fx5
   const s7 = json(`data/studio-fixtures/stage7-generate${sfx}.json`)
+  // mock fixture 에는 역량 꼬리표(C-40)가 붙어 있다 — 테스트는 꼬리표 없는 바탕에서 시작해 opts.tags 로만 붙인다
+  for (const l of s3.lessons) for (const q of l.formative_check.quiz) delete q.competency
+  for (const it of s5.items) for (const c of it.rubric.criteria) delete c.competency
   if (opts.tags?.quiz) for (const l of s3.lessons) l.formative_check.quiz.forEach((q, i) => { const c = opts.tags!.quiz![i]; if (c) q.competency = c })
   if (opts.tags?.criteria) for (const it of s5.items) for (const c of it.rubric.criteria) { const t = opts.tags.criteria[c.name]; if (t) c.competency = t }
   return upgradeSnapshot({
