@@ -71,9 +71,10 @@ body { @apply antialiased; }
 }
 
 /* 단원 리포트 인쇄(components/classroom/UnitReportView): A4, 앞면 다음에 과목별 상세가 새 쪽에서 시작한다.
- * 육각형의 오렌지색·옅은 바탕색이 그대로 찍히게 한다. 메뉴·과목 체크·문장 고치기·버튼은 위의 .no-print 규칙이 숨긴다.
- * 앞면은 과목이 다섯이어도 A4 한 쪽에 들어가야 한다(육각형 + 역량 6줄 + 과목 요약 5개(두 줄씩) + 종합 코멘트 + 아랫글):
+ * 육각형의 오렌지색·옅은 바탕색이 그대로 찍히게 한다. 메뉴·과목 체크·수업 태도 낱말·문장 고치기·버튼은 위의 .no-print 규칙이 숨긴다.
+ * 앞면은 과목이 다섯이어도 A4 한 쪽에 들어가야 한다(육각형 + 역량 뜻 표 6줄 + 과목 요약 5개 + 종합 코멘트 4줄(두 줄씩) + 아랫글):
  * 옆으로 늘어놓지 않고 위에서 아래로 쌓은 채, 육각형 폭과 줄 간격·칸 사이만 줄인다.
+ * 글자는 표 9pt(머리 줄 8.5pt)·과목 요약 9pt·종합 코멘트 9pt 아래로 내리지 않는다.
  * 「초안」 표시는 쪽마다 오른쪽 위에 찍힌다(position: fixed 는 인쇄할 때 모든 쪽에 되풀이된다). */
 @page unit-report { size: A4; margin: 12mm 14mm; }
 @media print {
@@ -81,17 +82,27 @@ body { @apply antialiased; }
   [data-unit-report] [data-report-page="detail"] { break-before: page; margin-top: 0; }
   [data-unit-report] [data-report-subject] { break-inside: avoid; }
 
-  [data-unit-report] svg { max-width: 88mm !important; }
-  [data-unit-report] [data-report-page="front"] > header { padding-bottom: 2mm; }
+  [data-unit-report] svg { max-width: 82mm !important; }
+  [data-unit-report] [data-report-page="front"] > header { padding-bottom: 1.5mm; }
   [data-unit-report] [data-report-page="front"] > header h2 { font-size: 17pt; line-height: 1.25; }
-  [data-unit-report] [data-report-page="front"] > header p { margin-top: 0.5mm; line-height: 1.35; }
-  [data-unit-report] [data-report-page="front"] > div { margin-top: 3.5mm; }
-  [data-unit-report] [data-report-page="front"] > div > div { margin-top: 1mm; }
+  [data-unit-report] [data-report-page="front"] > header p { margin-top: 0.4mm; line-height: 1.3; }
+  [data-unit-report] [data-report-page="front"] > div { margin-top: 3mm; }
+  [data-unit-report] [data-report-page="front"] > div > div { margin-top: 0.5mm; }
   [data-unit-report] [data-report-page="front"] h3 { font-size: 11pt; line-height: 1.3; padding-bottom: 0.5mm; }
-  [data-unit-report] [data-report-page="front"] ul { margin-top: 1.5mm; }
-  [data-unit-report] [data-report-page="front"] li { font-size: 9.5pt; line-height: 1.4; margin-top: 0.6mm; }
-  [data-unit-report] [data-report-overall] { margin-top: 1.5mm; padding: 2mm 3mm; font-size: 9.5pt; line-height: 1.45; }
-  [data-unit-report] [data-report-page="front"] > footer { margin-top: 3.5mm; padding-top: 1.5mm; font-size: 8pt; line-height: 1.35; }
+  [data-unit-report] [data-report-page="front"] ul { margin-top: 1.2mm; }
+  [data-unit-report] [data-report-page="front"] li { font-size: 9pt; line-height: 1.35; margin-block: 0.4mm 0; }
+  /* 역량 뜻 표(역량 | 뜻 | 점수): 글자 9pt, 머리 줄·덧붙임 8.5pt */
+  [data-unit-report] [data-report-axes] { margin-top: 0.5mm; font-size: 9pt; line-height: 1.3; }
+  [data-unit-report] [data-report-axes] th,
+  [data-unit-report] [data-report-axes] td { padding: 0.45mm 2mm 0.45mm 0; }
+  [data-unit-report] [data-report-axes] thead th,
+  [data-unit-report] [data-report-axes] td span { font-size: 8.5pt; line-height: 1.25; }
+  /* 종합 코멘트: 줄마다 이름표 아래에 문장(둘 다 9pt) */
+  [data-unit-report] [data-report-overall] { margin-top: 1.2mm; padding: 1.2mm 3mm 1.6mm; font-size: 9pt; line-height: 1.35; }
+  [data-unit-report] [data-report-overall] li { margin-block: 0.7mm 0; }
+  [data-unit-report] [data-report-overall] li:first-child { margin-block: 0; }
+  [data-unit-report] [data-report-overall] li p { font-size: 9pt; line-height: 1.35; }
+  [data-unit-report] [data-report-page="front"] > footer { margin-top: 3mm; padding-top: 1.2mm; font-size: 8pt; line-height: 1.3; }
   [data-unit-report] [data-report-page="front"] > footer p { margin-top: 0; }
   [data-unit-report] [data-report-page="front"] > footer { break-inside: avoid; }
 

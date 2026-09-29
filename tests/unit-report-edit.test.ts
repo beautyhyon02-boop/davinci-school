@@ -2,7 +2,8 @@
 import { describe, it, expect } from 'vitest'
 import { buildUnitReport } from '@/lib/classroom/report'
 import { UnitReportBody } from '@/lib/classroom/report-schema'
-import { applyEdits, restrictReport, reportDataKey, editsFromStored, sanitizeEdits, defaultSummary, defaultOverall, editKey, MAX_SENTENCE } from '@/lib/classroom/report-edit'
+import { applyEdits, restrictReport, reportDataKey, editsFromStored, sanitizeEdits, defaultSummary, defaultOverallLines, editKey, MAX_SENTENCE } from '@/lib/classroom/report-edit'
+import type { OverallLineKind } from '@/lib/classroom/report-schema'
 import { app } from '@/content/site'
 import { fullSubject, student, theme, SIX_AXIS_TAGS } from './fixtures/unit-report'
 
@@ -15,8 +16,11 @@ const subjects = () => [
 const input = () => ({ student, theme, subjects: subjects() })
 const full = buildUnitReport(input(), copy)
 const firstCriterion = full.subjects[0].assessment[0].criteria[0]
+/** 본문에 있는 종합 코멘트 줄의 열쇠(자리 + 가리키는 것). */
+const lineKey = (body: typeof full, kind: OverallLineKind) => editKey.overallLine(kind, body.overall_lines!.find((l) => l.kind === kind)!.ref)
+const lineText = (body: typeof full, kind: OverallLineKind) => body.overall_lines!.find((l) => l.kind === kind)?.text
 const K = {
-  overall: editKey.overall(),
+  overall: lineKey(full, 'strength'),
   summary: editKey.summary('영어'),
   quiz: editKey.quiz('영어', 2, 1),
   phrase: editKey.phrase('영어', 1, firstCriterion.name),
@@ -35,14 +39,17 @@ describe('restrictReport — 넣을 과목(R-4)', () => {
   })
   it('default sentences match the ones buildUnitReport wrote', () => {
     for (const s of full.subjects) expect(defaultSummary(s, copy)).toBe(s.summary)
-    expect(defaultOverall(full, copy)).toBe(full.overall_comment)
+    expect(defaultOverallLines(full, copy)).toEqual(full.overall_lines)
+    expect(full.overall_comment).toBe(full.overall_lines!.map((l) => l.text).join('\n'))
   })
 })
 
 describe('applyEdits — 문장만 덮는다', () => {
   const edited = applyEdits(full, { [K.overall]: '  종합을 고쳤습니다.  ', [K.summary]: '영어 요약을 고쳤습니다.', [K.quiz]: '다시 풀어 봅시다.', [K.phrase]: '문구를 고쳤습니다.' })
   it('changes the four kinds of sentences, trimmed', () => {
-    expect(edited.overall_comment).toBe('종합을 고쳤습니다.')
+    expect(lineText(edited, 'strength')).toBe('종합을 고쳤습니다.')
+    expect(edited.overall_comment).toBe(edited.overall_lines!.map((l) => l.text).join('\n'))
+    expect(edited.overall_lines!.filter((l) => l.kind !== 'strength')).toEqual(full.overall_lines!.filter((l) => l.kind !== 'strength'))
     expect(edited.subjects[0].summary).toBe('영어 요약을 고쳤습니다.')
     expect(edited.subjects[0].quizzes.find((q) => q.lesson_no === 2 && q.quiz_no === 1)!.wrong_note).toBe('다시 풀어 봅시다.')
     expect(edited.subjects[0].assessment[0].criteria[0].phrase).toBe('문구를 고쳤습니다.')
@@ -65,7 +72,7 @@ describe('applyEdits — 문장만 덮는다', () => {
     expect(UnitReportBody.safeParse(r).success).toBe(true)
   })
   it('cuts a sentence at the limit', () => {
-    expect(applyEdits(full, { [K.overall]: '가'.repeat(MAX_SENTENCE + 50) }).overall_comment).toHaveLength(MAX_SENTENCE)
+    expect(lineText(applyEdits(full, { [K.overall]: '가'.repeat(MAX_SENTENCE + 50) }), 'strength')).toHaveLength(MAX_SENTENCE)
   })
 })
 
@@ -93,7 +100,9 @@ describe('reportDataKey — 숫자만', () => {
 })
 
 describe('editsFromStored — 점수 다시 불러오기', () => {
-  const stored = applyEdits(restrictReport(full, ['영어', '수학'], copy), { [K.overall]: '원장이 쓴 종합', [K.quiz]: '원장이 쓴 퀴즈 코멘트', [K.phrase]: '원장이 쓴 문구' })
+  const two = restrictReport(full, ['영어', '수학'], copy)
+  const KO = lineKey(two, 'strength')
+  const stored = applyEdits(two, { [KO]: '원장이 쓴 종합', [K.quiz]: '원장이 쓴 퀴즈 코멘트', [K.phrase]: '원장이 쓴 문구' })
 
   it('finds nothing in an untouched body', () => {
     expect(editsFromStored(full, full, copy)).toEqual({})
@@ -101,7 +110,7 @@ describe('editsFromStored — 점수 다시 불러오기', () => {
   })
   it('finds exactly the edited sentences, and applying them to the fresh body gives the stored body back', () => {
     const edits = editsFromStored(stored, full, copy)
-    expect(Object.keys(edits).sort()).toEqual([K.overall, K.phrase, K.quiz].sort())
+    expect(Object.keys(edits).sort()).toEqual([KO, K.phrase, K.quiz].sort())
     expect(applyEdits(restrictReport(full, ['영어', '수학'], copy), edits)).toEqual(stored)
   })
   it('numbers changed: default sentences follow the new numbers, edited sentences stay where the item still exists', () => {
@@ -114,7 +123,8 @@ describe('editsFromStored — 점수 다시 불러오기', () => {
     expect(next.subjects[0].summary).toBe(fresh.subjects[0].summary)
     expect(next.subjects[0].summary).not.toBe(stored.subjects[0].summary)
     expect(next.subjects[0].quiz_correct).toBe(14)
-    expect(next.overall_comment).toBe('원장이 쓴 종합')
+    expect(lineKey(next, 'strength')).toBe(KO)                     // 가리키는 역량·요소가 그대로다
+    expect(lineText(next, 'strength')).toBe('원장이 쓴 종합')
     expect(next.subjects[0].quizzes.find((q) => q.lesson_no === 2 && q.quiz_no === 1)!.wrong_note).toBe('원장이 쓴 퀴즈 코멘트')
     expect(next.subjects[0].assessment[0].criteria[0].phrase).toBe('원장이 쓴 문구')
     expect(reportDataKey(next)).not.toBe(reportDataKey(stored))
@@ -139,6 +149,6 @@ describe('editsFromStored — 점수 다시 불러오기', () => {
   it('skips a subject that is no longer assigned', () => {
     const fresh = buildUnitReport({ student, theme, subjects: subjects().slice(1) }, copy)
     const edits = editsFromStored(stored, fresh, copy)
-    expect(Object.keys(edits)).toEqual([K.overall])
+    expect(Object.keys(edits)).toEqual([KO])
   })
 })

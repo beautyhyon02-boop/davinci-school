@@ -311,12 +311,16 @@ describe('loadReportIndex — 줄이 많을 때(1000줄 한도·긴 .in() 목록
   })
 })
 
+/** 수학만 넣은 리포트의 「과목 한마디」 줄(가리키는 것: 수학 하나). */
+const OVERALL = editKey.overallLine('subject', '수학>')
+const subjectLine = (body: UnitReportBody) => body.overall_lines?.find((l) => l.kind === 'subject')?.text
+
 describe('saveUnitReport — 숫자는 서버가 만든다', () => {
   const base = { viewer: teacher, themeId: 't1', studentId: 's1', copy, now: NOW }
 
   it('stores a draft built from the DB, with the chosen subjects and the edited sentences only', async () => {
     const { m, client } = db()
-    const edits = { [editKey.overall()]: '원장이 쓴 종합', [editKey.summary('수학')]: '원장이 쓴 수학 요약', 'points|수학|1': '99', [editKey.summary('영어')]: '넣지 않은 과목' }
+    const edits = { [OVERALL]: '원장이 쓴 종합', [editKey.summary('수학')]: '원장이 쓴 수학 요약', 'points|수학|1': '99', [editKey.summary('영어')]: '넣지 않은 과목' }
     const r = await saveUnitReport({ ...base, db: client, subjects: ['수학', '사회'], edits, status: 'draft' })
     if (!r.ok) throw new Error(r.reason)
     expect(m.tables.unit_reports).toHaveLength(1)
@@ -324,7 +328,8 @@ describe('saveUnitReport — 숫자는 서버가 만든다', () => {
     expect([row.status, row.academy_id, row.student_id, row.theme_id, row.subjects, row.drafted_by, row.confirmed_at, row.confirmed_by]).toEqual(['draft', 'ac1', 's1', 't1', ['수학'], 'u-teacher', null, null])
     const body = UnitReportBody.parse(row.body)
     expect(body.included_subjects).toEqual(['수학'])
-    expect(body.overall_comment).toBe('원장이 쓴 종합')
+    expect(subjectLine(body)).toBe('원장이 쓴 종합')
+    expect(body.overall_comment).toBe(body.overall_lines!.map((l) => l.text).join('\n'))
     expect(body.subjects[0].summary).toBe('원장이 쓴 수학 요약')
     const src = await loadReportSource(client, teacher, 't1', 's1')
     if (!src.ok) throw new Error(src.reason)
@@ -334,12 +339,12 @@ describe('saveUnitReport — 숫자는 서버가 만든다', () => {
 
   it('a payload that carries numbers cannot change them', async () => {
     const { m, client } = db()
-    const forged = { overall_comment: 'x', subjects: [{ subject: '수학', quiz_correct: 15, assessment_points: 22 }], radar: [], [editKey.overall()]: '문장' }
+    const forged = { overall_comment: 'x', subjects: [{ subject: '수학', quiz_correct: 15, assessment_points: 22 }], radar: [], [OVERALL]: '문장' }
     const r = await saveUnitReport({ ...base, db: client, subjects: ['수학'], edits: forged, status: 'draft' })
     if (!r.ok) throw new Error(r.reason)
     const body = UnitReportBody.parse(m.tables.unit_reports[0].body)
     expect([body.subjects[0].quiz_correct, body.subjects[0].assessment_points]).toEqual([14, 15])
-    expect(body.overall_comment).toBe('문장')
+    expect(subjectLine(body)).toBe('문장')
   })
 
   it('no subject chosen → every assigned subject; confirm sets the time, saving again returns to draft in the same row', async () => {
@@ -355,9 +360,9 @@ describe('saveUnitReport — 숫자는 서버가 만든다', () => {
 
   it('a confirmed report is never overwritten by a save — the teacher is asked to press [다시 고치기]', async () => {
     const { m, client } = db()
-    await saveUnitReport({ ...base, db: client, subjects: [], edits: { [editKey.overall()]: '확정한 문장' }, status: 'confirmed' })
+    await saveUnitReport({ ...base, db: client, subjects: [], edits: { [OVERALL]: '확정한 문장' }, status: 'confirmed' })
     const before = JSON.stringify(m.tables.unit_reports[0])
-    expect(await saveUnitReport({ ...base, db: client, subjects: ['영어'], edits: { [editKey.overall()]: '다른 창에서 쓴 문장' }, status: 'draft' })).toEqual({ ok: false, reason: 'already-confirmed' })
+    expect(await saveUnitReport({ ...base, db: client, subjects: ['영어'], edits: { [OVERALL]: '다른 창에서 쓴 문장' }, status: 'draft' })).toEqual({ ok: false, reason: 'already-confirmed' })
     expect(await saveUnitReport({ ...base, db: client, subjects: ['영어'], edits: {}, status: 'confirmed' })).toEqual({ ok: false, reason: 'already-confirmed' })
     expect(JSON.stringify(m.tables.unit_reports[0])).toBe(before)
     expect(app.classroom.report.errors.alreadyConfirmed).toContain('[다시 고치기]')
@@ -413,10 +418,80 @@ describe('saveUnitReport — 숫자는 서버가 만든다', () => {
   it('reopen: confirmed → draft, body untouched; nothing stored → no-report', async () => {
     const { m, client } = db()
     expect(await reopenUnitReport({ db: client, viewer: teacher, themeId: 't1', studentId: 's1', now: NOW })).toEqual({ ok: false, reason: 'no-report' })
-    await saveUnitReport({ ...base, db: client, subjects: [], edits: { [editKey.overall()]: '확정한 문장' }, status: 'confirmed' })
+    await saveUnitReport({ ...base, db: client, subjects: [], edits: { [OVERALL]: '확정한 문장' }, status: 'confirmed' })
     const before = JSON.stringify(m.tables.unit_reports[0].body)
     expect(await reopenUnitReport({ db: client, viewer: teacher, themeId: 't1', studentId: 's1', now: NOW })).toEqual({ ok: true })
     expect(m.tables.unit_reports[0]).toMatchObject({ status: 'draft', confirmed_at: null, confirmed_by: null })
     expect(JSON.stringify(m.tables.unit_reports[0].body)).toBe(before)
+  })
+})
+
+describe('saveUnitReport — 수업 태도 낱말(열쇠)', () => {
+  const base = { viewer: teacher, themeId: 't1', studentId: 's1', copy, now: NOW, subjects: [] as string[], edits: {}, status: 'draft' as const }
+  const picked = { participation: 'active', traits: ['asks', 'listens'], closing: 'expect' }
+
+  it('stores the keys, and the sentence is written on the server from the copy', async () => {
+    const { m, client } = db()
+    const r = await saveUnitReport({ ...base, db: client, attitude: picked })
+    if (!r.ok) throw new Error(r.reason)
+    const body = UnitReportBody.parse(m.tables.unit_reports[0].body)
+    expect(body.attitude).toEqual(picked)
+    expect(body.overall_lines![0]).toEqual({
+      kind: 'attitude', ref: 'active/asks,listens/expect',
+      text: '김하늘 학생은 이번 단원 수업에 적극적으로 참여하였고, 질문을 자주 하는 모습과 친구의 의견을 잘 듣는 모습을 보였습니다. 앞으로가 더 기대됩니다.',
+    })
+    expect(body.overall_lines!.length).toBeGreaterThanOrEqual(3)
+    expect(body.overall_comment.split('\n')[0]).toBe(body.overall_lines![0].text)
+    // 낱말을 고른 것은 숫자가 바뀐 것이 아니다
+    const src = await loadReportSource(client, teacher, 't1', 's1')
+    if (!src.ok) throw new Error(src.reason)
+    expect(reportDataKey(body)).toBe(reportDataKey(buildUnitReport(src.source.input, copy)))
+  })
+
+  it('the edited sentence wins over the generated one', async () => {
+    const { m, client } = db()
+    await saveUnitReport({ ...base, db: client, attitude: picked, edits: { [editKey.overallLine('attitude', 'active/asks,listens/expect')]: '원장이 고친 태도 문장' } })
+    const body = UnitReportBody.parse(m.tables.unit_reports[0].body)
+    expect(body.overall_lines![0].text).toBe('원장이 고친 태도 문장')
+    expect(body.attitude).toEqual(picked)
+  })
+
+  it('nothing picked (or left out): no attitude line, and the save still goes through', async () => {
+    for (const attitude of [undefined, null, { participation: null, traits: [], closing: null }]) {
+      const { m, client } = db()
+      expect((await saveUnitReport({ ...base, db: client, attitude })).ok).toBe(true)
+      const body = UnitReportBody.parse(m.tables.unit_reports[0].body)
+      expect(body.attitude).toBeNull()
+      expect(body.overall_lines!.map((l) => l.kind)).not.toContain('attitude')
+      expect(body.overall_lines!.length).toBeGreaterThanOrEqual(2)
+    }
+  })
+
+  it('partly picked: the keys are kept for later, the line waits until all three are there — confirming is still allowed', async () => {
+    const { m, client } = db()
+    expect((await saveUnitReport({ ...base, db: client, status: 'confirmed', attitude: { participation: 'calm', traits: [], closing: null } })).ok).toBe(true)
+    const body = UnitReportBody.parse(m.tables.unit_reports[0].body)
+    expect(body.attitude).toEqual({ participation: 'calm', traits: [], closing: null })
+    expect(body.overall_lines!.map((l) => l.kind)).not.toContain('attitude')
+  })
+
+  it('keys outside the lists, three traits, a repeated trait, free text or an odd shape are refused and nothing is written', async () => {
+    const bad: unknown[] = [
+      { ...picked, participation: '적극적으로' },
+      { ...picked, participation: 'lazy' },
+      { ...picked, closing: 'x' },
+      { ...picked, traits: ['asks', 'listens', 'focuses'] },
+      { ...picked, traits: ['asks', 'asks'] },
+      { ...picked, traits: ['못한다'] },
+      { ...picked, traits: 'asks' },
+      { ...picked, text: '아무 문장' },
+      { participation: 'active' },
+      'active', 3, ['active'],
+    ]
+    for (const attitude of bad) {
+      const { m, client } = db()
+      expect(await saveUnitReport({ ...base, db: client, attitude }), JSON.stringify(attitude)).toEqual({ ok: false, reason: 'invalid' })
+      expect(m.writes).toEqual([])
+    }
   })
 })

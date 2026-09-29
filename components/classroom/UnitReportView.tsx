@@ -6,7 +6,7 @@ const copy = app.classroom.report.view
 
 /**
  * 단원 리포트 한 부(설계 2026-09-29 §5.4). 상태·훅이 없는 순수 표시 컴포넌트 — 화면 미리보기와 인쇄에 같이 쓴다.
- * 앞면(data-report-page="front"): 학생·단원, 육각형, 역량별 점수, 과목별 한 줄 요약, 종합 코멘트.
+ * 앞면(data-report-page="front"): 학생·단원, 육각형, 역량 뜻 표(역량 | 뜻 | 점수 — 학부모가 읽는다), 과목별 한 줄 요약, 종합 코멘트(줄마다).
  * 뒷면(data-report-page="detail"): 과목마다 한 덩어리 — 인쇄할 때 새 쪽에서 시작한다(app/globals.css).
  * 내용은 옆으로 잇지 않는다: 한 줄에 하나, 위계는 글자 크기·굵기·줄바꿈으로. 다른 학생과의 비교는 없다(R-7).
  * 인쇄: 앞면은 과목이 다섯이어도 A4 한 쪽에 들어가게 줄 간격·육각형 크기를 줄인다(app/globals.css 의 [data-unit-report] 규칙).
@@ -127,6 +127,8 @@ export function UnitReportView({ body, academyName, date, draft = false }: {
   /** 확정 전이면 「초안」 표시를 함께 그린다(인쇄에도 찍힌다). */
   draft?: boolean
 }) {
+  // 종합 코멘트: 한 줄에 하나(수업 태도 → 잘한 점 → 더 연습할 점 → 과목 한마디). 비운 줄은 빠진다.
+  const lines = (body.overall_lines ?? []).filter((l) => l.text.trim())
   return (
     <article data-unit-report className="mx-auto max-w-[720px] rounded-2xl bg-white p-6 text-ink-900 print:max-w-none print:rounded-none print:p-0">
       <section data-report-page="front">
@@ -156,14 +158,27 @@ export function UnitReportView({ body, academyName, date, draft = false }: {
 
         <div className="mt-4 break-inside-avoid">
           <Heading>{copy.axesHeading}</Heading>
-          <ul data-report-axes className="mt-2 space-y-1 text-sm">
-            {body.radar.map((a) => (
-              <li key={a.competency} className={a.ratio === null || a.sparse ? 'text-ink-500' : 'text-ink-900'}>
-                {a.ratio === null ? copy.axisEmpty(a.competency) : copy.axisLine(a.competency, a.earned, a.possible, a.count)}
-                {a.ratio !== null && a.sparse ? ` · ${copy.sparseNote}` : ''}
-              </li>
-            ))}
-          </ul>
+          <table data-report-axes className="mt-2 w-full border-collapse text-left text-sm">
+            <thead>
+              <tr className="border-b border-ink-300 text-xs text-ink-500">
+                <th scope="col" className="w-[24%] py-1 pr-2 font-semibold">{copy.axesColumns.competency}</th>
+                <th scope="col" className="py-1 pr-2 font-semibold">{copy.axesColumns.meaning}</th>
+                <th scope="col" className="w-[26%] py-1 font-semibold">{copy.axesColumns.score}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {body.radar.map((a) => (
+                <tr key={a.competency} className="border-b border-ink-100 align-top">
+                  <th scope="row" className="py-1.5 pr-2 font-bold text-ink-900">{a.competency}</th>
+                  <td className="py-1.5 pr-2 text-ink-700">{copy.meanings[a.competency]}</td>
+                  <td className={`py-1.5 ${a.ratio === null || a.sparse ? 'text-ink-500' : 'text-ink-900'}`}>
+                    {a.ratio === null ? copy.axisEmpty : copy.axisScore(a.earned, a.possible, a.count)}
+                    {a.ratio !== null && a.sparse && <span className="block text-xs">{copy.sparseNote}</span>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
 
         <div className="mt-5 break-inside-avoid">
@@ -173,12 +188,25 @@ export function UnitReportView({ body, academyName, date, draft = false }: {
           </ul>
         </div>
 
-        {body.overall_comment && (
+        {lines.length > 0 ? (
+          <div className="mt-5 break-inside-avoid">
+            <Heading>{copy.overallHeading}</Heading>
+            <ul data-report-overall className="mt-2 space-y-2 rounded-xl bg-mint-50 p-3 text-sm leading-relaxed">
+              {lines.map((l) => (
+                <li key={l.kind} data-report-overall-line={l.kind}>
+                  <p className="text-xs font-bold text-mint-700">{copy.overallLabels[l.kind]}</p>
+                  <p className="whitespace-pre-wrap">{l.text}</p>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : !body.overall_lines && body.overall_comment ? (
+          // 옛 본문(2026-09-29 판): 한 문장짜리 종합 코멘트
           <div className="mt-5 break-inside-avoid">
             <Heading>{copy.overallHeading}</Heading>
             <p data-report-overall className="mt-2 whitespace-pre-wrap rounded-xl bg-mint-50 p-3 text-sm leading-relaxed">{body.overall_comment}</p>
           </div>
-        )}
+        ) : null}
 
         <footer className="mt-6 space-y-1 border-t border-ink-100 pt-2 text-xs text-ink-500">
           <p>{copy.basisNote}</p>

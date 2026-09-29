@@ -1,9 +1,12 @@
 import type { SnapshotV2 } from '@/lib/studio/compat'
 import { NOTICE_DISCLAIMER } from '@/lib/studio/schemas'
 import { COMPETENCIES, competencyOf, type Competency } from '@/lib/studio/competency'
-import type { UnitReportBody, ReportSubject, ReportQuiz, ReportAssessmentItem, ReportCriterion, ReportMissing, RadarAxis } from './report-schema'
+import type {
+  UnitReportBody, ReportSubject, ReportQuiz, ReportAssessmentItem, ReportCriterion, ReportMissing, RadarAxis,
+  ReportAttitude, OverallLine, AttitudeParticipation, AttitudeTrait, AttitudeClosing,
+} from './report-schema'
 
-export type { UnitReportBody, ReportSubject, ReportQuiz, ReportAssessmentItem, ReportCriterion, ReportMissing, RadarAxis }
+export type { UnitReportBody, ReportSubject, ReportQuiz, ReportAssessmentItem, ReportCriterion, ReportMissing, RadarAxis, ReportAttitude, OverallLine }
 
 /**
  * 단원 리포트 계산(순수 함수 — 파일·DB·AI 를 쓰지 않는다. 서버·클라이언트·테스트 어디서나 부를 수 있다).
@@ -26,6 +29,12 @@ export type ReportSubjectSummaryArgs = {
   assessmentMax: number
 }
 export type ReportOverallArgs = { studentName: string; themeTitle: string }
+/** 종합 코멘트의 근거 하나: 채점 요소(과목·문항 종류·요소 이름·점수) 또는 한 과목의 퀴즈 묶음(그 역량의 문항 수·정답 수). */
+export type ReportEvidence =
+  | { kind: 'criterion'; subject: string; itemKind: ReportAssessmentItem['kind']; name: string; points: number; max: number }
+  | { kind: 'quiz'; subject: string; correct: number; total: number }
+/** 수업 태도 낱말을 모두 고른 것(참여 + 수업 모습 1~2개 + 마무리). */
+export type CompleteAttitude = { participation: AttitudeParticipation; traits: AttitudeTrait[]; closing: AttitudeClosing }
 
 /** 문장 틀(화면 문구). 페이지가 content/site.ts 에서 넘긴다. */
 export type UnitReportCopy = {
@@ -37,12 +46,24 @@ export type UnitReportCopy = {
     none: (a: ReportSubjectSummaryArgs) => string
   }
   overall: {
-    /** 가장 높은 축과 가장 낮은 축이 다를 때. */
+    /** 옛 본문(한 문장짜리 종합 코멘트)의 기본 문장 — 저장된 옛 초안에서 고친 문장을 알아볼 때만 쓴다. */
     strongAndWeak: (a: ReportOverallArgs & { strong: Competency; weak: Competency }) => string
     /** 자료가 있는 축의 비율이 모두 같을 때(높고 낮음을 가를 수 없다). */
     even: (a: ReportOverallArgs) => string
     /** 자료가 있는 축이 2개 미만일 때의 중립 문장. */
     neutral: (a: ReportOverallArgs) => string
+    /** 첫 줄(수업 태도): 원장이 고른 낱말로 완성하는 문장. */
+    attitude: (a: ReportOverallArgs & CompleteAttitude) => string
+    /** 잘한 점: 가장 높은 축 + 근거. */
+    strength: (a: ReportOverallArgs & { axis: Competency; evidence: ReportEvidence }) => string
+    /** 더 연습할 점: 가장 낮은 축 + 근거 + 다음 할 일(action 이 null 이면 틀이 일반 문장을 쓴다). */
+    practice: (a: ReportOverallArgs & { axis: Competency; evidence: ReportEvidence; action: string | null }) => string
+    /** 과목 한마디: 기록이 가장 좋은 과목과(과목이 둘 이상이고 차이가 있으면) 다음에 힘을 실을 과목. 학생 자신의 기록만 말한다. */
+    subject: (a: ReportOverallArgs & { best: string; focus: string | null }) => string
+    /** 과목이 둘 이상인데 비율이 모두 같을 때. */
+    subjectEven: (a: ReportOverallArgs) => string
+    /** 기록이 있는 과목이 하나도 없을 때. */
+    pending: (a: ReportOverallArgs) => string
   }
 }
 
@@ -70,6 +91,8 @@ export type UnitReportInput = {
   subjects: ReportSubjectInput[]
   /** 리포트에 넣을 과목(R-4). 없으면 전부. 육각형·종합 코멘트는 넣은 과목으로만 계산한다. */
   includeSubjects?: string[]
+  /** 원장이 고른 수업 태도 낱말(열쇠). 없거나 덜 골랐으면 종합 코멘트의 첫 줄이 빠진다. */
+  attitude?: ReportAttitude | null
 }
 
 /** 같은 (학생 번호, 요소 이름)이면 늘 같은 수(FNV-1a 32비트). 실행 환경·순서와 무관하다. */
@@ -138,9 +161,10 @@ function buildSubject(inp: ReportSubjectInput, seq: number | string, copy: UnitR
       const max = Math.max(1, c.max)
       const points = Math.min(max, Math.max(0, c.points))
       const competency = competencyOf((rubric.find((x) => x.name === c.name) ?? rubric[k] ?? {}) as Tagged)
-      const chosen = choosePhrase(phrases.find((p) => p.criterion_name === c.name), points / max, seq, c.name)
+      const bank = phrases.find((p) => p.criterion_name === c.name)
+      const chosen = choosePhrase(bank, points / max, seq, c.name)
       tallies.push({ competency, earned: points, possible: max })
-      return { name: c.name, points, max, competency, phrase_kind: chosen.kind, phrase: chosen.text }
+      return { name: c.name, points, max, competency, phrase_kind: chosen.kind, phrase: chosen.text, improve_tip: choosePhrase(bank, 0, seq, c.name).text }
     })
     assessment.push({
       item_no, kind: item.kind, lesson_no: item.lesson_no,
@@ -169,6 +193,9 @@ function buildSubject(inp: ReportSubjectInput, seq: number | string, copy: UnitR
       quiz_correct: args.quizCorrect, quiz_total: args.quizTotal,
       assessment, assessment_points: args.assessmentPoints, assessment_max: args.assessmentMax,
       summary, missing,
+      home_study: plans
+        .filter((p) => typeof p.home_study_suggestion === 'string' && p.home_study_suggestion.trim())
+        .map((p) => ({ lesson_no: p.lesson_no, text: p.home_study_suggestion })),
     },
   }
 }
@@ -189,9 +216,10 @@ export function buildRadar(tallies: { competency: Competency; earned: number; po
  * 문항 수가 충분한(sparse 가 아닌) 축이 2개 이상이면 그 축들 안에서만 고른다 — 문항 하나짜리 축이 "가장 높은/낮은 역량"으로
  * 불리지 않게. 그런 축이 2개 미만이면 자료가 있는 축 전체에서 고른다(종전 동작).
  */
-export function overallComment(radar: RadarAxis[], who: ReportOverallArgs, copy: UnitReportCopy): string {
+type AxisPick = { kind: 'neutral' } | { kind: 'even' } | { kind: 'pair'; strong: RadarAxis; weak: RadarAxis }
+function pickAxes(radar: RadarAxis[]): AxisPick {
   const withData = radar.filter((a): a is RadarAxis & { ratio: number } => a.ratio !== null)
-  if (withData.length < 2) return copy.overall.neutral(who)
+  if (withData.length < 2) return { kind: 'neutral' }
   const solid = withData.filter((a) => !a.sparse)
   const pool = solid.length >= 2 ? solid : withData
   let strong = pool[0]; let weak = pool[0]
@@ -199,8 +227,128 @@ export function overallComment(radar: RadarAxis[], who: ReportOverallArgs, copy:
     if (a.ratio > strong.ratio) strong = a
     if (a.ratio <= weak.ratio) weak = a
   }
-  if (strong.ratio === weak.ratio) return copy.overall.even(who)
-  return copy.overall.strongAndWeak({ ...who, strong: strong.competency, weak: weak.competency })
+  if (strong.ratio === weak.ratio) return { kind: 'even' }
+  return { kind: 'pair', strong, weak }
+}
+
+/** 옛 본문의 한 문장짜리 종합 코멘트(2026-09-29 판). 새 본문은 overallLines 가 줄마다 만든다. */
+export function overallComment(radar: RadarAxis[], who: ReportOverallArgs, copy: UnitReportCopy): string {
+  const pick = pickAxes(radar)
+  if (pick.kind === 'neutral') return copy.overall.neutral(who)
+  if (pick.kind === 'even') return copy.overall.even(who)
+  return copy.overall.strongAndWeak({ ...who, strong: pick.strong.competency, weak: pick.weak.competency })
+}
+
+/** 셋을 모두 골랐을 때만 문장이 된다(참여 + 수업 모습 1개 이상 + 마무리). */
+export function completeAttitude(a: ReportAttitude | null | undefined): CompleteAttitude | null {
+  if (!a || !a.participation || !a.closing || a.traits.length === 0) return null
+  return { participation: a.participation, traits: a.traits, closing: a.closing }
+}
+
+type Candidate = { evidence: ReportEvidence; ratio: number; size: number; ref: string; tip: string | null; lessonNo: number | null }
+
+/** 한 축의 근거 후보: 그 축의 채점 요소 하나하나와, 과목마다 그 축의 퀴즈 묶음. */
+function candidatesOf(subjects: ReportSubject[], axis: Competency): Candidate[] {
+  const out: Candidate[] = []
+  for (const s of subjects) {
+    for (const a of s.assessment) {
+      for (const c of a.criteria) {
+        if (c.competency !== axis) continue
+        out.push({
+          evidence: { kind: 'criterion', subject: s.subject, itemKind: a.kind, name: c.name, points: c.points, max: c.max },
+          ratio: c.points / c.max, size: c.max, ref: [s.subject, a.item_no, c.name].join('|'), tip: c.improve_tip ?? null, lessonNo: a.lesson_no,
+        })
+      }
+    }
+  }
+  for (const s of subjects) {
+    const mine = s.quizzes.filter((q) => q.competency === axis)
+    if (!mine.length) continue
+    const correct = mine.filter((q) => q.correct).length
+    out.push({
+      evidence: { kind: 'quiz', subject: s.subject, correct, total: mine.length },
+      ratio: correct / mine.length, size: mine.length, ref: [s.subject, 'quiz'].join('|'), tip: null, lessonNo: mine.find((q) => !q.correct)?.lesson_no ?? null,
+    })
+  }
+  return out
+}
+
+/**
+ * 후보 가운데 가장 높은(또는 낮은) 것. 비율이 같으면 채점 요소가 퀴즈 묶음보다 먼저이고(요소 이름이 더 구체적인 근거다),
+ * 같은 종류끼리는 배점·문항 수가 큰 것, 그것도 같으면 앞의 것.
+ */
+function pickCandidate(list: Candidate[], want: 'high' | 'low'): Candidate | null {
+  let best: Candidate | null = null
+  for (const c of list) {
+    if (!best) { best = c; continue }
+    const better = want === 'high' ? c.ratio > best.ratio : c.ratio < best.ratio
+    if (better || (c.ratio === best.ratio && c.evidence.kind === best.evidence.kind && c.size > best.size)) best = c
+  }
+  return best
+}
+
+const subjectRatio = (s: ReportSubject): number | null => {
+  const possible = s.quiz_total + s.assessment_max
+  return possible > 0 ? (s.quiz_correct + s.assessment_points) / possible : null
+}
+
+type BodyForOverall = Pick<UnitReportBody, 'student_name' | 'theme_title' | 'subjects' | 'radar' | 'attitude'>
+
+/**
+ * 종합 코멘트의 줄들(위에서 아래로): 수업 태도(낱말을 모두 골랐을 때만) → 잘한 점 → 더 연습할 점 → 과목 한마디.
+ * 본문에 적힌 것(점수·문구·낱말 열쇠)만으로 만든다 — 같은 본문이면 늘 같은 줄이 나온다(서버·화면 어디서나). AI 를 부르지 않는다(R-8).
+ * 높고 낮음을 가를 수 없으면(비율이 모두 같거나 자료 있는 축이 2개 미만) 「잘한 점」 자리에 고른/중립 문장 한 줄을 두고
+ * 「더 연습할 점」 줄은 없다. 그래도 만든 줄은 늘 2개 이상이다(수업 태도 줄까지 3줄 이상).
+ * 과목 한마디는 이 학생의 과목끼리만 견준다 — 다른 학생과의 비교는 없다(R-7).
+ */
+export function overallLines(body: BodyForOverall, copy: UnitReportCopy): OverallLine[] {
+  const who: ReportOverallArgs = { studentName: body.student_name, themeTitle: body.theme_title }
+  const t = copy.overall
+  const lines: OverallLine[] = []
+
+  const attitude = completeAttitude(body.attitude)
+  if (attitude) lines.push({ kind: 'attitude', ref: [attitude.participation, attitude.traits.join(','), attitude.closing].join('/'), text: t.attitude({ ...who, ...attitude }) })
+
+  const pick = pickAxes(body.radar)
+  const strong = pick.kind === 'pair' ? pickCandidate(candidatesOf(body.subjects, pick.strong.competency), 'high') : null
+  const weak = pick.kind === 'pair' ? pickCandidate(candidatesOf(body.subjects, pick.weak.competency), 'low') : null
+  if (pick.kind === 'pair' && strong && weak) {
+    lines.push({ kind: 'strength', ref: [pick.strong.competency, strong.ref].join('|'), text: t.strength({ ...who, axis: pick.strong.competency, evidence: strong.evidence }) })
+    const subject = body.subjects.find((s) => s.subject === weak.evidence.subject)
+    const home = weak.lessonNo === null ? null : subject?.home_study?.find((h) => h.lesson_no === weak.lessonNo)?.text ?? null
+    lines.push({ kind: 'practice', ref: [pick.weak.competency, weak.ref].join('|'), text: t.practice({ ...who, axis: pick.weak.competency, evidence: weak.evidence, action: weak.tip ?? home }) })
+  } else {
+    const even = pick.kind !== 'neutral'
+    lines.push({ kind: 'strength', ref: even ? 'even' : 'neutral', text: even ? t.even(who) : t.neutral(who) })
+  }
+
+  const ranked = body.subjects.map((s) => ({ subject: s.subject, ratio: subjectRatio(s) })).filter((s): s is { subject: string; ratio: number } => s.ratio !== null)
+  if (ranked.length === 0) {
+    lines.push({ kind: 'subject', ref: 'pending', text: t.pending(who) })
+  } else {
+    let best = ranked[0]; let focus = ranked[0]
+    for (const s of ranked) {
+      if (s.ratio > best.ratio) best = s
+      if (s.ratio <= focus.ratio) focus = s
+    }
+    if (ranked.length >= 2 && best.ratio === focus.ratio) {
+      lines.push({ kind: 'subject', ref: 'even', text: t.subjectEven(who) })
+    } else {
+      const next = ranked.length >= 2 ? focus.subject : null
+      lines.push({ kind: 'subject', ref: [best.subject, next ?? ''].join('>'), text: t.subject({ ...who, best: best.subject, focus: next }) })
+    }
+  }
+  return lines
+}
+
+/** 줄들을 이은 글(overall_comment). 빈 줄은 뺀다. */
+export const joinOverall = (lines: OverallLine[]): string => lines.map((l) => l.text).filter((x) => x.trim()).join('\n')
+
+/** 본문의 과목·육각형·수업 태도 낱말로 종합 코멘트를 기본 문장으로 다시 만든다. */
+export function rebuildOverall(body: UnitReportBody, copy: UnitReportCopy): UnitReportBody {
+  const attitude = body.attitude ?? null
+  const overall_lines = overallLines({ ...body, attitude }, copy)
+  return { ...body, attitude, overall_lines, overall_comment: joinOverall(overall_lines) }
 }
 
 export function buildUnitReport(input: UnitReportInput, copy: UnitReportCopy): UnitReportBody {
@@ -208,13 +356,14 @@ export function buildUnitReport(input: UnitReportInput, copy: UnitReportCopy): U
   const included = chosen ? input.subjects.filter((s) => chosen.includes(s.subject)) : input.subjects
   const built = included.map((s) => buildSubject(s, input.student.seq, copy))
   const radar = buildRadar(built.flatMap((b) => b.tallies))
-  return {
+  return rebuildOverall({
     student_name: input.student.name,
     theme_title: input.theme.title,
     included_subjects: included.map((s) => s.subject),
     subjects: built.map((b) => b.subject),
     radar,
-    overall_comment: overallComment(radar, { studentName: input.student.name, themeTitle: input.theme.title }, copy),
+    overall_comment: '',
+    attitude: input.attitude ?? null,
     footer_disclaimer: NOTICE_DISCLAIMER,
-  }
+  }, copy)
 }

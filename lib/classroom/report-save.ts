@@ -1,14 +1,14 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { buildUnitReport, type UnitReportCopy } from './report'
 import { UnitReportBody } from './report-schema'
-import { applyEdits, sanitizeEdits } from './report-edit'
+import { applyEdits, sanitizeEdits, parseAttitude } from './report-edit'
 import { loadReportSource, canViewStudent, type ReportViewer } from './report-data'
 
 /**
  * 단원 리포트 저장·확정·다시 고치기(설계 §5.4). 서버 동작이 역할을 확인한 뒤 부른다. db 는 로그인한 사람의 클라이언트
  * (RLS 0014: 원장은 자기 원 학생의 리포트만, 본사는 전체).
  *
- * 화면에서 온 숫자는 쓰지 않는다 — 받는 것은 넣을 과목 이름과 고친 문장뿐이고, 본문은 여기서 DB 자료로 다시 만든다.
+ * 화면에서 온 숫자는 쓰지 않는다 — 받는 것은 넣을 과목 이름·고친 문장·수업 태도 낱말(열쇠)뿐이고, 본문은 여기서 DB 자료로 다시 만든다.
  * 학생의 원 확인은 loadReportSource 가 가장 먼저 한다(통과 전에는 아무것도 읽거나 쓰지 않는다).
  */
 
@@ -20,6 +20,8 @@ export async function saveUnitReport(a: {
   db: SupabaseClient; viewer: ReportViewer; themeId: string; studentId: string
   /** 넣을 과목(R-4). 배정되지 않은 과목 이름은 버린다. 남는 과목이 없으면 배정된 과목 전부. */
   subjects: unknown; edits: unknown
+  /** 수업 태도 낱말(열쇠만 — 문장은 서버가 화면 문구로 만든다). 허용 목록 밖의 열쇠나 수업 모습 3개 이상이면 저장하지 않는다. */
+  attitude?: unknown
   status: 'draft' | 'confirmed'; copy: UnitReportCopy; now: string
 }): Promise<SaveResult> {
   const loaded = await loadReportSource(a.db, a.viewer, a.themeId, a.studentId)
@@ -33,7 +35,10 @@ export async function saveUnitReport(a: {
   const chosen = src.subjects.filter((s) => asked.includes(s))
   const include = chosen.length ? chosen : src.subjects
 
-  const fresh = buildUnitReport({ ...src.input, includeSubjects: include }, a.copy)
+  const attitude = parseAttitude(a.attitude)
+  if (!attitude.ok) return { ok: false, reason: 'invalid' }
+
+  const fresh = buildUnitReport({ ...src.input, includeSubjects: include, attitude: attitude.attitude }, a.copy)
   const parsed = UnitReportBody.safeParse(applyEdits(fresh, sanitizeEdits(a.edits)))
   if (!parsed.success) return { ok: false, reason: 'invalid' }
 

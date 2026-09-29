@@ -2,11 +2,13 @@
 // 실제 화면 문구는 content/site.ts 가 갖는다(5번 작업) — 여기 문구는 테스트 전용이다.
 import { readFileSync } from 'node:fs'
 import { upgradeSnapshot, type Snapshot } from '@/lib/studio/publish'
-import type { UnitReportCopy, ReportSubjectInput, ReportQuizInput, ReportGradingInput } from '@/lib/classroom/report'
+import type { UnitReportCopy, ReportSubjectInput, ReportQuizInput, ReportGradingInput, ReportEvidence } from '@/lib/classroom/report'
 import type { Competency } from '@/lib/studio/competency'
 
 const json = (p: string) => JSON.parse(readFileSync(p, 'utf8'))
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v))
+
+export const evidenceText = (e: ReportEvidence) => (e.kind === 'criterion' ? `${e.subject} ${e.itemKind} ${e.name} ${e.points}/${e.max}` : `${e.subject} 퀴즈 ${e.correct}/${e.total}`)
 
 export const reportCopy: UnitReportCopy = {
   subjectSummary: {
@@ -19,6 +21,12 @@ export const reportCopy: UnitReportCopy = {
     strongAndWeak: (a) => `${a.studentName} 학생은 이번 단원에서 「${a.strong}」이(가) 돋보였고, 「${a.weak}」을(를) 조금 더 연습하면 좋겠습니다.`,
     even: (a) => `${a.studentName} 학생은 이번 단원에서 여러 역량을 고르게 보여 주었습니다.`,
     neutral: (a) => `${a.studentName} 학생의 「${a.themeTitle}」 단원 학습 기록입니다.`,
+    attitude: (a) => `태도: ${a.studentName} / ${a.participation} / ${a.traits.join('+')} / ${a.closing}`,
+    strength: (a) => `잘한 점: ${a.axis} — ${evidenceText(a.evidence)}`,
+    practice: (a) => `연습할 점: ${a.axis} — ${evidenceText(a.evidence)} → ${a.action ?? '일반 안내'}`,
+    subject: (a) => `과목: ${a.best}${a.focus ? ` → ${a.focus}` : ''}`,
+    subjectEven: () => '과목: 고르게',
+    pending: () => '과목: 기록 없음',
   },
 }
 
