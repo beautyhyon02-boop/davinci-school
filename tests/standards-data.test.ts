@@ -11,6 +11,7 @@ describe('data/standards/*.json', () => {
     expect(files.sort()).toEqual([
       '과학.json',
       '국어.json',
+      '도덕.json',
       '사회.json',
       '세계사.json',
       '수학.json',
