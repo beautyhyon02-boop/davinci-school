@@ -69,3 +69,12 @@ body { @apply antialiased; }
   .student-line { display: flex; gap: 12mm; margin-top: 3mm; font-size: 11pt; }
   .student-line span { display: inline-block; min-width: 40mm; border-bottom: 1px solid #1f2430; }
 }
+
+/* 단원 리포트 인쇄(components/classroom/UnitReportView): A4, 앞면 다음에 과목별 상세가 새 쪽에서 시작한다.
+ * 육각형의 오렌지색·옅은 바탕색이 그대로 찍히게 한다. 메뉴·과목 체크·문장 고치기·버튼은 위의 .no-print 규칙이 숨긴다. */
+@page unit-report { size: A4; margin: 14mm; }
+@media print {
+  [data-unit-report] { page: unit-report; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  [data-unit-report] [data-report-page="detail"] { break-before: page; margin-top: 0; }
+  [data-unit-report] [data-report-subject] { break-inside: avoid; }
+}
