@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { app } from '@/content/site'
 import type { AnswerRow, Criterion, GradingRow } from '@/lib/classroom/types'
+import { isManualGrading } from '@/lib/classroom/manual'
 
 const copy = app.classroom.review
 
@@ -20,6 +21,8 @@ const TONE: Record<keyof typeof copy.status, 'gray' | 'lemon' | 'mint' | 'lavend
 export function ReviewCard({ item }: { item: ReviewItem }) {
   const g = item.grading
   const st = statusOf(item)
+  // 종이 답안 점수(원장 직접 입력): AI 초안·근거 문장이 없다 — AI 다시 채점·재채점 요청 단추를 내지 않는다
+  const manual = isManualGrading(g)
   // 화면 시작값: 확정본이 있으면(확정 또는 다시 고치기 중) 확정본, 없으면 AI 초안
   const [criteria, setCriteria] = useState<Criterion[]>(g?.final_criteria ?? g?.ai_criteria ?? [])
   const [strengths, setStrengths] = useState<string[]>(g?.final_strengths ?? g?.ai_strengths ?? [])
@@ -66,6 +69,7 @@ export function ReviewCard({ item }: { item: ReviewItem }) {
         <Badge tone={TONE[st]}>{copy.status[st]}</Badge>
         {item.answer && <Badge tone="gray">{copy.attempt(item.answer.attempt)}</Badge>}
         {g?.model === 'mock' && <Badge tone="lemon">{copy.mock}</Badge>}
+        {manual && <Badge tone="lavender">{copy.paper.badge}</Badge>}
         {g?.status === 'confirmed' && <span className="text-sm text-ink-500">{g.final_score}/{item.points}</span>}
         {item.prev && g?.final_score != null && item.prev.score != null && <span className="text-sm text-ink-500">{copy.compare(item.prev.score, g.final_score)}</span>}
       </button>
@@ -77,7 +81,7 @@ export function ReviewCard({ item }: { item: ReviewItem }) {
           </div>
           {g && (g.status === 'drafted' || g.status === 'confirmed') ? (
             <div className="space-y-3">
-              <p className="text-sm font-semibold text-ink-500">{g.status === 'confirmed' ? copy.finalLabel : copy.aiDraft}</p>
+              <p className="text-sm font-semibold text-ink-500">{g.status === 'confirmed' || manual ? copy.finalLabel : copy.aiDraft}</p>
               <div>
                 <p className="text-sm font-semibold text-ink-500">{copy.criteria}</p>
                 {criteria.map((c, i) => (
@@ -88,7 +92,7 @@ export function ReviewCard({ item }: { item: ReviewItem }) {
                         onChange={(e) => setCriteria(criteria.map((x, j) => (j === i ? { ...x, points: Math.max(0, Math.min(c.max, Number(e.target.value))) } : x)))} className="w-16 rounded border border-ink-300 px-2 py-1" />
                       <span className="text-ink-500">/ {c.max}</span>
                     </div>
-                    <p className="mt-1 text-ink-700"><span className="text-ink-500">{copy.evidence}:</span> “{c.evidence}”</p>
+                    {c.evidence && <p className="mt-1 text-ink-700"><span className="text-ink-500">{copy.evidence}:</span> “{c.evidence}”</p>}
                     {c.note && <p className="text-xs text-ink-500">{c.note}</p>}
                   </div>
                 ))}
@@ -96,8 +100,8 @@ export function ReviewCard({ item }: { item: ReviewItem }) {
               </div>
               {g.status === 'confirmed' ? (
                 <>
-                  <p className="text-sm">{copy.strengths}: {strengths.join(' / ')}</p>
-                  <p className="text-sm">{copy.improvements}: {improvements.join(' / ')}</p>
+                  {strengths.length > 0 && <p className="text-sm">{copy.strengths}: {strengths.join(' / ')}</p>}
+                  {improvements.length > 0 && <p className="text-sm">{copy.improvements}: {improvements.join(' / ')}</p>}
                   {comment && <p className="text-sm">{copy.comment}: {comment}</p>}
                   <p className="text-xs text-ink-500">{copy.confirmedAt(g.confirmed_at?.slice(0, 16).replace('T', ' ') ?? '')}</p>
                   <Button type="button" variant="ghost" disabled={pending} onClick={() => start(async () => { const r = await reopenGrading(g.id); setMsg(r.ok ? null : r.error) })}>{copy.reopen}</Button>
@@ -114,8 +118,8 @@ export function ReviewCard({ item }: { item: ReviewItem }) {
                     <Button type="button" disabled={pending} onClick={() => start(async () => {
                       const r = await confirmGrading(g.id, edited ? { criteria, strengths, improvements, comment, adjustNote } : null); setMsg(r.ok ? null : r.error)
                     })}>{edited ? copy.confirmEdited : copy.confirmAsIs}</Button>
-                    <Button type="button" variant="ghost" disabled={pending} onClick={() => start(async () => { const r = await regradeAi(g.id); setMsg(r.ok ? null : r.error) })}>{copy.regrade}</Button>
-                    <Button type="button" variant="ghost" disabled={pending || g.regrade_requested} onClick={() => start(async () => { const r = await requestRegrade(g.id); setMsg(r.ok ? null : r.error) })}>{copy.requestRegrade}</Button>
+                    {!manual && <Button type="button" variant="ghost" disabled={pending} onClick={() => start(async () => { const r = await regradeAi(g.id); setMsg(r.ok ? null : r.error) })}>{copy.regrade}</Button>}
+                    {!manual && <Button type="button" variant="ghost" disabled={pending || g.regrade_requested} onClick={() => start(async () => { const r = await requestRegrade(g.id); setMsg(r.ok ? null : r.error) })}>{copy.requestRegrade}</Button>}
                   </div>
                 </>
               )}
@@ -125,7 +129,7 @@ export function ReviewCard({ item }: { item: ReviewItem }) {
             // 실패 또는 멈춘 채점(pending) — [AI 다시 채점]으로 살린다. 실행 중이면 서버의 줄 잡기가 두 번째 실행을 막는다.
             <div className="space-y-2">
               {g.status === 'failed' ? <p className="text-sm text-red-600">{g.error}</p> : <p className="text-sm text-ink-500">{copy.status.pending}</p>}
-              <Button type="button" variant="ghost" disabled={pending} onClick={() => start(async () => { const r = await regradeAi(g.id); setMsg(r.ok ? null : r.error) })}>{copy.regrade}</Button>
+              {!manual && <Button type="button" variant="ghost" disabled={pending} onClick={() => start(async () => { const r = await regradeAi(g.id); setMsg(r.ok ? null : r.error) })}>{copy.regrade}</Button>}
               {msg && <p className="text-sm text-red-600">{msg}</p>}
             </div>
           ) : (

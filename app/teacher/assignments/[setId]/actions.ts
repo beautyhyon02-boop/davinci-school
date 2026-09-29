@@ -12,6 +12,8 @@ import { buildNoticePrompt } from '@/lib/classroom/notice-prompt'
 import { lintNotice } from '@/lib/classroom/notice-lint'
 import { callStructured } from '@/lib/ai/claude'
 import type { CellState } from '@/lib/classroom/quiz-finalize'
+import { isManualGrading } from '@/lib/classroom/manual'
+import { savePaperScore, type PaperScoreReason } from '@/lib/classroom/paper-score'
 import { applyQuizCell, fillEmptyCorrect, finalizeLesson, unfinalize } from '@/lib/classroom/quiz-entry'
 
 const errors = app.classroom.assign.errors
@@ -43,6 +45,7 @@ export type ConfirmInput = { criteria: Criterion[]; strengths: string[]; improve
 /**
  * null 이면 "고친 것 없음" — 처음 확정이면 AI 초안을, 다시 고치기(reopen) 뒤면 기존 확정본(final_*)을 그대로 확정한다.
  * 트리거가 ai_* 변경을 막으므로 final_* 만 쓴다(원장 클라이언트).
+ * 종이 답안 점수(model 'manual')는 AI 초안이 없다 — 요소 수·만점은 기존 확정본(final_criteria)과 맞춰 본다.
  */
 export async function confirmGrading(gradingId: string, input: ConfirmInput): Promise<ActionResult> {
   const s = await assertTeacher()
@@ -53,12 +56,13 @@ export async function confirmGrading(gradingId: string, input: ConfirmInput): Pr
   if (!g) return { ok: false, error: rev.saveFailed }
   if (g.status !== 'drafted' && g.status !== 'confirmed') return { ok: false, error: rev.notDrafted }
   const ai = g.ai_criteria as Criterion[] | null
-  if (input === null && ai === null) return { ok: false, error: rev.notDrafted }
   // 이미 한 번 확정된 줄(final_criteria 있음)을 고치지 않고 다시 확정하면 원장이 고친 점수를 AI 값으로 되돌리지 않는다
   const prior = g.final_criteria !== null
+  if (input === null && ai === null && !prior) return { ok: false, error: rev.notDrafted }
   const criteria = (input?.criteria ?? (prior ? (g.final_criteria as Criterion[]) : ai) ?? []) as Criterion[]
   // 요소 수·만점은 AI 초안과 같아야 한다(만점 합 = 문항 배점이므로 요소별 max 검사로 총점 상한도 지켜진다)
-  if (input && ai && (input.criteria.length !== ai.length || input.criteria.some((c, i) => c.max !== ai[i].max))) return { ok: false, error: rev.badScore }
+  const ref = ai ?? (g.final_criteria as Criterion[] | null)
+  if (input && ref && (input.criteria.length !== ref.length || input.criteria.some((c, i) => c.max !== ref[i].max))) return { ok: false, error: rev.badScore }
   if (criteria.some((c) => !Number.isInteger(c.points) || c.points < 0 || c.points > c.max)) return { ok: false, error: rev.badScore }
   const score = criteria.reduce((sum, c) => sum + c.points, 0)
   const now = new Date().toISOString()
@@ -103,8 +107,10 @@ export async function requestRegrade(gradingId: string): Promise<ActionResult> {
 export async function regradeAi(gradingId: string): Promise<ActionResult> {
   await assertTeacher()
   const supabase = await createClient()
-  const { data: g } = await supabase.from('gradings').select('id, status').eq('id', gradingId).maybeSingle()
+  const { data: g } = await supabase.from('gradings').select('id, status, model').eq('id', gradingId).maybeSingle()
   if (!g || (g.status !== 'drafted' && g.status !== 'failed' && g.status !== 'pending')) return { ok: false, error: rev.notDrafted }
+  // 종이 답안 점수(원장 직접 입력)는 답안 글이 없어 AI 가 채점할 것이 없다 — 원장 점수를 지우지 않는다
+  if (isManualGrading(g)) return { ok: false, error: rev.manualNoRegrade }
   const { createAdminClient } = await import('@/lib/supabase/admin')
   const { runGrading, claimableOr } = await import('@/lib/classroom/grade')
   const admin = createAdminClient()
@@ -115,6 +121,26 @@ export async function regradeAi(gradingId: string): Promise<ActionResult> {
   if (error) return { ok: false, error: rev.saveFailed }
   // 비운 줄이 없으면 이미 다른 실행이 진행 중이다 — 두 번째 유료 호출을 만들지 않는다
   if (reset && reset.length > 0) await runGrading({ gradingId, db: admin })
+  revalidatePath('/teacher/assignments'); return { ok: true }
+}
+
+const PAPER_ERRORS: Record<PaperScoreReason, string> = {
+  forbidden: rev.saveFailed, 'bad-item': rev.saveFailed, 'bad-score': rev.badScore, 'already-submitted': rev.paperAlreadySubmitted, 'save-failed': rev.saveFailed,
+}
+
+/**
+ * [종이 답안 점수 입력] 저장(설계 2026-09-29 §4.2, R-5): 답안이 없는 문항에 원장이 요소별 점수를 직접 넣는다.
+ * 바로 확정(공개)된다 — 세트 총점·등급·안내장·리포트는 화면 답안의 확정 채점과 똑같이 읽는다. 나중에 [다시 고치기]로 바꿀 수 있다.
+ */
+export async function enterPaperScore(assignmentId: string, itemNo: number, points: number[], comment: string): Promise<ActionResult> {
+  const s = await assertTeacher()
+  const supabase = await createClient()
+  const { createAdminClient } = await import('@/lib/supabase/admin')
+  const r = await savePaperScore({
+    db: supabase, admin: createAdminClient(), teacher: { userId: s.userId, academyId: s.academyId },
+    assignmentId, itemNo, points, comment, marker: app.classroom.review.paper.marker, now: new Date().toISOString(),
+  })
+  if (!r.ok) return { ok: false, error: PAPER_ERRORS[r.reason] }
   revalidatePath('/teacher/assignments'); return { ok: true }
 }
 

@@ -972,6 +972,25 @@ export const app = {
         saveFailed: '저장하지 못했습니다.', notDrafted: '검수 대기 상태가 아닙니다.', badScore: '점수가 범위를 벗어났습니다.',
         quizCellNotAllowed: '이 칸은 바꿀 수 없습니다.',
         finalizeFailed: '최종 확인을 저장하지 못했습니다. 잠시 뒤 다시 눌러 주세요.',
+        manualNoRegrade: '종이 답안 점수는 원장이 직접 넣은 것이라 AI 가 다시 채점하지 않습니다.',
+        paperAlreadySubmitted: '이미 제출된 답안이 있습니다. 아래 검수 카드에서 확인해 주세요.',
+      },
+      // 종이 답안 점수 입력(단원 리포트 설계 2026-09-29 §4.2, R-5)
+      paper: {
+        // answers.body 에 들어가는 표지 — 원장 검수 카드와 학생 화면(읽기 전용)에 그대로 보인다
+        marker: '종이 답안 — 종이에 쓴 답을 선생님이 직접 채점했습니다.',
+        badge: '종이 답안',
+        open: '종이 답안 점수 입력',
+        close: '접기',
+        intro: '종이에 쓴 답안을 보면서 요소마다 점수를 하나씩 고르세요. 저장하면 바로 확정됩니다.',
+        editIntro: '점수를 고친 뒤 저장하면 다시 확정됩니다.',
+        criterionMax: (max: number) => `${max}점 만점`,
+        scaleLine: (points: number, descriptor: string) => `${points}점 — ${descriptor}`,
+        total: (total: number, max: number) => `합계 ${total} / ${max}점`,
+        chooseAll: '요소마다 점수를 하나씩 골라 주세요.',
+        comment: '원장 코멘트(선택)',
+        save: '저장',
+        saved: '저장했습니다.',
       },
     },
     // 학생별 차시 안내장(v2 T8) — 원장 화면에서 초안 → 확정 → 인쇄. 학교생활기록부가 아니다.

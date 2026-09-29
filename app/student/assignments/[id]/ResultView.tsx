@@ -13,13 +13,22 @@ export function ResultView({ label, points, attempt, grading }: { label: string;
       </div>
       {(grading.final_criteria?.length ?? 0) > 1 && (
         <ul className="mt-3 space-y-1">
-          {grading.final_criteria!.map((c, i) => <li key={i}><span className="font-semibold">{c.name}</span> {c.points}/{c.max} — <span className="text-ink-700">{copy.evidence}: “{c.evidence}”</span></li>)}
+          {grading.final_criteria!.map((c, i) => <li key={i}><span className="font-semibold">{c.name}</span> {c.points}/{c.max}{c.evidence ? <> — <span className="text-ink-700">{copy.evidence}: “{c.evidence}”</span></> : null}</li>)}
         </ul>
       )}
-      <p className="mt-3 font-semibold">{copy.strengths}</p>
-      <ul className="list-disc pl-6">{(grading.final_strengths ?? []).map((x, i) => <li key={i}>{x}</li>)}</ul>
-      <p className="mt-3 font-semibold">{copy.improvements}</p>
-      <ul className="list-disc pl-6">{(grading.final_improvements ?? []).map((x, i) => <li key={i}>{x}</li>)}</ul>
+      {/* 종이 답안 점수(원장 직접 입력)는 잘한 점·보완할 점·근거 문장이 비어 있다 — 빈 머리글을 그리지 않는다 */}
+      {(grading.final_strengths?.length ?? 0) > 0 && (
+        <>
+          <p className="mt-3 font-semibold">{copy.strengths}</p>
+          <ul className="list-disc pl-6">{grading.final_strengths!.map((x, i) => <li key={i}>{x}</li>)}</ul>
+        </>
+      )}
+      {(grading.final_improvements?.length ?? 0) > 0 && (
+        <>
+          <p className="mt-3 font-semibold">{copy.improvements}</p>
+          <ul className="list-disc pl-6">{grading.final_improvements!.map((x, i) => <li key={i}>{x}</li>)}</ul>
+        </>
+      )}
       {grading.teacher_comment && <p className="mt-3 rounded-xl bg-white p-3"><span className="font-semibold">{copy.comment}:</span> {grading.teacher_comment}</p>}
     </section>
   )
