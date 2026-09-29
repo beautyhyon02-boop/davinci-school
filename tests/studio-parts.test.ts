@@ -269,7 +269,7 @@ describe('parts are client-safe', () => {
   it('no part imports the fs-backed levels module or node built-ins, and none takes function props', () => {
     const dir = 'components/studio/parts'
     const files = readdirSync(dir).filter((f) => f.endsWith('.tsx'))
-    expect(files.sort()).toEqual(['LessonCards.tsx', 'MaterialsFull.tsx', 'NoticePlanView.tsx', 'TeacherGuideView.tsx', 'UnitPlanView.tsx', 'common.tsx'])
+    expect(files.sort()).toEqual(['ItemCriteria.tsx', 'LessonCards.tsx', 'MaterialsFull.tsx', 'NoticePlanView.tsx', 'TeacherGuideView.tsx', 'UnitPlanView.tsx', 'common.tsx'])
     for (const f of files) {
       const src = readFileSync(`${dir}/${f}`, 'utf8')
       expect(src, f).not.toMatch(/from '@\/lib\/reference\/levels'/)

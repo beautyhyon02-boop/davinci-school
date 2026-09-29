@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode } from 'react'
 import { saveDraft, submitAnswer } from './actions'
 import { Button } from '@/components/ui/Button'
+import { ItemCriteria, type VisibleCriterion } from '@/components/studio/parts/ItemCriteria'
 import { app } from '@/content/site'
 
 const copy = app.classroom.student.answer
@@ -17,9 +18,14 @@ type Props = {
   label: string; points: number; stem: string; conditions: AnswerConditions
   /** 문항의 자료 상자(<자료 1>·<자료 2>, 서버에서 그린 ItemMaterials) — 문두 아래·조건 위. 재도전 답안 칸에는 넘기지 않는다(바로 위 첫 답안 칸에 있다). */
   materials?: ReactNode
+  /**
+   * 평가 요소(대표 2026-09-29): 채점 요소 이름과 만점만(visibleCriteria) — 조건·분량·형식 다음 줄에 한 줄에 하나씩.
+   * 척도 서술·예시답안은 넘기지 않는다. 옛 호출(빈 목록)은 그리지 않는다.
+   */
+  criteria?: VisibleCriterion[]
 }
 
-function Prompt({ label, points, stem, conditions, materials }: Pick<Props, 'label' | 'points' | 'stem' | 'conditions' | 'materials'>) {
+function Prompt({ label, points, stem, conditions, materials, criteria = [] }: Pick<Props, 'label' | 'points' | 'stem' | 'conditions' | 'materials' | 'criteria'>) {
   return (
     <>
       <h3 className="text-lg font-bold">{copy.heading(label, points)}</h3>
@@ -34,6 +40,8 @@ function Prompt({ label, points, stem, conditions, materials }: Pick<Props, 'lab
           <li><span className="text-ink-500">{copy.conditionLength}</span> {conditions.length}</li>
           <li><span className="text-ink-500">{copy.conditionFormat}</span> {conditions.format}</li>
         </ul>
+        {/* 조건(논술형)·분량·형식 다음에 평가 요소 — 서술형은 조건이 없어(C-32) 이 목록이 무엇을 채점하는지 알리는 줄이다 */}
+        <ItemCriteria criteria={criteria} variant="student" className="mt-2" />
       </div>
     </>
   )
@@ -47,7 +55,7 @@ export function AnswerEditor(props: Props) {
   if (props.conditions.answer_mode === 'paper') {
     return (
       <section className="rounded-2xl bg-white p-5">
-        <Prompt label={props.label} points={props.points} stem={props.stem} conditions={props.conditions} materials={props.materials} />
+        <Prompt label={props.label} points={props.points} stem={props.stem} conditions={props.conditions} materials={props.materials} criteria={props.criteria} />
         <p className="mt-3 rounded-xl bg-lemon-100 p-3">{studentCopy.paperAnswer}</p>
       </section>
     )
@@ -55,7 +63,7 @@ export function AnswerEditor(props: Props) {
   return <ScreenAnswerEditor {...props} />
 }
 
-function ScreenAnswerEditor({ assignmentId, itemNo, attempt, initialBody, submitted, label, points, stem, conditions, materials }: Props) {
+function ScreenAnswerEditor({ assignmentId, itemNo, attempt, initialBody, submitted, label, points, stem, conditions, materials, criteria }: Props) {
   const [body, setBody] = useState(initialBody)
   const [status, setStatus] = useState<string | null>(null)
   const [isSubmitted, setSubmitted] = useState(submitted)
@@ -101,7 +109,7 @@ function ScreenAnswerEditor({ assignmentId, itemNo, attempt, initialBody, submit
 
   return (
     <section className="rounded-2xl bg-white p-5">
-      <Prompt label={label} points={points} stem={stem} conditions={conditions} materials={materials} />
+      <Prompt label={label} points={points} stem={stem} conditions={conditions} materials={materials} criteria={criteria} />
       <textarea value={body} readOnly={isSubmitted} placeholder={copy.placeholder} rows={10}
         onChange={(e) => onChange(e.target.value)} onBlur={persist}
         className="mt-3 w-full rounded-xl border border-ink-300 p-4 text-lg leading-relaxed read-only:bg-ink-100/40" />

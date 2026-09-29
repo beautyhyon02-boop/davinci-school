@@ -3,6 +3,7 @@ import { app } from '@/content/site'
 import { sortScale, stepAt } from '@/lib/studio/scale'
 import { ItemMaterials, type MaterialLike } from '@/components/studio/parts/MaterialsFull'
 import { Aside, KV, LabeledLines, SubLabel } from '@/components/studio/parts/common'
+import { ItemCriteria, visibleCriteria } from '@/components/studio/parts/ItemCriteria'
 import { conditionDisplayText } from '@/lib/studio/condition-text'
 
 // 5단계(문항) 요약 — 오너 지적(2026-09-25): 문두·등급표·예시답안 개수만 보여서 논술형 조건 4개와 두 문항의 채점표를
@@ -109,27 +110,32 @@ function ItemCard({ item, no, materials, sharedIds }: { item: Item; no: number; 
       <p data-item-stem className="mt-3 whitespace-pre-wrap text-base font-semibold leading-relaxed">{item.stem}</p>
       <ItemMaterials item={item} materials={materials} sharedIds={sharedIds} />
 
-      <div data-item-conditions className="mt-3 rounded-lg bg-ink-100/40 p-3">
-        <SubLabel>{copy.conditionsHeading}</SubLabel>
-        {conds.length > 0 ? (
-          <ol className="mt-1 space-y-1">
-            {conds.map((x) => (
-              <li key={x.no}>
-                <span className="font-semibold">{copy.conditionNo(x.no)}</span> {conditionDisplayText(x.text, x.points)}
-                {x.category && <> <Badge tone="gray">{x.category}</Badge></>}
-                {x.points != null && <> <Badge tone="gray">{copy.pointsLabel(x.points)}</Badge></>}
-              </li>
-            ))}
-          </ol>
-        ) : <p className="mt-1 text-ink-500">{copy.noConditions(item.kind)}</p>}
+      <div data-item-conditions className="mt-3 space-y-2 rounded-lg bg-ink-100/40 p-3">
+        {/* 조건 문장이 없는 문항(서술형, C-32)은 "조건" 머리글 없이 — 대신 아래 평가 요소가 무엇을 채점하는지 알린다(대표 2026-09-29) */}
+        {conds.length > 0 && (
+          <div>
+            <SubLabel>{copy.conditionsHeading}</SubLabel>
+            <ol className="mt-1 space-y-1">
+              {conds.map((x) => (
+                <li key={x.no}>
+                  <span className="font-semibold">{copy.conditionNo(x.no)}</span> {conditionDisplayText(x.text, x.points)}
+                  {x.category && <> <Badge tone="gray">{x.category}</Badge></>}
+                  {x.points != null && <> <Badge tone="gray">{copy.pointsLabel(x.points)}</Badge></>}
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
         {/* 분량·형식·초과 응답은 한 줄에 하나씩 */}
         {(cd?.length || cd?.format || cd?.overflow_rule) && (
-          <div className="mt-2 space-y-0.5 text-ink-700">
+          <div className="space-y-0.5 text-ink-700">
             <KV label={copy.lengthLabel}>{cd.length}</KV>
             <KV label={copy.formatLabel}>{cd.format}</KV>
             <KV label={copy.overflowLabel}>{cd.overflow_rule}</KV>
           </div>
         )}
+        {/* 평가 요소: 학생에게 보이는 채점 요소 이름·만점(원장 문항 카드·학생 답안 칸과 같은 조각) */}
+        <ItemCriteria criteria={visibleCriteria(item.rubric)} />
       </div>
 
       {criteria.length > 0 && (

@@ -7,6 +7,7 @@ import { itemNosForLesson, itemLabel, sectionMaterialIds, studentConditions } fr
 import { isUnitAssessmentSession } from '@/lib/studio/assessment-structure'
 import { SHORT_MINUTES, ESSAY_MINUTES } from '@/lib/studio/structure-text'
 import { MaterialsSection, ItemMaterials } from '@/components/studio/parts/MaterialsFull'
+import { visibleCriteria } from '@/components/studio/parts/ItemCriteria'
 import { overallFor, gradeFor } from '@/lib/classroom/scoring'
 import { LessonTabs } from './LessonTabs'
 import { QuizForm } from './QuizForm'
@@ -76,6 +77,8 @@ export default async function StudentAssignmentPage({ params }: { params: Promis
           const label = itemLabel(snapshot, itemNo)
           // 학생에게는 조건 문장·분량·형식·답안 방식만 넘긴다. 종이 답안 문항(answer_mode 'paper')은 AnswerEditor 가 입력칸 대신 안내를 보인다.
           const conditions = studentConditions(item)
+          // 평가 요소(대표 2026-09-29): 채점 요소 이름·만점만 — 척도 서술·예시답안·A~E는 브라우저로 보내지 않는다
+          const criteria = visibleCriteria(item.rubric)
           const ans1 = answerRows.find((r) => r.item_no === itemNo && r.attempt === 1) ?? null
           const r1 = resultOf(ans1)
           const ans2 = answerRows.find((r) => r.item_no === itemNo && r.attempt === 2) ?? null
@@ -83,13 +86,13 @@ export default async function StudentAssignmentPage({ params }: { params: Promis
           return (
             <div key={itemNo} className="space-y-5">
               <AnswerEditor assignmentId={id} itemNo={itemNo} attempt={1} initialBody={ans1?.body ?? ''} submitted={!!ans1?.submitted_at}
-                label={label} points={item.points} stem={item.stem} conditions={conditions}
+                label={label} points={item.points} stem={item.stem} conditions={conditions} criteria={criteria}
                 materials={<ItemMaterials item={item} materials={snapshot.materials} sharedIds={snapshot.shared_material_ids ?? []} />} />
               {r1 && <ResultView label={label} points={item.points} attempt={1} grading={r1} />}
               {r1 && assignment.allow_retry && !ans2 && <RetryButton assignmentId={id} itemNo={itemNo} />}
               {ans2 && (
                 <AnswerEditor assignmentId={id} itemNo={itemNo} attempt={2} initialBody={ans2.body} submitted={!!ans2.submitted_at}
-                  label={`${label} · ${copy.result.attempt(2)}`} points={item.points} stem={item.stem} conditions={conditions} />
+                  label={`${label} · ${copy.result.attempt(2)}`} points={item.points} stem={item.stem} conditions={conditions} criteria={criteria} />
               )}
               {r2 && <ResultView label={label} points={item.points} attempt={2} grading={r2} />}
             </div>

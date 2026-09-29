@@ -15,6 +15,7 @@ import { UnitPlanView } from './parts/UnitPlanView'
 import { TeacherGuideView } from './parts/TeacherGuideView'
 import { NoticePlanView } from './parts/NoticePlanView'
 import { conditionDisplayText } from '@/lib/studio/condition-text'
+import { ItemCriteria, visibleCriteria } from './parts/ItemCriteria'
 
 // v2 패키지 화면(스펙 §2.9). 카드 순서 = 표지 → 소개 → 성취기준(+A~E 접이식) → 재구조화 표 → 학습 목표(축 배지) → 핵심질문 →
 // 평가 계획 → 차시 카드(시간·소단계·발문 대본·준비물·유의점·활동지·퀴즈; 마지막 교수 차시 뒤 단원 평가 차시는 레몬 테두리 카드) →
@@ -228,6 +229,8 @@ function AssessmentItemView({ item, no, materials, sharedIds, showAnswers, open 
           <KV label={cd.formatLabel}>{item.conditions.format}</KV>
           <KV label={cd.overflowLabel}>{item.conditions.overflow_rule}</KV>
         </div>
+        {/* 평가 요소(대표 2026-09-29): 채점 요소 이름·만점 — 학생이 보는 문제지에도 인쇄된다(척도 서술은 아래 접이식 채점표에만) */}
+        <ItemCriteria criteria={visibleCriteria(item.rubric)} />
       </div>
 
       <AnswerSpace item={item} />

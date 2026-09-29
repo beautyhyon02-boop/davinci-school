@@ -494,7 +494,6 @@ export const app = {
         materialRef: (id: string) => `자료 ${id}`,
         conditionsHeading: '조건',
         conditionNo: (no: number) => `조건 ${no}.`,
-        noConditions: (kind: string) => (kind === '서술형' ? '조건 없음(서술형)' : '조건 없음'),
         lengthLabel: '분량',
         formatLabel: '형식',
         overflowLabel: '초과 응답',
@@ -626,6 +625,10 @@ export const app = {
       materialLabel: (n: number) => `<자료 ${n}>`,
       materialHint: (id: string) => `자료 ${id}`,
       materialMissing: (id: string) => `자료 ${id}을(를) 이 세트에서 찾을 수 없습니다.`,
+      // 평가 요소(대표 2026-09-29 "평가 요소에 나와 있는 것들이 조건이라고 보면 된다"): 채점 요소 이름과 만점을 학생에게도 보인다 —
+      // 학생 답안 칸·문제지 인쇄·원장 문항 카드·제작소 5단계 카드가 이 키를 같이 쓴다. 척도 서술·예시답안·A~E는 보이지 않는다.
+      criteriaHeading: '평가 요소',
+      criterionLine: (name: string, max: number) => `${name} (${max}점)`,
     },
     lessonsHeading: '차시',
     lessons: {

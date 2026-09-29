@@ -246,7 +246,10 @@ describe('site content', () => {
     expect(app.packageView.teacherGuide.lessonWithTopic(2, '도수분포표')).toBe('2차시 · 도수분포표')
     expect(app.studio.wizard.stage5.pointsLabel(3)).toContain('3')
     expect(app.studio.wizard.stage5.boundaryRange(15, 18)).toBe('15~18점')
-    expect(app.studio.wizard.stage5.noConditions('서술형')).toBe('조건 없음(서술형)')
+    // 대표 2026-09-29: "조건 없음(서술형)" 줄 대신 평가 요소(요소 이름·만점) — 학생 화면·문제지·원장 카드·제작소 카드가 같은 키
+    expect('noConditions' in app.studio.wizard.stage5).toBe(false)
+    expect(app.packageView.items.criteriaHeading).toBe('평가 요소')
+    expect(app.packageView.items.criterionLine('수치 표현 활용하기', 2)).toBe('수치 표현 활용하기 (2점)')
     expect(app.studio.wizard.stage5.commonHeading).toBe('채점 기준표(공통)')
     expect(app.studio.wizard.stage5.exemplarCount(3, 4)).toBe('3번 문항 예시답안 4개')
     expect(app.studio.wizard.errors.autoStopped).toContain('[생성]')

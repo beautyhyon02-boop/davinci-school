@@ -123,6 +123,9 @@ describe.each(['수학', '과학'] as const)('student 단원 평가 tab embeds e
     expect(src).toContain('sectionMaterialIds(lesson, lessonItems)')
     expect(src).toMatch(/materials=\{<ItemMaterials item=\{item\} materials=\{snapshot\.materials\} sharedIds=\{snapshot\.shared_material_ids \?\? \[\]\} \/>\}/)
     expect(src.match(/<ItemMaterials /g)).toHaveLength(1)   // 재도전 답안 칸에는 다시 싣지 않는다(바로 위에 있다)
+    // 평가 요소(대표 2026-09-29): 요소 이름·만점만(visibleCriteria) — 첫 답안 칸과 재도전 답안 칸 모두
+    expect(src).toContain('const criteria = visibleCriteria(item.rubric)')
+    expect(src.match(/criteria=\{criteria\}/g)).toHaveLength(2)
   })
 })
 
@@ -141,7 +144,9 @@ describe.each(['수학', '과학'] as const)('wizard stage 5 item cards embed th
       expect(boxesOf(cs[i])).toEqual(it.materials_used.map((id, k) => `${k + 1}:${id}`))
       const t = text(cs[i])
       expect(t.indexOf(c.items.materialLabel(1))).toBeGreaterThan(t.indexOf(norm(it.stem)))
-      expect(t.indexOf(app.studio.wizard.stage5.conditionsHeading)).toBeGreaterThan(t.indexOf(c.items.materialLabel(1)))
+      // 조건 칸(서술형은 "조건" 머리글 없이 분량·형식·평가 요소만 — 대표 2026-09-29)은 자료 상자 뒤에 온다
+      expect(cs[i].indexOf('&lt;자료 1&gt;')).toBeGreaterThan(-1)
+      expect(cs[i].indexOf('data-item-conditions')).toBeGreaterThan(cs[i].indexOf('&lt;자료 1&gt;'))
     })
     expect(text(html)).not.toMatch(/undefined|NaN|\[object Object\]/)
   })

@@ -9,6 +9,7 @@ import { Stage5Summary } from '@/app/admin/items/[themeId]/sets/[setId]/Stage5Su
 import { app } from '@/content/site'
 
 const copy = app.studio.wizard.stage5
+const pv = app.packageView.items
 const fx = JSON.parse(readFileSync('data/studio-fixtures/stage5-generate.json', 'utf8'))
 const render = (output: unknown) => renderToStaticMarkup(createElement(Stage5Summary, { output }))
 const text = (html: string) => html.replace(/<[^>]+>/g, ' ').replace(/&quot;/g, '"').replace(/&#x27;/g, "'").replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/\s+/g, ' ')
@@ -37,7 +38,7 @@ describe('Stage5Summary', () => {
   it('renders without undefined/NaN/[object Object] leaks', () => {
     expect(t).not.toMatch(/undefined|NaN|\[object Object\]/)
   })
-  it('shows every item: kind badge, points, stem, numbered 조건 (or 조건 없음(서술형)), length/format/answer mode', () => {
+  it('shows every item: kind badge, points, stem, numbered 조건 (서술형: none, no "조건 없음" line), length/format/answer mode', () => {
     for (const [i, it] of fx.items.entries()) {
       expect(t).toContain(norm(it.stem))
       expect(html).toContain(`>${it.kind}</span>`)
@@ -46,10 +47,12 @@ describe('Stage5Summary', () => {
       expect(t).toContain(norm(`${copy.formatLabel}: ${it.conditions.format}`))
       expect(t).toContain(copy.answerMode[it.conditions.answer_mode])
       for (const c of it.conditions.items) expect(t).toContain(norm(`${copy.conditionNo(c.no)} ${c.text}`))
-      if (it.conditions.items.length === 0) expect(t).toContain(copy.noConditions(it.kind))
       expect(t).toContain(norm(copy.exemplarCount(i + 1, it.exemplar_answers.length)))
     }
-    expect(fx.items[0].kind).toBe('서술형'); expect(t).toContain('조건 없음(서술형)')
+    // 대표 2026-09-29: 서술형의 "조건 없음(서술형)" 줄은 평가 요소 목록으로 바뀌었다 — 조건이 없는 카드에는 "조건" 머리글도 없다
+    expect(fx.items[0].kind).toBe('서술형'); expect(t).not.toContain('조건 없음')
+    const shortSeg = html.split('data-stage5-item').slice(1)[0]
+    expect(shortSeg).not.toContain(`>${copy.conditionsHeading}</p>`)
     expect(fx.items[1].conditions.items.length).toBeGreaterThanOrEqual(2)
   })
   it('shows each rubric as a criteria × points table, descriptors from 0점 upward even when stored descending', () => {
@@ -93,6 +96,28 @@ describe('Stage5Summary', () => {
       for (const e of it.exemplar_answers) separated(seg, e.text, e.rationale)
     })
   })
+  // 대표 2026-09-29 "평가 요소에 나와 있는 것들이 조건이라고 보면 된다": 문항 카드의 조건 칸에 학생이 보는 평가 요소(요소 이름·만점)를
+  // 한 줄에 하나씩 — 논술형은 번호 붙은 조건 다음, 서술형은 조건 없이 분량·형식 다음. 이 목록에는 척도 서술이 들어가지 않는다.
+  it('shows 평가 요소 (criterion name + max, one per line) in the conditions box: after the numbered 조건 for 논술형, in place of 조건 없음 for 서술형', () => {
+    const segs = html.split('data-stage5-item').slice(1)
+    fx.items.forEach((it: { kind: string; conditions: { items: { text: string }[]; format: string }; rubric: { criteria: Crit[] } }, i: number) => {
+      const seg = segs[i]
+      const box = seg.slice(seg.indexOf('data-item-conditions'), seg.indexOf(`>${copy.rubricHeading}</p>`))
+      const crit = box.slice(box.indexOf('data-item-criteria'))
+      expect(box.indexOf('data-item-criteria'), it.kind).toBeGreaterThan(0)
+      expect(text(crit)).toContain(pv.criteriaHeading)
+      for (const c of it.rubric.criteria) {
+        expect(crit).toContain(`<li>${esc(pv.criterionLine(c.name, c.max))}</li>`)
+        for (const st of c.scale) expect(crit, `${c.name} ${st.points}`).not.toContain(esc(st.descriptor))
+      }
+      for (let k = 1; k < it.rubric.criteria.length; k++) separated(crit, pv.criterionLine(it.rubric.criteria[k - 1].name, it.rubric.criteria[k - 1].max), pv.criterionLine(it.rubric.criteria[k].name, it.rubric.criteria[k].max))
+      // 조건(논술형) → 분량·형식 → 평가 요소 순서
+      const last = it.conditions.items.at(-1)
+      if (last) expect(box.indexOf(esc(last.text))).toBeLessThan(box.indexOf('data-item-criteria'))
+      expect(box.indexOf(esc(it.conditions.format))).toBeLessThan(box.indexOf('data-item-criteria'))
+    })
+    expect(pv.criterionLine('자료의 사실적 정보 설명하기', 3)).toBe('자료의 사실적 정보 설명하기 (3점)')
+  })
   it('puts 등급표(7행, level_ref) and 피드백 틀 in a separate 채점 기준표(공통) box after the items', () => {
     const common = html.indexOf('data-stage5-common')
     const lastItem = html.lastIndexOf('data-stage5-item')
@@ -108,7 +133,7 @@ describe('Stage5Summary', () => {
   it('does not crash on an old or hand-edited output with only stems and a grade table', () => {
     const old = { items: [{ kind: '서술형', points: 3, stem: '옛 문두 [3점]' }], grade_boundaries: [{ grade: 1, min: 20, max: 22, band: '상' }] }
     const h = text(render(old))
-    expect(h).toContain('옛 문두 [3점]'); expect(h).toContain(copy.noConditions('서술형'))
+    expect(h).toContain('옛 문두 [3점]'); expect(h).not.toContain('조건 없음'); expect(h).not.toContain(pv.criteriaHeading)
     expect(h).not.toMatch(/undefined|NaN/)
     expect(render({})).toContain(copy.itemsHeading)
   })

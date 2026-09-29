@@ -300,6 +300,28 @@ describe.each(['수학', '과학'] as const)('PackageView 문제지 인쇄 표�
       expect(details.every((d) => d.includes('data-print="omit"'))).toBe(true)
     })
   })
+  // 대표 2026-09-29: 채점되는 것은 학생에게 보여야 한다 — 문제지에도 평가 요소(요소 이름·만점, 한 줄에 하나)가 조건 칸 안에 인쇄된다.
+  // omit 칸 밖이고, 척도 서술은 들어가지 않는다(서술은 omit 인 접이식 채점표에만).
+  it('prints 평가 요소 (criterion name + max per line) inside each item\'s conditions box, outside every omit block, without descriptors', () => {
+    itemSegments().forEach((seg, i) => {
+      const it = items[i]
+      const at = seg.indexOf('data-item-criteria')
+      expect(at, it.kind).toBeGreaterThan(seg.indexOf('data-item-conditions'))
+      expect(at).toBeLessThan(seg.indexOf('data-answer-kind'))
+      const block = seg.slice(at, seg.indexOf('data-answer-kind'))
+      expect(block).not.toContain('data-print="omit"')
+      // 조건 칸 자체도 omit 이 아니다(문항 카드 = data-print="item", keep 칸 안)
+      expect(seg).toMatch(/<div data-item-conditions="true" class="[^"]*">/)
+      expect(text(block)).toContain(c.items.criteriaHeading)
+      for (const cr of it.rubric.criteria) {
+        expect(block).toContain(`<li>${esc(c.items.criterionLine(cr.name, cr.max))}</li>`)
+        for (const st of cr.scale) expect(block).not.toContain(esc(st.descriptor))
+      }
+      // 논술형은 번호 붙은 조건 다음에
+      for (const cd of it.conditions.items) expect(seg.indexOf(esc(cd.text))).toBeLessThan(at)
+      expect(text(seg)).not.toContain('조건 없음')
+    })
+  })
   it('gives each item a sheet-only answer space: 서술형 10 lines (6점), 논술형 20 lines, paper items a boxed note', () => {
     expect(ANSWER_LINES).toEqual({ 서술형: 10, 논술형: 20 })
     itemSegments().forEach((seg, i) => {
