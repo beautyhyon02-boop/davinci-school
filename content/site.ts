@@ -942,7 +942,7 @@ export const app = {
         teacherEntered: '원장이 넣은 칸(종이로 푼 문제)',
         notOpen: '아직 열지 않은 차시라 O/X 를 넣을 수 없습니다.',
       },
-      fillEmpty: '이 차시 빈칸 모두 O',
+      fillEmpty: '종이로 푼 학생 O 채우기',
       fillEmptyHint: '누르면 학생 목록이 나옵니다. 종이로 푼 학생만 골라 빈칸을 O 로 채우고, 그다음 틀린 칸만 눌러 X 로 바꾸세요.',
       fillEmptyAbsentHint: '결석한 학생과 이 차시를 아직 열지 않은 학생은 채우지 않습니다.',
       fillPick: {
