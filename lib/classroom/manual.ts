@@ -42,3 +42,8 @@ export function canEnterPaperScore(first: { submitted_at: string | null; source:
   if (!first || !first.submitted_at) return true
   return first.source === 'teacher' && !hasGrading
 }
+
+/** 학생이 쓰다 만 글(제출 전 임시저장, 본문 있음)이 있는가 — 종이 답안 점수를 저장하면 그 글이 표지 문장으로 바뀐다. */
+export function hasUnsentDraft(first: { submitted_at: string | null; source: string; body?: string | null } | null | undefined): boolean {
+  return !!first && !first.submitted_at && first.source === 'student' && typeof first.body === 'string' && first.body.trim().length > 0
+}

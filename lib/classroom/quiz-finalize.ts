@@ -67,6 +67,14 @@ export function assignmentsWithEmpty(lesson: { no: number; quizCount: number }, 
   return assignmentIds.filter((id) => missing.has(id))
 }
 
+/**
+ * [이 차시 빈칸 모두 O]에서 고를 수 있는 배정: 그 차시가 열려 있는(open_lessons >= 차시) 배정만, 주어진 순서대로.
+ * 열지 않은 차시는 그 학생이 아직 배우지 않은 것이라 종이로도 풀지 않았다.
+ */
+export function fillCandidates(lessonNo: number, students: { assignmentId: string; openLessons: number }[], withEmpty?: string[]): string[] {
+  return students.filter((s) => s.openLessons >= lessonNo && (!withEmpty || withEmpty.includes(s.assignmentId))).map((s) => s.assignmentId)
+}
+
 /** O/X 가 바뀐 칸들 때문에 최종 확인이 풀려야 하는 (배정, 차시) — 중복 없이. */
 export function affectedFinalizations(changed: ResponseKey[]): { assignment_id: string; lesson_no: number }[] {
   const seen = new Set<string>()

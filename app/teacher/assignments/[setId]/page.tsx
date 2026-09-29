@@ -6,7 +6,7 @@ import { OpenLessonsControl } from './OpenLessonsControl'
 import { QuizMatrix } from './QuizMatrix'
 import { ReviewCard } from './ReviewCard'
 import { PaperScoreForm, type PaperRubric } from './PaperScoreForm'
-import { canEnterPaperScore, isManualGrading } from '@/lib/classroom/manual'
+import { canEnterPaperScore, hasUnsentDraft, isManualGrading } from '@/lib/classroom/manual'
 import { sortScale } from '@/lib/studio/scale'
 import { Badge } from '@/components/ui/Badge'
 import { overallFor, gradeFor } from '@/lib/classroom/scoring'
@@ -51,7 +51,7 @@ export default async function AssignmentSetPage({ params }: { params: Promise<{ 
   const gradingRows = (gradings ?? []) as GradingRow[]
   const items = snapshot.assessment?.items ?? []
   const lessonsMeta = snapshot.lessons.map((l) => ({ no: l.no, quizCount: l.formative_check.quiz.length, types: l.formative_check.quiz.map((q) => q.type) }))
-  const students = rows.map((r) => ({ assignmentId: r.id, name: r.students?.profiles?.name ?? '' }))
+  const students = rows.map((r) => ({ assignmentId: r.id, name: r.students?.profiles?.name ?? '', openLessons: r.open_lessons }))
 
   return (
     <>
@@ -99,7 +99,7 @@ export default async function AssignmentSetPage({ params }: { params: Promise<{ 
                   // 종이 답안 점수 입력(설계 2026-09-29 §4.2): 제출된 1회차 답안이 없는 문항에만. 클라이언트로는 요소 이름·만점·척도만 넘긴다.
                   const rubric: PaperRubric = it.rubric.criteria.map((c) => ({ name: c.name, max: c.max, scale: sortScale(c.scale).map((s) => ({ points: s.points, descriptor: s.descriptor })) }))
                   if (canEnterPaperScore(first, !!gradingOf(first))) {
-                    return <PaperScoreForm key={`paper-${i}`} assignmentId={r.id} itemNo={i + 1} label={label} points={it.points} rubric={rubric} />
+                    return <PaperScoreForm key={`paper-${i}`} assignmentId={r.id} itemNo={i + 1} label={label} points={it.points} rubric={rubric} draftWarning={hasUnsentDraft(first)} />
                   }
                   // 다시 고치기로 확정을 푼 종이 답안 점수는 같은 입력 칸으로 고친다(AI 초안이 없어 검수 카드의 AI 단추가 뜻이 없다)
                   if (a && a.attempt === 1 && grading && isManualGrading(grading) && grading.status === 'drafted') {

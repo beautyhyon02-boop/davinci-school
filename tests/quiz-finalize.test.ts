@@ -1,5 +1,5 @@
 // 퀴즈 최종 확인·종이 O/X 입력(설계 2026-09-29 §4.1): 순수 계산(quiz-finalize.ts)과 DB 쓰기(quiz-entry.ts, 가짜 클라이언트).
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
 import {
   cellState, nextCellState, canSetCell, isTeacherEntered, teacherQuizRow, emptyCells, assignmentsWithEmpty,
@@ -167,17 +167,19 @@ describe('fillEmptyCorrect · finalizeLesson · unfinalize · loadFinalizations 
     expect(await finalizeLesson(db as never, { ...args, now: '2026-09-30T00:00:00.000Z' })).toEqual({ ok: true })
     expect(db.tables.quiz_finalizations).toHaveLength(2)
     expect(db.tables.quiz_finalizations[0]).toMatchObject({ assignment_id: 'a1', academy_id: 'ac', lesson_no: 3, finalized_by: 'u1', finalized_at: '2026-09-30T00:00:00.000Z' })
-    expect(await unfinalize(db as never, ['a1', 'a2'], 3)).toBe(true)
+    expect(await unfinalize(db as never, ['a1', 'a2'], 3)).toEqual({ ok: true, removed: true })
     expect(db.tables.quiz_finalizations).toEqual([])
-    expect(await unfinalize(db as never, ['a1', 'a2'], 3)).toBe(false)
+    expect(await unfinalize(db as never, ['a1', 'a2'], 3)).toEqual({ ok: true, removed: false })
   })
-  it('missing table: load → not available and empty, finalize → not ok, unfinalize → false; none throws', async () => {
+  it('missing table: load → not available and empty, finalize → not ok, unfinalize → nothing to release; none throws', async () => {
     const db = memoryDb({}, { missing: ['quiz_finalizations'] })
     expect(await loadFinalizations(db as never, ['a1'])).toEqual({ available: false, rows: [] })
     expect(await finalizeLesson(db as never, { assignments: [{ id: 'a1', academy_id: 'ac' }], lessonNo: 1, userId: 'u1', now: NOW })).toEqual({ ok: false })
-    expect(await unfinalize(db as never, ['a1'], 1)).toBe(false)
+    expect(await unfinalize(db as never, ['a1'], 1)).toEqual({ ok: true, removed: false })
+    const quiet = vi.spyOn(console, 'error').mockImplementation(() => {})
     const throwing = { from: () => { throw new Error('network') } }
     expect(await loadFinalizations(throwing as never, ['a1'])).toEqual({ available: false, rows: [] })
+    quiet.mockRestore()
   })
   it('loadFinalizations returns the rows of the given assignments', async () => {
     const db = memoryDb({ quiz_finalizations: [{ assignment_id: 'a1', lesson_no: 1, finalized_at: NOW }, { assignment_id: 'b1', lesson_no: 1, finalized_at: NOW }] })

@@ -18,13 +18,15 @@ type Props = {
   rubric: PaperRubric
   /** 있으면 고치기(다시 고치기로 확정을 푼 종이 답안 점수) — 저장은 confirmGrading. 없으면 새로 넣기. */
   edit?: { gradingId: string; points: number[]; comment: string }
+  /** 학생이 쓰다 만 글(제출 전 임시저장)이 있다 — 저장하면 그 글이 바뀐다고 한 줄로 알린다. 저장은 막지 않는다. */
+  draftWarning?: boolean
 }
 
 /**
  * [종이 답안 점수 입력](설계 2026-09-29 §4.2): 요소 이름(굵게) 아래 척도를 한 줄에 하나씩 고르고, 합계가 바로 바뀐다.
  * 저장하면 확정본이 된다(AI 호출 없음).
  */
-export function PaperScoreForm({ assignmentId, itemNo, label, points, rubric, edit }: Props) {
+export function PaperScoreForm({ assignmentId, itemNo, label, points, rubric, edit, draftWarning }: Props) {
   const [open, setOpen] = useState(!!edit)
   const [chosen, setChosen] = useState<(number | null)[]>(rubric.map((_, i) => edit?.points[i] ?? null))
   const [comment, setComment] = useState(edit?.comment ?? '')
@@ -54,6 +56,7 @@ export function PaperScoreForm({ assignmentId, itemNo, label, points, rubric, ed
       {open && (
         <div className="mt-3 space-y-4">
           <p className="text-sm text-ink-700">{edit ? copy.editIntro : copy.intro}</p>
+          {draftWarning && !edit && <p className="rounded-xl bg-lemon-100 p-3 text-sm text-ink-900">{copy.draftWarning}</p>}
           {rubric.map((c, i) => (
             <fieldset key={c.name} className="rounded-xl bg-white p-3">
               <legend className="px-1 text-base font-bold">{c.name} <span className="text-sm font-normal text-ink-500">{copy.criterionMax(c.max)}</span></legend>

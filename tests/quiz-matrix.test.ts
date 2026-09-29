@@ -9,7 +9,7 @@ const { app } = await import('@/content/site')
 const copy = app.classroom.review
 
 const lessons = [{ no: 1, quizCount: 3, types: ['short', 'short', 'short'] as ('choice' | 'short')[] }, { no: 6, quizCount: 0, types: [] }]
-const students = [{ assignmentId: 'a1', name: '김하늘' }, { assignmentId: 'a2', name: '이바다' }]
+const students = [{ assignmentId: 'a1', name: '김하늘', openLessons: 8 }, { assignmentId: 'a2', name: '이바다', openLessons: 8 }]
 const row = (assignment_id: string, quiz_no: number, correct: boolean, source: 'student' | 'teacher') => ({ assignment_id, lesson_no: 1, quiz_no, response: source === 'teacher' ? '' : '답', correct, source })
 const full = [row('a1', 1, true, 'student'), row('a1', 2, false, 'student'), row('a1', 3, true, 'teacher')]
 const text = (html: string) => html.replace(/<[^>]+>/g, ' ').replace(/&quot;/g, '"').replace(/\s+/g, ' ')

@@ -5,7 +5,7 @@ import { getSessionProfile } from '@/lib/auth/session'
 import { app } from '@/content/site'
 import type { Criterion } from '@/lib/classroom/types'
 import { loadAssignmentSnapshot } from '@/lib/classroom/snapshot'
-import { itemNosForLesson } from '@/lib/classroom/lessons'
+import { itemNosForLesson, isLessonOpen } from '@/lib/classroom/lessons'
 import { buildNoticeSkeleton, applyDraft, mergeEditable, noticeDataKey, todayKst, type NoticeGradingInput } from '@/lib/classroom/notice'
 import { Notice, NoticeDraftOut, type NoticeT } from '@/lib/classroom/notice-schema'
 import { buildNoticePrompt } from '@/lib/classroom/notice-prompt'
@@ -14,7 +14,7 @@ import { callStructured } from '@/lib/ai/claude'
 import type { CellState } from '@/lib/classroom/quiz-finalize'
 import { isManualGrading } from '@/lib/classroom/manual'
 import { savePaperScore, type PaperScoreReason } from '@/lib/classroom/paper-score'
-import { applyQuizCell, fillEmptyCorrect, finalizeLesson, unfinalize } from '@/lib/classroom/quiz-entry'
+import { applyQuizCell, fillSelectedCorrect, finalizeLesson, unfinalize, type EntryResult } from '@/lib/classroom/quiz-entry'
 
 const errors = app.classroom.assign.errors
 const rev = app.classroom.review.errors
@@ -145,26 +145,34 @@ export async function enterPaperScore(assignmentId: string, itemNo: number, poin
 }
 
 export type QuizEntryResult = { ok: true; unfinalized: boolean } | { ok: false; error: string }
-const entryError = (reason: 'not-allowed' | 'save-failed') => (reason === 'not-allowed' ? rev.quizCellNotAllowed : rev.saveFailed)
+type EntryReason = Extract<EntryResult, { ok: false }>['reason']
+const ENTRY_ERRORS: Record<EntryReason, string> = {
+  'not-allowed': rev.quizCellNotAllowed, 'not-open': rev.quizLessonNotOpen, 'save-failed': rev.saveFailed, 'unfinalize-failed': rev.unfinalizeFailed,
+}
 const validLesson = (n: number) => Number.isInteger(n) && n >= 1 && n <= 8
 
 /**
  * 퀴즈 칸 하나를 O / X / 빈칸으로(설계 2026-09-29 §4.1). 빈칸에 O·X 를 넣으면 원장 줄(source 'teacher' — 종이로 푼 학생),
  * 원장 줄은 다시 빈칸으로 지울 수 있고, 학생이 화면에서 푼 단답형은 O ↔ X 만 바뀐다(규칙은 lib/classroom/quiz-finalize.ts canSetCell).
  * 원장 클라이언트로 쓴다(RLS teacher_rw_quiz 가 자기 원의 배정만 허용). 바뀌면 그 학생·그 차시의 최종 확인이 풀린다.
+ * 그 배정에 아직 열지 않은 차시의 빈칸에는 O/X 를 넣지 않는다(이미 넣은 칸은 고치거나 지울 수 있다).
  */
 export async function setQuizCell(assignmentId: string, lessonNo: number, quizNo: number, target: CellState): Promise<QuizEntryResult> {
   const s = await assertTeacher()
   if (!validLesson(lessonNo) || !Number.isInteger(quizNo)) return { ok: false, error: rev.quizCellNotAllowed }
   const supabase = await createClient()
-  const { data: a } = await supabase.from('assignments').select('id, item_set_id, item_set_version, academy_id').eq('id', assignmentId).eq('academy_id', s.academyId).maybeSingle()
+  const { data: a } = await supabase.from('assignments').select('id, item_set_id, item_set_version, academy_id, open_lessons').eq('id', assignmentId).eq('academy_id', s.academyId).maybeSingle()
   if (!a) return { ok: false, error: rev.saveFailed }
   const snapshot = await loadAssignmentSnapshot(supabase, a.item_set_id, a.item_set_version)
   const quiz = snapshot?.lessons.find((l) => l.no === lessonNo)?.formative_check.quiz ?? []
   if (quizNo < 1 || quizNo > quiz.length) return { ok: false, error: rev.quizCellNotAllowed }
-  const r = await applyQuizCell(supabase, { assignment_id: assignmentId, lesson_no: lessonNo, quiz_no: quizNo, target, quizType: quiz[quizNo - 1].type, userId: s.userId, now: new Date().toISOString() })
-  if (!r.ok) return { ok: false, error: entryError(r.reason) }
-  revalidatePath(`/teacher/assignments/${a.item_set_id}`)
+  const r = await applyQuizCell(supabase, {
+    assignment_id: assignmentId, lesson_no: lessonNo, quiz_no: quizNo, target, quizType: quiz[quizNo - 1].type, userId: s.userId, now: new Date().toISOString(),
+    lessonOpen: isLessonOpen(a.open_lessons, lessonNo),
+  })
+  // 확인 풀기만 실패한 경우에도 O/X 는 이미 저장됐다 — 표를 새로 그린다
+  if (r.ok || r.reason === 'unfinalize-failed') revalidatePath(`/teacher/assignments/${a.item_set_id}`)
+  if (!r.ok) return { ok: false, error: ENTRY_ERRORS[r.reason] }
   return { ok: true, unfinalized: r.unfinalized }
 }
 
@@ -180,15 +188,19 @@ async function loadSetLesson(supabase: ServerClient, academyId: string, setId: s
   return { assignments, lesson: { no: lessonNo, quizCount } }
 }
 
-/** [이 차시 빈칸 모두 O]: 응답이 없는 칸만 원장 줄(O)로 채운다. 원장은 그 뒤 틀린 칸만 X 로 바꾼다. */
-export async function fillEmptyQuiz(setId: string, lessonNo: number): Promise<QuizEntryResult> {
+/**
+ * [이 차시 빈칸 모두 O] → [선택한 학생의 빈칸을 O로]: 원장이 체크한 배정만 받는다(결석한 학생을 채우지 않게).
+ * 받은 id 는 서버가 다시 확인한다 — 자기 원·이 세트의 배정만, 그 차시를 연 배정만(fillSelectedCorrect). 응답이 없는 칸만 원장 줄(O)로 채운다.
+ */
+export async function fillEmptyQuiz(setId: string, lessonNo: number, assignmentIds: string[]): Promise<QuizEntryResult> {
   const s = await assertTeacher()
+  if (!Array.isArray(assignmentIds) || assignmentIds.length === 0) return { ok: false, error: rev.fillNoneSelected }
   const supabase = await createClient()
   const d = await loadSetLesson(supabase, s.academyId, setId, lessonNo)
   if (!d) return { ok: false, error: rev.saveFailed }
-  const r = await fillEmptyCorrect(supabase, { assignmentIds: d.assignments.map((x) => x.id), lesson: d.lesson, userId: s.userId, now: new Date().toISOString() })
-  if (!r.ok) return { ok: false, error: entryError(r.reason) }
-  revalidatePath(`/teacher/assignments/${setId}`)
+  const r = await fillSelectedCorrect(supabase, { academyId: s.academyId, setId, assignmentIds, lesson: d.lesson, userId: s.userId, now: new Date().toISOString() })
+  if (r.ok || r.reason === 'unfinalize-failed') revalidatePath(`/teacher/assignments/${setId}`)
+  if (!r.ok) return { ok: false, error: ENTRY_ERRORS[r.reason] }
   return { ok: true, unfinalized: r.unfinalized }
 }
 
@@ -213,7 +225,8 @@ export async function unfinalizeQuizLesson(setId: string, lessonNo: number): Pro
   const supabase = await createClient()
   const d = await loadSetLesson(supabase, s.academyId, setId, lessonNo)
   if (!d) return { ok: false, error: rev.finalizeFailed }
-  await unfinalize(supabase, d.assignments.map((x) => x.id), lessonNo)
+  const r = await unfinalize(supabase, d.assignments.map((x) => x.id), lessonNo)
+  if (!r.ok) return { ok: false, error: rev.undoFailed }
   revalidatePath(`/teacher/assignments/${setId}`)
   return { ok: true }
 }

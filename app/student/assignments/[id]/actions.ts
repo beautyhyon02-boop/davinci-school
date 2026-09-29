@@ -40,8 +40,13 @@ export async function submitQuiz(assignmentId: string, lessonNo: number, respons
   // 학생에게는 quiz_responses 쓰기 정책이 없다(정오를 스스로 적지 못하게). 위의 본인·열린 차시·중복 검사를 사용자 클라이언트로
   // 마친 뒤, 서버가 judgeQuiz 로 매긴 결과를 service role 로 넣는다(gradings 와 같은 방식). unique 제약이 동시 제출을 막는다.
   const { createAdminClient } = await import('@/lib/supabase/admin')
-  const { error } = await createAdminClient().from('quiz_responses').insert(rows)
+  const admin = createAdminClient()
+  const { error } = await admin.from('quiz_responses').insert(rows)
   if (error) return { ok: false, error: errors.saveFailed }
+  // 원장이 이 차시를 이미 최종 확인한 뒤에 낸 경우: 이 학생·이 차시의 확인을 푼다(원장 화면 「확인이 풀린 학생」에 뜬다).
+  // 학생 제출은 끝났으므로 표가 없거나(0014 전) 풀지 못해도 제출 결과는 그대로 돌려준다.
+  const { releaseAfterStudentQuiz } = await import('@/lib/classroom/quiz-entry')
+  await releaseAfterStudentQuiz(admin, assignmentId, lessonNo)
   revalidatePath(`/student/assignments/${assignmentId}`)
   return { ok: true, results: rows.map((r, i) => ({ correct: r.correct, answer: lesson.formative_check.quiz[i].answer, explanation: lesson.formative_check.quiz[i].explanation })) }
 }
