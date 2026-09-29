@@ -1,19 +1,20 @@
 // PackageView(관리자 미리보기·원장 열람)를 mock fixture 로 조립한 v2 스냅샷으로 실제 렌더해 본다(서버 렌더 = 정적 마크업).
 // 스펙 §2.9 카드 순서와 차시·자료·문항 카드의 핵심 표시(분 단위 소단계·활동지 3단계·자료 라벨·조건 번호·[N점]·종이 답안)를 확인한다.
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { PackageView, MaterialsSection, ANSWER_LINES } from '@/components/studio/PackageView'
 import { buildSnapshot, upgradeSnapshot, type Snapshot } from '@/lib/studio/publish'
 import { app } from '@/content/site'
 import { SHORT_MINUTES, ESSAY_MINUTES } from '@/lib/studio/structure-text'
+import { englishMaterials, englishGuide, englishTranslations } from './fixtures/english-guide'
 
 const fx = (k: string) => JSON.parse(readFileSync(`data/studio-fixtures/${k}.json`, 'utf8'))
 const v1 = (k: string) => JSON.parse(readFileSync(`tests/fixtures/v1/${k}.json`, 'utf8'))
 const c = app.packageView
 
-function snapshotFor(subject: '수학' | '과학', grade: number | null = 1): Snapshot {
+function snapshotFor(subject: '수학' | '과학', grade: number | null = 1, guide?: unknown): Snapshot {
   const sfx = subject === '과학' ? '-과학' : ''
   const s2 = fx(`stage2-generate${sfx}`); const s3 = fx(`stage3-generate${sfx}`)
   return buildSnapshot({
@@ -21,7 +22,7 @@ function snapshotFor(subject: '수학' | '과학', grade: number | null = 1): Sn
     itemSet: {
       subject, level: '중', grade, reconstruction: s2.reconstruction, reconstruction_detail: s2.standards, learning_goals: s2.learning_goals,
       key_question: s2.key_question_candidates[0], unit_plan: s3.unit_plan, lessons: s3.lessons, materials: fx(`stage4-generate${sfx}`).materials,
-      assessment: fx(`stage5-generate${sfx}`), teacher_guide: fx(`stage6-generate${sfx}`), notice_plan: fx(`stage7-generate${sfx}`),
+      assessment: fx(`stage5-generate${sfx}`), teacher_guide: (guide ?? fx(`stage6-generate${sfx}`)) as never, notice_plan: fx(`stage7-generate${sfx}`),
       stage_status: { stage5: { state: 'accepted', attempt: 1, model: 'mock', updated_at: '' } },
     },
     standards: s2.standards.map((s: { code: string; original_text: string }) => ({ code: s.code, text: s.original_text })),
@@ -526,5 +527,56 @@ describe.each([['수학', ['A', 'B']], ['과학', ['B', 'D']]] as const)('Packag
   it('an old snapshot without shared_material_ids renders without badges', () => {
     const old = { ...snap }; delete (old as { shared_material_ids?: string[] }).shared_material_ids
     expect(render(old, 'teacher')).not.toContain(`>${c.materials.sharedBadge}<`)
+  })
+})
+
+// S-영-08(대표 2026-09-29 "영어 자료의 경우 비전공 원장님을 위해 영문 자료에 한국어 번역본을 첨부해서 교사용 지침서에 넣어줘"):
+// 번역은 교사용 지침서 카드 안에만 — 원장·관리자 화면에 보이고, 문제지 인쇄(print="keep" 칸만)와 학생 화면에는 없다.
+describe('영문 자료 번역 (교사용, S-영-08)', () => {
+  const tg = c.teacherGuide
+  const base = snapshotFor('수학')
+  const snap: Snapshot = { ...base, materials: [...base.materials, ...(englishMaterials as unknown as Snapshot['materials'])], teacher_guide: englishGuide() }
+  it('admin·teacher modes show the translations inside the teacher guide card: <자료 id · 원제목>, Korean title/body, Korean table headers, exemplars by item', () => {
+    for (const mode of ['admin', 'teacher'] as const) {
+      const html = render(snap, mode)
+      const card = html.slice(html.indexOf(`>${c.teacherGuideHeading}</h2>`), html.indexOf(`>${c.noticePlanHeading}</h2>`))
+      const t = text(card)
+      expect(t).toContain(tg.translationsHeading)
+      expect(t).toContain(norm(tg.translationsMaterial('E', 'Eco Booth Notice')))
+      expect(t).toContain(norm(tg.translationsMaterial('F', 'Cup Survey')))
+      for (const m of englishTranslations.materials) expect(t).toContain(m.title_ko)
+      expect(t).toContain(norm(englishTranslations.materials[0].body_ko!))
+      for (const h of ['품목', '개수']) expect(card).toContain(`>${h}</th>`)
+      expect(card).toContain('>플라스틱 빨대</td>')
+      expect(t).toContain(tg.translationsExemplarsHeading)
+      for (const no of [1, 2]) expect(card).toContain(`data-translation-item="${no}"`)
+      for (const e of englishTranslations.exemplar_answers) expect(t).toContain(norm(e.text_ko))
+      // 한국어 번역은 원문 제목 아랫줄에(한 줄에 이어 붙지 않는다)
+      separated(card, tg.translationsMaterial('E', 'Eco Booth Notice'), englishTranslations.materials[0].title_ko)
+      separated(card, tg.translationsExemplarItem(2), englishTranslations.exemplar_answers[1].text_ko)
+    }
+  })
+  it('is omitted from the 문제지 print: the section carries data-print="omit" and its card is not print="keep"', () => {
+    const html = render(snap, 'teacher')
+    expect(html).toMatch(/<section data-print="omit" data-guide-translations/)
+    const cardStart = html.lastIndexOf('<div', html.indexOf(`>${c.teacherGuideHeading}</h2>`))
+    expect(html.slice(cardStart, html.indexOf('>', cardStart))).not.toContain('data-print="keep"')
+  })
+  it('buildSnapshot (draft → 게시 판) and upgradeSnapshot (게시 판 읽기) carry translations through unchanged', () => {
+    const built = snapshotFor('수학', 1, englishGuide())
+    expect(built.teacher_guide!.translations).toEqual(englishTranslations)
+    expect(upgradeSnapshot(JSON.parse(JSON.stringify(built))).teacher_guide!.translations).toEqual(englishTranslations)
+  })
+  it('Korean-only sets (수학·과학 fixtures) show no translation section', () => {
+    for (const subject of ['수학', '과학'] as const) expect(text(render(snapshotFor(subject), 'admin'))).not.toContain(tg.translationsHeading)
+  })
+  it('the student pages never import or render the teacher guide or its translations', () => {
+    const files = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap((d) => (d.isDirectory() ? files(`${dir}/${d.name}`) : /\.tsx?$/.test(d.name) ? [`${dir}/${d.name}`] : []))
+    const sources = files('app/student')
+    expect(sources.length).toBeGreaterThan(3)
+    for (const f of sources) {
+      const src = readFileSync(f, 'utf8')
+      for (const needle of ['TeacherGuideView', 'PackageView', 'teacher_guide', 'translations', 'title_ko', 'body_ko', 'text_ko', 'translationsHeading']) expect(src, `${f} ↔ ${needle}`).not.toContain(needle)
+    }
   })
 })

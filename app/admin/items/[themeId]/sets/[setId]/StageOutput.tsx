@@ -108,7 +108,9 @@ export function StageOutput({ stage, outputs, sharedMaterials = [] }: {
 
   if (stage === 6) {
     const lessons = arr((outputs[3] as Stage3Output | null | undefined)?.lessons)
-    return <TeacherGuideView guide={output as TeacherGuideLike} lessons={lessons} />
+    // 영문 자료 번역(S-영-08) 머리에 원제목을 함께 적도록 세트 자료·공유 자료를 넘긴다
+    const materials = [...arr((outputs[4] as { materials?: MaterialLike[] } | null | undefined)?.materials), ...sharedMaterials]
+    return <TeacherGuideView guide={output as TeacherGuideLike} lessons={lessons} materials={materials} />
   }
 
   return <NoticePlanView plan={output as NoticePlanLike} />

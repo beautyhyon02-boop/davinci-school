@@ -71,6 +71,10 @@ export const EDITABLE_FIELDS: Record<EditableStage, FieldSpec[]> = {
     text('grading_guide.review_tips[]'),
     text('grading_guide.retry_guidance'),
     text('per_lesson[].notes[]'),
+    // S-영-08(대표 2026-09-29): 영문 자료·영어 예시답안의 한국어 번역 — 관리자가 오역을 고친다(HITL). 없는(null) 본문 번역은 칸이 되지 않는다
+    line('translations.materials[].title_ko'),
+    text('translations.materials[].body_ko'),
+    text('translations.exemplar_answers[].text_ko'),
   ],
   7: [
     text('per_lesson[].topic_summary'),

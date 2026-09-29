@@ -335,12 +335,14 @@ function GradingCriteriaCard({ assessment, open }: { assessment: NonNullable<Sna
   )
 }
 
-function TeacherGuideSection({ guide, lessons }: { guide: Snapshot['teacher_guide']; lessons: Snapshot['lessons'] }) {
+// 교사용 지침서 카드 — 영문 자료 번역(S-영-08, 교사용)도 이 카드 안에 있다. 원장·관리자 화면만(학생 화면은 PackageView 를 쓰지 않는다),
+// 문제지 인쇄에는 print="keep" 이 아니라 카드째 빠진다.
+function TeacherGuideSection({ guide, lessons, materials }: { guide: Snapshot['teacher_guide']; lessons: Snapshot['lessons']; materials: Snapshot['materials'] }) {
   if (!guide) return null
   return (
     <Card>
       <SectionHeading>{copy.teacherGuideHeading}</SectionHeading>
-      <TeacherGuideView guide={guide} lessons={lessons} />
+      <TeacherGuideView guide={guide} lessons={lessons} materials={materials} />
     </Card>
   )
 }
@@ -412,7 +414,7 @@ export function PackageView({ snapshot, mode, showAnswers = false }: { snapshot:
         <p data-print="omit" className="text-sm text-ink-500">{c.materialsOmitted(snapshot.materials_omitted!)}</p>
       )}
       <AssessmentSection assessment={snapshot.assessment} materials={snapshot.materials} sharedIds={snapshot.shared_material_ids ?? []} showAnswers={showAnswers} open={open} />
-      <TeacherGuideSection guide={snapshot.teacher_guide} lessons={snapshot.lessons} />
+      <TeacherGuideSection guide={snapshot.teacher_guide} lessons={snapshot.lessons} materials={snapshot.materials} />
       <NoticePlanSection plan={snapshot.notice_plan} />
 
       {snapshot.references.length > 0 && (

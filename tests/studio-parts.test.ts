@@ -10,6 +10,7 @@ import { TeacherGuideView } from '@/components/studio/parts/TeacherGuideView'
 import { NoticePlanView } from '@/components/studio/parts/NoticePlanView'
 import { UnitPlanView } from '@/components/studio/parts/UnitPlanView'
 import { app } from '@/content/site'
+import { englishGuide, englishMaterials } from './fixtures/english-guide'
 
 const fx = (k: string) => JSON.parse(readFileSync(`data/studio-fixtures/${k}.json`, 'utf8'))
 const text = (html: string) => html.replace(/<[^>]+>/g, ' ').replace(/&quot;/g, '"').replace(/&#x27;/g, "'").replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/\s+/g, ' ')
@@ -275,6 +276,29 @@ describe('parts are client-safe', () => {
       expect(src, f).not.toMatch(/from '@\/lib\/reference\/levels'/)
       expect(src, f).not.toMatch(/from 'node:|from 'fs'|from '@\/lib\/supabase/)
       expect(src, f).not.toMatch(/from '[^']*PackageView'/)
+    }
+  })
+})
+
+// S-영-08(대표 2026-09-29): 제작소 6단계 탭도 같은 조각 — 번역은 지침서 맨 끝 「영문 자료 번역 (교사용)」, 문제지 인쇄에서 빠진다
+describe('TeacherGuideView — 영문 자료 번역 (교사용)', () => {
+  const tg = c.teacherGuide
+  it('renders translations after the per-lesson notes; header uses the original title when materials are given, else just the id', () => {
+    const html = renderToStaticMarkup(createElement(TeacherGuideView, { guide: englishGuide(), materials: englishMaterials }))
+    const t = text(html)
+    expect(t).not.toMatch(/undefined|NaN|\[object Object\]/)
+    expect(html.indexOf(esc(tg.translationsHeading))).toBeGreaterThan(html.indexOf(esc(tg.perLessonHeading)))
+    expect(html).toContain('data-print="omit" data-guide-translations')
+    expect(t).toContain(norm(tg.translationsMaterial('E', 'Eco Booth Notice')))
+    expect(segment(html, 'data-translation-material', 'F')).toContain('>품목</th>')
+    const bare = text(renderToStaticMarkup(createElement(TeacherGuideView, { guide: englishGuide() })))
+    expect(bare).toContain(norm(tg.translationsMaterial('E'))); expect(bare).not.toContain('Eco Booth Notice')
+    expect(tg.translationsExemplarLabel('6')).toBe('6점'); expect(tg.translationsExemplarLabel('상')).toBe('상')
+  })
+  it('shows nothing for guides without translations (Korean sets, older guides) or with empty ones', () => {
+    const plain = JSON.parse(readFileSync('data/studio-fixtures/stage6-generate.json', 'utf8'))
+    for (const guide of [plain, { ...plain, translations: null }, { ...plain, translations: { materials: [], exemplar_answers: [] } }]) {
+      expect(text(renderToStaticMarkup(createElement(TeacherGuideView, { guide })))).not.toContain(tg.translationsHeading)
     }
   })
 })

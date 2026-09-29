@@ -402,6 +402,7 @@ export const app = {
           merge_guide: () => '두 차시 합치기',
           grading_guide: () => '채점 안내',
           per_lesson: (tag: string) => `${tag}차시`,
+          translations: () => '영문 자료·예시답안 번역 (교사용)',
         } as Record<string, (tag: string) => string>,
         labels: {
           // 2단계
@@ -456,6 +457,10 @@ export const app = {
           'grading_guide.review_tips[]': (ix: number[]) => `검수 요령 ${nth(ix[0])}`,
           'grading_guide.retry_guidance': () => '재도전 안내',
           'per_lesson[].notes[]': (ix: number[]) => `메모 ${nth(ix[1])}`,
+          // 6단계 영문 자료·영어 예시답안 번역(S-영-08, 교사용)
+          'translations.materials[].title_ko': (_ix: number[], p: FieldParent) => `자료 ${String(p.material_id ?? '')} 제목 번역`,
+          'translations.materials[].body_ko': (_ix: number[], p: FieldParent) => `자료 ${String(p.material_id ?? '')} 본문 번역`,
+          'translations.exemplar_answers[].text_ko': (_ix: number[], p: FieldParent) => `${String(p.item_no ?? '')}번 문항 예시답안 ${String(p.label ?? '')} 번역`,
           // 7단계
           'per_lesson[].topic_summary': () => '배운 것 (60자 이내)',
           'per_lesson[].preview': () => '다음 차시 예고 (50자 이내)',
@@ -691,6 +696,17 @@ export const app = {
       howToReadLabel: '이렇게 읽기',
       reviewTips: '검수 팁',
       retryLabel: '재도전 안내',
+      // S-영-08(대표 2026-09-29 "영어 자료의 경우 비전공 원장님을 위해 영문 자료에 한국어 번역본을 첨부해서 교사용 지침서에 넣어줘"):
+      // 원장 패키지 화면·제작소 6단계 탭의 지침서 안에만 — 학생 화면·문제지 인쇄에는 나오지 않는다
+      translationsHeading: '영문 자료 번역 (교사용)',
+      translationsNote: '비전공 원장님을 위한 한국어 번역입니다. 학생 화면과 문제지에는 나오지 않습니다.',
+      translationsMaterial: (id: string, title?: string) => (title ? `<자료 ${id} · ${title}>` : `<자료 ${id}>`),
+      translationsTitleLabel: '제목',
+      translationsBodyLabel: '본문',
+      translationsTableLabel: '표',
+      translationsExemplarsHeading: '영어 예시답안 번역',
+      translationsExemplarItem: (itemNo: number) => `문항 ${itemNo}`,
+      translationsExemplarLabel: (label: string) => (/^\d+$/.test(label.trim()) ? `${label.trim()}점` : label),
     },
     assessmentHeading: '평가 문항',
     assessment: {

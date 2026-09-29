@@ -5,6 +5,7 @@ import { EDITABLE_FIELDS, expandFields, groupFields, setAtPath, applyFieldEdits,
 import { STAGE_SCHEMAS } from '@/lib/studio/schemas'
 import { WIZARD_STAGES } from '@/lib/studio/wizard-stages'
 import { app } from '@/content/site'
+import { englishGuide } from './fixtures/english-guide'
 
 const copy = app.studio.wizard.fieldEditor
 const fx = (name: string) => JSON.parse(readFileSync(`data/studio-fixtures/${name}.json`, 'utf8'))
@@ -12,6 +13,8 @@ const SETS = [{ subject: '수학', suffix: '' }, { subject: '과학', suffix: '-
 const issues = (stage: (typeof WIZARD_STAGES)[number], o: unknown) => STAGE_SCHEMAS[stage].safeParse(o).error?.issues.map((i) => `${i.path.join('.')}: ${i.message}`) ?? []
 /** 길이를 바꾸지 않고 내용만 바꾼 문장(7단계 글자 수 상한·5단계 문두 끝 [N점]을 지킨다). */
 const tweak = (v: string) => (v.length >= 4 ? `고침${v.slice(2)}` : v === '고침' ? '수정' : '고침')
+/** 영어 세트에만 있는 칸(S-영-08 번역) — 한국어 시연 fixture 에는 없으므로 아래 영어 합성 예로 따로 시험한다. */
+const ENGLISH_ONLY = (pattern: string) => pattern.startsWith('translations.')
 
 for (const set of SETS) describe(`editable fields on the ${set.subject} fixtures`, () => {
   for (const stage of WIZARD_STAGES) {
@@ -20,7 +23,7 @@ for (const set of SETS) describe(`editable fields on the ${set.subject} fixtures
     it(`stage ${stage}: every pattern resolves to at least one field and each field reads its own value`, () => {
       const fields = expandFields(stage, output)
       const patterns = new Set(fields.map((f) => f.pattern))
-      expect(EDITABLE_FIELDS[stage].map((s) => s.pattern).filter((p) => !patterns.has(p))).toEqual([])
+      expect(EDITABLE_FIELDS[stage].map((s) => s.pattern).filter((p) => !patterns.has(p) && !ENGLISH_ONLY(p))).toEqual([])
       for (const f of fields) {
         const v = f.path.reduce<unknown>((o, k) => (o as Record<string | number, unknown>)[k], output)
         expect(v, f.id).toBe(f.value)
@@ -87,5 +90,30 @@ describe('helpers', () => {
     const next = applyFieldEdits(output, fields, { 'lessons.0.goal': '짧음' })
     expect(validateEdited(3, next, fields)?.fieldId).toBe('lessons.0.goal')
     expect(validateEdited(3, output, fields)).toBeNull()
+  })
+})
+
+// S-영-08(대표 2026-09-29): 관리자가 번역 문장(자료 제목·본문, 예시답안)을 「문장 고치기」로 고친다(HITL)
+describe('stage 6 translations on an English guide (S-영-08)', () => {
+  const output = englishGuide()
+  const fields = expandFields(6, output)
+  it('title_ko·body_ko·text_ko become fields (null body_ko is skipped), grouped under translations with readable labels', () => {
+    const tr = fields.filter((f) => ENGLISH_ONLY(f.pattern))
+    expect(tr.map((f) => f.id)).toEqual([
+      'translations.materials.0.title_ko', 'translations.materials.0.body_ko', 'translations.materials.1.title_ko',
+      'translations.exemplar_answers.0.text_ko', 'translations.exemplar_answers.1.text_ko', 'translations.exemplar_answers.2.text_ko',
+    ])
+    expect(tr.map((f) => copy.labels[f.pattern](f.indices, f.parent))).toEqual([
+      '자료 E 제목 번역', '자료 E 본문 번역', '자료 F 제목 번역', '1번 문항 예시답안 6점 번역', '2번 문항 예시답안 상 번역', '2번 문항 예시답안 중 번역',
+    ])
+    const group = groupFields(fields).find((g) => g.top === 'translations')!
+    expect(copy.groups[group.top](group.tag)).toBe('영문 자료·예시답안 번역 (교사용)')
+  })
+  it('editing every translation field still validates with STAGE_SCHEMAS[6]', () => {
+    const tr = fields.filter((f) => ENGLISH_ONLY(f.pattern))
+    const next = applyFieldEdits(output, tr, Object.fromEntries(tr.map((f) => [f.id, tweak(f.value)])))
+    expect(issues(6, next)).toEqual([])
+    expect(next.translations.materials[0].title_ko).toBe(tweak(output.translations.materials[0].title_ko))
+    expect(output.translations.materials[0].title_ko).toBe('친환경 부스 안내')
   })
 })
