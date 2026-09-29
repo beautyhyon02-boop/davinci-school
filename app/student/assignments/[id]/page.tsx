@@ -9,6 +9,7 @@ import { SHORT_MINUTES, ESSAY_MINUTES } from '@/lib/studio/structure-text'
 import { MaterialsSection, ItemMaterials } from '@/components/studio/parts/MaterialsFull'
 import { visibleCriteria } from '@/components/studio/parts/ItemCriteria'
 import { overallFor, gradeFor } from '@/lib/classroom/scoring'
+import { alignQuizDone } from '@/lib/classroom/quiz'
 import { LessonTabs } from './LessonTabs'
 import { QuizForm } from './QuizForm'
 import { AnswerEditor } from './AnswerEditor'
@@ -73,7 +74,8 @@ export default async function StudentAssignmentPage({ params }: { params: Promis
             quiz={done.length
               ? lesson.formative_check.quiz.map(({ q, type, choices, answer, explanation }) => ({ q, type, choices, answer, explanation }))
               : lesson.formative_check.quiz.map(({ q, type, choices }) => ({ q, type, choices }))}
-            done={done.length ? done.map((d) => ({ response: d.response, correct: d.correct })) : null} />
+            // 문항 번호 자리에 맞춘다 — 원장이 종이 O/X 를 일부 문항에만 넣었으면 나머지 자리는 null(기록 없음)
+            done={done.length ? alignQuizDone(lesson.formative_check.quiz.length, done) : null} />
         )}
         {itemNos.map((itemNo, k) => {
           const item = lessonItems[k]

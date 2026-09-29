@@ -889,6 +889,9 @@ export const app = {
         submitted: (correct: number, total: number) => `${total}문항 중 ${correct}개 정답`,
         answerLabel: '정답', explanationLabel: '해설', yourAnswer: '내 답',
         shortPlaceholder: '답을 쓰세요',
+        // 원장이 종이 O/X 를 넣은 문항 / 아직 O/X 가 없는 문항(설계 2026-09-29 §4.1)
+        paperSolved: '종이로 푼 문제예요',
+        noRecord: '아직 기록이 없어요',
       },
       paperAnswer: '이 문항은 표·그래프를 직접 작성하는 문항이에요. 종이에 풀어 선생님께 내세요. 선생님이 사진으로 올려 주시면 결과가 여기에 보여요.',
       conditionItem: (no: number) => `조건 ${no}`,
@@ -924,6 +927,33 @@ export const app = {
       quizHeading: '퀴즈 현황',
       quizRate: (pct: number) => `정답률 ${pct}%`,
       overrideCorrect: '정답 처리', overrideWrong: '오답 처리', noResponse: '—',
+      // 종이 O/X 입력·차시별 최종 확인(단원 리포트 설계 2026-09-29 §4.1)
+      quizCell: {
+        labels: { empty: '빈칸', O: 'O', X: 'X' } as Record<'empty' | 'O' | 'X', string>,
+        aria: (name: string, quizNo: number, state: string) => `${name} ${quizNo}번 — 지금 ${state}`,
+        hintHeading: '칸을 누르면 바뀝니다',
+        hints: [
+          '빈칸 → O → X → 빈칸 (원장이 넣은 칸 · 종이로 푼 학생)',
+          'O ↔ X (학생이 화면에서 푼 칸)',
+        ],
+        paperMark: '종이',
+        studentAnswer: (response: string) => `학생이 쓴 답: ${response}`,
+        teacherEntered: '원장이 넣은 칸(종이로 푼 문제)',
+      },
+      fillEmpty: '이 차시 빈칸 모두 O',
+      fillEmptyHint: '종이로 푼 학생의 빈칸을 한 번에 O 로 채웁니다. 그다음 틀린 칸만 눌러 X 로 바꾸세요.',
+      finalize: {
+        heading: (lessonNo: number) => `${lessonNo}차시 최종 확인`,
+        button: '최종 확인',
+        done: (date: string) => `최종 확인됨 · ${date}`,
+        undo: '확인 풀기',
+        reportNote: '최종 확인한 차시만 단원 리포트에 들어갑니다.',
+        changeNote: '최종 확인 뒤에 O/X 를 바꾸면 그 학생의 확인이 풀립니다.',
+        unfinalized: 'O/X 를 바꿔 이 차시의 최종 확인이 풀렸습니다. 다 고친 뒤 [최종 확인]을 다시 눌러 주세요.',
+        pendingHeading: '확인이 풀린 학생',
+        missingHeading: '아직 O/X 가 없는 학생',
+        missingNote: '그대로 최종 확인해도 됩니다. 빈칸은 리포트에서 "기록 없음"으로 빠집니다.',
+      },
       answersHeading: '답안·검수',
       status: { none: '미제출', pending: '채점 중', drafted: '검수 대기', confirmed: '공개됨', failed: '실패', rejected: '다시 쓰기 요청', retry: '재도전 중' },
       attempt: (n: number) => `${n}회차`,
@@ -938,7 +968,11 @@ export const app = {
       overall: (total: number, max: number, grade: number, band: string) => `종합 ${total}/${max}점 · ${grade}등급 · ${band}`,
       overallPending: '서·논술형 문항이 모두 확정되면 종합 점수가 나옵니다.',
       compare: (a1: number, a2: number) => `1회차 ${a1}점 → 2회차 ${a2}점`,
-      errors: { saveFailed: '저장하지 못했습니다.', notDrafted: '검수 대기 상태가 아닙니다.', badScore: '점수가 범위를 벗어났습니다.' },
+      errors: {
+        saveFailed: '저장하지 못했습니다.', notDrafted: '검수 대기 상태가 아닙니다.', badScore: '점수가 범위를 벗어났습니다.',
+        quizCellNotAllowed: '이 칸은 바꿀 수 없습니다.',
+        finalizeFailed: '최종 확인을 저장하지 못했습니다. 잠시 뒤 다시 눌러 주세요.',
+      },
     },
     // 학생별 차시 안내장(v2 T8) — 원장 화면에서 초안 → 확정 → 인쇄. 학교생활기록부가 아니다.
     notice: {

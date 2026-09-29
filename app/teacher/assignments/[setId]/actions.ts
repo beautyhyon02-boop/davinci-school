@@ -11,6 +11,8 @@ import { Notice, NoticeDraftOut, type NoticeT } from '@/lib/classroom/notice-sch
 import { buildNoticePrompt } from '@/lib/classroom/notice-prompt'
 import { lintNotice } from '@/lib/classroom/notice-lint'
 import { callStructured } from '@/lib/ai/claude'
+import type { CellState } from '@/lib/classroom/quiz-finalize'
+import { applyQuizCell, fillEmptyCorrect, finalizeLesson, unfinalize } from '@/lib/classroom/quiz-entry'
 
 const errors = app.classroom.assign.errors
 const rev = app.classroom.review.errors
@@ -116,13 +118,78 @@ export async function regradeAi(gradingId: string): Promise<ActionResult> {
   revalidatePath('/teacher/assignments'); return { ok: true }
 }
 
-export async function overrideQuiz(assignmentId: string, lessonNo: number, quizNo: number, correct: boolean): Promise<ActionResult> {
+export type QuizEntryResult = { ok: true; unfinalized: boolean } | { ok: false; error: string }
+const entryError = (reason: 'not-allowed' | 'save-failed') => (reason === 'not-allowed' ? rev.quizCellNotAllowed : rev.saveFailed)
+const validLesson = (n: number) => Number.isInteger(n) && n >= 1 && n <= 8
+
+/**
+ * 퀴즈 칸 하나를 O / X / 빈칸으로(설계 2026-09-29 §4.1). 빈칸에 O·X 를 넣으면 원장 줄(source 'teacher' — 종이로 푼 학생),
+ * 원장 줄은 다시 빈칸으로 지울 수 있고, 학생이 화면에서 푼 단답형은 O ↔ X 만 바뀐다(규칙은 lib/classroom/quiz-finalize.ts canSetCell).
+ * 원장 클라이언트로 쓴다(RLS teacher_rw_quiz 가 자기 원의 배정만 허용). 바뀌면 그 학생·그 차시의 최종 확인이 풀린다.
+ */
+export async function setQuizCell(assignmentId: string, lessonNo: number, quizNo: number, target: CellState): Promise<QuizEntryResult> {
+  const s = await assertTeacher()
+  if (!validLesson(lessonNo) || !Number.isInteger(quizNo)) return { ok: false, error: rev.quizCellNotAllowed }
+  const supabase = await createClient()
+  const { data: a } = await supabase.from('assignments').select('id, item_set_id, item_set_version, academy_id').eq('id', assignmentId).eq('academy_id', s.academyId).maybeSingle()
+  if (!a) return { ok: false, error: rev.saveFailed }
+  const snapshot = await loadAssignmentSnapshot(supabase, a.item_set_id, a.item_set_version)
+  const quiz = snapshot?.lessons.find((l) => l.no === lessonNo)?.formative_check.quiz ?? []
+  if (quizNo < 1 || quizNo > quiz.length) return { ok: false, error: rev.quizCellNotAllowed }
+  const r = await applyQuizCell(supabase, { assignment_id: assignmentId, lesson_no: lessonNo, quiz_no: quizNo, target, quizType: quiz[quizNo - 1].type, userId: s.userId, now: new Date().toISOString() })
+  if (!r.ok) return { ok: false, error: entryError(r.reason) }
+  revalidatePath(`/teacher/assignments/${a.item_set_id}`)
+  return { ok: true, unfinalized: r.unfinalized }
+}
+
+/** 이 세트를 배정받은 자기 원 학생들의 배정과 그 차시의 퀴즈 문항 수. */
+async function loadSetLesson(supabase: ServerClient, academyId: string, setId: string, lessonNo: number) {
+  if (!validLesson(lessonNo)) return null
+  const { data } = await supabase.from('assignments').select('id, academy_id, item_set_version').eq('item_set_id', setId).eq('academy_id', academyId).order('created_at')
+  const assignments = (data ?? []) as { id: string; academy_id: string; item_set_version: number }[]
+  if (assignments.length === 0) return null
+  const snapshot = await loadAssignmentSnapshot(supabase, setId, assignments[0].item_set_version)
+  const quizCount = snapshot?.lessons.find((l) => l.no === lessonNo)?.formative_check.quiz.length ?? 0
+  if (quizCount === 0) return null
+  return { assignments, lesson: { no: lessonNo, quizCount } }
+}
+
+/** [이 차시 빈칸 모두 O]: 응답이 없는 칸만 원장 줄(O)로 채운다. 원장은 그 뒤 틀린 칸만 X 로 바꾼다. */
+export async function fillEmptyQuiz(setId: string, lessonNo: number): Promise<QuizEntryResult> {
   const s = await assertTeacher()
   const supabase = await createClient()
-  const { error } = await supabase.from('quiz_responses').update({ correct, overridden_by: s.userId, overridden_at: new Date().toISOString() })
-    .eq('assignment_id', assignmentId).eq('lesson_no', lessonNo).eq('quiz_no', quizNo)
-  if (error) return { ok: false, error: rev.saveFailed }
-  revalidatePath('/teacher/assignments'); return { ok: true }
+  const d = await loadSetLesson(supabase, s.academyId, setId, lessonNo)
+  if (!d) return { ok: false, error: rev.saveFailed }
+  const r = await fillEmptyCorrect(supabase, { assignmentIds: d.assignments.map((x) => x.id), lesson: d.lesson, userId: s.userId, now: new Date().toISOString() })
+  if (!r.ok) return { ok: false, error: entryError(r.reason) }
+  revalidatePath(`/teacher/assignments/${setId}`)
+  return { ok: true, unfinalized: r.unfinalized }
+}
+
+/**
+ * [최종 확인]: 이 세트·이 차시를 자기 원 학생 모두에게. 빈칸이 있어도 막지 않는다(빈칸은 리포트에서 빠진 것으로 센다).
+ * 마이그레이션 0014 전이면 저장 실패 문구만 돌려준다.
+ */
+export async function finalizeQuizLesson(setId: string, lessonNo: number): Promise<ActionResult> {
+  const s = await assertTeacher()
+  const supabase = await createClient()
+  const d = await loadSetLesson(supabase, s.academyId, setId, lessonNo)
+  if (!d) return { ok: false, error: rev.finalizeFailed }
+  const r = await finalizeLesson(supabase, { assignments: d.assignments, lessonNo, userId: s.userId, now: new Date().toISOString() })
+  if (!r.ok) return { ok: false, error: rev.finalizeFailed }
+  revalidatePath(`/teacher/assignments/${setId}`)
+  return { ok: true }
+}
+
+/** [확인 풀기]: 이 세트·이 차시의 최종 확인을 자기 원 학생 모두에게서 지운다. */
+export async function unfinalizeQuizLesson(setId: string, lessonNo: number): Promise<ActionResult> {
+  const s = await assertTeacher()
+  const supabase = await createClient()
+  const d = await loadSetLesson(supabase, s.academyId, setId, lessonNo)
+  if (!d) return { ok: false, error: rev.finalizeFailed }
+  await unfinalize(supabase, d.assignments.map((x) => x.id), lessonNo)
+  revalidatePath(`/teacher/assignments/${setId}`)
+  return { ok: true }
 }
 
 // ── 학생별 차시 안내장(v2 T8) ──────────────────────────────────────────

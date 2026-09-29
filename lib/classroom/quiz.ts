@@ -48,3 +48,14 @@ export function judgeQuiz(item: QuizKey, response: string): boolean {
     return kNum !== null && rNum !== null && kNum === rNum
   })
 }
+
+/**
+ * 학생 화면의 퀴즈 결과를 문항 번호 자리에 맞춘다(1번 = 0번 자리). 응답 줄이 없는 자리는 null.
+ * 원장이 종이 O/X 를 일부 문항에만 넣은 차시도 자리가 밀리지 않는다. paper = 원장이 넣은 줄(source 'teacher').
+ */
+export function alignQuizDone(quizCount: number, rows: { quiz_no: number; response: string; correct: boolean; source?: string }[]): ({ response: string; correct: boolean; paper: boolean } | null)[] {
+  return Array.from({ length: quizCount }, (_, i) => {
+    const r = rows.find((x) => x.quiz_no === i + 1)
+    return r ? { response: r.response, correct: r.correct, paper: r.source === 'teacher' } : null
+  })
+}

@@ -8,6 +8,7 @@ import { ReviewCard } from './ReviewCard'
 import { Badge } from '@/components/ui/Badge'
 import { overallFor, gradeFor } from '@/lib/classroom/scoring'
 import { itemLabels } from '@/lib/studio/assessment-structure'
+import { loadFinalizations } from '@/lib/classroom/quiz-entry'
 import { app } from '@/content/site'
 import type { AssignmentRow, AnswerRow, GradingRow, QuizResponseRow } from '@/lib/classroom/types'
 
@@ -32,9 +33,11 @@ export default async function AssignmentSetPage({ params }: { params: Promise<{ 
 
   // 추가 로드: 퀴즈 응답·답안은 배정 id 로, 채점은 답안 id 로 잇는다(빈 배열이면 두 번째 질의를 건너뛴다).
   const aids = rows.map((r) => r.id)
-  const [{ data: quiz }, { data: answers }] = await Promise.all([
+  // 최종 확인 표(마이그레이션 0014)가 아직 없으면 available=false — 최종 확인 칸만 빠지고 나머지 화면은 그대로다.
+  const [{ data: quiz }, { data: answers }, finalizations] = await Promise.all([
     supabase.from('quiz_responses').select('*').in('assignment_id', aids),
     supabase.from('answers').select('*').in('assignment_id', aids).order('attempt'),
+    loadFinalizations(supabase, aids),
   ])
   const answerRows = (answers ?? []) as AnswerRow[]
   const answerIds = answerRows.map((a) => a.id)
@@ -56,7 +59,7 @@ export default async function AssignmentSetPage({ params }: { params: Promise<{ 
         <Badge tone="gray">{app.teacherItems.card.versionLabel(snapshot.cover.version)}</Badge>
       </div>
       <div className="mt-4"><OpenLessonsControl setId={setId} current={minOpen} maxLessons={snapshot.lessons.length} /></div>
-      <div className="mt-6"><QuizMatrix lessons={lessonsMeta} students={students} responses={quizRows} /></div>
+      <div className="mt-6"><QuizMatrix setId={setId} lessons={lessonsMeta} students={students} responses={quizRows} finalizations={finalizations.rows} finalizeAvailable={finalizations.available} /></div>
       <h2 className="mt-8 text-lg font-bold">{app.classroom.review.answersHeading}</h2>
       <div className="mt-3 space-y-6">
         {rows.map((r) => {

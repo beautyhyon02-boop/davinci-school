@@ -7,7 +7,8 @@ import { app } from '@/content/site'
 const copy = app.classroom.student.quiz
 // answer·explanation 은 이미 제출한 차시에서만 온다(제출 전에는 서버가 빼고 보낸다). 방금 제출한 경우엔 submitQuiz 결과에서 읽는다.
 type Quiz = { q: string; type: 'choice' | 'short'; choices: string[] | null; answer?: string; explanation?: string }
-type Done = { response: string; correct: boolean }
+/** paper = 원장이 넣은 종이 O/X(학생이 화면에 쓴 답 없음). 자리가 null 이면 그 문항은 아직 기록이 없다. */
+type Done = { response: string; correct: boolean; paper?: boolean } | null
 /**
  * 대표 2026-09-26: 퀴즈는 단답형만(객관식 폐지) — 새 세트의 퀴즈는 모두 입력 칸이다. 보기 단추는 그 전에 게시된 판(스냅샷)의
  * 선택형 퀴즈를 그대로 보이고 채점하기 위해서만 남겨 둔다(lib/classroom/quiz.ts 는 선택형을 표시 기호 완전 일치로 본다).
@@ -18,7 +19,7 @@ export function QuizForm({ assignmentId, lessonNo, quiz, done }: { assignmentId:
   const [responses, setResponses] = useState<string[]>(quiz.map(() => ''))
   const [result, setResult] = useState<QuizResult | null>(null)
   const [pending, start] = useTransition()
-  const submitted = done ?? (result?.ok ? result.results.map((r, i) => ({ response: responses[i], correct: r.correct })) : null)
+  const submitted: Done[] | null = done ?? (result?.ok ? result.results.map((r, i) => ({ response: responses[i], correct: r.correct })) : null)
   const keyOf = (i: number) => (!done && result?.ok ? result.results[i] : quiz[i])
 
   return (
@@ -29,11 +30,15 @@ export function QuizForm({ assignmentId, lessonNo, quiz, done }: { assignmentId:
           <li key={i}>
             <p className="font-semibold">{i + 1}. {q.q}</p>
             {submitted ? (
+              !submitted[i] ? (
+                <div className="mt-2 rounded-xl bg-ink-100/50 p-3 text-ink-500">{copy.noRecord}</div>
+              ) : (
               <div className={`mt-2 rounded-xl p-3 ${submitted[i].correct ? 'bg-mint-100' : 'bg-red-50'}`}>
-                <p>{copy.yourAnswer}: {submitted[i].response || '—'}</p>
+                <p>{submitted[i].paper ? copy.paperSolved : `${copy.yourAnswer}: ${submitted[i].response || '—'}`}</p>
                 <p>{copy.answerLabel}: {keyOf(i)?.answer ?? ''}</p>
                 <p className="text-sm text-ink-700">{copy.explanationLabel}: {keyOf(i)?.explanation ?? ''}</p>
               </div>
+              )
             ) : isLegacyChoice(q) ? (
               // 옛 판(2026-09-26 이전 게시)의 선택형만 — 새 세트는 아래 입력 칸(단답형)이 기본이다
               <div className="mt-2 grid gap-2 sm:grid-cols-2">
@@ -50,7 +55,7 @@ export function QuizForm({ assignmentId, lessonNo, quiz, done }: { assignmentId:
         ))}
       </ol>
       {submitted ? (
-        <p className="mt-4 font-semibold">{copy.submitted(submitted.filter((d) => d.correct).length, quiz.length)}</p>
+        <p className="mt-4 font-semibold">{copy.submitted(submitted.filter((d) => d?.correct).length, quiz.length)}</p>
       ) : (
         <div className="mt-4">
           <Button type="button" disabled={pending || responses.some((r) => !r.trim())} onClick={() => start(async () => setResult(await submitQuiz(assignmentId, lessonNo, responses)))}>{copy.submit}</Button>

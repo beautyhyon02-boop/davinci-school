@@ -23,4 +23,18 @@ describe('QuizForm', () => {
     for (const c of ['①', '②', '③']) expect(legacy).toContain(`>${c}</button>`)
     expect(render([{ q: '보기 없는 문항', type: 'choice', choices: null }])).toContain('<input')
   })
+  it('원장이 종이 O/X 를 일부 문항에만 넣은 차시: 자리가 밀리지 않고, 없는 문항은 기록 없음으로 보인다', async () => {
+    const { app } = await import('@/content/site')
+    const copy = app.classroom.student.quiz
+    const quiz = [1, 2, 3].map((n) => ({ q: `문항 ${n}`, type: 'short' as const, choices: null, answer: `답${n}`, explanation: `해설${n}` }))
+    const html = renderToStaticMarkup(createElement(QuizForm, {
+      assignmentId: 'a1', lessonNo: 1, quiz,
+      done: [{ response: '', correct: true, paper: true }, null, { response: '7', correct: false }],
+    }))
+    expect(html).toContain(copy.paperSolved)
+    expect(html).toContain(copy.noRecord)
+    expect(html).toContain(`${copy.yourAnswer}: 7`)
+    expect(html).toContain(copy.submitted(1, 3))
+    expect(html).not.toContain('<input')
+  })
 })
