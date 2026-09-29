@@ -18,6 +18,8 @@ export type CheckCtx = {
    * prior.shared_materials에서 온다(stages.ts staticCheck). 대표 결정 2026-09-28부터는 이 세트가 체크한 공동 자료만(item_sets.shared_material_ids).
    */
   sharedMaterialIds?: string[]
+  /** 세트 과목(선택) — 영어 세트의 공동 자료 영어판 메모(S-영-09, englishLessonCitationIssues·englishItemCitationIssues)가 쓴다. 없으면 그 메모는 건너뛴다. */
+  subject?: string
 }
 type ReconstructionT = z.infer<typeof Reconstruction>; type LessonDesignT = z.infer<typeof LessonDesign>; type MaterialsT = z.infer<typeof Materials>
 type AssessmentT = z.infer<typeof Assessment>; type GuideT = z.infer<typeof TeacherGuide>; type NoticePlanT = z.infer<typeof NoticePlan>
@@ -104,6 +106,47 @@ function sharedMaterialCitationIssues(lessons: LessonCorpusLike[], items: { mate
       if (!sharedIds.includes(id) || usedByItems.has(id)) continue
       if (mentionedMaterialIds(lessonOwnTexts(l)).includes(id)) continue
       issues.push({ kind: 'other', detail: `${l.no}차시가 문항·활동지가 쓰지 않는 공유 자료 ${id}를 가리킴` })
+    }
+  }
+  return issues
+}
+
+// ── S-영-09 공동 자료 영어판(대표 2026-09-29: "영어 세트의 표는 영어로") ─────────────────────────────────────
+/** 영어 세트이고 체크한 공동 자료가 있는가 — 이때만 S-영-09 메모를 낸다(다른 과목은 공동 자료를 그대로 가리킨다). */
+const englishSharedIds = (ctx: CheckCtx): string[] => (ctx.subject === '영어' ? (ctx.sharedMaterialIds ?? []) : [])
+/** [TS] 메모 문구(S-영-09). */
+export const KOREAN_SHARED_CITED = '영어 세트는 영어판(세트 자료)을 쓴다(S-영-09)'
+/**
+ * [TS] 참고 메모(kind other, 막지 않음) — S-영-09. 영어 세트의 차시가 한국어 공동 자료 ID를 직접 가리키면 차시와 ID를 적는다:
+ * materials_used, 그리고 활동지·발문·퀴즈 문장 속 "자료 X" 언급("자료 X의 영어판"은 언급으로 세지 않는다 — materials.ts).
+ */
+function englishLessonCitationIssues(lessons: LessonCorpusLike[], ctx: CheckCtx): Issue[] {
+  const shared = englishSharedIds(ctx)
+  if (shared.length === 0) return []
+  const issues: Issue[] = []
+  for (const l of lessons) {
+    const direct = [...new Set((l.materials_used ?? []).filter((id) => shared.includes(id)))]
+    for (const id of direct) issues.push({ kind: 'other', detail: `${l.no}차시: 한국어 공동 자료 ${id}를 직접 가리킴(materials_used) — ${KOREAN_SHARED_CITED}` })
+    const quizzes = l.formative_check?.quiz ?? []
+    for (const [i, q] of quizzes.entries()) {
+      const ids = [...new Set(mentionedMaterialIds([q.q, q.answer, q.explanation].filter(Boolean).join(' ')).filter((id) => shared.includes(id)))]
+      for (const id of ids) issues.push({ kind: 'other', detail: `${l.no}차시 퀴즈 ${i + 1}: 한국어 공동 자료 ${id}를 직접 가리킴 — ${KOREAN_SHARED_CITED}` })
+    }
+    const taskTexts: string[] = []
+    for (const t of l.worksheet?.tasks ?? []) taskTexts.push(t.prompt ?? '', t.expected ?? '')
+    for (const q of l.teacher_script?.questions ?? []) taskTexts.push(q.prompt ?? '', q.expected_answer ?? '', q.if_stuck ?? '')
+    const mentioned = [...new Set(mentionedMaterialIds(taskTexts.join(' ')).filter((id) => shared.includes(id) && !direct.includes(id)))]
+    for (const id of mentioned) issues.push({ kind: 'other', detail: `${l.no}차시 활동지·발문: 한국어 공동 자료 ${id}를 직접 가리킴 — ${KOREAN_SHARED_CITED}` })
+  }
+  return issues
+}
+/** [TS] 참고 메모 — S-영-09. 영어 세트의 문항이 한국어 공동 자료 ID를 materials_used에 넣었으면 문항과 ID를 적는다. */
+function englishItemCitationIssues(items: { materials_used?: string[] | null }[], ctx: CheckCtx): Issue[] {
+  const shared = englishSharedIds(ctx)
+  const issues: Issue[] = []
+  for (const [i, it] of items.entries()) {
+    for (const id of [...new Set((it.materials_used ?? []).filter((x) => shared.includes(x)))]) {
+      issues.push({ kind: 'other', detail: `문항 ${i + 1}: 한국어 공동 자료 ${id}를 직접 가리킴(materials_used) — ${KOREAN_SHARED_CITED}` })
     }
   }
   return issues
@@ -235,6 +278,7 @@ function lessonIssues(o: LessonDesignT, ctx: CheckCtx): Issue[] {
   // 보통은 3단계 시점에 5단계가 없어 건너뛴다(sharedMaterialCitationIssues 가 items 없으면 스스로 건너뛴다).
   const items5 = (ctx.prior.stage5 as { items?: { materials_used?: string[] | null }[] } | undefined)?.items
   issues.push(...sharedMaterialCitationIssues(o.lessons, items5, ctx.sharedMaterialIds))
+  issues.push(...englishLessonCitationIssues(o.lessons, ctx))
   return issues
 }
 
@@ -443,6 +487,7 @@ function assessmentIssues(o: AssessmentT, ctx: CheckCtx): Issue[] {
   if (Array.isArray(setMaterials)) issues.push(...materialUseIssues(setMaterials, ctx, o.items))
   const lessons3 = (ctx.prior.stage3 as Partial<LessonDesignT> | undefined)?.lessons
   if (Array.isArray(lessons3)) issues.push(...sharedMaterialCitationIssues(lessons3, o.items, ctx.sharedMaterialIds))
+  issues.push(...englishItemCitationIssues(o.items, ctx))
   return issues
 }
 
@@ -536,6 +581,40 @@ function translationIssues(o: GuideT, ctx: CheckCtx): Issue[] {
   return issues
 }
 
+/**
+ * [TS] 참고 메모(kind other, 막지 않음) — S-영-09 공동 자료 영어판(4단계). 세트 자료의 english_version_of 가 가리키는 공동 자료가
+ * 이 세트가 체크한 공동 자료(prior.shared_materials)에 없으면 "체크한 공동 자료가 아님". 있으면 원본 본문·표의 수(번역 메모와 같은
+ * 숫자 묶음·쉼표 무시 — NUMBER·normNum)가 영어판(제목·본문·표)에 모두 있는지 보고 빠진 수를 한 줄에 모아 적는다. 표의 행·열 수가
+ * 원본과 다르면 그것도 적는다. 뜻이 맞게 옮겨졌는지·영어 수준은 [AI] 검토(REVIEW_FOCUS[4])가 본다. 과목을 가리지 않는다(필드가 있을 때만).
+ */
+function englishVersionIssues(o: MaterialsT, ctx: CheckCtx): Issue[] {
+  const issues: Issue[] = []
+  const sharedRaw = ctx.prior.shared_materials as Partial<MaterialsT['materials'][number]>[] | undefined
+  const shared = Array.isArray(sharedRaw) ? sharedRaw : []
+  for (const m of o.materials) {
+    const from = m.english_version_of
+    if (!from) continue
+    const original = shared.find((s) => s.id === from)
+    if (!original) { issues.push({ kind: 'other', detail: `자료 ${m.id}: 영어판의 원본으로 적은 공동 자료 ${from}가 이 세트에서 체크한 공동 자료가 아님(english_version_of)` }); continue }
+    const label = `자료 ${m.id}(공동 자료 ${from}의 영어판)`
+    const mine = new Set([m.title, m.body ?? '', tableText(m.table)].flatMap((s) => (s.match(NUMBER) ?? []).map(normNum)))
+    const seen = new Set<string>()
+    const missing: string[] = []
+    for (const n of [original.body ?? '', tableText(original.table)].flatMap((s) => s.match(NUMBER) ?? [])) {
+      const v = normNum(n)
+      if (seen.has(v)) continue
+      seen.add(v)
+      if (!mine.has(v)) missing.push(n)
+    }
+    if (missing.length) issues.push({ kind: 'other', detail: `${label}: 원본 수치 ${missing.join(', ')}이 빠짐 — 영어판은 원본과 수치가 같아야 한다(S-영-09)` })
+    if (original.table && m.table) {
+      const [r0, c0, r1, c1] = [original.table.rows.length, original.table.columns.length, m.table.rows.length, m.table.columns.length]
+      if (r0 !== r1 || c0 !== c1) issues.push({ kind: 'other', detail: `${label}: 표의 행·열 수가 원본과 다름(원본 ${r0}행 ${c0}열, 영어판 ${r1}행 ${c1}열)` })
+    } else if (original.table && !m.table) issues.push({ kind: 'other', detail: `${label}: 원본은 표인데 영어판에 표가 없음` })
+  }
+  return issues
+}
+
 export function noticeTextIssues(text: string, where: string): Issue[] {
   const issues: Issue[] = []
   for (const [re, why] of NOTICE_FORBIDDEN) if (re.test(text)) issues.push({ kind: 'notice', detail: `${where}: "${text.match(re)?.[0]}" — ${why}` })
@@ -559,7 +638,7 @@ export function staticIssues(stage: Stage, output: unknown, ctx: CheckCtx): Issu
   switch (stage) {
     case 2: return reconstructionIssues(output as ReconstructionT, ctx)
     case 3: return lessonIssues(output as LessonDesignT, ctx)
-    case 4: return [...materialIssues(output as MaterialsT), ...materialUseIssues((output as MaterialsT).materials, ctx, null)]
+    case 4: return [...materialIssues(output as MaterialsT), ...materialUseIssues((output as MaterialsT).materials, ctx, null), ...englishVersionIssues(output as MaterialsT, ctx)]
     case 5: return assessmentIssues(output as AssessmentT, ctx)
     case 6: return guideIssues(output as GuideT, ctx)
     case 7: return noticePlanIssues(output as NoticePlanT)

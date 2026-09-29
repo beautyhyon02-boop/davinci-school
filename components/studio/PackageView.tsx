@@ -409,7 +409,7 @@ export function PackageView({ snapshot, mode, showAnswers = false }: { snapshot:
 
       {/* 자료 칸은 화면에 그대로(차시도 쓴다). 문제지 인쇄에는 문항 안에 실린 자료를 빼고, 전부 실렸으면 칸째 뺀다 */}
       {/* 「공동」 배지: 게시 판에 실린 대주제 공동 자료(snapshot.shared_material_ids, 2026-09-28 이후 판) — 옛 판은 배지 없이 */}
-      <MaterialsSection materials={snapshot.materials} embeddedIds={[...embeddedMaterialIds(snapshot.assessment?.items)]} sharedIds={snapshot.shared_material_ids ?? []} />
+      <MaterialsSection materials={snapshot.materials} embeddedIds={[...embeddedMaterialIds(snapshot.assessment?.items)]} sharedIds={snapshot.shared_material_ids ?? []} teacherLabels />
       {mode === 'admin' && (snapshot.materials_omitted?.length ?? 0) > 0 && (
         <p data-print="omit" className="text-sm text-ink-500">{c.materialsOmitted(snapshot.materials_omitted!)}</p>
       )}

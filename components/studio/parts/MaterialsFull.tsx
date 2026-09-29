@@ -23,6 +23,8 @@ export type MaterialLike = {
   table?: { columns: string[]; rows: (string | number)[][] } | null
   source?: { kind?: string; attribution?: string | null } | string | null
   images?: string[] | null
+  /** S-영-09: 대주제 공동 자료의 영어판이면 그 원본 공동 자료 ID(영어 세트의 세트 자료에만). */
+  english_version_of?: string | null
 }
 
 const copy = app.packageView
@@ -112,11 +114,22 @@ function SharedBadge() {
 }
 
 /**
+ * 교사용 표시 「공동 자료 B의 영어판」(S-영-09) — 영어 세트가 공동 자료를 같은 수치의 영어판으로 만든 세트 자료에 단다.
+ * 제작소 4단계 탭·원장 패키지 화면의 자료 칸에만(teacherLabels) 보이고 문제지 인쇄에서는 빠진다. 학생 화면은 달지 않는다.
+ */
+function EnglishVersionBadge({ material }: { material: MaterialLike }) {
+  const from = material.english_version_of
+  if (typeof from !== 'string' || from === '') return null
+  return <span data-print="omit" data-english-version-of={from}><Badge tone="gray">{copy.materials.englishVersionBadge(from)}</Badge></span>
+}
+
+/**
  * 자료 목록(카드 틀 없이). sharedIds = 이 세트가 체크한 대주제 공동 자료의 ID — 세트 자료와 구별해 「공동」 배지를 단다
  * (제작소 4단계 탭, 원장 패키지 화면·학생 화면의 자료 칸).
  * printOmitIds = 문항 카드 안에 이미 실린 자료 — 문제지 인쇄에서 두 번 나오지 않게 data-print="omit"으로 둔다(화면에는 그대로).
+ * teacherLabels = 교사용 표시(「공동 자료 B의 영어판」)를 단다 — 제작소·원장 화면만 켠다(학생 화면은 끈 채로).
  */
-export function MaterialsFull({ materials, sharedIds = [], printOmitIds = [] }: { materials: MaterialLike[]; sharedIds?: string[]; printOmitIds?: string[] }) {
+export function MaterialsFull({ materials, sharedIds = [], printOmitIds = [], teacherLabels = false }: { materials: MaterialLike[]; sharedIds?: string[]; printOmitIds?: string[]; teacherLabels?: boolean }) {
   const c = copy.materials
   return (
     <div className="mt-3 space-y-6">
@@ -127,6 +140,7 @@ export function MaterialsFull({ materials, sharedIds = [], printOmitIds = [] }: 
             <span className="rounded-full bg-mint-500 px-3 py-1 text-sm font-bold text-white">{c.idLabel} {m.id}</span>
             <p className="text-base font-bold">{cleanMaterialTitle(m.title ?? '')}</p>
             {sharedIds.includes(m.id) && <SharedBadge />}
+            {teacherLabels && <EnglishVersionBadge material={m} />}
             <SourceBadge material={m} />
           </div>
           <MaterialBody material={m} />
@@ -141,13 +155,13 @@ export function MaterialsFull({ materials, sharedIds = [], printOmitIds = [] }: 
  * embeddedIds = 문항 카드 안에 이미 실린 자료(문항 = 자료 + 문항 한 덩어리). 문제지 인쇄(print="keep")에는 문항 안에 없는 자료가
  * 하나라도 있을 때만 이 칸을 남기고, 남겨도 문항 안에 있는 자료는 빼서 같은 자료가 두 번 인쇄되지 않게 한다.
  */
-export function MaterialsSection({ materials, embeddedIds = [], sharedIds = [] }: { materials: MaterialLike[]; embeddedIds?: string[]; sharedIds?: string[] }) {
+export function MaterialsSection({ materials, embeddedIds = [], sharedIds = [], teacherLabels = false }: { materials: MaterialLike[]; embeddedIds?: string[]; sharedIds?: string[]; teacherLabels?: boolean }) {
   if (materials.length === 0) return null
   const allEmbedded = materials.every((m) => embeddedIds.includes(m.id))
   return (
     <Card print={allEmbedded ? undefined : 'keep'}>
       <h2 className="text-lg font-bold">{copy.materialsHeading}</h2>
-      <MaterialsFull materials={materials} printOmitIds={embeddedIds} sharedIds={sharedIds} />
+      <MaterialsFull materials={materials} printOmitIds={embeddedIds} sharedIds={sharedIds} teacherLabels={teacherLabels} />
     </Card>
   )
 }

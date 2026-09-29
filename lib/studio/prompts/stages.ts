@@ -67,6 +67,47 @@ const TASKS: Record<Stage, string> = {
   7: `차시별 피드백 안내장 틀(NoticePlan)을 만들어라. per_lesson: 차시마다 topic_summary(60자, "~활동에서 ~을 배웠습니다"), preview(50자, 다음 차시 예고; 마지막 차시는 세트 마무리), home_study_suggestion(60자, 혼자 실행 가능한 구체 행동 1개, "~해 봅시다" 청유형), quiz_notes(퀴즈 문항마다 틀렸을 때 줄 40자 코멘트: 부분 긍정 + 역접 + 완곡, 부정 서술어 금지; 퀴즈 없는 차시는 빈 배열), criteria_phrases(단원 평가 차시만: 두 문항의 채점표 요소 전부 — 5단계 채점표 요소명 그대로, good 2개 이상(정도부사+완성동사), improve 2개 이상(부분 긍정 + 역접 + 다음 행동); 교수 차시는 null). footer_disclaimer는 정확히 "${NOTICE_DISCLAIMER}". 다른 학생 비교·등수·"못한다/실패" 금지.`,
 }
 
+// ── S-영-09(대표 2026-09-29 "영어 세트의 표는 영어로") ─────────────────────────────────────────────
+// 영어 세트가 공동 자료를 체크했으면 3·4·5단계 과제의 공유 자료 문장을 바꿔 끼우고(다른 과목·공동 자료 없는 영어 세트는 글자 그대로),
+// 공유 자료는 "원본(한국어, 학생에게 주지 않음)"으로 보여 준다 — 필요한 것은 같은 수치의 영어판을 세트 자료로 만든다.
+const SHARED_SENTENCE: Partial<Record<Stage, string>> = {
+  3: '대주제 공유 자료는 이 과목 활동에 필요한 것만(보통 0~2개) 고르고, 그 밖의 자료는 4단계에서 이 과목 전용으로 만들 자료 ID(공유 자료 다음 글자부터)를 미리 정해 적는다.',
+  4: '공유 자료는 이 과목 문항이 인용할 것만 materials_used에 넣고 나머지는 쓰지 않는다.',
+  5: '공유 자료는 이 문항이 실제로 인용하는 것만 넣는다 — 세트 자료와 합쳐 2~4개',
+}
+const ENGLISH_SHARED_SENTENCE: Partial<Record<Stage, (shared: string, next: string) => string>> = {
+  3: (shared, next) => `영어 세트는 학생에게 한국어 자료를 주지 않는다(S-영-09): 아래 대주제 공유 자료 ${shared}는 원본(한국어, 학생에게 주지 않음)이므로 그 ID를 차시 materials_used에 적지 않고 활동지·발문·퀴즈 문장에서도 가리키지 않는다. 이 과목 활동에 필요한 공유 자료(보통 0~2개)는 4단계에서 같은 수치의 영어판을 세트 자료로 만든다 — 그 영어판의 ID와 그 밖에 이 과목 전용으로 만들 자료의 ID를 ${next}부터 차례로 미리 정해 materials_used에 적고, 영어판을 처음 쓰는 차시의 materials_needed에 어느 공유 자료의 영어판인지 한 줄로 적는다(예: "자료 ${next}(공동 자료 ${shared.split(', ')[0]}의 영어판)"). 필요하지 않은 공유 자료는 영어판을 만들지 않는다.`,
+  4: (shared, next) => `영어 세트는 학생에게 한국어 공유 자료를 주지 않는다(S-영-09) — 아래 대주제 공유 자료 ${shared}는 원본(한국어, 학생에게 주지 않음)이다. 3단계 차시가 영어판으로 쓰기로 한 공유 자료마다 영어판을 세트 자료로 만든다: ID는 3단계가 정한 것(${next}부터)을 쓰고 english_version_of에 원본 공유 자료 ID를 적는다; 수치·행과 열의 순서·합계는 원본과 똑같이 두고 제목·열 이름·항목 이름·본문만 영어로 옮긴다(예: 종이컵 420 → "Paper cups 420"); kind·role은 원본과 같게; 영어는 이 학교급 수준으로 쓰고 어려운 낱말은 본문 끝에 "* word 뜻" 각주로 단다(S-영-07). 차시·문항에 필요하지 않은 공유 자료는 영어판을 만들지 않는다. 영어판이 아닌 자료의 english_version_of는 null. 영어판도 세트 자료 2~4개에 넣어 센다.`,
+  5: () => '영어 세트는 세트 자료만 넣는다(S-영-09) — 대주제 공유 자료(한국어 원본, 학생에게 주지 않음)의 ID는 넣지 않고 그 영어판인 세트 자료(4단계 english_version_of)를 쓴다, 2~4개',
+}
+const ENGLISH_REVIEW_FOCUS: Partial<Record<Stage, string>> = {
+  3: ' 영어 세트(S-영-09): 차시 materials_used·활동지·발문·퀴즈가 대주제 공유 자료(한국어 원본, 학생에게 주지 않음)의 ID를 직접 가리키면 other — 필요한 공유 자료는 4단계에서 영어판(세트 자료)으로 만들 ID를 가리켜야 한다.',
+  4: ' 영어 세트(S-영-09): 공유 자료의 영어판(english_version_of)이 원본과 수치·행과 열의 순서·합계가 같은지(다르면 other — 어느 칸인지 detail에 적는다), 제목·열 이름·항목 이름·본문이 영어로 옮겨졌는지(한국어가 남았으면 other), 영어가 학교급 수준이고 어려운 낱말에 각주가 있는지, 3단계 차시가 가리키는 영어판이 빠짐없이 있는지(coverage). 한국어 원본을 그대로 세트 자료로 옮겨 적었으면 other.',
+  5: ' 영어 세트(S-영-09): 문항 materials_used가 대주제 공유 자료(한국어 원본)의 ID를 가리키면 other — 문항은 세트 자료(영어판)만 쓴다.',
+}
+/** 영어 세트에서 공유 자료를 보여 줄 때의 이름표(prior 블록의 키). */
+const ENGLISH_SHARED_LABEL = 'shared_materials — 원본(한국어, 학생에게 주지 않음) — 필요한 것은 영어판을 세트 자료로 만든다'
+
+/** S-영-09 가 걸리는 호출인가: 영어 세트이고 체크한 공동 자료가 있다. */
+function englishVersionMode(ctx: Ctx): boolean {
+  return ctx.subject === '영어' && sharedMaterialIds(ctx.prior).length > 0
+}
+/** 세트 자료 ID 를 이어 붙일 첫 글자(대주제 공동 자료 전체 뒤). */
+function nextLetter(ctx: Ctx): string {
+  const all = [...new Set([...sharedMaterialIds(ctx.prior), ...(ctx.themeMaterialIds ?? []).filter((id) => /^[A-Z]$/.test(id))])].sort()
+  return nextSetMaterialLetter(all) ?? 'Z'
+}
+/** 단계 과제 문장. 영어 세트(공동 자료 체크)만 3·4·5단계의 공유 자료 문장을 S-영-09 문장으로 바꾼다 — 그 밖에는 TASKS 그대로. */
+function taskFor(stage: Stage, ctx: Ctx): string {
+  const from = SHARED_SENTENCE[stage]
+  const to = ENGLISH_SHARED_SENTENCE[stage]
+  if (!from || !to || !englishVersionMode(ctx)) return TASKS[stage]
+  return TASKS[stage].replace(from, to(sharedMaterialIds(ctx.prior).join(', '), nextLetter(ctx)))
+}
+function reviewFocusFor(stage: Stage, ctx: Ctx): string {
+  return `${REVIEW_FOCUS[stage]}${englishVersionMode(ctx) ? (ENGLISH_REVIEW_FOCUS[stage] ?? '') : ''}`
+}
+
 /** 성취수준(A~E) 블록을 넣는 단계: 적합성 판단·재구성·차시(활동지 층)·문항(척도)·안내장(요소 문구). */
 const LEVEL_STAGES = new Set<Stage>([1, 2, 3, 5, 7])
 /** 예시 은행 카드를 넣는 단계와 문항 종류(3단계 활동 아이디어 2장). 5단계는 통째 예시 + 카드(EXEMPLARS_5). */
@@ -124,6 +165,11 @@ function sharedMaterialLettering(ctx: Ctx): string {
     return `\n\n이 세트는 대주제 공유 자료를 쓰지 않는다. 새로 만드는 세트 자료의 ID는 ${next}부터 붙여라(${all.join(', ')}는 대주제 공유 자료 글자라 비워 둔다). 새 자료의 source.kind는 "자작"이다.`
   }
   const reserved = all.filter((id) => !selected.includes(id))
+  if (englishVersionMode(ctx)) {
+    // S-영-09: 고른 공동 자료는 한국어 원본이라 학생에게 주지 않는다 — 그 글자는 비워 두고 영어판·새 자료를 다음 글자부터
+    const reservedEn = reserved.length > 0 ? ` 대주제 공유 자료 ${reserved.join(', ')}는 이 세트에서 쓰지 않으므로 영어판도 만들지 않고, 그 글자도 새 자료 ID로 쓰지 않는다.` : ''
+    return `\n\n대주제 공유 자료 ID: ${selected.join(', ')} — 원본(한국어, 학생에게 주지 않음)이다. 이 글자로는 자료를 만들지 말고, 영어판과 새로 만드는 세트 자료의 ID는 ${next}부터 이어서 붙여라(같은 ID를 다시 쓰면 그 자료는 버려진다).${reservedEn} 새 자료(영어판 포함)의 source.kind는 "자작"이다.`
+  }
   const reservedNote = reserved.length > 0 ? ` 대주제 공유 자료 ${reserved.join(', ')}는 이 세트에서 쓰지 않으므로 인용하지 말고, 그 글자도 새 자료 ID로 쓰지 않는다.` : ''
   return `\n\n대주제 공유 자료 ID: ${selected.join(', ')} — 이 자료들은 다시 만들지 말고, 새로 만드는 세트 자료의 ID는 ${next}부터 이어서 붙여라(같은 ID를 다시 쓰면 그 자료는 버려진다).${reservedNote} 새 자료의 source.kind는 "자작"이다.`
 }
@@ -150,10 +196,10 @@ const GENERATE_SHARED_MATERIALS = new Set<Stage>([3, 4, 5])
 
 export function buildPrompt(stage: Stage, ctx: Ctx) {
   const lettering = stage === 4 ? sharedMaterialLettering(ctx) : ''
-  const prior = priorBlockFor(ctx, GENERATE_PRIOR[stage], GENERATE_SHARED_MATERIALS.has(stage) ? ['shared_materials'] : [], '이 단계에 필요한 것만')
+  const prior = priorBlockFor(ctx, GENERATE_PRIOR[stage], GENERATE_SHARED_MATERIALS.has(stage) ? ['shared_materials'] : [], '이 단계에 필요한 것만', sharedLabels(ctx))
   return {
     system: rulesFor(ctx.subject),
-    user: `${header(ctx)}${knowledgeBlocks(stage, ctx)}\n\n과제: ${TASKS[stage]}${stage === 1 ? schoolCodeNote(ctx) : ''}${lettering}${prior}`,
+    user: `${header(ctx)}${knowledgeBlocks(stage, ctx)}\n\n과제: ${taskFor(stage, ctx)}${stage === 1 ? schoolCodeNote(ctx) : ''}${lettering}${prior}`,
     fixtureKey: fixtureKeyFor(stage, 'generate', ctx),
   }
 }
@@ -182,10 +228,14 @@ const REVIEW_PRIOR: Record<Stage, number[]> = { 0: [], 1: [], 2: [1], 3: [2], 4:
 const REVIEW_SHARED_MATERIALS = new Set<Stage>([3, 4, 5])
 
 /** 생성(GENERATE_PRIOR)·검토(REVIEW_PRIOR)가 같이 쓴다. scope 는 머리말 괄호 안 문구. */
-function priorBlockFor(ctx: Ctx, stages: number[], extraKeys: string[] = [], scope = '검토에 필요한 단계만'): string {
+function priorBlockFor(ctx: Ctx, stages: number[], extraKeys: string[] = [], scope = '검토에 필요한 단계만', labels: Record<string, string> = {}): string {
   const keys = [...stages.map((n) => `stage${n}`), ...extraKeys].filter((k) => ctx.prior[k] !== undefined)
   if (keys.length === 0) return ''
-  return `\n\n지금까지 확정된 내용(${scope}):\n${JSON.stringify(Object.fromEntries(keys.map((k) => [k, ctx.prior[k]])), null, 1)}`
+  return `\n\n지금까지 확정된 내용(${scope}):\n${JSON.stringify(Object.fromEntries(keys.map((k) => [labels[k] ?? k, ctx.prior[k]])), null, 1)}`
+}
+/** prior 블록의 키 이름표 — 영어 세트(S-영-09)만 공유 자료를 "원본(한국어, 학생에게 주지 않음)"으로 보여 준다. */
+function sharedLabels(ctx: Ctx): Record<string, string> {
+  return englishVersionMode(ctx) ? { shared_materials: ENGLISH_SHARED_LABEL } : {}
 }
 
 const REVIEWER = '당신은 이제 검토자다. 생성 결과가 규칙을 지켰는지 검사하고 pass/issues로만 답한다. 문제가 없으면 pass=true, issues=[]. issues[].kind는 fidelity·grade_level·coverage·quiz·rubric·level·source·notice·other 중 하나. grade_level은 학교급이 실제로 틀린 경우(예: 중학교 세트에 고등학교·초등학교 성취기준이나 내용)에만 쓴다 — 성취기준은 학년군 단위라 같은 학년군 안의 학년 차이는 grade_level이 아니다.'
@@ -193,7 +243,7 @@ const REVIEWER = '당신은 이제 검토자다. 생성 결과가 규칙을 지�
 export function buildReviewPrompt(stage: Stage, ctx: Ctx, output: unknown) {
   // 규칙은 첫 블록(캐시), 검토자 지시는 둘째 블록(캐시 없음) → 같은 과목의 생성·검토가 같은 캐시 항목을 공유한다
   const system: string[] = [rulesFor(ctx.subject), REVIEWER]
-  const prior = priorBlockFor(ctx, REVIEW_PRIOR[stage], REVIEW_SHARED_MATERIALS.has(stage) ? ['shared_materials'] : [])
-  const user = `${header(ctx)}${knowledgeBlocks(stage, ctx)}${prior}\n\n검토 초점: ${REVIEW_FOCUS[stage]}${stage === 1 ? schoolCodeNote(ctx) : ''}\n\n생성 결과:\n${JSON.stringify(output, null, 1)}`
+  const prior = priorBlockFor(ctx, REVIEW_PRIOR[stage], REVIEW_SHARED_MATERIALS.has(stage) ? ['shared_materials'] : [], undefined, sharedLabels(ctx))
+  const user = `${header(ctx)}${knowledgeBlocks(stage, ctx)}${prior}\n\n검토 초점: ${reviewFocusFor(stage, ctx)}${stage === 1 ? schoolCodeNote(ctx) : ''}\n\n생성 결과:\n${JSON.stringify(output, null, 1)}`
   return { system, user, fixtureKey: fixtureKeyFor(stage, 'review', ctx) }
 }

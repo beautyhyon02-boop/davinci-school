@@ -8,8 +8,8 @@ describe('rules v2', () => {
     expect(new Set(ids).size).toBe(ids.length)
     const spec = readFileSync('docs/superpowers/specs/2026-09-25-item-studio-v2-design.md', 'utf8')
     for (const id of ids) expect(spec.split(`| ${id} |`).length - 1, id).toBe(1)
-    // 부록 A: 공통 37(C-31 대표 확정값, C-32 조건=지침(2026-09-26), C-33 자료 설계·유형(대표 연수 2기), C-34·C-36·C-37 경기2025, C-39 배운 것만 채점(대표 2026-09-29) 포함) + 차시 12 + 과목 38(국6·수7·사6·역3·과8·영8 — S-영-08 번역(대표 2026-09-29)) + 채점 10(G-10 경기2025) + 안내장 12 = 109
-    expect(ids.length).toBe(37 + 12 + 38 + 10 + 12)
+    // 부록 A: 공통 37(C-31 대표 확정값, C-32 조건=지침(2026-09-26), C-33 자료 설계·유형(대표 연수 2기), C-34·C-36·C-37 경기2025, C-39 배운 것만 채점(대표 2026-09-29) 포함) + 차시 12 + 과목 39(국6·수7·사6·역3·과8·영9 — S-영-08 번역·S-영-09 공동 자료 영어판(대표 2026-09-29)) + 채점 10(G-10 경기2025) + 안내장 12 = 110
+    expect(ids.length).toBe(37 + 12 + 39 + 10 + 12)
   })
   it('the spec appendix has no rule row that the code lacks', () => {
     const spec = readFileSync('docs/superpowers/specs/2026-09-25-item-studio-v2-design.md', 'utf8')

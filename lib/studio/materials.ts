@@ -35,10 +35,14 @@ const LIST_SEP = '\\s*(?:,|·|/|와|과|및|또는)\\s*'
 const MENTION = new RegExp(`자료\\s*(${TOKEN}(?:${LIST_SEP}${TOKEN})*)`, 'g')
 const TOKEN_PARTS = new RegExp(`([A-Z])(?:\\s*${RANGE_SEP}\\s*([A-Z]))?`, 'g')
 
-/** 문장에서 '자료 X' 언급의 ID(대문자 한 글자)를 모두 뽑는다(중복 제거 전). 범위(A~D)는 사이 글자까지 모두 펼친다. */
+// "공동 자료 B의 영어판"(S-영-09)은 B가 아니라 그 영어판(세트 자료)을 가리키는 말이다 — B 언급으로 세지 않는다.
+const ENGLISH_VERSION_TAIL = /^\s*의?\s*영어판/
+
+/** 문장에서 '자료 X' 언급의 ID(대문자 한 글자)를 모두 뽑는다(중복 제거 전). 범위(A~D)는 사이 글자까지 모두 펼친다. '자료 X의 영어판'은 뺀다(S-영-09). */
 export function mentionedMaterialIds(text: string): string[] {
   const out: string[] = []
   for (const m of text.matchAll(MENTION)) {
+    if (ENGLISH_VERSION_TAIL.test(text.slice(m.index + m[0].length))) continue
     for (const [, from, to] of m[1].matchAll(TOKEN_PARTS)) {
       if (!to) { out.push(from); continue }
       const [a, b] = [from.charCodeAt(0), to.charCodeAt(0)].sort((x, y) => x - y)

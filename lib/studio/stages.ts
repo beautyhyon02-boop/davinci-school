@@ -150,12 +150,12 @@ export async function runThemeIntro({ themeId, action, repo, edit }: { themeId: 
  * staticIssues 를 부른다. 검사는 zod 를 통과한 v2 출력을 전제하므로, 형식이 다른 출력(v2 이전에 저장된 판, 손으로 고친 판)에서
  * 던지면 500 대신 '다시 생성' 메모 하나로 돌려준다.
  */
-function staticCheck(stage: Stage, output: unknown, ctx: { standards: { code: string; text: string }[]; prior: Record<string, unknown>; theme?: { title: string } }): Issue[] {
+function staticCheck(stage: Stage, output: unknown, ctx: { standards: { code: string; text: string }[]; prior: Record<string, unknown>; theme?: { title: string }; subject?: string }): Issue[] {
   try {
     // 대주제 공유 자료 ID(loadContext가 prior.shared_materials에 넣어 둔다 — 이 세트가 체크한 공동 자료만, 2026-09-28) — 3·5단계 [TS] 자문(무관한 공유 자료 인용)이 쓴다.
     const shared = ctx.prior.shared_materials as { id: string }[] | undefined
     const sharedMaterialIds = Array.isArray(shared) ? shared.map((m) => m.id) : undefined
-    return staticIssues(stage, output, { standards: ctx.standards, prior: ctx.prior, ...(ctx.theme ? { theme: { title: ctx.theme.title } } : {}), sharedMaterialIds })
+    return staticIssues(stage, output, { standards: ctx.standards, prior: ctx.prior, ...(ctx.theme ? { theme: { title: ctx.theme.title } } : {}), sharedMaterialIds, ...(ctx.subject ? { subject: ctx.subject } : {}) })
   } catch (e) {
     // 옛 데이터가 아니라 checks.ts 회귀일 수도 있으므로 서버 로그에 흔적을 남긴다
     console.error('[studio] staticIssues threw', { stage, err: e })

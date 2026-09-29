@@ -91,7 +91,7 @@ export function StageOutput({ stage, outputs, sharedMaterials = [] }: {
       <div className="mt-3">
         {view.sharedIds.length > 0 && <p className="text-xs text-ink-500">{copy.stage4.sharedNote}</p>}
         {view.overridden.length > 0 && <p className="mt-1 text-xs text-ink-500">{copy.stage4.overriddenNote(view.overridden)}</p>}
-        <MaterialsFull materials={view.materials} sharedIds={view.sharedIds} />
+        <MaterialsFull materials={view.materials} sharedIds={view.sharedIds} teacherLabels />
       </div>
     )
   }

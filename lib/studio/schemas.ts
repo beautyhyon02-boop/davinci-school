@@ -190,6 +190,11 @@ export const Material = z.object({
   source: MaterialSource,
   role: z.enum(['raw', 'context']).default('raw'),
   images: z.array(z.string().url()).default([]),
+  /**
+   * S-영-09(대표 2026-09-29): 이 세트 자료가 대주제 공동 자료의 영어판이면 그 원본 공동 자료 ID(예: 'B'). 선택 — 영어 세트의 영어판 자료에만 있고
+   * 다른 자료·옛 판·공동 자료에는 없다(null 도 됨). 교사용 표시(「공동 자료 B의 영어판」)와 [TS] 수치 대조(checks.ts englishVersionIssues)가 쓴다.
+   */
+  english_version_of: z.string().regex(/^[A-Z]$/).nullable().optional(),
 })
 export const Materials = z.object({ materials: z.array(Material).min(1).max(6) })
 
