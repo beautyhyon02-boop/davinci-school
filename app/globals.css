@@ -108,3 +108,22 @@ body { @apply antialiased; }
 
   [data-unit-report] [data-report-draft] { position: fixed; top: 0; right: 0; background: #fff; }
 }
+
+/* 탐구보고서 인쇄(components/inquiry/InquiryReportView): A4, 표지 한 쪽 → 차례 → 본문(장은 가르지 않음) → 참고문헌.
+ * 표지는 세로 가운데에 제목·부제, 아래에 학년·반·번호(빈줄)·이름. 옅은 색이 그대로 찍히게 한다. 메뉴·버튼은 위의 .no-print 규칙이 숨긴다. */
+@page inquiry-report { size: A4; margin: 18mm 20mm; }
+@media print {
+  [data-inquiry-report] { page: inquiry-report; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  [data-inquiry-report] [data-inquiry-page="cover"] { break-after: page; min-height: 220mm; display: flex; flex-direction: column; justify-content: space-between; }
+  [data-inquiry-report] [data-inquiry-page="cover"] h2 { font-size: 22pt; line-height: 1.35; }
+  [data-inquiry-report] [data-inquiry-page="toc"] { break-after: page; margin-top: 0; }
+  [data-inquiry-report] [data-inquiry-page="body"] { margin-top: 0; }
+  [data-inquiry-report] [data-inquiry-chapter] { break-inside: avoid; }
+  /* 탐구 결과(가·나·다 세 절)는 한 쪽보다 길 수 있다 — 장은 가를 수 있게 두고 절 하나만 가르지 않는다. 장 제목은 첫 절과 떨어지지 않는다 */
+  [data-inquiry-report] [data-inquiry-chapter="results"] { break-inside: auto; }
+  [data-inquiry-report] [data-inquiry-chapter="results"] [data-inquiry-section] { break-inside: avoid; }
+  [data-inquiry-report] [data-inquiry-chapter] h3 { font-size: 13pt; break-after: avoid; }
+  [data-inquiry-report] [data-inquiry-chapter] p,
+  [data-inquiry-report] [data-inquiry-chapter] li { font-size: 10.5pt; line-height: 1.6; }
+  [data-inquiry-report] [data-inquiry-blank] { min-width: 22mm; }
+}
