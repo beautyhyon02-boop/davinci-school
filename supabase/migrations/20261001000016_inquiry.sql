@@ -68,7 +68,7 @@ drop policy if exists teacher_read_inquiry_tasks on inquiry_tasks;
 create policy teacher_read_inquiry_tasks on inquiry_tasks for select
   using (
     current_user_role() = 'teacher'
-    and (status = 'published' or exists (select 1 from inquiry_assignments ia where ia.task_id = id and ia.academy_id = current_academy_id()))
+    and (status = 'published' or exists (select 1 from inquiry_assignments ia where ia.task_id = inquiry_tasks.id and ia.academy_id = current_academy_id()))
   );
 
 -- 학생: 자기에게 배정된 게시 과제만.
@@ -76,7 +76,7 @@ drop policy if exists student_read_inquiry_tasks on inquiry_tasks;
 create policy student_read_inquiry_tasks on inquiry_tasks for select
   using (
     current_user_role() = 'student' and status = 'published'
-    and exists (select 1 from inquiry_assignments ia where ia.task_id = id and ia.student_id = auth.uid())
+    and exists (select 1 from inquiry_assignments ia where ia.task_id = inquiry_tasks.id and ia.student_id = auth.uid())
   );
 
 -- 배정
@@ -130,7 +130,7 @@ drop policy if exists student_insert_inquiry_reports on inquiry_reports;
 create policy student_insert_inquiry_reports on inquiry_reports for insert
   with check (
     current_user_role() = 'student' and submitted_at is null
-    and exists (select 1 from inquiry_assignments ia where ia.id = assignment_id and ia.student_id = auth.uid() and ia.academy_id = academy_id)
+    and exists (select 1 from inquiry_assignments ia where ia.id = assignment_id and ia.student_id = auth.uid() and ia.academy_id = inquiry_reports.academy_id)
   );
 
 drop policy if exists student_update_inquiry_reports on inquiry_reports;
@@ -141,6 +141,6 @@ create policy student_update_inquiry_reports on inquiry_reports for update
   )
   with check (
     current_user_role() = 'student'
-    and exists (select 1 from inquiry_assignments ia where ia.id = assignment_id and ia.student_id = auth.uid() and ia.academy_id = academy_id)
+    and exists (select 1 from inquiry_assignments ia where ia.id = assignment_id and ia.student_id = auth.uid() and ia.academy_id = inquiry_reports.academy_id)
   );
 -- 정책 수: 과제 3(관리자 전체·원장 읽기·학생 읽기) + 배정 3(관리자·원장·학생 읽기) + 보고서 5(관리자·원장·학생 읽기·넣기·고치기) = 11.

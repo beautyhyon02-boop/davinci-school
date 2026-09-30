@@ -1397,6 +1397,7 @@ export const app = {
         noStudents: '등록된 학생이 없습니다. 학생 관리에서 먼저 추가해 주세요.',
         assign: '배정', assigning: '배정 중…', assigned: (n: number) => `${n}명에게 배정했습니다.`,
         outlineHeading: '목차',
+        outlineChangeHeading: '목차 바꾸기 (배정한 뒤에 바꿀 때만)',
         outlineHelp: '실험이나 설문을 하지 않으면 「탐구 방법」은 생략합니다(기본값). 바꾸지 않아도 되면 [확인]만 누르세요.',
         methodLabel: '탐구 방법', careerLabel: '희망 진로 칸 넣기',
         outlinePreview: '학생이 보게 될 차례',

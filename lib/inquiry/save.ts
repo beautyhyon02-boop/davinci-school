@@ -183,6 +183,7 @@ export async function saveReportPatch(db: SupabaseClient, viewer: InquiryViewer,
   const v = await loadAssignmentView(db, viewer, assignmentId)
   if (!v.ok) return { ok: false, reason: v.reason === 'forbidden' ? 'forbidden' : v.reason === 'not-found' ? 'not-found' : v.reason === 'unavailable' ? 'unavailable' : 'save-failed' }
   if (v.view.report.submitted_at) return { ok: false, reason: 'submitted' }
+  if (!patch || typeof patch !== 'object') return { ok: false, reason: 'invalid' }
   const cols = normalizePatch(patch, v.view.report)
   if (!cols) return { ok: false, reason: 'invalid' }
   try {

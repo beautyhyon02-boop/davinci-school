@@ -31,7 +31,7 @@ export function OutlinePanel({ taskId, targets }: { taskId: string; targets: Out
 
   return (
     <section className="rounded-2xl bg-white p-6 shadow-[0_2px_20px_rgba(31,36,48,0.06)]">
-      <h2 className="text-lg font-bold">{copy.outlineHeading}</h2>
+      <h2 className="text-lg font-bold">{copy.outlineChangeHeading}</h2>
       <p className="mt-1 text-sm text-ink-500">{copy.outlineHelp}</p>
       {targets.length === 0 ? (
         <p className="mt-3 text-sm text-ink-500">{copy.outlineNoAssignments}</p>
