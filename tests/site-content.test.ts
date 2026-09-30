@@ -432,9 +432,9 @@ describe('site content', () => {
     expect(app.roleLabel.student).toBeTruthy()
     expect(app.logout).toBeTruthy()
 
-    expect(app.nav.admin.map(n => n.href)).toEqual(['/admin', '/admin/academies', '/admin/items', '/admin/inquiries', '/admin/standards'])
-    expect(app.nav.teacher.map(n => n.href)).toEqual(['/teacher', '/teacher/students', '/teacher/items', '/teacher/assignments', '/teacher/reports'])
-    expect(app.nav.student.map(n => n.href)).toEqual(['/student'])
+    expect(app.nav.admin.map(n => n.href)).toEqual(['/admin', '/admin/academies', '/admin/items', '/admin/inquiries', '/admin/standards', '/admin/inquiry'])
+    expect(app.nav.teacher.map(n => n.href)).toEqual(['/teacher', '/teacher/students', '/teacher/items', '/teacher/assignments', '/teacher/reports', '/teacher/inquiry'])
+    expect(app.nav.student.map(n => n.href)).toEqual(['/student', '/student/inquiry'])
 
     for (const role of ['admin', 'teacher', 'student'] as const) {
       for (const item of app.nav[role]) {
