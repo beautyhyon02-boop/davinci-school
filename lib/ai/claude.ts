@@ -97,10 +97,10 @@ const MAX_ATTEMPTS = 2
 const MAX_TOKENS = 48000 // adaptive thinking 토큰이 max_tokens에 포함되므로 5단계(xhigh)를 감안해 넉넉히 잡는다
 const RETRY_DELAY_MS = process.env.NODE_ENV === 'test' ? 0 : 1000
 /**
- * 요청 시간 한도(Vercel Hobby 300초). 첫 시도가 이보다 오래 걸렸으면 다시 불러도 한도 안에 못 끝나 함수가 그냥 끊기고
+ * 요청 시간 한도(Vercel Pro + Fluid Compute 800초; 2026-10-02 요금제 올림 — Hobby 는 300초). 첫 시도가 이보다 오래 걸렸으면 다시 불러도 한도 안에 못 끝나 함수가 그냥 끊기고
  * (실패 상태조차 저장되지 않아 화면은 '준비 전' 그대로 — 2026-10-01 영어 5단계), 그러니 곧바로 실패를 돌려준다.
  */
-const REQUEST_BUDGET_MS = Number(process.env.AI_REQUEST_BUDGET_MS ?? 290_000)
+const REQUEST_BUDGET_MS = Number(process.env.AI_REQUEST_BUDGET_MS ?? 780_000)
 
 function usageOf(m: Pick<Anthropic.Message, 'usage'> | undefined) {
   return { input: m?.usage?.input_tokens ?? 0, output: m?.usage?.output_tokens ?? 0, cacheRead: m?.usage?.cache_read_input_tokens ?? 0 }

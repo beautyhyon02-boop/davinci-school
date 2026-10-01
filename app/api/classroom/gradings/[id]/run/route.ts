@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getSessionProfileOrNull } from '@/lib/auth/session'
 import { runGrading } from '@/lib/classroom/grade'
 
-export const maxDuration = 300
+export const maxDuration = 800 // Vercel Pro + Fluid Compute 한도(2026-10-02 요금제 올림). Hobby 로 되돌리면 300 으로.
 
 /** 호출 자격: 그 답안의 학생 본인(pending 일 때만), 그 원의 원장, 본사. 자격 확인은 사용자 클라이언트(RLS)로, 실행은 service role 로. */
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {

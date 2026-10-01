@@ -5,7 +5,7 @@ import { runStage, StageError } from '@/lib/studio/stages'
 import { createSupabaseRepo } from '@/lib/studio/repo'
 import type { Stage } from '@/lib/studio/schemas'
 
-export const maxDuration = 300
+export const maxDuration = 800 // Vercel Pro + Fluid Compute 한도(2026-10-02 요금제 올림). Hobby 로 되돌리면 300 으로.
 
 /**
  * 세트 단계 실행. action: 'generate'(생성 + 자동 검사 메모) · 'accept'([확인], 출력만 있으면 됨) · 'review'(선택, AI 검토 의견 — 참고용).

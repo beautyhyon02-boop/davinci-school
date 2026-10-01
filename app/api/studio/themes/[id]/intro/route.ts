@@ -4,7 +4,7 @@ import { getSessionProfileOrNull } from '@/lib/auth/session'
 import { runThemeIntro, StageError, type ThemeIntroAction } from '@/lib/studio/stages'
 import { createSupabaseThemeRepo } from '@/lib/studio/repo'
 
-export const maxDuration = 300
+export const maxDuration = 800 // Vercel Pro + Fluid Compute 한도(2026-10-02 요금제 올림). Hobby 로 되돌리면 300 으로.
 
 const ACTIONS: ThemeIntroAction[] = ['generate', 'save']
 
