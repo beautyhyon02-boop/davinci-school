@@ -91,6 +91,47 @@ for (const set of SETS) describe(`${set.subject} fixtures (v2)`, () => {
     expect(new Set(criteria.map((c) => c.competency)).size).toBeGreaterThanOrEqual(4)
     expect(new Set([...quizzes, ...criteria].map((x) => x.competency)).size).toBe(COMPETENCIES.length)
   })
+  // 교육청 재구성 예시 지침(대표 2026-10-01, L-14~L-21): 시연 fixture 가 새 칸을 보여 준다 — scripts/upgrade-fixtures-v2.ts patchStage2·guidelines·setCriteriaFocus
+  it('stage2 (L-14~L-17): reason_note + [지식]/[기능] learning_elements per standard, scope_note that keeps the standards verbatim, prerequisites, criteria_draft "~하기" 3~4', () => {
+    const s2 = loadFixture(`stage2-generate${set.suffix}`) as { standards: { reconstructed_text: string; original_text: string; reason_note?: string; learning_elements: string[] }[]; scope_note?: string; prerequisites?: string[]; criteria_draft?: string[] }
+    for (const s of s2.standards) {
+      expect(s.reason_note?.length ?? 0, s.original_text).toBeGreaterThan(20)
+      expect(s.learning_elements.some((e) => e.startsWith('[지식]'))).toBe(true); expect(s.learning_elements.some((e) => e.startsWith('[기능]'))).toBe(true)
+      expect(s.reconstructed_text).toBe(s.original_text)   // G-3: 범위 메모를 두되 성취기준 문장은 좁히지 않는다
+    }
+    expect(s2.scope_note).toMatch(/다루지 않(는다|고)/); expect(s2.scope_note).toMatch(/→ 교수 차시 5개 \+ 평가 1차시/)
+    expect(s2.prerequisites?.length).toBeGreaterThanOrEqual(1)
+    expect(s2.criteria_draft?.length).toBeGreaterThanOrEqual(3); expect(s2.criteria_draft?.length).toBeLessThanOrEqual(4)
+    for (const c of s2.criteria_draft ?? []) expect(c).toMatch(/기$/)
+  })
+  it('stage3 (L-17·L-19·L-20·L-21): criteria_focus mirrors taught_in, worksheet tasks never copy a 발문, exactly one flaw_check task (expected names the flaw), feedback_plan on every teaching lesson, self_check (names only) on the last one', () => {
+    type L = { no: number; kind: string; teacher_script: { questions: { prompt: string }[] }; worksheet: { tasks: { no: number; prompt: string; expected: string; flaw_check?: boolean }[] }; feedback_plan?: { who: string; how: string; sentence_frame?: string }; self_check?: string[] }
+    const { lessons, unit_plan } = loadFixture(`stage3-generate${set.suffix}`) as { lessons: L[]; unit_plan: { lesson_map: { lesson_no: number; criteria_focus?: string[] }[] } }
+    const criteria = (loadFixture(`stage5-generate${set.suffix}`) as { items: { rubric: { criteria: { name: string; taught_in: number[] }[] } }[] }).items.flatMap((it) => it.rubric.criteria)
+    const teaching = lessons.filter((l) => l.kind === 'teaching')
+    for (const row of unit_plan.lesson_map) {
+      const l = lessons.find((x) => x.no === row.lesson_no)!
+      if (l.kind !== 'teaching') { expect(row.criteria_focus).toBeUndefined(); continue }
+      expect(row.criteria_focus, `${row.lesson_no}차시`).toEqual(criteria.filter((c) => c.taught_in.includes(row.lesson_no)).map((c) => c.name))
+    }
+    let flaws = 0
+    for (const l of teaching) {
+      const prompts = l.teacher_script.questions.map((q) => q.prompt)
+      for (const t of l.worksheet.tasks) {
+        expect(prompts, `${set.subject} ${l.no}차시 과제 ${t.no}`).not.toContain(t.prompt)
+        if (t.flaw_check) { flaws++; expect(t.expected).toMatch(/결함/) }
+      }
+      expect(['개별', '모둠', '전체'], `${l.no}차시`).toContain(l.feedback_plan?.who)
+      expect(l.feedback_plan?.how.length ?? 0).toBeGreaterThan(30); expect(l.feedback_plan?.sentence_frame).toMatch(/지난/)
+      if (l.no !== teaching[teaching.length - 1].no) expect(l.self_check).toBeUndefined()
+    }
+    expect(flaws).toBe(1)
+    const last = teaching[teaching.length - 1]
+    expect(last.self_check?.length).toBeGreaterThanOrEqual(3); expect(last.self_check?.length).toBeLessThanOrEqual(5)
+    for (const c of criteria) expect(last.self_check?.some((s) => s.includes(c.name)), c.name).toBe(true)
+    // 이름만 — 척도 서술·답은 담지 않는다
+    for (const s of last.self_check ?? []) expect(s).toMatch(/^나는 .*(했다|썼다)\.$/)
+  })
   it('stage2 standards carry the verbatim originals and the reconstruction is faithful', () => {
     const gen = loadFixture(`stage2-generate${set.suffix}`) as { standards: { code: string; original_text: string }[]; level_anchor: unknown[]; reconstruction: string; learning_goals: { axis: string }[] }
     for (const s of gen.standards) expect(standards.find((x) => x.code === s.code)?.text).toBe(s.original_text)

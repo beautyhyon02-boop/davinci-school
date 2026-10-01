@@ -15,13 +15,13 @@ import { buildReconstructionV2, upgradeLessonV1, upgradeMaterialV1, upgradeAsses
 import { cleanMaterialTitle } from '../lib/studio/materials'
 import { draftNoticePlan } from '../lib/studio/notice-draft'
 import { enrichOutput } from '../lib/studio/enrich'
-import { STAGE_SCHEMAS, type Lesson, type Material, type Assessment, type QuizLevel } from '../lib/studio/schemas'
+import { STAGE_SCHEMAS, type Lesson, type Material, type Assessment, type Reconstruction, type QuizLevel } from '../lib/studio/schemas'
 import { staticIssues } from '../lib/studio/checks'
 import { levelMapFor } from '../lib/studio/level-map'
 import { ASSESSMENT_SESSION, SET_ORDER, SHORT_POINTS } from '../lib/studio/assessment-structure'
 import type { Competency } from '../lib/studio/competency'
 
-type LessonT = z.infer<typeof Lesson>; type MaterialT = z.infer<typeof Material>; type AssessmentT = z.infer<typeof Assessment>
+type LessonT = z.infer<typeof Lesson>; type MaterialT = z.infer<typeof Material>; type AssessmentT = z.infer<typeof Assessment>; type ReconstructionT = z.infer<typeof Reconstruction>
 type V1Lesson = Parameters<typeof upgradeLessonV1>[0]; type V1Material = Parameters<typeof upgradeMaterialV1>[0]; type V1Assessment = Parameters<typeof upgradeAssessmentV1>[0]
 type V1Stage2 = { reconstruction: string; learning_goals: string[]; key_question_candidates: string[] }
 type V1Guide = Parameters<typeof upgradeTeacherGuideV1>[0]
@@ -44,6 +44,10 @@ type SetDef = {
   patchMaterials?: (materials: MaterialT[]) => MaterialT[]
   /** v2 평가(5단계, enrich 전)에 입히는 수정. */
   patchAssessment?: (a: AssessmentT) => void
+  /** 교육청 재구성 예시 지침(L-19~L-21, 대표 2026-10-01): 활동지 다시 쓰기·결함 찾기·피드백 계획·자기 점검표 — 5단계 수정 뒤(채점 요소 이름을 쓴다), 단원 평가 차시 붙이기 전. */
+  guidelines?: (lessons: LessonT[], a: AssessmentT) => void
+  /** 교육청 재구성 예시 지침(L-14~L-17): v2 2단계에 재구조화 해설·[지식]/[기능] 학습 요소·범위 메모·선수 학습·평가 요소 초안을 입힌다. */
+  patchStage2?: (s2: ReconstructionT) => void
   /** 단원 평가 차시(대표 2026-09-26 보완) 문장. 5단계 수정 뒤에 차시 목록 끝에 붙이고 두 문항을 그 차시로 옮긴다. */
   session?: SessionDef
 }
@@ -135,6 +139,65 @@ function setEssayLesson(l: LessonT, tasks: [string, string][], questions: Questi
   l.worksheet.tasks = tasks.map(([prompt, expected], i) => ({ no: i + 1, prompt, expected, ...tiers[i] }))
   l.teacher_script.questions = questions
 }
+// ── 교육청 재구성 예시 자료집 지침 L-17·L-19·L-20·L-21(대표 2026-10-01) ─────────────────────────────────────────
+/**
+ * L-19(활동지 ≠ 발문): compat 은 v1 퀴즈로 발문과 활동지 기본·표준 과제를 같은 문장으로 만든다(wp13 §3.3 "활동지가 발문 복사").
+ * 기본·표준 과제를 같은 자료 위에서 인지 수준이 올라가는 다른 과제로 다시 쓴다(용어·자료 확인 → 자료에서 사실 적기; 과제 끝에 질문형 도움말).
+ * 지금 과제 문장이 발문 문장과 같지 않으면(입력이 바뀌었으면) 멈춘다. 도전 과제는 그대로 둔다.
+ */
+function setBaseTasks(lessons: LessonT[], no: number, defs: [prompt: string, expected: string, space: TaskT['answer_space']][]) {
+  const l = lessons.find((x) => x.no === no)
+  if (!l) throw new Error(`PATCHES: ${no}차시 없음`)
+  const prompts = l.teacher_script.questions.map((q) => q.prompt)
+  defs.forEach(([prompt, expected, answer_space], i) => {
+    const t = l.worksheet.tasks[i]
+    if (!t || !prompts.includes(t.prompt)) throw new Error(`PATCHES: ${no}차시 활동지 과제 ${i + 1}이 발문 복사본이 아님`)
+    l.worksheet.tasks[i] = { ...t, prompt, expected, answer_space }
+  })
+}
+/**
+ * L-19 결함 찾기: 일부러 틀린 정리 문장을 넣고 찾아 고치게 하는 과제 하나를 활동지 끝에 더한다(flaw_check: true, 결함이 무엇인지는 expected 에).
+ * 교수 차시 활동지에만(세트당 1개) — 평가 문항·세트 자료에는 두지 않는다(대표 2026-10-01).
+ */
+function addFlawCheckTask(lessons: LessonT[], no: number, prompt: string, expected: string) {
+  const l = lessons.find((x) => x.no === no)
+  if (!l || l.kind !== 'teaching') throw new Error(`PATCHES: ${no}차시는 교수 차시가 아님`)
+  if (l.worksheet.tasks.some((t) => t.flaw_check)) throw new Error(`PATCHES: ${no}차시에 결함 찾기 과제가 이미 있음`)
+  l.worksheet.tasks.push({ no: l.worksheet.tasks.length + 1, prompt, tier: '표준', level_ref: 'C', answer_space: 'lines', expected, flaw_check: true })
+}
+type FeedbackPlanT = NonNullable<LessonT['feedback_plan']>
+/** L-20: 교수 차시마다 확인·피드백 계획(who·how·sentence_frame). 교수 차시 수와 정의 수가 다르면 멈춘다. 키 순서는 images 뒤. */
+function setFeedbackPlans(lessons: LessonT[], plans: Record<number, FeedbackPlanT>) {
+  const teaching = lessons.filter((l) => l.kind === 'teaching')
+  if (teaching.length !== Object.keys(plans).length) throw new Error(`PATCHES: setFeedbackPlans — 교수 차시 ${teaching.length}개, 계획 ${Object.keys(plans).length}개`)
+  for (const l of teaching) {
+    const plan = plans[l.no]
+    if (!plan) throw new Error(`PATCHES: setFeedbackPlans — ${l.no}차시 계획 없음`)
+    l.feedback_plan = plan
+  }
+}
+/** L-21: 마지막 교수 차시의 자기 점검표(채점 요소 이름만, 3~5줄). 이름이 5단계 채점 요소에 없으면 멈춘다(setTaughtIn 과 같은 결). */
+function setSelfCheck(lessons: LessonT[], a: AssessmentT, lines: string[]) {
+  const teaching = lessons.filter((l) => l.kind === 'teaching')
+  const last = teaching[teaching.length - 1]
+  if (!last || lines.length < 3 || lines.length > 5) throw new Error('PATCHES: setSelfCheck — 마지막 교수 차시가 없거나 줄 수가 3~5가 아님')
+  const names = a.items.flatMap((it) => it.rubric.criteria.map((c) => c.name))
+  for (const n of names) if (!lines.some((s) => s.includes(n))) throw new Error(`PATCHES: setSelfCheck — 채점 요소 "${n}"이 자기 점검표에 없음`)
+  last.self_check = lines
+}
+/**
+ * L-17: lesson_map 의 교수 차시마다 criteria_focus = 그 차시를 taught_in 에 적은 채점 요소 이름(요소 순서대로) — setTaughtIn 과 자동으로 맞는다.
+ * 단원 평가 차시에는 두지 않는다. 어느 요소도 가리키지 않는 교수 차시는 빈 배열(그 차시는 평가 요소를 직접 기르지 않는다 — 탐구 문제 세우기 등).
+ */
+function setCriteriaFocus(unitPlan: { lesson_map: { lesson_no: number; criteria_focus?: string[] }[] }, lessons: LessonT[], a: AssessmentT) {
+  const criteria = a.items.flatMap((it) => it.rubric.criteria)
+  for (const row of unitPlan.lesson_map) {
+    const l = lessons.find((x) => x.no === row.lesson_no)
+    if (!l || l.kind !== 'teaching') continue
+    row.criteria_focus = criteria.filter((c) => (c.taught_in ?? []).includes(row.lesson_no)).map((c) => c.name)
+  }
+}
+
 type ItemT = AssessmentT['items'][number]; type ConditionT = ItemT['conditions']['items'][number]
 /**
  * C-32(대표 2026-09-26): 조건은 지침이지 풀이 힌트가 아니고, 논술형에만 둔다. v1 서술형 조건은 풀이 순서·계산식·자료 수치
@@ -295,6 +358,23 @@ const RAW_B_BODY = '품목별 일회용품 개수를 작년(부스 16곳)과 올
 const SETS: SetDef[] = [
   {
     suffix: '', standardsFile: 'standards-math.json', title: '자료의 정리와 해석',
+    // 교육청 재구성 예시 지침(L-14~L-17, 대표 2026-10-01): compat 은 유지·원문 그대로만 만든다 → 재구조화 해설·[지식]/[기능] 학습 요소·범위 메모·선수 학습·평가 요소 초안을 입힌다.
+    // 범위 메모는 성취기준 문장을 좁히지 않는다(L-01·L-02 유지, G-3). 평가 요소 초안은 5단계 채점 요소(v1 에서 먼저 정해짐)를 "~하기"로 묶은 것이다.
+    patchStage2: (s2) => {
+      const notes: Record<string, { elements: string[]; note: string }> = {
+        '[9수04-02]': { elements: ['[지식] 줄기와 잎 그림·도수분포표·히스토그램·도수분포다각형의 뜻과 계급·도수 용어', '[기능] 자료를 네 가지 표·그래프로 나타내고 분포를 해석하기'], note: '통계 영역 안에서 자료 정리 → 상대도수 → 통계적 탐구로 위계가 뚜렷해 묶지 않고 유지한다 — [9수04-04]의 탐구 과정에서 자료를 정리하는 도구가 된다.' },
+        '[9수04-03]': { elements: ['[지식] 상대도수의 뜻(도수 ÷ 도수의 총합)과 상대도수의 총합이 1이라는 성질', '[기능] 상대도수를 구해 표·그래프로 나타내고 도수의 총합이 다른 두 집단을 비교하기'], note: '두 집단 비교라는 고유한 기능이 있어 유지한다 — [9수04-02]의 도수분포표를 전제로 하고 [9수04-04]의 해석 단계에서 쓰인다.' },
+        '[9수04-04]': { elements: ['[지식] 통계적 탐구 문제의 뜻(느낌이 아니라 자료로 답할 수 있는 질문)', '[기능] 탐구 문제를 세우고 공학 도구로 자료를 수집·분석해 결과를 해석하기'], note: '교과 성격(통계적 문제 해결 과정)을 드러내는 성취기준이라 유지하고 세트 전체(1차시 문제 설정 → 5차시 해석·제안)의 뼈대로 삼는다.' },
+      }
+      for (const st of s2.standards) {
+        const n = notes[st.code]
+        if (!n) throw new Error(`PATCHES: patchStage2 — ${st.code} 해설 없음`)
+        st.learning_elements = n.elements; st.reason_note = n.note
+      }
+      s2.scope_note = '이 세트는 축제 일회용품 자료(A·B) 하나의 상황 안에서 계급의 크기가 주어진 도수분포표·히스토그램·상대도수까지 다룬다. 계급의 크기를 학생이 정하는 문제, 히스토그램과 도수분포다각형의 넓이 관계를 넘는 응용 문제는 다루지 않고, 공학 도구는 상대도수 계산·그래프 확인까지만 쓴다. "해석"은 표·그래프에서 분포의 특징(어느 구간에 몰렸는지, 비율이 어떻게 달라졌는지)을 문장으로 말하는 것까지를 뜻한다. 교과서 기준 8~9차시 분량 → 교수 차시 5개 + 평가 1차시.'
+      s2.prerequisites = ['초등 자료의 정리: 표와 막대그래프·꺾은선그래프로 나타내고 읽기', '분수·소수·비율(백분율)의 뜻과 소수 둘째 자리 반올림']
+      s2.criteria_draft = ['상대도수를 구하고 비율의 변화를 해석하기', '상대도수로 비교해야 하는 이유를 설명하기', '자료를 정확히 정리하고 타당하게 해석하기', '근거와 연결된 감축 목표를 제안하고 수학적으로 서술하기']
+    },
     patchV1: ({ s2, s3, s4, s6 }) => {
       // 대표 2026-09-26: 서술형은 하나만 — 수학은 서술형 2(상대도수, 화면 답안)를 남기고 서술형 1(20곳 도수분포표, 종이 답안)을 뺀다.
       // 남긴 이유: 상대도수 문항은 계산 + 해석 + 이유로 6점 분석적 채점표를 세울 수 있고, 논술형(상대도수로 감축 목표)의 바탕이 된다.
@@ -356,7 +436,8 @@ const SETS: SetDef[] = [
         intro: '2~4차시 산출물(표·히스토그램·상대도수표)을 한 장에 모으고 "자료는 무엇을 먼저 줄이라고 말하는가?"를 다시 묻는다.',
         main: [
           { step_label: '목표 수치 정하는 법', minutes: 20, activities: ['① (공학 도구) 스프레드시트로 자료 B의 품목별 상대도수를 계산해 그래프로 확인한다(기기가 없으면 계산기).', '② 종이컵으로 "올해 상대도수를 작년 수준으로 되돌리려면 올해 몇 개여야 하는가"를 함께 구한다.'] },
-          { step_label: '근거 문장 만들기', minutes: 20, activities: ['③ 자료의 수치를 단위·출처와 함께 인용해 "주장 + 근거" 두 문장을 짝과 써 보고 서로 고친다(품목은 각자 고른다).', '④ 다음 시간 단원 평가(서술형 15분 + 논술형 35분) 진행 방식을 안내한다.'] },
+          // L-21(2026-10-01): 마지막 교수 차시에 채점 요소 이름·만점·조건의 종류를 미리 보여 주고 자기 점검표를 읽는다(답·예시답안은 보여 주지 않는다)
+          { step_label: '근거 문장 만들기', minutes: 20, activities: ['③ 자료의 수치를 단위·출처와 함께 인용해 "주장 + 근거" 두 문장을 짝과 써 보고 서로 고친다(품목은 각자 고른다).', '④ 다음 시간 단원 평가(서술형 15분 + 논술형 35분)의 진행 방식과 함께 채점 요소의 이름·만점·조건의 종류(품목과 목표 수치 밝히기, 근거 개수, 인용할 자료, 종결어미)를 보여 주고 활동지의 자기 점검표를 함께 읽는다 — 답·예시답안은 보여 주지 않는다.'] },
         ],
         wrapup: ['퀴즈 → 오늘 쓴 "주장 + 근거" 두 문장을 짝과 바꾸어 읽고 근거의 단위·출처를 확인한다'],
         quiz: [
@@ -486,12 +567,12 @@ const SETS: SetDef[] = [
       // C-39: 요소마다 가르친 교수 차시 — 차시 활동에 없는 것은 없다(2026-09-29 확인):
       //   상대도수 계산·비율 변화 해석 = 4차시 ①②(상대도수, 소수 둘째 자리)·④(개수와 상대도수가 다르게 말하는 경우 해석);
       //   상대도수로 비교하는 이유 = 1차시 도전(부스 수도 세어야 하는 까닭) + 4차시 발문 2·도전(규모가 다른 두 축제를 개수로 비교하면 왜 틀리는가);
-      //   자료 정리의 정확성 = 2차시(도수분포표·도수) + 4차시(상대도수) + 5차시 표준(수치를 단위·출처와 함께 옮기기);
+      //   자료 정리의 정확성 = 2차시(도수분포표·도수) + 3차시(히스토그램 — 논술형이 자료 A의 표·그래프를 근거로 인용한다, 2026-10-01 L-17 표를 만들며 더함) + 4차시(상대도수) + 5차시 표준(수치를 단위·출처와 함께 옮기기);
       //   해석의 타당성 = 4차시 ④ + 5차시 발문 1(개수와 상대도수 중 무엇을 기준으로); 제안과 근거의 연결 = 5차시(목표 수치 정하는 법·주장 + 근거 문장);
       //   수학적 표현과 서술 = 2차시 ②(계급·도수 용어) + 4차시(상대도수) + 5차시 ③(근거 문장 쓰고 고치기)
       setTaughtIn(a, {
         '상대도수 계산': [4], '비율 변화 해석': [4], '상대도수로 비교하는 이유': [1, 4],
-        '자료 정리의 정확성': [2, 4, 5], '해석의 타당성': [4, 5], '제안과 근거의 연결': [5], '수학적 표현과 서술': [2, 4, 5],
+        '자료 정리의 정확성': [2, 3, 4, 5], '해석의 타당성': [4, 5], '제안과 근거의 연결': [5], '수학적 표현과 서술': [2, 4, 5],
       })
       // C-40(단원 리포트 6축): 요소마다 역량 하나 — axis(3차원)와 따로 고른다. 척도가 실제로 보는 것: 계산 = 과정·기능, 두 값을 읽어 견줌·수치와 출처 = 자료 읽기,
       // 까닭·판단 = 근거 들어 설명하기, 목표를 정해 제안 = 가치·태도, 용어·분량·종결어미 = 글로 표현하기.
@@ -499,6 +580,44 @@ const SETS: SetDef[] = [
         '상대도수 계산': '과정·기능', '비율 변화 해석': '자료 읽기', '상대도수로 비교하는 이유': '근거 들어 설명하기',
         '자료 정리의 정확성': '자료 읽기', '해석의 타당성': '근거 들어 설명하기', '제안과 근거의 연결': '가치·태도', '수학적 표현과 서술': '글로 표현하기',
       })
+    },
+    // 교육청 재구성 예시 지침(대표 2026-10-01): 활동지 기본·표준은 발문 복사본이 아니라 같은 자료 위의 다른 과제(L-19 — 질문형 도움말, 답·결론 없음),
+    // 결함 찾기 1개(3차시, 히스토그램 오개념), 교수 차시마다 확인·피드백 계획(L-20), 5차시 자기 점검표(L-21, 채점 요소 이름만).
+    // 서·논술형의 답(플라스틱컵 0.24·0.30, 줄일 품목·목표 수치)은 어디에도 적지 않는다(C-03).
+    guidelines: (lessons, a) => {
+      setBaseTasks(lessons, 1, [
+        ['자료 A의 제목과 표를 보고 ① 무엇을 셌는지(조사 항목) ② 어디서 셌는지(조사 대상)를 각각 한 마디로 적어 보자. (도움말: 제목에서 "무엇"과 "어디"에 해당하는 말은?)', '조사 항목: 일회용컵 사용 개수 / 조사 대상: 올해 축제 부스 20곳', 'short'],
+        ['자료 B의 표에서 작년보다 올해 개수가 늘어난 품목과 줄어든 품목을 나누어 적어 보자. (도움말: 품목마다 작년 열과 올해 열의 수를 견주면?)', '늘어난 품목: 종이컵·플라스틱컵·일회용 접시 / 줄어든 품목: 비닐봉지·나무젓가락', 'lines'],
+      ])
+      setBaseTasks(lessons, 2, [
+        ['자료 A를 줄기와 잎 그림으로 나타낼 때 줄기는 십의 자리, 잎은 일의 자리이다. 부스 7(35개)과 부스 19(58개)는 각각 어느 줄기에 어떤 잎으로 적는지 써 보자. (도움말: 35에서 십의 자리와 일의 자리는 무엇인가?)', '35개 → 줄기 3에 잎 5 / 58개 → 줄기 5에 잎 8', 'short'],
+        ['자료 A를 10개 이상 70개 미만을 계급의 크기 10으로 나눈 도수분포표로 만들고, 도수의 합이 부스 수와 같은지 확인해 보자. (도움말: 경계값 30개는 "이상"과 "미만" 가운데 어느 쪽 계급에 들어가는가?)', '10개 이상 20개 미만 1곳, 20개 이상 30개 미만 3곳, 30개 이상 40개 미만 6곳, 40개 이상 50개 미만 5곳, 50개 이상 60개 미만 4곳, 60개 이상 70개 미만 1곳, 합 20곳이면 인정', 'table'],
+      ])
+      setBaseTasks(lessons, 3, [
+        ['히스토그램에서 가로축과 세로축에 각각 무엇을 적는지 쓰고, 직사각형 사이를 띄우지 않고 붙여 그리는 까닭을 한 줄로 써 보자. (도움말: 계급은 끊어진 값인가, 이어진 구간인가?)', '가로축: 계급(변량의 구간), 세로축: 도수 / 계급이 이어진 구간이라 직사각형을 붙여 그린다', 'short'],
+        ['자료 A의 히스토그램(계급의 크기 10)에서 도수가 가장 큰 계급과 가장 작은 계급을 찾고, 두 직사각형의 높이가 몇 칸 차이 나는지 적어 보자. (도움말: 세로축 눈금을 읽으면 각 직사각형의 높이는 몇 칸인가?)', '가장 큰 계급 30개 이상 40개 미만(도수 6), 가장 작은 계급 10개 이상 20개 미만과 60개 이상 70개 미만(도수 1) / 높이 차이 5칸', 'lines'],
+      ])
+      addFlawCheckTask(lessons, 3,
+        '어떤 학생이 자료 A의 히스토그램을 보고 "50개 이상 60개 미만 계급은 도수가 4이고 10개 이상 20개 미만 계급은 도수가 1이므로, 50개 이상 60개 미만 계급 직사각형의 가로 길이도 4배이다"라고 썼다. 틀린 곳을 찾아 바르게 고쳐 보자. (도움말: 히스토그램에서 직사각형의 가로 길이는 무엇으로 정해지는가?)',
+        '결함: 히스토그램 직사각형의 가로 길이는 계급의 크기(10)로 모두 같다 — 도수가 4배이면 세로 길이(높이)와 넓이가 4배이지 가로 길이가 4배가 아니다. 이렇게 고쳐 쓰면 인정')
+      setBaseTasks(lessons, 4, [
+        ['자료 B에서 작년 전체 1,200개 가운데 나무젓가락 170개의 상대도수를 소수 둘째 자리까지 구해 보자. (도움말: 상대도수는 무엇을 무엇으로 나눈 값인가?)', '170 ÷ 1,200 = 0.1416… → 0.14', 'short'],
+        ['작년과 올해 각각의 품목별 상대도수를 구해 보면, 개수는 늘었는데 상대도수는 거의 그대로이거나 줄어든 품목이 있다. 그런 품목을 하나 찾아 개수와 상대도수를 나란히 적어 보자. (도움말: 표의 두 열에서 합계 칸을 먼저 보면?)', '예: 종이컵 380개 → 420개(늘었다), 상대도수 0.32 → 0.31(거의 그대로) / 나무젓가락 170개 → 165개, 0.14 → 0.12 — 플라스틱컵이 아닌 품목으로 개수와 상대도수를 나란히 적으면 인정', 'lines'],
+      ])
+      setFeedbackPlans(lessons, {
+        1: { who: '전체', how: '퀴즈 2(조사 대상)와 활동지 기본 과제로 조사 항목·조사 대상을 가르는지 확인한다 — 다음 차시 도수분포표의 변량이 무엇인지 알아야 하므로, 틀린 학생이 셋 이상이면 2차시 도입에서 자료 A의 제목으로 다시 짚는다.', sentence_frame: '지난 시간보다 "무엇을 세는지"를 더 분명하게 적었다.' },
+        2: { who: '개별', how: '퀴즈 3(계급의 크기 5로 나누기)과 활동지 표준 과제(도수의 합)로 경계값을 어느 계급에 넣는지 확인한다 — 다음 차시 히스토그램의 가로축이 이 계급이므로, 틀린 학생에게는 3차시 전에 경계값 하나(30개)를 짚어 되묻는다.', sentence_frame: '지난 활동지보다 계급의 경계를 정확히 나누었다.' },
+        3: { who: '모둠', how: '활동지 표준 과제(도수가 가장 큰 계급)와 퀴즈 2로 그래프에서 계급을 읽는지 확인한다 — 틀린 학생은 모둠에서 서로의 히스토그램을 견주며 가로축 눈금을 다시 읽게 하고, 4차시 도입에서 그래프 한 장을 함께 읽는다.', sentence_frame: '지난 시간 표에서 읽던 것을 이번에는 그래프에서 스스로 읽어 냈다.' },
+        4: { who: '개별', how: '활동지 기본 과제(상대도수 계산)와 퀴즈 2·3으로 도수 ÷ 도수의 총합을 쓰는지 확인한다 — 다음 차시 감축 목표 계산의 전제이므로, 틀린 학생에게 5차시 전에 종이컵 한 품목으로 다시 계산하게 한다.', sentence_frame: '지난 활동지보다 소수 둘째 자리까지 정확하게 구했다.' },
+        5: { who: '전체', how: '활동지 표준 과제(수치에 단위·출처 붙이기)와 퀴즈 3으로 근거 문장에 단위·출처가 있는지 확인한다 — 단원 평가 직전이므로 빠진 학생이 있으면 6차시 평가 안내 때 전체에게 "수치 + 단위 + 출처" 한 줄을 다시 보여 준다.', sentence_frame: '지난 시간보다 근거 문장에 단위와 출처를 빠짐없이 붙였다.' },
+      })
+      setSelfCheck(lessons, a, [
+        '나는 "상대도수 계산"과 "비율 변화 해석"을 답에 썼다.',
+        '나는 "상대도수로 비교하는 이유"를 답에 썼다.',
+        '나는 "자료 정리의 정확성"과 "해석의 타당성"을 확인했다.',
+        '나는 "제안과 근거의 연결"을 확인했다.',
+        '나는 "수학적 표현과 서술"을 확인했다.',
+      ])
     },
     session: {
       key_question: '자료는 내년 축제에서 무엇을 먼저 줄여야 한다고 말하는가?',
@@ -512,6 +631,21 @@ const SETS: SetDef[] = [
   },
   {
     suffix: '-과학', standardsFile: 'standards-science.json', title: '과학적 탐구와 지속가능한 삶',
+    // 교육청 재구성 예시 지침(L-14~L-17): 수학 세트와 같은 결 — 해설·[지식]/[기능]·범위 메모·선수 학습·평가 요소 초안
+    patchStage2: (s2) => {
+      const notes: Record<string, { elements: string[]; note: string }> = {
+        '[9과01-01]': { elements: ['[지식] 과학적 탐구 방법의 과정(문제 인식 → 가설 설정 → 자료 수집 → 결론 도출)', '[기능] 일상생활의 문제를 탐구 문제로 바꾸고 자료를 근거로 과학적 해결 방안을 제안하기'], note: '탐구 방법은 세트 전체의 절차적 뼈대라 유지한다 — [9과01-03]의 활동 방안을 과학적 근거로 뒷받침하는 도구가 된다.' },
+        '[9과01-03]': { elements: ['[지식] 지속가능한 삶의 뜻과 과학기술의 역할(재료 개발·분리 기술·세척 설비)', '[기능] 개인 차원과 사회 차원의 활동 방안을 구분해 찾고 실천 계획으로 쓰기'], note: '핵심 개념(지속가능성·과학기술의 역할)이 탐구 방법과 달라 통합하지 않고 유지하되, 두 성취기준을 일회용컵 문제라는 한 상황으로 잇는다.' },
+      }
+      for (const st of s2.standards) {
+        const n = notes[st.code]
+        if (!n) throw new Error(`PATCHES: patchStage2 — ${st.code} 해설 없음`)
+        st.learning_elements = n.elements; st.reason_note = n.note
+      }
+      s2.scope_note = '이 세트는 플라스틱의 재료·분해·재활용(자료 D)과 컵 재질 비교(자료 E)까지 다루고, 고분자의 구조·밀도 계산·연소 실험은 다루지 않는다(관찰은 무게 재기·물에 띄우기·눌러 보기까지). "과학적 해결 방안"은 자료의 수치와 과학적 이유를 근거로 든 제안을 뜻하며, 방안의 비용·효과 추정은 요구하지 않는다. 교과서 기준 6~7차시 분량 → 교수 차시 5개 + 평가 1차시.'
+      s2.prerequisites = ['초등 물질의 성질: 물체와 물질, 물에 뜨고 가라앉음', '초등 과학 탐구: 관찰·측정·분류와 결과 정리']
+      s2.criteria_draft = ['재활용을 어렵게 하는 요인을 자료 근거로 밝히기', '관찰한 성질을 새 사례에 적용해 예측하기', '과학적 근거와 해결 방안을 연결하기', '개인·사회 차원을 구분해 실천 가능한 방안을 서술하기']
+    },
     patchV1: ({ s3, s4, s6 }) => {
       // 대표 2026-09-26: 서술형은 하나만 — 과학은 서술형 1(재활용이 어려운 이유, 3차시 관찰과 이어짐)을 남기고 서술형 2(개인 차원 방안 + 과학적 이유)를 뺀다.
       // 남긴 이유: 서술형 2는 논술형(개인 차원·학교 차원 방안 + 자료 B 수치 + 자료 D 근거)과 요구가 겹친다 — 두 문항 세트에서 한 학생이 같은
@@ -583,7 +717,8 @@ const SETS: SetDef[] = [
         intro: '2~4차시 산출물(자료 D 밑줄, 관찰 기록지, 개인/사회 두 칸 표)을 책상에 펼치고 "우리 학교는 무엇을 바꾸는 것이 과학적으로 가장 타당한가?"를 다시 묻는다.',
         main: [
           { step_label: '제안서 뼈대 익히기', minutes: 20, activities: ['① 제안서의 뼈대 안내: 자료의 수치로 문제 짚기 → 과학적 이유 → 제안 → 개인 방안 → 학교 방안', '② 비닐봉지를 예로 교사가 뼈대 칸마다 한 문장씩 말로 보여 준다(일회용컵 제안은 단원 평가에서 학생이 쓴다).'] },
-          { step_label: '근거 연결 연습', minutes: 20, activities: ['③ 모둠별로 나무젓가락이나 일회용 접시 가운데 하나를 골라 뼈대의 첫 두 칸(수치·과학적 이유)을 써 보고 서로 고친다.', '④ 다음 시간 단원 평가(서술형 15분 + 논술형 35분) 진행 방식을 안내한다.'] },
+          // L-21(2026-10-01): 마지막 교수 차시에 채점 요소 이름·만점·조건의 종류를 미리 보여 주고 자기 점검표를 읽는다(답·예시답안은 보여 주지 않는다)
+          { step_label: '근거 연결 연습', minutes: 20, activities: ['③ 모둠별로 나무젓가락이나 일회용 접시 가운데 하나를 골라 뼈대의 첫 두 칸(수치·과학적 이유)을 써 보고 서로 고친다.', '④ 다음 시간 단원 평가(서술형 15분 + 논술형 35분)의 진행 방식과 함께 채점 요소의 이름·만점·조건의 종류(인용할 자료, 개인·학교 방안 각 1개, 종결어미)를 보여 주고 활동지의 자기 점검표를 함께 읽는다 — 답·예시답안은 보여 주지 않는다.'] },
         ],
         wrapup: ['퀴즈 → 모둠이 쓴 뼈대 두 칸을 발표하고 근거에 자료 이름과 단위가 있는지 서로 확인한다'],
         quiz: [
@@ -731,6 +866,44 @@ const SETS: SetDef[] = [
         '과학적 근거의 정확성': '지식·이해', '문제와 해결 방안의 연결': '근거 들어 설명하기', '실천 가능성(개인·사회 구분)': '가치·태도', '서술': '글로 표현하기',
       })
     },
+    // 교육청 재구성 예시 지침(대표 2026-10-01): 활동지 기본·표준은 발문 복사본이 아니라 같은 자료 위의 다른 과제(L-19 — 질문형 도움말, 답·결론 없음),
+    // 결함 찾기 1개(2차시, 자료 D 정리 문장의 틀린 곳 — "미생물이 거의 분해하지 못"은 2차시가 가르치는 차시라 적어도 된다), 교수 차시마다 확인·피드백 계획(L-20),
+    // 5차시 자기 점검표(L-21). 서술형 새 사례(PET·PS 둘 다 가라앉음)와 논술형의 일회용컵 제안은 어디에도 적지 않는다(C-03).
+    guidelines: (lessons, a) => {
+      setBaseTasks(lessons, 1, [
+        ['과학적 탐구 방법의 네 단계를 순서대로 적고, 그 가운데 "가설"이 무엇인지 한 줄로 써 보자. (도움말: 아직 확인되지 않았지만 자료로 확인할 수 있는 예상을 무엇이라 부르는가?)', '문제 인식 → 가설 설정 → 자료 수집 → 결론 도출 / 가설은 탐구 문제에 대한 예상 답으로, 자료를 모아 맞는지 확인할 수 있는 문장이면 인정', 'short'],
+        ['"우리 학교 축제에는 쓰레기가 너무 많다"를 세거나 잴 수 있는 탐구 문제로 고쳐 쓰고, 자료 B의 어느 칸을 보면 그 문제에 답할 수 있는지 적어 보자. (도움말: 무엇을, 어디서, 몇 개 셌는지가 문장에 들어 있는가?)', '예: "올해 축제 부스 20곳에서 품목별 일회용품은 몇 개씩 나왔는가?" → 자료 B의 올해 열; 세거나 잴 수 있는 말과 자료 B의 칸이 맞게 짝지어지면 인정', 'lines'],
+      ])
+      setBaseTasks(lessons, 2, [
+        ['자료 D에서 플라스틱의 장점을 나타내는 말 세 개를 찾아 적어 보자. (도움말: "~서 많이 쓰인다" 앞에 나오는 말은?)', '가볍다, 잘 깨지지 않는다, 값이 싸다', 'short'],
+        ['자료 D를 근거로, 바닥의 재활용 표시(PET·PP·PS)가 서로 다른 제품을 왜 따로 모아야 하는지 한 문장으로 써 보자. (도움말: 종류가 다르면 무엇이 다르다고 했는가?)', '종류가 다르면 무게와 녹는 온도 같은 성질이 달라 종류별로 따로 모아야 다시 쓸 수 있기 때문 — 자료 D의 "성질이 다르다"를 근거로 들면 인정', 'lines'],
+      ])
+      addFlawCheckTask(lessons, 2,
+        '한 학생이 자료 D를 읽고 "플라스틱은 석유에서 얻은 원료로 만든 금속이라 가볍고 잘 깨지지 않으며, 땅에 묻히면 몇 달 안에 분해된다"라고 정리했다. 자료 D와 다른 곳 두 군데를 찾아 고쳐 보자. (도움말: 자료 D에서 "물질"과 "년"이 나오는 문장을 다시 읽으면?)',
+        '결함 ① "금속" → 석유에서 얻은 원료로 만든 고분자 물질 ② "몇 달 안에 분해된다" → 미생물이 거의 분해하지 못해 사라지기까지 약 수백 년이 걸린다. 두 군데를 모두 찾아 고치면 인정')
+      setBaseTasks(lessons, 3, [
+        ['관찰 기록지에서 물에 뜬 컵 조각과 가라앉은 컵 조각의 재질 표시를 각각 적고, 자료 E에서 그 결과와 같은 말이 적힌 칸을 찾아 보자. (도움말: 자료 E의 마지막 열에서 "물"이 나오는 칸은?)', '뜬 조각: PP, 가라앉은 조각: PET / 자료 E 분해·재활용 특성 열의 PET·PP 칸', 'short'],
+        ['자료 E에서 재활용이 "잘 되는 편"인 컵과 "어려운" 컵을 하나씩 고르고, 표의 어느 말이 그 판단의 근거인지 옮겨 적어 보자. (도움말: "재질이 하나"와 "붙어 있어"는 각각 어느 컵에 적혀 있는가?)', '잘 되는 편: 플라스틱컵(PET) — 투명하고 재질이 하나 / 어려운: 종이컵 — 종이와 플라스틱이 붙어 있어 일반 종이류로는 재활용이 어렵다; 표의 말을 근거로 옮겨 적으면 인정', 'lines'],
+      ])
+      setBaseTasks(lessons, 4, [
+        ['자료 E에서 일회용 PET컵과 스테인리스 다회용컵의 무게와 재사용 횟수를 찾아 표로 옮겨 적어 보자. (도움말: "약"이 붙은 수는 어림값이라는 뜻이다 — 표의 몇째 열인가?)', 'PET컵 약 8 g · 1회 / 스테인리스 다회용컵 약 150 g · 수백 회 이상', 'table'],
+        ['일회용컵을 줄이는 방안을 세 가지 떠올려 적고, 각각 "나 혼자 할 수 있는 일"인지 "여럿의 약속이나 설비가 필요한 일"인지 표시해 보자. (도움말: 그 일을 하는 데 누구의 동의나 어떤 장비가 필요한가?)', '예: 텀블러 가져오기 — 개인 / 다회용컵 대여대 설치 — 사회(학교) / 부스마다 세척 당번 정하기 — 사회(학교); 구분이 맞으면 인정(방안은 학생마다 다르다)', 'lines'],
+      ])
+      setFeedbackPlans(lessons, {
+        1: { who: '전체', how: '퀴즈 2(어느 단계인가)와 활동지 표준 과제(탐구 문제 고쳐 쓰기)로 느낌과 탐구 문제를 가르는지 확인한다 — 다음 차시 자료 D 읽기도 "세거나 잴 수 있는 것"을 찾는 활동이므로, 틀린 학생이 많으면 2차시 도입에서 한 쌍을 더 견준다.', sentence_frame: '지난 시간보다 세거나 잴 수 있는 말로 문제를 적었다.' },
+        2: { who: '개별', how: '활동지 표준 과제(종류별로 따로 모으는 까닭)와 퀴즈 3으로 자료 D의 근거 문장을 찾는지 확인한다 — 다음 차시 관찰 결과를 자료 E와 대조하려면 자료에서 근거를 찾는 습관이 전제이므로, 틀린 학생에게 3차시 전에 자료 D의 해당 문장을 함께 짚는다.', sentence_frame: '지난 활동지보다 자료의 문장을 근거로 끌어왔다.' },
+        3: { who: '모둠', how: '관찰 기록지와 활동지 기본 과제(뜬 조각·가라앉은 조각)로 관찰 결과를 자료 E와 맞게 대조했는지 확인한다 — 다음 차시 재료의 양 비교가 자료 E 읽기를 전제하므로, 어긋난 모둠은 기록지를 바꿔 보며 서로 고치게 한다.', sentence_frame: '지난 시간보다 관찰한 것과 자료를 더 정확히 맞추었다.' },
+        4: { who: '개별', how: '활동지 표준 과제(개인/사회 구분)와 퀴즈 2로 방안의 차원을 가르는지 확인한다 — 다음 차시 제안서 뼈대(개인 방안·학교 방안 칸)의 전제이므로, 틀린 학생에게 5차시 전에 방안 하나를 들어 누구의 약속이 필요한지 되묻는다.', sentence_frame: '지난 활동지보다 누가 무엇을 하는지 분명하게 적었다.' },
+        5: { who: '전체', how: '활동지 표준 과제(수치에 단위 붙이기)와 퀴즈 2·3으로 근거 문장에 자료 이름·단위가 있는지 확인한다 — 단원 평가 직전이므로 빠진 학생이 있으면 6차시 평가 안내 때 전체에게 "수치 + 단위 + 자료 이름" 한 줄을 다시 보여 준다.', sentence_frame: '지난 시간보다 근거에 자료 이름과 단위를 빠짐없이 붙였다.' },
+      })
+      setSelfCheck(lessons, a, [
+        '나는 "재활용을 어렵게 하는 요인"을 답에 썼다.',
+        '나는 "자료를 근거로 밝히기"와 "새 사례에 적용한 예측"을 했다.',
+        '나는 "과학적 근거의 정확성"과 "문제와 해결 방안의 연결"을 확인했다.',
+        '나는 "실천 가능성(개인·사회 구분)"을 확인했다.',
+        '나는 "서술"을 확인했다.',
+      ])
+    },
     session: {
       key_question: '축제의 일회용컵 문제를 줄이기 위해 우리 학교가 무엇을 바꾸는 것이 과학적으로 가장 타당한가?',
       goal: '재활용이 어려운 까닭을 설명하는 서술형과 과학적 근거로 해결 방안을 제안하는 논술형에 답해 단원에서 배운 것을 스스로 정리한다.',
@@ -755,14 +928,19 @@ export function convertSet(set: SetDef): { files: Record<string, unknown>; probl
   const s6 = input.s6
 
   const ctx = { standards, prior: {} as Record<string, unknown> }
-  const stage2 = enrichOutput(2, buildReconstructionV2(input.s2, standards), ctx)
+  const recon = buildReconstructionV2(input.s2, standards)
+  set.patchStage2?.(recon)
+  const stage2 = enrichOutput(2, recon, ctx)
   const notesFor = (no: number) => s6.per_lesson.find((p) => p.no === no)?.notes ?? []
   const lessons = input.s3.lessons.map((l) => upgradeLessonV1(l, notesFor(l.no)))
   set.patchLessons?.(lessons)
   const assessment = upgradeAssessmentV1(s5)
   set.patchAssessment?.(assessment)
+  set.guidelines?.(lessons, assessment)
   if (set.session) { clearLessonAssessments(lessons); appendAssessmentSession(lessons, assessment, set.session) }
   const stage3 = { unit_plan: unitPlanFrom(set.title, input.s2.key_question_candidates[0], lessons, assessment), lessons }
+  // L-17: 차시 구성표에 그 차시가 길러 주는 채점 요소 이름(5단계 taught_in 에서 거꾸로) — 대표 2026-10-01
+  setCriteriaFocus(stage3.unit_plan, lessons, assessment)
   // 대표님 지시(2026-09-26): 자료 제목의 '본사 자작'·'가상' 같은 내부 표기는 지운다(lib/studio/materials.ts cleanMaterialTitle).
   const materials = input.s4.materials.map(upgradeMaterialV1).map((m) => ({ ...m, title: cleanMaterialTitle(m.title) }))
   const stage4 = { materials: set.patchMaterials ? set.patchMaterials(materials) : materials }
