@@ -79,13 +79,14 @@ function isString(v: unknown): v is string {
 }
 
 /**
- * 자료 표에서 어떤 그래프를 그릴 수 있는지 판별한다.
+ * 자료 표에서 어떤 그래프를 그릴 수 있는지 판별한다. **kind 가 'chart'인 자료만** 그린다(2026-10-01) — 표(table) 자료에 그래프를 자동으로
+ * 붙이면 학생이 만들어야 할 도수분포표·히스토그램·상대도수가 그대로 보인다(대표 지적 2026-09-26: 자료 B의 상대도수). 표는 표로만 보인다.
  * - 숫자 값이 10개 이상인 단일 숫자 열(맨 앞에 '부스'처럼 라벨/번호 열이 있어도 됨) 또는 단일 숫자 행 → histogram
  * - 첫 열이 문자열 라벨이고 숫자 열이 2개 이상, 행이 12개 이하 → relbars (합계/총계 행은 제외)
  * - 그 외 → null
  */
 export function detectChart(material: Material): ChartSpec {
-  if (material.kind !== 'table' || !material.table) return null
+  if (material.kind !== 'chart' || !material.table) return null
   const { columns, rows } = material.table
   if (rows.length === 0) return null
 

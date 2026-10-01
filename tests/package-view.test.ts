@@ -495,7 +495,7 @@ describe('MaterialsSection (student lesson panel)', () => {
     expect(html).toContain('max-w-[560px]')
     expect(html).toContain('grid-cols-2')          // 자료 A: 20행 2열 → 반으로 나눔
     expect(html).toContain('text-center tabular-nums')
-    expect(html).toMatch(/max-w-\[480px\]/)        // 자동 그래프
+    expect(html).not.toMatch(/max-w-\[480px\]/)    // 표 자료에는 자동 그래프를 그리지 않는다(2026-10-01) — 학생이 만들 그래프를 미리 보여 주지 않는다
   })
   it('renders nothing for an empty list', () => {
     expect(renderToStaticMarkup(createElement(MaterialsSection, { materials: [] }))).toBe('')

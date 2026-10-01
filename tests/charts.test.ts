@@ -7,8 +7,9 @@ import type { Material } from '@/lib/studio/schemas'
 // 차트 검출은 table 만 읽는다 — 자료 모양은 v2 Material 타입으로 본다(fixture 는 T6에서 v2로 재생성)
 const materials = (fixture as { materials: unknown[] }).materials as z.infer<typeof Material>[]
 
-const materialA = materials.find((m) => m.id === 'A')!
-const materialB = materials.find((m) => m.id === 'B')!
+// 그래프는 kind 'chart' 자료에만 그린다(2026-10-01) — fixture 의 표 자료를 chart 로 바꿔 검출 모양만 본다
+const materialA = { ...materials.find((m) => m.id === 'A')!, kind: 'chart' as const }
+const materialB = { ...materials.find((m) => m.id === 'B')!, kind: 'chart' as const }
 
 describe('histogramBins', () => {
   it('bins 자료 A values (20 values, binSize 10) into the expected frequencies', () => {
@@ -72,6 +73,11 @@ describe('detectChart', () => {
     }
   })
 
+  it('returns null for a table material — 표는 표로만 보인다(학생이 만들 그래프를 미리 보여 주지 않는다)', () => {
+    expect(detectChart(materials.find((m) => m.id === 'A')!)).toBeNull()
+    expect(detectChart(materials.find((m) => m.id === 'B')!)).toBeNull()
+  })
+
   it('returns null for a text material', () => {
     const textMaterial = {
       id: 'C',
@@ -90,7 +96,7 @@ describe('detectChart', () => {
     const rowMaterial = {
       id: 'E',
       title: '가로로 나열된 값',
-      kind: 'table' as const,
+      kind: 'chart' as const,
       body: null,
       table: {
         columns: Array.from({ length: 12 }, (_, i) => `값${i + 1}`),

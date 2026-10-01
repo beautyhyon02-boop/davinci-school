@@ -74,8 +74,8 @@ describe.each(['수학', '과학'] as const)('parts (%s fixtures)', (subject) =>
       }
       expect(t).not.toMatch(/undefined|NaN|\[object Object\]/)
     })
-    it('draws the auto chart for chartable tables and marks shared materials only when asked', () => {
-      if (subject === '수학') expect(html).toMatch(/max-w-\[480px\]/)
+    it('draws no auto chart for table materials (2026-10-01) and marks shared materials only when asked', () => {
+      expect(html).not.toMatch(/max-w-\[480px\]/)
       expect(html).not.toContain(`>${c.materials.sharedBadge}<`)
       const shared = renderToStaticMarkup(createElement(MaterialsFull, { materials, sharedIds: [materials[0].id] }))
       expect(count(shared, `>${c.materials.sharedBadge}<`)).toBe(1)
