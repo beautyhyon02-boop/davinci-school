@@ -447,6 +447,7 @@ export const app = {
           standards: (tag: string) => `성취기준 ${tag}`,
           learning_goals: () => '학습 목표',
           key_question_candidates: () => '핵심질문 후보',
+          scope_note: () => '세트 범위 메모',
           lessons: (tag: string) => `${tag}차시`,
           materials: (tag: string) => `자료 ${tag}`,
           items: (tag: string) => `${tag}번 문항`,
@@ -464,6 +465,7 @@ export const app = {
           'standards[].reconstructed_text': () => '재구성 문장',
           'learning_goals[].text': (ix: number[], p: FieldParent) => `학습 목표 ${nth(ix[0])} (${String(p.axis ?? '')})`,
           'key_question_candidates[]': (ix: number[]) => `후보 ${nth(ix[0])}`,
+          'scope_note': () => '세트 범위 메모',
           // 3단계
           'lessons[].topic': () => '주제',
           'lessons[].goal': () => '목표',
@@ -478,6 +480,8 @@ export const app = {
           'lessons[].worksheet.tasks[].prompt': (ix: number[], p: FieldParent) => `활동지 과제 ${nth(ix[1])} (${String(p.tier ?? '')})`,
           'lessons[].worksheet.tasks[].expected': (ix: number[]) => `활동지 과제 ${nth(ix[1])} 예상 답`,
           'lessons[].worksheet.self_check[]': (ix: number[]) => `자기평가 ${nth(ix[1])}`,
+          'lessons[].feedback_plan.how': () => '확인·피드백 계획',
+          'lessons[].self_check[]': (ix: number[]) => `자기 점검표 ${nth(ix[1])}`,
           'lessons[].formative_check.quiz[].q': (ix: number[]) => `퀴즈 ${nth(ix[1])} 문제`,
           'lessons[].formative_check.quiz[].answer': (ix: number[]) => `퀴즈 ${nth(ix[1])} 정답`,
           'lessons[].formative_check.quiz[].explanation': (ix: number[]) => `퀴즈 ${nth(ix[1])} 해설`,
@@ -531,6 +535,12 @@ export const app = {
         goalsLabel: '학습 목표',
         goal: (text: string, axis: string) => `${text} (${axis})`,
         candidatesLabel: '핵심질문 후보',
+        // 교육청 재구성 예시 지침(L-14~L-17, 대표 2026-10-01) — 교사용(제작소·원장 패키지), 학생 화면에는 없다
+        reasonNoteLabel: '재구조화 해설',
+        elementsLabel: '학습 요소',
+        scopeNoteLabel: '세트 범위 메모',
+        prerequisitesLabel: '선수 학습',
+        criteriaDraftLabel: '평가 요소 초안',
       },
       // 3·4·6·7단계 탭은 요약이 아니라 완성본 그대로(오너 규칙 2026-09-26) — 차시 카드·자료·지침서·안내장 문구는 app.packageView 를 함께 쓴다
       stage3: {
@@ -653,7 +663,9 @@ export const app = {
     levelsHeading: '성취수준(A~E)',
     levelsToggle: '성취수준 보기',
     reconstructionHeading: '재구성',
-    reconstructionTable: { columns: { code: '코드', original: '원문', type: '유형', reconstructed: '재구조화', reason: '이유', elements: '학습요소' } },
+    reconstructionTable: { columns: { code: '코드', original: '원문', type: '유형', reconstructed: '재구조화', reason: '이유', elements: '학습요소', note: '해설' } },
+    // 세트 범위 메모(L-16, 대표 2026-10-01) — 교사용. 원장 패키지·관리자 미리보기의 재구성 칸 아래 한 줄.
+    scopeNoteLabel: '세트 범위 메모 (교사용)',
     learningGoalsHeading: '학습 목표',
     learningGoals: { axisLabel: (axis: string) => axis },
     keyQuestionHeading: '핵심 질문',
@@ -665,6 +677,8 @@ export const app = {
       placement: (kind: string, no: number) => `${kind} → ${no}차시`,
       lessonMapLabel: '차시 구성',
       lessonMapItem: (no: number, topic: string) => `${no}차시 ${topic}`,
+      // L-17(2026-10-01): 차시 구성 줄 아래 그 차시가 길러 주는 단원 평가 요소 이름(교사용). 빈 배열이면 "없음"(탐구 문제 세우기처럼 요소를 직접 기르지 않는 차시).
+      criteriaFocus: (names: string[]) => (names.length ? `길러 주는 평가 요소: ${names.join(' · ')}` : '길러 주는 평가 요소: 없음'),
     },
     answersToggle: '정답·채점 자료 펼치기',
     materialsHeading: '자료',
@@ -730,6 +744,13 @@ export const app = {
       worksheetTier: (tier: string, ref: string) => `${tier}(${ref})`,
       worksheetExpected: '기대 답',
       selfCheckHeading: '자기평가',
+      // 교육청 재구성 예시 지침(대표 2026-10-01): 결함 찾기 과제 배지(L-19, 교사용 — 학생 활동지에는 과제 문장만), 확인·피드백 계획(L-20, 교사용 지침 칸),
+      // 마지막 교수 차시의 자기 점검표(L-21 — 학생에게도 보이는 것: 채점 요소 이름만)
+      flawCheckBadge: '결함 찾기',
+      feedbackPlanHeading: '확인·피드백 계획',
+      feedbackWho: (who: string) => `${who} 피드백`,
+      feedbackFrameLabel: '자기참조 문장 틀',
+      selfCheckListHeading: '자기 점검표 (단원 평가 전에 학생이 읽는 것)',
       mergeNoteLabel: '병합 시 생략',
       mergeableLabel: (no: number) => `${no}차시와 병합 가능`,
       assessmentSessionBadge: '단원 평가',
@@ -932,6 +953,8 @@ export const app = {
       locked: '아직 열리지 않았어요',
       keyQuestion: '이 시간의 질문',
       materials: '자료',
+      // 마지막 교수 차시의 자기 점검표(L-21, 2026-10-01): 단원 평가 채점 요소의 이름만 — 학생이 평가 전에 스스로 확인한다
+      selfCheck: { heading: '단원 평가 전 자기 점검', hint: '다음 시간 평가에서 보는 것이에요. 하나씩 확인해 보세요.' },
       quiz: {
         heading: '마무리 퀴즈',
         submit: '제출',
@@ -1515,11 +1538,18 @@ export const app = {
       tier: (tier: string) => tier,
       selfCheck: '자기평가',
       selfCheckBox: '□',
+      // 마지막 교수 차시의 자기 점검표(L-21, 2026-10-01) — 학생용 교재에도 실린다(채점 요소 이름만)
+      selfCheckList: '단원 평가 전 자기 점검표',
       quiz: '퀴즈',
       quizNo: (no: number) => `${no}.`,
       answerLabel: '답',
       // 교사용
       flow: '수업 흐름',
+      // 확인·피드백 계획(L-20)·결함 찾기 배지(L-19) — 교사용 지도서만
+      feedbackPlan: '확인·피드백 계획',
+      feedbackWho: (who: string) => `${who} 피드백`,
+      feedbackFrame: '자기참조 문장 틀',
+      flawCheck: '결함 찾기',
       flowStep: { intro: '도입', main: '전개', wrapup: '정리' },
       minutes: (n: number) => `${n}분`,
       script: '교사 발문과 예상 답',
@@ -1583,10 +1613,12 @@ export const app = {
       goals: '학습 목표(3차원)',
       keyQuestion: '핵심 질문',
       table: '차시 구성표',
-      columns: { no: '차시', topic: '주제', materials: '자료', assessment: '평가' },
+      columns: { no: '차시', topic: '주제', materials: '자료', assessment: '평가', criteria: '길러 주는 평가 요소' },
       quizCell: (n: number) => `퀴즈 ${n}문항`,
       none: '-',
       formative: '형성평가',
+      // 세트 범위 메모(L-16, 2026-10-01) — 단원 계획의 재구성 아래
+      scopeNote: '세트 범위 메모',
     },
     guide: { heading: '교사용 지침' },
     notice: { heading: '안내장 틀' },

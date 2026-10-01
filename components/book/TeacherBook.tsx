@@ -1,4 +1,4 @@
-import type { BookItem, BookLesson, BookPlan, BookScriptQuestion, BookTask } from '@/lib/book/plan'
+import type { BookFeedbackPlan, BookItem, BookLesson, BookPlan, BookScriptQuestion, BookTask } from '@/lib/book/plan'
 import { sortScale } from '@/lib/studio/scale'
 import { TeacherGuideView } from '@/components/studio/parts/TeacherGuideView'
 import { NoticePlanView } from '@/components/studio/parts/NoticePlanView'
@@ -51,11 +51,15 @@ function UnitPlanSection({ plan }: { plan: BookPlan }) {
                   <p className="font-semibold">{s.code}</p>
                   <Below kind="original" label={p.original}>{s.text}</Below>
                   {d && <Below kind="reconstructed" label={p.reconstructed(d.reconstruction_type)}>{d.reconstructed_text === s.text ? p.sameAsOriginal : d.reconstructed_text}</Below>}
+                  {/* 재구조화 해설(L-14) — 그 뒤에 게시된 판에만 */}
+                  {d?.reason_note && <Below kind="reason-note" label={pv.reconstructionTable.columns.note}>{d.reason_note}</Below>}
                 </li>
               )
             })}
           </ul>
           {t.reconstruction && <KV stacked label={p.reconstructionNote}>{t.reconstruction}</KV>}
+          {/* 세트 범위 메모(L-16) — 교사용 */}
+          {t.scopeNote && <div data-scope-note><KV stacked label={p.scopeNote}>{t.scopeNote}</KV></div>}
         </div>
       )}
       {plan.learningGoals.length > 0 && (
@@ -73,12 +77,14 @@ function UnitPlanSection({ plan }: { plan: BookPlan }) {
       {t.planRows.length > 0 && (
         <div className="book-block" data-plan-table>
           <Heading3>{p.table}</Heading3>
+          {/* 길러 주는 평가 요소 열(L-17)은 criteria_focus 가 있는 판에만 */}
           <BookTable
-            columns={[p.columns.no, p.columns.topic, p.columns.materials, p.columns.assessment]}
+            columns={[p.columns.no, p.columns.topic, p.columns.materials, p.columns.assessment, ...(t.planRows.some((r) => r.criteria) ? [p.columns.criteria] : [])]}
             rows={t.planRows.map((r) => [
               r.no, r.topic,
               r.materials.length ? r.materials.map((id) => copy.lesson.materialLabel(id)).join(', ') : p.none,
               [...r.assessment, ...(r.quizCount > 0 ? [p.quizCell(r.quizCount)] : [])].join(' + ') || p.none,
+              ...(t.planRows.some((x) => x.criteria) ? [r.criteria?.length ? r.criteria.join(' · ') : p.none] : []),
             ])}
           />
           {t.formative && <KV label={p.formative}>{t.formative}</KV>}
@@ -133,22 +139,41 @@ function ScriptList({ questions }: { questions: BookScriptQuestion[] }) {
   )
 }
 
-/** 활동지 과제 → 아랫줄 기대 답, 그 뒤 자기평가. */
-function WorksheetAnswers({ tasks, selfCheck }: { tasks: BookTask[]; selfCheck: string[] }) {
+/** 활동지 과제 → 아랫줄 기대 답, 그 뒤 자기평가(와 마지막 교수 차시의 자기 점검표). 결함 찾기 과제(L-19)는 표시만(학생용 교재에는 과제 문장만). */
+function WorksheetAnswers({ tasks, selfCheck, selfCheckList = [] }: { tasks: BookTask[]; selfCheck: string[]; selfCheckList?: string[] }) {
   const c = copy.lesson
-  if (tasks.length === 0) return null
+  if (tasks.length === 0 && selfCheckList.length === 0) return null
   return (
     <div className="book-block" data-worksheet>
-      <Heading3>{c.worksheetAnswers}</Heading3>
-      <ol className="book-tasks">
-        {tasks.map((w) => (
-          <li key={w.no} data-book-task={w.no} className="book-task">
-            <p className="font-semibold">{c.taskNo(w.no)} {w.prompt} <span className="book-faint font-normal">({pv.lessons.worksheetTier(w.tier, w.level_ref)})</span></p>
-            {w.expected && <Below kind="expected" label={pv.lessons.worksheetExpected}>{w.expected}</Below>}
-          </li>
-        ))}
-      </ol>
-      <LabeledList label={c.selfCheck} items={selfCheck} />
+      {tasks.length > 0 && (
+        <>
+          <Heading3>{c.worksheetAnswers}</Heading3>
+          <ol className="book-tasks">
+            {tasks.map((w) => (
+              <li key={w.no} data-book-task={w.no} className="book-task">
+                <p className="font-semibold">{c.taskNo(w.no)} {w.prompt} <span className="book-faint font-normal">({pv.lessons.worksheetTier(w.tier, w.level_ref)}{w.flaw_check ? ` · ${c.flawCheck}` : ''})</span></p>
+                {w.expected && <Below kind="expected" label={pv.lessons.worksheetExpected}>{w.expected}</Below>}
+              </li>
+            ))}
+          </ol>
+          <LabeledList label={c.selfCheck} items={selfCheck} />
+        </>
+      )}
+      {selfCheckList.length > 0 && <div data-self-check-list><LabeledList label={c.selfCheckList} items={selfCheckList} /></div>}
+    </div>
+  )
+}
+
+/** 확인·피드백 계획(L-20) — 누구에게 → 아랫줄 무엇을 확인하고 어떻게 → 아랫줄 자기참조 문장 틀. 교사용. */
+function FeedbackPlanBlock({ plan }: { plan: BookFeedbackPlan | null }) {
+  const c = copy.lesson
+  if (!plan) return null
+  return (
+    <div className="book-block" data-feedback-plan>
+      <Heading3>{c.feedbackPlan}</Heading3>
+      <p className="font-semibold">{c.feedbackWho(plan.who)}</p>
+      <p>{plan.how}</p>
+      {plan.sentence_frame && <Below kind="frame" label={c.feedbackFrame}>{plan.sentence_frame}</Below>}
     </div>
   )
 }
@@ -179,7 +204,7 @@ function LessonSection({ plan, l }: { plan: BookPlan; l: BookLesson }) {
         </div>
       )}
 
-      <WorksheetAnswers tasks={l.tasks} selfCheck={l.selfCheck} />
+      <WorksheetAnswers tasks={l.tasks} selfCheck={l.selfCheck} selfCheckList={l.selfCheckList} />
 
       {l.quiz.length > 0 && (
         <div className="book-block" data-quiz>
@@ -203,6 +228,7 @@ function LessonSection({ plan, l }: { plan: BookPlan; l: BookLesson }) {
         </div>
       )}
 
+      <FeedbackPlanBlock plan={tp.feedbackPlan} />
       <LabeledList label={c.needs} items={tp.needed} />
       <LabeledList label={c.cautions} items={tp.cautions} />
       {tp.mergeNote && <KV label={c.mergeNote}>{tp.mergeNote}</KV>}

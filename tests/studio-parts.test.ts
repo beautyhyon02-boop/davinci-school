@@ -175,10 +175,12 @@ describe.each(['수학', '과학'] as const)('parts (%s fixtures)', (subject) =>
     it('활동지: 층(기본/표준/도전)마다 이름표 + 한 줄에 한 과제, 기대 답은 과제 아랫줄; 자료·준비물·흐름도 한 줄에 하나씩', () => {
       for (const l of lessons) {
         const seg = lessonSegment(html, l.no)
-        const tasks = l.worksheet.tasks as { no: number; prompt: string; tier: string; level_ref: string; expected?: string }[]
+        const tasks = l.worksheet.tasks as { no: number; prompt: string; tier: string; level_ref: string; expected?: string; flaw_check?: boolean }[]
         for (const w of tasks) {
           expect(seg).toContain(`data-worksheet-tier="${esc(c.lessons.worksheetTier(w.tier, w.level_ref))}"`)
-          expect(seg).toContain(`<li value="${w.no}">${esc(w.prompt)}</li>`)
+          // 결함 찾기 과제(L-19, 2026-10-01)는 과제 문장 뒤에 교사용 배지 하나 — 문장 자체는 그대로 한 줄
+          if (w.flaw_check) expect(seg).toMatch(new RegExp(`<li value="${w.no}">${esc(w.prompt).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} <span data-print="omit" data-flaw-check="${w.no}">.*?${c.lessons.flawCheckBadge}.*?</span></li>`))
+          else expect(seg).toContain(`<li value="${w.no}">${esc(w.prompt)}</li>`)
           if (w.expected) {
             const li = seg.slice(seg.indexOf(`data-worksheet-answer="${w.no}"`))
             separated(li.slice(0, li.indexOf('</li>')), w.prompt, w.expected)

@@ -30,6 +30,8 @@ function studentCorpus(s: Snapshot): string {
     for (const q of l.formative_check.quiz) parts.push(q.q, ...(q.choices ?? []))
     for (const w of l.worksheet.tasks) parts.push(w.prompt)
     parts.push(...l.worksheet.self_check)
+    // 마지막 교수 차시의 자기 점검표(L-21, 2026-10-01)는 설계상 학생이 읽는 것(채점 요소 이름만)
+    parts.push(...(l.self_check ?? []))
   }
   // 자료의 자동 그래프(MaterialChart — 학생 화면·문제지에도 같은 그래프)가 찍는 수치 라벨(상대도수 0.18 등)도 학생이 보는 글이다
   for (const m of s.materials) parts.push(m.title, m.body ?? '', ...(m.table?.columns ?? []), ...(m.table?.rows.flat().map(String) ?? []), text(renderToStaticMarkup(createElement(MaterialChart, { material: m }))))
@@ -52,7 +54,12 @@ function forbidden(s: Snapshot): { why: string; text: string }[] {
     for (const w of l.worksheet.tasks) add(`${l.no}차시 과제 ${w.no} 기대 답`, w.expected)
     for (const [i, q] of l.teacher_script.questions.entries()) { add(`${l.no}차시 발문 ${i + 1} 예상 답`, q.expected_answer); add(`${l.no}차시 발문 ${i + 1} 막힐 때`, q.if_stuck) }
     for (const n of l.caution_notes) add(`${l.no}차시 유의점`, n)
+    // 확인·피드백 계획(L-20)·결함 찾기 표시(L-19)는 교사용
+    if (l.feedback_plan) { add(`${l.no}차시 피드백 계획`, l.feedback_plan.how); add(`${l.no}차시 자기참조 문장 틀`, l.feedback_plan.sentence_frame) }
+    for (const w of l.worksheet.tasks) if (w.flaw_check) add(`${l.no}차시 과제 ${w.no} 결함 찾기 표시`, `${app.book.lesson.flawCheck}`)
   }
+  // 세트 범위 메모(L-16)는 교사용
+  add('세트 범위 메모', s.scope_note)
   for (const [i, it] of (s.assessment?.items ?? []).entries()) {
     for (const el of it.evaluation_elements) add(`문항 ${i + 1} 출제 의도`, el)
     for (const cr of it.rubric.criteria) {
@@ -123,7 +130,7 @@ describe.each(cases)('학생용 교재에 답이 없다 (%s)', (_name, make) => 
     for (const a of allowed) expect(corpus, a.why).toContain(a.text)
   })
   it('carries no teacher-only markup: no answer/expected/explanation asides, no competency, no level map, no translations, no script prompts, no rubric, no English-version badge', () => {
-    for (const needle of ['data-book-aside', 'data-competency', 'data-level-map', 'data-guide-translations', 'data-script-prompt', 'data-book-rubric', 'data-english-version-of', 'data-taught-in', 'data-book-guide', 'data-book-notice', 'data-grade-boundaries', 'data-book-exemplars']) {
+    for (const needle of ['data-book-aside', 'data-feedback-plan', 'data-scope-note', 'data-plan-table', 'data-competency', 'data-level-map', 'data-guide-translations', 'data-script-prompt', 'data-book-rubric', 'data-english-version-of', 'data-taught-in', 'data-book-guide', 'data-book-notice', 'data-grade-boundaries', 'data-book-exemplars']) {
       expect(html, needle).not.toContain(needle)
     }
     for (const heading of [c.assessment.elementsLabel, c.assessment.exemplarsHeading, c.assessment.levelMapHeading, c.teacherGuide.translationsHeading, app.book.lesson.script, app.book.lesson.expected, app.book.lesson.quizAnswer, app.book.lesson.quizExplanation, app.book.assessment.rubric, app.book.assessment.exemplars, app.book.assessment.levelMap, app.book.assessment.intent, app.book.lesson.stuck]) {

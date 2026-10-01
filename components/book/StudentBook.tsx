@@ -106,6 +106,13 @@ function LessonSection({ plan, l }: { plan: BookPlan; l: BookLesson }) {
           )}
         </div>
       )}
+      {/* 마지막 교수 차시의 자기 점검표(L-21): 단원 평가 채점 요소의 이름만 담은 체크 줄 — 설계상 학생이 읽는 것(척도 서술·답은 없다) */}
+      {l.selfCheckList.length > 0 && (
+        <div className="book-block" data-self-check-list>
+          <Heading4>{c.selfCheckList}</Heading4>
+          <ul className="book-list">{l.selfCheckList.map((s, i) => <li key={i}>{c.selfCheckBox} {s}</li>)}</ul>
+        </div>
+      )}
 
       {l.quiz.length > 0 && (
         <div className="book-block" data-quiz>

@@ -17,8 +17,12 @@ import { Stage5Summary } from './Stage5Summary'
 // 다른 단계의 출력(차시 → 지침서 메모·자료 참조 등)은 outputs 로 받는다 — 모두 평범한 데이터(함수 prop 없음).
 const copy = app.studio.wizard
 
-// 2단계는 v2 출력(learning_goals 객체)과 v2 이전 출력(문자열 목표)을 둘 다 받는다.
-type Stage2Output = { reconstruction: string; learning_goals: (string | { text: string; axis: string })[]; key_question_candidates: string[] }
+// 2단계는 v2 출력(learning_goals 객체)과 v2 이전 출력(문자열 목표)을 둘 다 받는다. 재구조화 해설·범위 메모·선수 학습·평가 요소 초안(L-14~L-17, 2026-10-01)은 있을 때만.
+type Stage2Output = {
+  reconstruction: string; learning_goals: (string | { text: string; axis: string })[]; key_question_candidates: string[]
+  standards?: { code: string; reason_note?: string; learning_elements?: string[] }[]
+  scope_note?: string; prerequisites?: string[]; criteria_draft?: string[]
+}
 type Stage3Output = { unit_plan?: UnitPlanLike | null; lessons?: LessonLike[] }
 
 // 칸 제목은 원장 화면 조각과 같은 위계(text-base 굵게 — parts/common.tsx SectionTitle, 오너 요청 2026-09-26).
@@ -39,12 +43,45 @@ export function StageOutput({ stage, outputs, sharedMaterials = [] }: {
 
   if (stage === 2) {
     const o = output as Stage2Output
+    const noted = arr(o.standards).filter((s) => s.reason_note || (s.learning_elements ?? []).length > 0)
     return (
       <div className="mt-3 space-y-3">
         <div>
           <Heading>{copy.stage2.reconstructionLabel}</Heading>
           <p className="mt-1 whitespace-pre-wrap text-sm">{o.reconstruction}</p>
         </div>
+        {/* 교육청 재구성 예시 지침(L-14~L-17): 성취기준마다 해설 → 아랫줄 학습 요소([지식]/[기능]); 범위 메모·선수 학습·평가 요소 초안은 한 줄에 하나씩 */}
+        {noted.length > 0 && (
+          <div data-reason-notes>
+            <Heading>{copy.stage2.reasonNoteLabel}</Heading>
+            <ul className="mt-1 space-y-2 text-sm">
+              {noted.map((s) => (
+                <li key={s.code}>
+                  <p><span className="font-semibold">{s.code}</span> {s.reason_note}</p>
+                  {(s.learning_elements ?? []).length > 0 && <ul className="mt-0.5 list-disc pl-5 text-ink-700">{(s.learning_elements ?? []).map((e, i) => <li key={i}>{e}</li>)}</ul>}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {o.scope_note && (
+          <div data-scope-note>
+            <Heading>{copy.stage2.scopeNoteLabel}</Heading>
+            <p className="mt-1 whitespace-pre-wrap text-sm">{o.scope_note}</p>
+          </div>
+        )}
+        {(o.prerequisites ?? []).length > 0 && (
+          <div>
+            <Heading>{copy.stage2.prerequisitesLabel}</Heading>
+            <ul className="mt-1 list-disc space-y-1 pl-5 text-sm">{(o.prerequisites ?? []).map((p, i) => <li key={i}>{p}</li>)}</ul>
+          </div>
+        )}
+        {(o.criteria_draft ?? []).length > 0 && (
+          <div>
+            <Heading>{copy.stage2.criteriaDraftLabel}</Heading>
+            <ul className="mt-1 list-disc space-y-1 pl-5 text-sm">{(o.criteria_draft ?? []).map((p, i) => <li key={i}>{p}</li>)}</ul>
+          </div>
+        )}
         <div>
           <Heading>{copy.stage2.goalsLabel}</Heading>
           <ul className="mt-1 list-disc space-y-1 pl-5 text-sm">

@@ -26,11 +26,13 @@ export type BookSection = { id: string; kind: BookSectionKind; title: string; le
 
 /** 퀴즈 한 문항 — 학생용 판에는 answer·explanation·competency·level_ref 가 없다(빼고 만든다). */
 export type BookQuiz = { q: string; type: string; choices: string[] | null; answer?: string; explanation?: string; competency?: string; level_ref?: string }
-/** 활동지 과제 — 학생용 판에는 expected 가 없다. */
-export type BookTask = { no: number; prompt: string; tier: string; level_ref: string; answer_space: TaskT['answer_space']; expected?: string }
+/** 활동지 과제 — 학생용 판에는 expected·flaw_check(결함 찾기 표시, L-19)가 없다. */
+export type BookTask = { no: number; prompt: string; tier: string; level_ref: string; answer_space: TaskT['answer_space']; expected?: string; flaw_check?: boolean }
 export type BookScriptQuestion = { prompt: string; expected_answer: string; if_stuck: string }
+/** 확인·피드백 계획(L-20, 2026-10-01) — 교사용. */
+export type BookFeedbackPlan = { who: string; how: string; sentence_frame: string | null }
 
-/** 교사용 지도서에만 싣는 차시 조각(수업 흐름·발문·준비물·유의점·지침서 메모). 학생용 판에는 없다. */
+/** 교사용 지도서에만 싣는 차시 조각(수업 흐름·발문·준비물·유의점·지침서 메모·확인·피드백 계획). 학생용 판에는 없다. */
 export type LessonTeacherPart = {
   standards: string[]
   time_budget: LessonT['time_budget'] | null
@@ -42,6 +44,7 @@ export type LessonTeacherPart = {
   mergeNote: string | null
   mergeableWith: number | null
   assessment: string[]
+  feedbackPlan: BookFeedbackPlan | null
 }
 export type BookLesson = {
   no: number
@@ -53,6 +56,8 @@ export type BookLesson = {
   images: string[]
   tasks: BookTask[]
   selfCheck: string[]
+  /** 마지막 교수 차시의 자기 점검표(L-21): 단원 평가 채점 요소의 이름만 — 학생용 판에도 실린다(설계상 학생이 읽는 것). 다른 차시·옛 판은 빈 배열. */
+  selfCheckList: string[]
   quiz: BookQuiz[]
   teacher?: LessonTeacherPart
 }
@@ -90,8 +95,8 @@ export type BookAssessment = {
     feedback_templates: NonNullable<SnapshotV2['assessment']>['feedback_templates'] | null
   }
 }
-/** 교사용 단원 계획의 차시 구성표 한 줄(차시·주제·자료·평가/퀴즈). */
-export type PlanRow = { no: number; topic: string; materials: string[]; assessment: string[]; quizCount: number }
+/** 교사용 단원 계획의 차시 구성표 한 줄(차시·주제·자료·평가/퀴즈·길러 주는 평가 요소(L-17, 없으면 null)). */
+export type PlanRow = { no: number; topic: string; materials: string[]; assessment: string[]; quizCount: number; criteria: string[] | null }
 
 export type BookPlan = {
   kind: BookKind
@@ -112,6 +117,8 @@ export type BookPlan = {
     standards: SnapshotV2['standards']
     reconstruction: string
     reconstructionDetail: ReconstructedStandardT[]
+    /** 세트 범위 메모(L-16) — 그 뒤에 게시된 판에만. */
+    scopeNote: string | null
     planRows: PlanRow[]
     formative: string | null
     guide: GuideT | null
@@ -158,7 +165,7 @@ function quizFor(l: LessonT, kind: BookKind): BookQuiz[] {
 function tasksFor(l: LessonT, kind: BookKind): BookTask[] {
   return arr(l.worksheet?.tasks).map((w: TaskT) => {
     const base: BookTask = { no: w.no, prompt: w.prompt, tier: w.tier, level_ref: w.level_ref, answer_space: w.answer_space }
-    return kind === 'student' ? base : { ...base, expected: w.expected }
+    return kind === 'student' ? base : { ...base, expected: w.expected, ...(w.flaw_check ? { flaw_check: true } : {}) }
   })
 }
 
@@ -167,15 +174,17 @@ function lessonFor(l: LessonT, s: SnapshotV2, kind: BookKind): BookLesson {
   const base: BookLesson = {
     no: l.no, title: copy.lesson.heading(l.no, topic), topic, goal: l.goal ?? '', keyQuestion: l.key_question ?? '',
     materials: materialsFor(l.materials_used, s.materials), images: arr(l.images),
-    tasks: tasksFor(l, kind), selfCheck: arr(l.worksheet?.self_check), quiz: quizFor(l, kind),
+    tasks: tasksFor(l, kind), selfCheck: arr(l.worksheet?.self_check), selfCheckList: arr(l.self_check), quiz: quizFor(l, kind),
   }
   if (kind === 'student') return base
   const notes = arr(s.teacher_guide?.per_lesson).find((p) => p.no === l.no)?.notes ?? []
+  const fp = l.feedback_plan
   const teacher: LessonTeacherPart = {
     standards: arr(l.standards), time_budget: l.time_budget ?? null, flow: l.flow ?? null,
     script: arr(l.teacher_script?.questions).map((q) => ({ prompt: q.prompt, expected_answer: q.expected_answer, if_stuck: q.if_stuck })),
     needed: arr(l.materials_needed), cautions: arr(l.caution_notes), guideNotes: arr(notes),
     mergeNote: l.merge_note ?? null, mergeableWith: l.mergeable_with ?? null, assessment: lessonAssessments(l),
+    feedbackPlan: fp ? { who: fp.who, how: fp.how, sentence_frame: fp.sentence_frame ?? null } : null,
   }
   return { ...base, teacher }
 }
@@ -204,10 +213,15 @@ function itemFor(it: ItemT, no: number, s: SnapshotV2, kind: BookKind): BookItem
 
 /** 교사용 단원 계획 차시 구성표: 차시마다 주제·자료(영어판 치환 뒤)·평가 라벨·퀴즈 수. */
 export function planRowsFor(s: SnapshotV2): PlanRow[] {
-  return arr(s.lessons).map((l) => ({
-    no: l.no, topic: l.topic ?? '', materials: substituteEnglishVersions(l.materials_used, s.materials),
-    assessment: lessonAssessments(l), quizCount: arr(l.formative_check?.quiz).length,
-  }))
+  const map = arr(s.unit_plan?.lesson_map)
+  return arr(s.lessons).map((l) => {
+    const focus = map.find((m) => m.lesson_no === l.no)?.criteria_focus
+    return {
+      no: l.no, topic: l.topic ?? '', materials: substituteEnglishVersions(l.materials_used, s.materials),
+      assessment: lessonAssessments(l), quizCount: arr(l.formative_check?.quiz).length,
+      criteria: Array.isArray(focus) ? [...focus] : null,
+    }
+  })
 }
 
 /** 세트가 영어 세트인가 — 공동 자료의 영어판(english_version_of)이 하나라도 실려 있으면. */
@@ -258,6 +272,7 @@ export function buildBookPlan(s: SnapshotV2, kind: BookKind): BookPlan {
     ...plan,
     teacher: {
       standards: arr(s.standards), reconstruction: s.reconstruction ?? '', reconstructionDetail: arr(s.reconstruction_detail),
+      scopeNote: typeof s.scope_note === 'string' && s.scope_note.trim() ? s.scope_note : null,
       planRows: planRowsFor(s), formative: s.unit_plan?.assessment_plan?.formative ?? null,
       guide: s.teacher_guide ?? null, noticePlan: s.notice_plan ?? null,
     },

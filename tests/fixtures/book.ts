@@ -13,7 +13,8 @@ export function snapshotFor(subject: '수학' | '과학'): Snapshot {
       subject, level: '중', grade: 1, reconstruction: s2.reconstruction, reconstruction_detail: s2.standards, learning_goals: s2.learning_goals,
       key_question: s2.key_question_candidates[0], unit_plan: s3.unit_plan, lessons: s3.lessons, materials: fx(`stage4-generate${sfx}`).materials,
       assessment: fx(`stage5-generate${sfx}`), teacher_guide: fx(`stage6-generate${sfx}`), notice_plan: fx(`stage7-generate${sfx}`),
-      stage_status: { stage5: { state: 'accepted', attempt: 1, model: 'mock', updated_at: '' } },
+      // 세트 범위 메모(L-16)는 stage_status.stage2.output 에서 판으로 간다(publish.ts buildSnapshot)
+      stage_status: { stage2: { state: 'accepted', attempt: 1, model: 'mock', output: s2, updated_at: '' }, stage5: { state: 'accepted', attempt: 1, model: 'mock', updated_at: '' } },
     },
     standards: s2.standards.map((s: { code: string; original_text: string }) => ({ code: s.code, text: s.original_text })),
     version: 1,

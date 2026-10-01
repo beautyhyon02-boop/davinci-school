@@ -27,13 +27,16 @@ export type LessonLike = {
   materials_used?: string[]
   materials_needed?: string[]
   caution_notes?: string[]
-  worksheet?: { tasks?: { no: number; prompt: string; tier: string; level_ref: string; expected?: string }[]; self_check?: string[] } | null
+  worksheet?: { tasks?: { no: number; prompt: string; tier: string; level_ref: string; expected?: string; flaw_check?: boolean }[]; self_check?: string[] } | null
   formative_check?: { quiz?: QuizLike[] } | null
   quiz?: QuizLike[]
   assessment?: string[] | string | null
   mergeable_with?: number | null
   merge_note?: string | null
   images?: string[]
+  // 교육청 재구성 예시 지침(2026-10-01) — 옛 판에는 없다. feedback_plan 은 교사용(교사용 지침 칸), self_check 는 학생에게도 보이는 자기 점검표(채점 요소 이름만).
+  feedback_plan?: { who: string; how: string; sentence_frame?: string } | null
+  self_check?: string[] | null
 }
 /** 교사용 지침서(6단계)의 차시별 메모. */
 export type GuideNotes = { no: number; notes?: string[] }[]
@@ -101,23 +104,29 @@ function tiersOf(tasks: Task[]): { label: string; tasks: Task[] }[] {
   return groups
 }
 
-/** 활동지 — 층마다 이름표 + 한 줄에 한 과제(과제 번호 유지). */
-function WorksheetView({ tasks, selfCheck }: { tasks: Task[]; selfCheck: string[] }) {
-  if (tasks.length === 0) return null
+/** 활동지 — 층마다 이름표 + 한 줄에 한 과제(과제 번호 유지). 결함 찾기 과제(L-19)는 교사용 배지(학생 활동지에는 과제 문장만). */
+function WorksheetView({ tasks, selfCheck, selfCheckList }: { tasks: Task[]; selfCheck: string[]; selfCheckList: string[] }) {
+  if (tasks.length === 0 && selfCheckList.length === 0) return null
   return (
     <div data-worksheet className="mt-4">
-      <SubLabel>{c.worksheetHeading}</SubLabel>
-      <div className="mt-1 grid gap-3 sm:grid-cols-3">
-        {tiersOf(tasks).map((g) => (
-          <div key={g.label} data-worksheet-tier={g.label}>
-            <Badge tone="gray">{g.label}</Badge>
-            <ol className="mt-1 list-decimal space-y-1 pl-5">
-              {g.tasks.map((w) => <li key={w.no} value={w.no}>{w.prompt}</li>)}
-            </ol>
+      {tasks.length > 0 && (
+        <>
+          <SubLabel>{c.worksheetHeading}</SubLabel>
+          <div className="mt-1 grid gap-3 sm:grid-cols-3">
+            {tiersOf(tasks).map((g) => (
+              <div key={g.label} data-worksheet-tier={g.label}>
+                <Badge tone="gray">{g.label}</Badge>
+                <ol className="mt-1 list-decimal space-y-1 pl-5">
+                  {g.tasks.map((w) => <li key={w.no} value={w.no}>{w.prompt}{w.flaw_check && <> <span data-print="omit" data-flaw-check={w.no}><Badge tone="lemon">{c.flawCheckBadge}</Badge></span></>}</li>)}
+                </ol>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
-      <LabeledLines className="mt-2" label={c.selfCheckHeading} items={selfCheck} />
+          <LabeledLines className="mt-2" label={c.selfCheckHeading} items={selfCheck} />
+        </>
+      )}
+      {/* 마지막 교수 차시의 자기 점검표(L-21): 단원 평가 채점 요소의 이름만 — 학생 화면·학생용 교재에도 같은 줄이 실린다 */}
+      {selfCheckList.length > 0 && <div data-self-check-list><LabeledLines className="mt-2" label={c.selfCheckListHeading} items={selfCheckList} /></div>}
     </div>
   )
 }
@@ -133,10 +142,21 @@ function TeacherBlock({ l, guideNotes, showAnswers }: { l: LessonLike; guideNote
   const cautions = arr(l.caution_notes)
   const quiz = quizOf(l)
   const levels = quiz.some((q) => q.level_ref) ? quiz.map((q, i) => c.quizLevel(i + 1, q.level_ref)) : []
-  if (questions.length === 0 && cautions.length === 0 && guideNotes.length === 0 && levels.length === 0) return null
+  const plan = l.feedback_plan ?? null
+  if (questions.length === 0 && cautions.length === 0 && guideNotes.length === 0 && levels.length === 0 && !plan) return null
   return (
     <div data-teacher-guide className="mt-4 space-y-3 rounded-lg border border-lavender-100 bg-lavender-50 p-4">
       <SectionTitle>{c.teacherBlockHeading}</SectionTitle>
+      {/* 확인·피드백 계획(L-20, 2026-10-01): 누구에게(개별/모둠/전체) → 아랫줄 무엇을 확인하고 어떻게 → 아랫줄 자기참조 문장 틀. 교사용. */}
+      {plan && (
+        <div data-feedback-plan>
+          <SubLabel>{c.feedbackPlanHeading}</SubLabel>
+          <p className="mt-1 font-semibold">{c.feedbackWho(plan.who)}</p>
+          <p>{plan.how}</p>
+          {/* 답이 아니라 data-aside(채점 자료 줄)로 두지 않는다 — 채점 자료를 숨긴 화면에서도 보인다 */}
+          {plan.sentence_frame && <p data-feedback-frame className="text-ink-500"><span className="font-semibold">{c.feedbackFrameLabel}</span> {plan.sentence_frame}</p>}
+        </div>
+      )}
       {questions.length > 0 && (
         <div>
           <SubLabel>{c.scriptHeading}</SubLabel>
@@ -186,6 +206,7 @@ export function LessonCard({ l, showAnswers, open, guideNotes = [] }: { l: Lesso
   const standards = arr(l.standards)
   const tasks = arr(l.worksheet?.tasks)
   const selfCheck = arr(l.worksheet?.self_check)
+  const selfCheckList = arr(l.self_check)
   const quiz = quizOf(l)
   const images = arr(l.images)
   const kinds = lessonAssessments(l)
@@ -236,7 +257,7 @@ export function LessonCard({ l, showAnswers, open, guideNotes = [] }: { l: Lesso
       <TeacherBlock l={l} guideNotes={guideNotes} showAnswers={showAnswers} />
       {l.merge_note && <KV className="mt-2 text-ink-500" label={c.mergeNoteLabel}>{l.merge_note}</KV>}
 
-      <WorksheetView tasks={tasks} selfCheck={selfCheck} />
+      <WorksheetView tasks={tasks} selfCheck={selfCheck} selfCheckList={selfCheckList} />
 
       {images.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-2">

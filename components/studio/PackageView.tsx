@@ -84,6 +84,8 @@ function StandardsSection({ standards }: { standards: Snapshot['standards'] }) {
 
 function ReconstructionSection({ snapshot }: { snapshot: Snapshot }) {
   const c = copy.reconstructionTable.columns
+  // 재구조화 해설(L-14, 2026-10-01)은 그 뒤에 만든 판에만 있다 — 하나라도 있으면 열을 더한다
+  const hasNote = snapshot.reconstruction_detail.some((r) => r.reason_note)
   return (
     <Card>
       <SectionHeading>{copy.reconstructionHeading}</SectionHeading>
@@ -95,6 +97,7 @@ function ReconstructionSection({ snapshot }: { snapshot: Snapshot }) {
               <tr className="border-b border-ink-100 text-ink-500">
                 <th className="py-1 pr-3">{c.code}</th><th className="py-1 pr-3">{c.original}</th><th className="py-1 pr-3">{c.type}</th>
                 <th className="py-1 pr-3">{c.reconstructed}</th><th className="py-1 pr-3">{c.reason}</th><th className="py-1 pr-3">{c.elements}</th>
+                {hasNote && <th className="py-1 pr-3">{c.note}</th>}
               </tr>
             </thead>
             <tbody>
@@ -106,12 +109,15 @@ function ReconstructionSection({ snapshot }: { snapshot: Snapshot }) {
                   <td className="py-1 pr-3">{r.reconstructed_text}</td>
                   <td className="py-1 pr-3"><ul className="space-y-0.5">{r.reason.map((x, i) => <li key={i}>{x}</li>)}</ul></td>
                   <td className="py-1 pr-3"><ul className="space-y-0.5">{r.learning_elements.map((x, i) => <li key={i}>{x}</li>)}</ul></td>
+                  {hasNote && <td className="py-1 pr-3" data-reason-note={r.code}>{r.reason_note ?? ''}</td>}
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       )}
+      {/* 세트 범위 메모(L-16) — 교사용(원장 패키지·관리자 미리보기). 학생 화면·문제지 인쇄에는 없다 */}
+      {snapshot.scope_note && <p data-scope-note data-print="omit" className="mt-3 whitespace-pre-wrap rounded-lg bg-ink-100/40 p-3 text-sm"><span className="font-semibold">{copy.scopeNoteLabel}</span> {snapshot.scope_note}</p>}
     </Card>
   )
 }
