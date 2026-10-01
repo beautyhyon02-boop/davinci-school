@@ -496,6 +496,75 @@ describe('5단계 생성 입력 크기 가드(Hobby 300초, 5단계 effort high 
   }
 })
 
+// 대표 2026-10-01 "교육청 자료(재구성 예시 자료집)에 나온 차시와 문항의 수준을 보고 오류 없는 문항 설계" — L-14~L-21 을 2·3·5단계 과제·검토 초점에,
+// 과목별 공개 예시 단원의 구조 요약(lib/studio/prompts/reference-units.ts)을 3단계 생성(10줄)·2단계 생성(한 줄)에 캐시 밖 블록으로.
+describe('교육청 재구성 예시 수준 (대표 2026-10-01): L-14~L-21 과제·검토 문장 + 과목별 참조 단원 구조 블록', () => {
+  const task = (stage: Stage, c = ctx) => buildPrompt(stage, c).user.split('과제: ')[1]
+  const focus = (stage: Stage, c = ctx) => buildReviewPrompt(stage, c, {}).user.split('검토 초점: ')[1].split('\n\n생성 결과')[0]
+  it('stage 2 task asks for reason_note, [지식]/[기능] + prerequisites, scope_note (without narrowing the standard) and criteria_draft; review mirrors it', () => {
+    const t = task(2)
+    for (const s of ['reason_note 1~2문장', '중심 코드와 매개 요소', '[지식]/[기능]', 'prerequisites 1~3개', 'scope_note 1~3줄', '다루지 않는 범위', '성취기준 문장 자체는 좁히지 않는다(L-16)', 'criteria_draft', '"~하기" 3~4개']) expect(t, s).toContain(s)
+    const f = focus(2)
+    for (const s of ['reason_note', '[지식]/[기능]', 'scope_note', '문장을 좁혔으면 level', 'criteria_draft', '그것만으로 반려하지 않는다']) expect(f, s).toContain(s)
+  })
+  it('stage 3 task asks for criteria_focus, 발문 사다리 + if_stuck per question, worksheet ≠ 발문 with 질문형 도움말, flaw_check only in worksheets, feedback_plan, last-lesson self_check (names only); review mirrors it', () => {
+    const t = task(3)
+    for (const s of ['criteria_focus = 그 차시가 길러 주는 단원 평가 요소 이름', '2단계 criteria_draft의 이름을 그대로, L-17', '자료 관찰 → 추론 → 종합·판단의 사다리', '회상은 퀴즈 D~E로 보내며', 'if_stuck은 발문마다 다르게', 'L-18',
+      '과제는 발문 문장을 복사하지 않고', '용어 확인 → 자료에서 사실 적기 → 판단·비교 + 이유', '답·수치·결론 없는 질문형 활동 도움말', '하 지원·상 확장', 'flaw_check: true', '평가 문항·세트 자료에는 넣지 않는다, L-19',
+      'feedback_plan(교수 차시마다: who 개별/모둠/전체', '다음 차시의 전제 1개', 'sentence_frame', 'L-20', '"단원 평가에서 보는 것"', 'self_check(차시 수준)에 요소마다 "나는 ~했다"', '요소 이름만으로', '척도 서술·답·결론은 보여 주지 않는다, L-21']) expect(t, s).toContain(s)
+    const f = focus(3)
+    for (const s of ['L-18~L-21', '모두 회상이거나 if_stuck이 두 발문 이상 같은 일반 문장이면 level', '활동지 과제가 발문 문장과 같거나', '활동 도움말이 답·수치·결론을 담으면 other', 'flaw_check', 'feedback_plan이 없거나', 'self_check(요소 이름만, 3~5개)', 'criteria_focus 이름이 2단계 criteria_draft와 다르면 coverage']) expect(f, s).toContain(s)
+  })
+  it('stage 5 task and review reuse the criteria_focus / criteria_draft names for criterion names (L-17)', () => {
+    expect(task(5)).toContain('요소 이름은 3단계 lesson_map의 criteria_focus(2단계 criteria_draft)에 적힌 이름을 그대로 쓴다')
+    expect(task(5)).toContain('이름을 바꿔야 하면 references에 그 까닭을 적는다(L-17)')
+    expect(focus(5)).toContain('criteria_focus(2단계 criteria_draft)의 이름과 다른데 references에 까닭이 없으면 coverage(L-17')
+  })
+  it('stage 3 generate carries the subject reference-unit block (structure only, source line, no 2015 codes) and stage 2 the one-line form; review prompts and other stages do not', () => {
+    for (const [subject, title] of [['국어', '토론'], ['수학', '이차함수'], ['사회', '산업의 국가 간 이전'], ['과학', '상태 변화'], ['영어', '친환경 제품']] as const) {
+      const c = { ...ctx, theme: { ...ctx.theme, subjects: [subject] }, subject }
+      const u3 = buildPrompt(3, c).user
+      expect(u3, subject).toContain(`참고 — 공개 예시 단원의 구조(과목: ${subject}). 구조만 참고하고 문장·자료는 쓰지 않는다; 우리 세트는 이보다 한 단계 높은 사고(관찰 → 추론 → 종합)를 요구한다.`)
+      expect(u3, subject).toContain(title)
+      expect(u3).toContain('출처: 교육부·시도교육청 2021 재구성 예시 자료집(구조만 참고')
+      // 2015 개정 코드([9과05-03] 같은 꼴)는 블록에 없다 — 머리말의 세트 성취기준 코드만 있다
+      const block = u3.slice(u3.indexOf('참고 — 공개 예시 단원의 구조'), u3.indexOf('\n\n과제: '))
+      expect(block, subject).not.toMatch(/\[\d+[가-힣]+\d{2}-\d{2}\]/)
+      expect(block.split('\n').length, subject).toBeLessThanOrEqual(13)   // 머리 1 + 제목 1 + ≤10줄 + 출처 1
+      expect(block.indexOf('과제: ')).toBe(-1)
+      // 참고 블록은 캐시 밖(user)이고 과제 문장보다 앞에 온다
+      expect(u3.indexOf('참고 — 공개 예시 단원의 구조')).toBeLessThan(u3.indexOf('\n\n과제: '))
+      const u2 = buildPrompt(2, c).user
+      expect(u2, subject).toContain(`참고 — 공개 예시 단원의 재구조화(과목: ${subject}, 구조만 참고)`)
+      expect(u2).not.toContain('참고 — 공개 예시 단원의 구조(')
+      for (const stage of [4, 5, 6, 7] as Stage[]) expect(buildPrompt(stage, c).user, `${subject} ${stage}`).not.toContain('참고 — 공개 예시 단원')
+      for (const stage of [2, 3] as Stage[]) expect(buildReviewPrompt(stage, c, {}).user, `${subject} review ${stage}`).not.toContain('참고 — 공개 예시 단원')
+    }
+    // 옛 한국사·세계사 세트는 사회 예시, 모르는 과목·0단계는 블록 없음
+    expect(buildPrompt(3, { ...ctx, subject: '한국사' }).user).toContain('(과목: 사회)')
+    expect(buildPrompt(3, { ...ctx, subject: '미술' }).user).not.toContain('참고 — 공개 예시 단원')
+    expect(buildPrompt(0, { theme: { title: 't', level: '중', grade: 1, subjects: ['수학'] }, subject: '', standards: [], prior: {} }).user).not.toContain('참고 — 공개 예시 단원')
+  })
+  it('prior pruning keeps the size guards: stage 5 drops feedback_plan·prerequisites, stage 6 drops unit_plan·등급표·피드백 틀·level_map (generate and review alike)', () => {
+    const prior = {
+      stage2: { standards: [], reconstruction: 'R', prerequisites: ['PREREQ_MARK'], scope_note: 'SCOPE_MARK' },
+      stage3: { unit_plan: { set_title: 'UNIT_MARK' }, lessons: [{ no: 1, topic: 'LESSON_MARK', feedback_plan: { who: '개별', how: 'FEEDBACK_MARK' }, self_check: ['SELF_MARK'] }] },
+      stage4: { materials: [] },
+      stage5: { items: [{ rubric: { criteria: [{ name: 'RUBRIC_MARK' }] }, level_map: [{ level: 'A', min: 1, max: 2, trait: 'LEVELMAP_MARK' }] }], grade_boundaries: [{ grade: 1, min: 0, max: 1, band: 'GRADE_MARK' }], feedback_templates: { 상: 'FT_MARK' }, references: ['REF_MARK'] },
+    }
+    const u5 = buildPrompt(5, { ...ctx, prior }).user
+    for (const m of ['SCOPE_MARK', 'LESSON_MARK', 'SELF_MARK', 'UNIT_MARK']) expect(u5, m).toContain(m)
+    for (const m of ['FEEDBACK_MARK', 'PREREQ_MARK']) expect(u5, m).not.toContain(m)
+    for (const u of [buildPrompt(6, { ...ctx, prior }).user, buildReviewPrompt(6, { ...ctx, prior }, {}).user]) {
+      for (const m of ['LESSON_MARK', 'FEEDBACK_MARK', 'RUBRIC_MARK']) expect(u, m).toContain(m)
+      for (const m of ['UNIT_MARK', 'LEVELMAP_MARK', 'GRADE_MARK', 'FT_MARK', 'REF_MARK']) expect(u, m).not.toContain(m)
+    }
+    // 3단계 생성·4단계 생성은 손대지 않는다
+    expect(buildPrompt(3, { ...ctx, prior }).user).toContain('PREREQ_MARK')
+    expect(buildPrompt(4, { ...ctx, prior }).user).toContain('FEEDBACK_MARK')
+  })
+})
+
 describe('stage 3 receives the ticked shared materials (2026-09-28)', () => {
   it('generate and review priors for stage 3 include shared_materials; stage 2 does not', () => {
     const shared = ['B', 'D'].map((id) => ({ id, title: `자료 ${id}`, kind: 'text', body: 'x', table: null, source: { kind: '자작', attribution: null, ai_assisted: false } }))

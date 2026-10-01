@@ -73,10 +73,14 @@ export function createSupabaseRepo(supabase: Supabase): Repo {
       // 2·3단계는 v2 출력 전체(재구조화 표·level_anchor, unit_plan)를 되살린다 — 빠지면 다음 단계 프롬프트와 검토가
       // 그 근거를 못 보고, placementIssues(5단계 lesson_no ↔ 평가 계획)처럼 unit_plan 이 있어야 도는 [TS] 검사가 조용히 건너뛰어진다.
       if (itemSet.reconstruction != null) {
-        const st2 = stageStatus.stage2?.output as { key_question_candidates?: string[]; level_anchor?: unknown[] } | undefined
+        const st2 = stageStatus.stage2?.output as { key_question_candidates?: string[]; level_anchor?: unknown[]; scope_note?: string; prerequisites?: string[]; criteria_draft?: string[] } | undefined
         outputs[2] = {
           standards: itemSet.reconstruction_detail ?? [], reconstruction: itemSet.reconstruction, learning_goals: itemSet.learning_goals ?? [],
           level_anchor: st2?.level_anchor ?? [], key_question_candidates: st2?.key_question_candidates ?? [],
+          // 교육청 재구성 예시 지침(L-15~L-17, 2026-10-01): 전용 열 없이 stage_status.stage2.output 에만 있다 — 없으면(옛 세트) 키를 두지 않는다
+          ...(st2?.scope_note ? { scope_note: st2.scope_note } : {}),
+          ...(st2?.prerequisites ? { prerequisites: st2.prerequisites } : {}),
+          ...(st2?.criteria_draft ? { criteria_draft: st2.criteria_draft } : {}),
         }
       }
       if (itemSet.lessons != null) outputs[3] = { unit_plan: itemSet.unit_plan ?? null, lessons: itemSet.lessons }

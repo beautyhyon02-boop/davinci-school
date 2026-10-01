@@ -139,6 +139,8 @@ export function buildSnapshot({ theme, itemSet, standards, version }: {
   const used = usedMaterialIds({ lessons, items: up.assessment?.items ?? [], texts: [up.teacher_guide, itemSet.notice_plan] })
   const { materials, omitted } = selectUsedMaterials([...merged.values()].sort((a, b) => a.id.localeCompare(b.id)), used)
   const models = Array.from(new Set(Object.values(itemSet.stage_status ?? {}).map((s) => s?.model).filter((m): m is string => !!m)))
+  // 세트 범위 메모(L-16, 2026-10-01)는 전용 열 없이 stage_status.stage2.output 에만 있다 — 있을 때만 판에 싣는다(교사용)
+  const scopeNote = (itemSet.stage_status?.stage2?.output as { scope_note?: unknown } | undefined)?.scope_note
   return {
     schema_version: 2,
     cover: { title: theme.title, subject: itemSet.subject, level: theme.level, grade: theme.grade ?? null, version, published_at: new Date().toISOString() },
@@ -147,6 +149,7 @@ export function buildSnapshot({ theme, itemSet, standards, version }: {
     reconstruction: itemSet.reconstruction ?? '',
     reconstruction_detail: itemSet.reconstruction_detail ?? [],
     learning_goals: up.learning_goals,
+    ...(typeof scopeNote === 'string' && scopeNote.trim() ? { scope_note: scopeNote } : {}),
     key_question: itemSet.key_question ?? '',
     unit_plan: itemSet.unit_plan ?? null,
     lessons,

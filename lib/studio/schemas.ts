@@ -42,7 +42,10 @@ export const ReconstructedStandard = z.object({
   merged_with: z.array(z.string()).default([]),
   reconstructed_text: z.string().min(10),
   reason: z.array(z.enum(['학원 60분 최적화', '4~6차시 압축', '비전공 원장 진행 용이'])).min(1),
+  // L-15(교육청2021 G-2): 학습 요소 문장 앞에 "[지식]"·"[기능]" 꼬리표를 붙일 수 있다 — 문자열 그대로(스키마 변경 없음).
   learning_elements: z.array(z.string().min(1)).min(1).max(6),
+  // L-14(교육청2021 G-1, 2026-10-01): 재구조화 해설 1~2문장 — 통합이면 중심 코드·매개 요소, 유지면 유지 이유. 선택(옛 출력에는 없다).
+  reason_note: z.string().optional(),
 })
 export const LearningGoal = z.object({ text: z.string().min(5), axis: z.enum(AXES) })
 export const LevelAnchor = z.object({ code: z.string(), level: z.enum(['B', 'C']), statement: z.string() })
@@ -52,6 +55,13 @@ export const Reconstruction = z.object({
   learning_goals: z.array(LearningGoal).min(3).max(5),
   level_anchor: z.array(LevelAnchor).default([]),
   key_question_candidates: z.array(z.string().min(5)).min(2).max(3),
+  // 교육청 재구성 예시 자료집(2021) 반영, 대표 2026-10-01 — 모두 선택(옛 출력·게시 판은 그대로 읽힌다). 저장은 stage_status.stage2.output 에만(repo.ts).
+  // L-16(G-3): 세트 범위 메모 — 성취기준 문장은 좁히지 않고(L-01·L-02) 이 세트가 다루는 범위·다루지 않는 범위·범위를 가르는 용어의 뜻을 1~3줄로.
+  scope_note: z.string().optional(),
+  // L-15(G-2): 선수 학습(앞 학년군·앞 단원의 내용 1~3개 — 코드가 아니라 내용 문장).
+  prerequisites: z.array(z.string().min(1)).max(3).optional(),
+  // L-17(G-4): 단원 평가 요소 초안 "~하기" 3~4개(과정 순) — 3단계 lesson_map.criteria_focus 와 5단계 채점 요소 이름이 이 이름을 쓴다.
+  criteria_draft: z.array(z.string().min(2)).max(4).optional(),
 }).superRefine((r, ctx) => {
   for (const axis of AXES) if (!r.learning_goals.some((g) => g.axis === axis)) issue(ctx, `학습 목표에 ${axis} 축이 없음`)
   // 유지여도 reconstructed_text는 틀 문장(TASKS[2])이어야 하므로 원문과 같으라는 요구는 두지 않는다 —
@@ -98,6 +108,18 @@ export const ScriptQuestion = z.object({ prompt: z.string().min(5), expected_ans
 export const WorksheetTask = z.object({
   no: z.number().int().min(1), prompt: z.string().min(5), tier: z.enum(TIERS), level_ref: z.enum(['D~E', 'C', 'A~B']),
   answer_space: z.enum(['short', 'lines', 'table', 'draw']), expected: z.string().min(1),
+  // L-19(교육청2021 G-6, 대표 2026-10-01): 결함 찾기 과제 — 교사가 일부러 틀린 풀이·문단·기사 한 토막을 과제 문장 안에 넣고 학생이 찾아 고친다.
+  // 활동지에서만 허용(평가 문항·세트 자료에는 금지), 결함이 무엇인지는 기대 답(expected)에 적는다. 교사용 표시이고 학생 활동지에는 과제 문장만 간다.
+  flaw_check: z.boolean().optional(),
+})
+/**
+ * L-20(교육청2021 G-7): 차시별 확인·피드백 계획 — 이 차시 퀴즈·활동지에서 무엇을 확인하고(다음 차시의 전제 1개), 틀린 학생에게 다음 차시 전
+ * 누구에게(개별/모둠/전체) 어떻게 줄지, 자기참조 문장 틀(이전 수행 대비로 말하기). 교사용. 선택 — 없으면 [TS] 참고 메모만(checks.ts).
+ */
+export const FeedbackPlan = z.object({
+  who: z.enum(['개별', '모둠', '전체']),
+  how: z.string().min(2),
+  sentence_frame: z.string().optional(),
 })
 // 교수 차시는 과제 2~5개·자기평가 1~3문장(Lesson superRefine), 단원 평가 차시는 비워 둘 수 있다
 export const Worksheet = z.object({ tasks: z.array(WorksheetTask).max(5), self_check: z.array(z.string().min(2)).max(3) })
@@ -126,6 +148,11 @@ export const Lesson = z.object({
   mergeable_with: z.number().int().nullable(),
   merge_note: z.string().nullable().default(null),
   images: z.array(z.string().url()).default([]),
+  // 교육청 재구성 예시 자료집(2021) 반영, 대표 2026-10-01 — 선택(옛 판·옛 초안에는 없다). 빠지면 [TS] 참고 메모만(막지 않음).
+  // L-20(G-7) 확인·피드백 계획(교수 차시, 교사용).
+  feedback_plan: FeedbackPlan.optional(),
+  // L-21(G-8) 자기 점검표(마지막 교수 차시): 단원 평가 채점 요소의 이름만 담은 "나는 ~했다" 문장 3~5개 — 학생에게 보인다(척도 서술·답은 담지 않는다).
+  self_check: z.array(z.string().min(2)).max(5).optional(),
 }).superRefine((l, ctx) => {
   const q = l.formative_check.quiz.length
   const t = l.time_budget
@@ -147,7 +174,8 @@ const Placement = z.object({ lesson_no: z.number().int(), kind: z.enum(ASSESSMEN
 const unitPlanOf = (placements: { min: number; max: number }) => z.object({
   set_title: z.string().min(1),
   set_key_question: z.string().min(5),
-  lesson_map: z.array(z.object({ lesson_no: z.number().int(), standards: z.array(z.string()).min(1).max(2), topic: z.string().min(1) })).min(4).max(6),
+  // L-17(교육청2021 G-4): criteria_focus = 이 차시가 길러 주는 단원 평가 요소 이름(2단계 평가 요소 초안 → 5단계 채점 요소 이름과 같게). 선택.
+  lesson_map: z.array(z.object({ lesson_no: z.number().int(), standards: z.array(z.string()).min(1).max(2), topic: z.string().min(1), criteria_focus: z.array(z.string().min(1)).optional() })).min(4).max(6),
   assessment_plan: z.object({
     formative: z.string().min(2),
     summative_placement: placements.min === placements.max ? z.array(Placement).length(placements.min) : z.array(Placement).min(placements.min).max(placements.max),

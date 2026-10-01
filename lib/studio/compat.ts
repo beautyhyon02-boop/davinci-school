@@ -28,6 +28,8 @@ export type SnapshotV2 = {
   reconstruction: string
   reconstruction_detail: ReconstructedStandardT[]
   learning_goals: LearningGoalT[]
+  /** 세트 범위 메모(L-16, 2026-10-01) — 교사용(지도서 단원 계획·원장 패키지). 그 전에 게시된 판·2단계가 적지 않은 세트에는 없다. */
+  scope_note?: string
   key_question: string
   unit_plan: UnitPlanT | null
   lessons: LessonT[]

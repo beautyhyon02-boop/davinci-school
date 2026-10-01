@@ -333,6 +333,71 @@ export function nearlySameTask(a: string, b: string): boolean {
   return shorter >= 5 && common >= 5 && common / shorter >= 0.95 && common / Math.max(ta.size, tb.size) >= 0.5
 }
 
+// ── 교육청 재구성 예시 자료집 지침 L-17·L-19·L-20·L-21(대표 2026-10-01) — 전부 참고 메모(kind other, 막지 않음) ─────────────
+/** [TS] 메모 문구(원장·관리자가 읽는다). */
+export const FEEDBACK_PLAN_MISSING = '확인·피드백 계획(feedback_plan)이 없음 — 3단계를 다시 생성하면 채워집니다(L-20)'
+export const SELF_CHECK_MISSING = '마지막 수업 차시의 자기 점검표(self_check)가 없음 — 3단계를 다시 생성하면 채워집니다(L-21)'
+export const TASK_COPIES_QUESTION = (taskNo: number, questionNo: number) => `활동지 과제 ${taskNo}이 발문 ${questionNo}과 같은 문장 — 활동지는 발문과 다른 과제로(L-19)`
+export const FLAW_NOT_IN_EXPECTED = (taskNo: number) => `활동지 과제 ${taskNo}: 결함 찾기(flaw_check)인데 기대 답에 무엇이 결함인지 적혀 있지 않음(L-19)`
+export const FLAW_IN_SESSION = '평가 차시에 결함 찾기(flaw_check) 과제 — 결함 찾기는 수업 차시 활동지에서만(L-19)'
+/** 기대 답이 결함(틀린 곳·고칠 곳)을 말하는가 — 낱말로만 본다(뜻은 [AI] 검토). */
+const FLAW_WORDS = /틀|오류|잘못|결함|어긋|빠(진|뜨|졌)|고쳐|고치|바로잡|모순|맞지 않/
+export const expectedNamesFlaw = (expected: string) => FLAW_WORDS.test(expected)
+type GuidelineLessonLike = {
+  no: number; kind?: string
+  teacher_script?: { questions?: { prompt?: string }[] | null } | null
+  worksheet?: { tasks?: { no?: number; prompt?: string; expected?: string; flaw_check?: boolean }[] | null } | null
+  feedback_plan?: unknown; self_check?: unknown
+}
+/**
+ * L-19 활동지 ≠ 발문(과제 문장이 발문 문장과 공백·대소문자·부호를 무시하고 같으면), 결함 찾기 과제의 기대 답에 결함이 없음, 단원 평가 차시의 결함 찾기;
+ * L-20 교수 차시에 feedback_plan 없음; L-21 마지막 교수 차시에 self_check(차시 수준, 1개 이상) 없음. 옛 초안(2026-10-01 이전)에는 모두 뜨고,
+ * 3단계를 다시 생성하면 채워진다 — 참고 메모일 뿐 확인·게시를 막지 않는다.
+ */
+export function guidelineLessonIssues(lessons: GuidelineLessonLike[]): Issue[] {
+  const issues: Issue[] = []
+  const teaching = lessons.filter((l) => !isAssessmentSession(l))
+  const last = teaching.length ? teaching[teaching.length - 1] : null
+  for (const l of lessons) {
+    const tasks = l.worksheet?.tasks ?? []
+    if (isAssessmentSession(l)) {
+      if (tasks.some((t) => t.flaw_check)) issues.push({ kind: 'other', detail: `${l.no}차시: ${FLAW_IN_SESSION}` })
+      continue
+    }
+    const questions = l.teacher_script?.questions ?? []
+    for (const [k, t] of tasks.entries()) {
+      const no = t.no ?? k + 1
+      const same = questions.findIndex((q) => !!q.prompt && !!t.prompt && flatKey(q.prompt) === flatKey(t.prompt))
+      if (same >= 0) issues.push({ kind: 'other', detail: `${l.no}차시 ${TASK_COPIES_QUESTION(no, same + 1)}` })
+      if (t.flaw_check && !expectedNamesFlaw(t.expected ?? '')) issues.push({ kind: 'other', detail: `${l.no}차시 ${FLAW_NOT_IN_EXPECTED(no)}` })
+    }
+    if (!l.feedback_plan) issues.push({ kind: 'other', detail: `${l.no}차시: ${FEEDBACK_PLAN_MISSING}` })
+    if (l === last && !(Array.isArray(l.self_check) && l.self_check.length > 0)) issues.push({ kind: 'other', detail: `${l.no}차시: ${SELF_CHECK_MISSING}` })
+  }
+  return issues
+}
+/** [TS] 메모 문구(L-17). */
+export const CRITERIA_FOCUS_UNMATCHED = (lessonNo: number, name: string) => `lesson_map ${lessonNo}차시 criteria_focus "${name}": 5단계 채점 요소에 같은 이름이 없음 — 요소 이름을 맞추거나 references에 바꾼 까닭을 적는다(L-17)`
+/**
+ * L-17: 3단계 확정본(prior.stage3)의 lesson_map.criteria_focus 이름 가운데 두 문항의 채점 요소 이름(name)과 하나도 같지 않은 것을 적는다(이름마다 한 번).
+ * 마지막 교수 차시의 자기 점검표가 그 이름으로 학생에게 보였으므로 5단계가 이름을 바꾸면 어긋난다. 3단계가 prior 에 없거나 criteria_focus 가 없으면 건너뛴다.
+ */
+export function criteriaFocusIssues(items: { rubric: { criteria: { name: string }[] } }[], ctx: CheckCtx): Issue[] {
+  const map = (ctx.prior.stage3 as { unit_plan?: { lesson_map?: { lesson_no: number; criteria_focus?: string[] }[] | null } | null } | undefined)?.unit_plan?.lesson_map
+  if (!Array.isArray(map)) return []
+  const names = new Set(items.flatMap((it) => it.rubric.criteria.map((c) => norm(c.name))))
+  const issues: Issue[] = []
+  const seen = new Set<string>()
+  for (const row of map) {
+    for (const f of row.criteria_focus ?? []) {
+      if (names.has(norm(f)) || seen.has(f)) continue
+      seen.add(f)
+      issues.push({ kind: 'other', detail: CRITERIA_FOCUS_UNMATCHED(row.lesson_no, f) })
+    }
+  }
+  return issues
+}
+
 /** 3단계 검사가 볼 수 있는 자료 본문: 4단계 확정본(다시 검토할 때)과 대주제 공유 자료. 보통 3단계 시점에는 공유 자료만 있다. */
 function knownMaterials(ctx: CheckCtx): { id: string; body?: string | null }[] {
   const own = (ctx.prior.stage4 as { materials?: { id: string; body?: string | null }[] } | undefined)?.materials
@@ -393,6 +458,7 @@ function lessonIssues(o: LessonDesignT, ctx: CheckCtx): Issue[] {
   const items5 = (ctx.prior.stage5 as { items?: { materials_used?: string[] | null }[] } | undefined)?.items
   issues.push(...sharedMaterialCitationIssues(o.lessons, items5, ctx.sharedMaterialIds))
   issues.push(...englishLessonCitationIssues(o.lessons, ctx))
+  issues.push(...guidelineLessonIssues(o.lessons))
   return issues
 }
 
@@ -442,7 +508,13 @@ function materialUseIssues(setMaterials: { id: string }[], ctx: CheckCtx, items:
 const ARITHMETIC = /\d\s*[÷×*/=+\-−]\s*\d/
 const SOLVING_WORDS = /계산해|계산하여|구해|구하여|나누어|나눠|곱해|곱하여|더해|더하여|빼서|공식|소수.{0,6}자리/
 const STEP_ORDER = /(?<!가장\s?)(먼저|다음에|그다음|마지막으로)\s*\S[\s\S]*?(고|다|것)(?=[\s,.)]|$)/
-const ALLOWED_COUNTS = /\d+\s*(점|자|글자|단어|문장|문단|줄|가지)|(근거|이유|자료|수치|방안|예|사례|문장|단어)\S{0,3}\s*\d+\s*개/g
+/**
+ * 분량·형식·시간을 세는 수는 자료 수치가 아니다 — 단위가 붙은 수("200자", "3문장", "35분", "60 words")와 그 범위("40~60단어", "2-3 sentences"),
+ * 세는 명사 뒤의 개수("근거 2개"), 번호 매김("(1)", "①"). 2026-10-01 영어 세트 조건 "제목을 포함해 40~60단어의 영어로 쓸 것"이 "자료 수치 40"으로
+ * 잘못 짚힌 뒤 범위·영어 단위·번호를 더했다(범위의 앞 수가 단위 없이 남아 자료의 40과 겹쳤다).
+ */
+const COUNT_UNITS = '점|자|글자|단어|문장|문단|줄|가지|분|words?|sentences?|lines?|paragraphs?|minutes?'
+const ALLOWED_COUNTS = new RegExp(`\\d+\\s*[~\\-–−]\\s*\\d+\\s*(?:${COUNT_UNITS})|\\d+\\s*(?:${COUNT_UNITS})(?![a-z])|(근거|이유|자료|수치|방안|예|사례|문장|단어)\\S{0,3}\\s*\\d+\\s*개|\\(\\d+\\)|[①-⑳]`, 'g')
 const NUMBER = /\d+(?:[.,]\d+)*/g
 const normNum = (s: string) => s.replace(/,/g, '')
 
@@ -459,11 +531,12 @@ export function materialNumbers(materials: { body: string | null; table: { colum
 /** 조건 문장 하나의 풀이 힌트 사유(빈 배열이면 지침만 담은 조건). */
 export function conditionHints(text: string, materialNums: Set<string>): string[] {
   const reasons: string[] = []
-  if (ARITHMETIC.test(text)) reasons.push('계산식')
+  // 분량 범위("40-60 words")의 붙임표를 뺄셈으로 읽지 않게, 세는 수를 먼저 지운 글에서 계산식을 찾는다
+  const rest = text.replace(ALLOWED_COUNTS, ' ')
+  if (ARITHMETIC.test(rest)) reasons.push('계산식')
   const word = text.match(SOLVING_WORDS)?.[0]
   if (word) reasons.push(`풀이 동사·지시 "${word}"`)
   if (STEP_ORDER.test(text)) reasons.push('풀이 순서')
-  const rest = text.replace(ALLOWED_COUNTS, ' ')
   const nums = (rest.match(NUMBER) ?? []).map(normNum)
   const decimals = nums.filter((n) => n.includes('.'))
   if (decimals.length) reasons.push(`소수 값 ${decimals.join('·')}`)
@@ -625,6 +698,7 @@ function assessmentIssues(o: AssessmentT, ctx: CheckCtx): Issue[] {
   issues.push(...placementIssues(o, ctx))
   issues.push(...taughtInIssues(o.items, ctx))
   issues.push(...competencyIssues(o.items, ctx))
+  issues.push(...criteriaFocusIssues(o.items, ctx))
   const setMaterials = (ctx.prior.stage4 as MaterialsT | undefined)?.materials
   if (Array.isArray(setMaterials)) issues.push(...materialUseIssues(setMaterials, ctx, o.items))
   const lessons3 = (ctx.prior.stage3 as Partial<LessonDesignT> | undefined)?.lessons

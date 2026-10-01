@@ -24,6 +24,8 @@ export const EDITABLE_FIELDS: Record<EditableStage, FieldSpec[]> = {
     text('standards[].reconstructed_text'),
     text('learning_goals[].text'),
     text('key_question_candidates[]'),
+    // 세트 범위 메모(L-16, 2026-10-01) — 없는 옛 출력에서는 칸이 되지 않는다
+    text('scope_note'),
   ],
   3: [
     line('lessons[].topic'),
@@ -39,6 +41,9 @@ export const EDITABLE_FIELDS: Record<EditableStage, FieldSpec[]> = {
     text('lessons[].worksheet.tasks[].prompt'),
     text('lessons[].worksheet.tasks[].expected'),
     text('lessons[].worksheet.self_check[]'),
+    // 확인·피드백 계획(L-20)·마지막 교수 차시 자기 점검표(L-21, 2026-10-01) — 없는 옛 출력에서는 칸이 되지 않는다
+    text('lessons[].feedback_plan.how'),
+    text('lessons[].self_check[]'),
     text('lessons[].formative_check.quiz[].q'),
     line('lessons[].formative_check.quiz[].answer'),
     text('lessons[].formative_check.quiz[].explanation'),

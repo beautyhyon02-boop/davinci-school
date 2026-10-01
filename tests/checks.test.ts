@@ -409,8 +409,20 @@ describe('staticIssues', () => {
       ['a material to cite', '자료 B의 수치를 근거로 든다'],
       ['counts of 근거, length and points', '근거를 2개 이상 들고 200자 내외로 쓴다 (2점)'],
       ['"가장 먼저" as the topic, not a step', '가장 먼저 줄일 일회용품 한 가지를 정한다'],
+      // 2026-10-01 영어 세트 오탐: "40~60단어"의 앞 수 40이 자료 B(부스 16곳·20곳 … 40)와 겹쳐 "자료 수치 40"으로 짚혔다 — 분량 범위는 자료 수치가 아니다
+      ['a word-count range (the 2026-10-01 false positive)', '제목 한 줄을 맨 앞에 두고, 제목을 포함해 40~60단어의 영어로 쓸 것'],
+      ['an English word-count range and sentence count', 'Write 40-60 words in 3 sentences, including a title'],
+      ['a character range and a time', '290~405자로 쓰고 15분 안에 마친다'],
+      ['numbered conditions', '(1) 입장을 정하고 (2) 근거를 2개 든다 ① 형식 ② 분량'],
     ])('passes %s', (_why, text) => {
       expect(hintIssues(withEssayCondition(text))).toEqual([])
+    })
+    it('still flags genuine material numbers next to allowed counts (the range exemption is for counts only)', () => {
+      // 405(플라스틱컵 올해)는 범위·단위가 아니라 품목 수치다 — 뒤에 분량 범위가 있어도 짚는다
+      const issues = hintIssues(withEssayCondition('플라스틱컵 405개를 기준으로 40~60단어로 쓸 것'))
+      expect(issues).toHaveLength(1); expect(issues[0].detail).toContain('풀이 힌트(자료 수치 405) —')
+      // 소수 값은 범위 안에 있어도 짚는다(답이 되는 비율)
+      expect(hintIssues(withEssayCondition('0.24~0.30 사이로 쓸 것'))[0].detail).toContain('소수 값')
     })
     it('서술형 carries no conditions; 논술형 carries 2~4', () => {
       expect(hintIssues(assessmentV2)).toEqual([])
@@ -550,4 +562,57 @@ describe('stage 6: 영문 자료·영어 예시답안 번역 메모 (S-영-08, �
       for (const m of p.stage4.materials) expect(looksEnglish(m.body), m.id).toBe(false)
     })
   }
+})
+
+// 대표 2026-10-01(교육청 재구성 예시 자료집 지침 L-17·L-19·L-20·L-21) — 모두 참고 메모(kind other)이고 zod 는 새 칸을 요구하지 않는다(막지 않음).
+describe('교육청 재구성 예시 지침 메모 (L-19 활동지 ≠ 발문·결함 찾기, L-20 feedback_plan, L-21 self_check, L-17 criteria_focus)', () => {
+  const plan = { who: '개별' as const, how: '퀴즈 2로 계급 경계를 확인하고 틀린 학생에게 다음 차시 전 되묻는다', sentence_frame: '지난 활동지보다 경계를 정확히 나누었다' }
+  type TL = Omit<typeof lessonV2, 'worksheet'> & { kind?: string; feedback_plan?: typeof plan; self_check?: string[]; worksheet: { tasks: Record<string, unknown>[]; self_check: string[] } }
+  const teaching = (no: number, patch: Record<string, unknown> = {}): TL => ({ ...lessonV2, no, standards: ['[9수04-02]'], feedback_plan: plan, ...patch })
+  const design = (lessons: unknown[]) => ({ unit_plan: { set_title: '자료의 정리', set_key_question: '자료는 무엇을 말하는가?', lesson_map: [1, 2, 3, 4, 5, 6].map((lesson_no) => ({ lesson_no, standards: ['[9수04-02]'], topic: `${lesson_no}차시 주제` })), assessment_plan: { formative: '차시마다 퀴즈 3문항', summative_placement: [{ lesson_no: 6, kind: '서술형' }, { lesson_no: 6, kind: '논술형' }], rubric_note: { 상: 'a', 중: 'b', 하: 'c' } } }, lessons })
+  const guideline = (lessons: unknown[]) => staticIssues(3, design(lessons), { standards: [standards[0]], prior: {} }).map((i) => i.detail).filter((d) => /L-1[79]|L-2[01]/.test(d))
+  const full = (): TL[] => [1, 2, 3, 4].map((no) => teaching(no)).concat(teaching(5, { self_check: ['나는 "계산"을 답에 썼다', '나는 "해석"과 "이유"를 확인했다', '나는 "구성"을 확인했다'] }), { ...assessmentSession(6), standards: ['[9수04-02]'] })
+  it('a complete design (feedback_plan on every teaching lesson, self_check on the last one, no copied tasks) gets no note; the new fields pass zod', () => {
+    expect(guideline(full())).toEqual([])
+    expect(LessonDesign.safeParse(design(full())).error?.issues ?? []).toEqual([])
+  })
+  it('L-20: a teaching lesson without feedback_plan gets one note each; the 단원 평가 차시 never does', () => {
+    const lessons = full().map((l) => (l.no === 2 || l.no === 4 ? { ...l, feedback_plan: undefined } : l))
+    expect(guideline(lessons)).toEqual(['2차시: 확인·피드백 계획(feedback_plan)이 없음 — 3단계를 다시 생성하면 채워집니다(L-20)', '4차시: 확인·피드백 계획(feedback_plan)이 없음 — 3단계를 다시 생성하면 채워집니다(L-20)'])
+  })
+  it('L-21: only the LAST teaching lesson needs self_check (names only) — missing or empty gets a note; earlier lessons without it do not', () => {
+    const lessons = full().map((l) => (l.no === 5 ? { ...l, self_check: [] } : l))
+    expect(guideline(lessons)).toEqual(['5차시: 마지막 수업 차시의 자기 점검표(self_check)가 없음 — 3단계를 다시 생성하면 채워집니다(L-21)'])
+    const none = full().map((l) => (l.no === 5 ? { ...l, self_check: undefined } : l))
+    expect(guideline(none)).toHaveLength(1)
+    // 옛 초안(2026-10-01 이전): feedback_plan·self_check 가 전혀 없으면 교수 차시마다 L-20 + 마지막 차시 L-21 — zod 는 그대로 통과한다
+    const old = full().map((l) => ({ ...l, feedback_plan: undefined, self_check: undefined }))
+    expect(guideline(old)).toHaveLength(6)
+    expect(LessonDesign.safeParse(design(old)).error?.issues ?? []).toEqual([])
+  })
+  it('L-19: a worksheet task whose sentence equals a teacher 발문 (ignoring spaces·case·punctuation) is noted with both numbers; a different sentence is not', () => {
+    const copied = full().map((l) => (l.no === 3 ? { ...l, worksheet: { ...l.worksheet, tasks: l.worksheet.tasks.map((t) => (t.no === 2 ? { ...t, prompt: ' 도수의  합은? ' } : t)) } } : l))
+    expect(guideline(copied)).toEqual(['3차시 활동지 과제 2이 발문 2과 같은 문장 — 활동지는 발문과 다른 과제로(L-19)'])
+    const reworded = full().map((l) => (l.no === 3 ? { ...l, worksheet: { ...l.worksheet, tasks: l.worksheet.tasks.map((t) => (t.no === 2 ? { ...t, prompt: '도수의 합이 부스 수와 같은지 확인해 보자' } : t)) } } : l))
+    expect(guideline(reworded)).toEqual([])
+  })
+  it('L-19 결함 찾기: flaw_check task must name the flaw in expected; flaw_check on the 단원 평가 차시 is noted; zod accepts flaw_check', () => {
+    const flaw = (expected: string) => ({ no: 4, prompt: '어떤 학생이 "도수의 합은 계급의 개수와 같다"라고 썼다. 틀린 곳을 고쳐 보자.', tier: '표준', level_ref: 'C', answer_space: 'lines', expected, flaw_check: true })
+    const withFlaw = (expected: string) => full().map((l) => (l.no === 2 ? { ...l, worksheet: { ...l.worksheet, tasks: [...l.worksheet.tasks, flaw(expected)] } } : l))
+    expect(guideline(withFlaw('결함: 도수의 합은 자료의 개수(부스 수)와 같다 — 계급의 개수가 아니다'))).toEqual([])
+    expect(guideline(withFlaw('부스 수와 같다'))).toEqual(['2차시 활동지 과제 4: 결함 찾기(flaw_check)인데 기대 답에 무엇이 결함인지 적혀 있지 않음(L-19)'])
+    expect(LessonDesign.safeParse(design(withFlaw('결함: 부스 수'))).error?.issues ?? []).toEqual([])
+    const inSession = full().map((l) => (l.no === 6 ? { ...l, worksheet: { tasks: [flaw('결함: x')], self_check: [] } } : l))
+    expect(guideline(inSession)).toEqual(['6차시: 평가 차시에 결함 찾기(flaw_check) 과제 — 결함 찾기는 수업 차시 활동지에서만(L-19)'])
+  })
+  it('L-17 (stage 5): criteria_focus names with no matching criterion name get one note per name; matching names (spaces ignored) do not; no stage 3 → skip', () => {
+    const notes = (map: { lesson_no: number; criteria_focus?: string[] }[]) =>
+      staticIssues(5, assessmentV2, { standards, prior: { stage3: { unit_plan: { lesson_map: map }, lessons: [1, 2, 3, 4, 5].map((no) => ({ ...lessonV2, no })) } } }).map((i) => i.detail).filter((d) => d.includes('L-17'))
+    expect(notes([{ lesson_no: 1, criteria_focus: ['계산', '자료 정리'] }, { lesson_no: 2, criteria_focus: ['해 석'] }, { lesson_no: 6 }])).toEqual([])
+    expect(notes([{ lesson_no: 1, criteria_focus: ['계산', '상대도수 계산'] }, { lesson_no: 2, criteria_focus: ['상대도수 계산', '제안'] }])).toEqual([
+      'lesson_map 1차시 criteria_focus "상대도수 계산": 5단계 채점 요소에 같은 이름이 없음 — 요소 이름을 맞추거나 references에 바꾼 까닭을 적는다(L-17)',
+    ])
+    expect(staticIssues(5, assessmentV2, { standards, prior: {} }).filter((i) => i.detail.includes('L-17'))).toEqual([])
+    expect(Assessment.safeParse(assessmentV2).success).toBe(true)
+  })
 })

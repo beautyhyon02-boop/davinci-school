@@ -9,8 +9,8 @@ describe('rules v2', () => {
     expect(new Set(ids).size).toBe(ids.length)
     const spec = readFileSync('docs/superpowers/specs/2026-09-25-item-studio-v2-design.md', 'utf8')
     for (const id of ids) expect(spec.split(`| ${id} |`).length - 1, id).toBe(1)
-    // 부록 A: 공통 38(C-31 대표 확정값, C-32 조건=지침(2026-09-26), C-33 자료 설계·유형(대표 연수 2기), C-34·C-36·C-37 경기2025, C-39 배운 것만 채점·C-40 역량 꼬리표(대표 2026-09-29) 포함) + 차시 13(L-13 정답 노출·활동지 되풀이 금지, 2026-10-01 영어 세트 검토) + 과목 40(국6·수7·사7·역3·과8·영9 — S-영-08 번역·S-영-09 공동 자료 영어판(대표 2026-09-29), S-사-07 사회 통합(대표 2026-09-30)) + 채점 10(G-10 경기2025) + 안내장 12 = 113
-    expect(ids.length).toBe(38 + 13 + 40 + 10 + 12)
+    // 부록 A: 공통 38(C-31 대표 확정값, C-32 조건=지침(2026-09-26), C-33 자료 설계·유형(대표 연수 2기), C-34·C-36·C-37 경기2025, C-39 배운 것만 채점·C-40 역량 꼬리표(대표 2026-09-29) 포함) + 차시 21(L-13 정답 노출·활동지 되풀이 금지, 2026-10-01 영어 세트 검토; L-14~L-21 교육청 재구성 예시 자료집 G-1~G-8, 대표 2026-10-01) + 과목 40(국6·수7·사7·역3·과8·영9 — S-영-08 번역·S-영-09 공동 자료 영어판(대표 2026-09-29), S-사-07 사회 통합(대표 2026-09-30)) + 채점 10(G-10 경기2025) + 안내장 12 = 121
+    expect(ids.length).toBe(38 + 21 + 40 + 10 + 12)
   })
   it('the spec appendix has no rule row that the code lacks', () => {
     const spec = readFileSync('docs/superpowers/specs/2026-09-25-item-studio-v2-design.md', 'utf8')
@@ -215,7 +215,42 @@ describe('L-13 퀴즈 정답 노출·활동지 되풀이 금지 (2026-10-01 영�
     expect(row('L-13')).toBe(`| L-13 | ${l13.text} | P+S | [v2-1001] |`)
     expect(spec).toContain('`[v2-1001]` 2026-10-01 영어 세트 실제 검토')
     for (const subject of ['수학', '과학', '영어']) expect(rulesFor(subject)).toMatch(/^L-13 퀴즈 정답\(낱말·구\)은/m)
-    expect(LESSON_RULES).toHaveLength(13)
+    expect(LESSON_RULES).toHaveLength(21)
+  })
+})
+
+// 대표 2026-10-01 "교육청 자료(재구성 예시 자료집)에 나온 차시와 문항의 수준을 보고 오류 없는 문항 설계" — wp13-reconstruction-examples.md §4 G-1~G-8 을
+// 지침 L-14~L-21 로. G-3 은 L-01 을 유지하고 범위 메모(scope_note)를 더하는 쪽, 결함 찾기는 활동지에서만(둘 다 대표 결정 → [대표] 태그).
+describe('L-14~L-21 교육청 재구성 예시 자료집 지침 (대표 2026-10-01)', () => {
+  const spec = readFileSync('docs/superpowers/specs/2026-09-25-item-studio-v2-design.md', 'utf8')
+  const row = (id: string) => spec.split('\n').find((line) => line.startsWith(`| ${id} |`))!
+  const text = (id: string) => LESSON_RULES.find((r) => r.id === id)!
+  it('eight rules exist with the 교육청2021 tag (G-3·G-6 also 대표), spec rows identical, legend has the tag, every subject prompt carries them', () => {
+    const ids = ['L-14', 'L-15', 'L-16', 'L-17', 'L-18', 'L-19', 'L-20', 'L-21']
+    for (const id of ids) {
+      const r = text(id)
+      expect(r.tags, id).toContain('교육청2021')
+      const nat = r.nature === 'PS' ? 'P+S' : r.nature
+      expect(row(id), id).toBe(`| ${id} | ${r.text} | ${nat} | ${r.tags.map((t) => `[${t}]`).join('')} |`)
+      for (const subject of ['국어', '수학', '사회', '과학', '영어']) expect(rulesFor(subject), `${subject} ${id}`).toMatch(new RegExp(`^${id} `, 'm'))
+    }
+    expect(text('L-16').tags).toEqual(['교육청2021', '대표']); expect(text('L-19').tags).toEqual(['교육청2021', '대표'])
+    expect(spec).toContain('`[교육청2021]` 교육부·시도교육청')
+  })
+  it('G-1 reason_note·차시 분량, G-2 [지식]/[기능]·prerequisites, G-3 scope_note keeps L-01, G-4 criteria_draft → criteria_focus → taught_in', () => {
+    expect(text('L-14').text).toMatch(/reason_note/); expect(text('L-14').text).toMatch(/중심 코드/); expect(text('L-14').text).toMatch(/매개 요소/); expect(text('L-14').text).toMatch(/교수 차시 n개 \+ 평가 1차시/)
+    expect(text('L-15').text).toMatch(/\[지식\]/); expect(text('L-15').text).toMatch(/\[기능\]/); expect(text('L-15').text).toMatch(/prerequisites/)
+    expect(text('L-16').text).toMatch(/좁히지 않는다\(L-01·L-02 유지\)/); expect(text('L-16').text).toMatch(/scope_note/); expect(text('L-16').text).toMatch(/다루지 않는 범위/); expect(text('L-16').text).toMatch(/용어의 뜻/)
+    expect(text('L-17').text).toMatch(/criteria_draft/); expect(text('L-17').text).toMatch(/criteria_focus/); expect(text('L-17').text).toMatch(/taught_in\(C-39\)/)
+  })
+  it('G-5 발문 사다리·회상은 퀴즈로·if_stuck 다르게, G-6 활동지 ≠ 발문·인지 진행·질문형 도움말·결함 찾기는 활동지에서만, G-7 feedback_plan, G-8 self_check 이름만', () => {
+    expect(text('L-18').nature).toBe('P')
+    for (const s of ['자료 관찰', '추론', '종합·판단', '퀴즈 D~E 문항으로 보낸다', 'if_stuck은 발문마다 다르게', '일반 문구 반복 금지', '꼬리 발문']) expect(text('L-18').text, s).toContain(s)
+    for (const s of ['발문 문장을 복사하지 않고', '인지 수준만 올라가게', '질문형 활동 도움말', '하 수준 지원', '상 수준 확장', '결함 찾기', '교수 차시 활동지에서만 허용', 'flaw_check: true', '평가 문항·세트 자료에는 넣지 않는다']) expect(text('L-19').text, s).toContain(s)
+    for (const s of ['feedback_plan', '다음 차시의 전제', 'who: 개별/모둠/전체', 'sentence_frame', '이전 수행 대비', '성취기준 대비 뒤처짐은 말하지 않는다']) expect(text('L-20').text, s).toContain(s)
+    for (const s of ['마지막 교수 차시', '채점 요소 이름', 'self_check', '"나는 ~했다"', '3~5개', '요소 이름만으로', '척도 서술·예시답안·답·결론은 보여 주지 않는다']) expect(text('L-21').text, s).toContain(s)
+    // 조건은 지침(C-32)과 같은 결: 도움말에 답·수치·결론을 담지 않는다
+    expect(text('L-19').text).toContain('답·수치·결론을 담지 않는')
   })
 })
 
