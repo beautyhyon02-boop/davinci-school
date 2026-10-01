@@ -637,10 +637,10 @@ describe('duplicate criterion names across items', () => {
     const sameName = structuredClone(fixture)
     sameName.items[1].rubric.criteria[0].name = sameName.items[0].rubric.criteria[0].name
     sameName.items[1].rubric.criteria[0].competency = sameName.items[0].rubric.criteria[0].competency
-    const quiet = staticIssues(5, sameName, { theme: { title: 't', level: '중', grade: 1, subjects: ['수학'] }, subject: '수학', standards: [], prior: {} }).filter((i) => i.detail.includes('역량 꼬리표가 다름'))
+    const quiet = staticIssues(5, sameName, { theme: { title: 't' }, subject: '수학', standards: [], prior: {} }).filter((i) => i.detail.includes('역량 꼬리표가 다름'))
     expect(quiet).toEqual([])
     sameName.items[1].rubric.criteria[0].competency = sameName.items[0].rubric.criteria[0].competency === '자료 읽기' ? '글로 표현하기' : '자료 읽기'
-    const loud = staticIssues(5, sameName, { theme: { title: 't', level: '중', grade: 1, subjects: ['수학'] }, subject: '수학', standards: [], prior: {} }).filter((i) => i.detail.includes('역량 꼬리표가 다름'))
+    const loud = staticIssues(5, sameName, { theme: { title: 't' }, subject: '수학', standards: [], prior: {} }).filter((i) => i.detail.includes('역량 꼬리표가 다름'))
     expect(loud).toHaveLength(1)
     expect(loud[0].kind).toBe('other')
   })
