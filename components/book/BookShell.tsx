@@ -13,7 +13,7 @@ const copy = app.book
  */
 export function BookShell({ kind, backHref, children }: { kind: BookKind; backHref: string; children: ReactNode }) {
   return (
-    <main className="min-h-screen bg-ink-100/40">
+    <main className="min-h-screen bg-ink-100/40 print:bg-white">
       <div className="book-toolbar no-print">
         <span className="text-sm font-semibold text-ink-900">{copy.kindTitle[kind]}</span>
         <span className="book-screen-note text-xs text-ink-500">{copy.pageNumbersNote}</span>

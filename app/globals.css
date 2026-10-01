@@ -134,6 +134,7 @@ body { @apply antialiased; }
  * 글자: 본문 10.5pt, 제목은 크기·굵기로(h1 20pt → h2 16pt → h3 13pt → h4 11pt). 학생용은 흑백 전제 — 색 대신 괘선·굵기.
  * 화면에서도 같은 글자 크기·괘선으로 보여 인쇄 전에 모양을 확인할 수 있다(인쇄 규칙만 @media print 안). */
 @page book { size: A4; margin: 20mm 15mm; @bottom-center { content: counter(page); font-size: 9pt; color: #6b7280; } }
+@page book:first { @bottom-center { content: none; } }
 @page book:left { margin-left: 15mm; margin-right: 20mm; }
 @page book:right { margin-left: 20mm; margin-right: 15mm; }
 .book { font-size: 10.5pt; line-height: 1.6; color: #1f2430; }
