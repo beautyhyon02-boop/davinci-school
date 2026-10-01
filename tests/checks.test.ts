@@ -161,7 +161,7 @@ describe('staticIssues', () => {
       expect(notes(english)).toEqual([
         '2차시 퀴즈 1: 정답이 본문에 그대로 있음(전개 2단계 — "Bring your own cup")',
         '2차시 퀴즈 2: 정답이 본문에 그대로 있음(전개 1단계·교사 발문 예상 답·활동지 기대 답 2 — "plastic cups")',
-        '2차시 퀴즈 3: 활동지 과제 3과 사실상 같음',
+        '2차시 퀴즈 3: 활동지 과제 3번과 사실상 같음',
       ])
       expect(Lesson.safeParse(english).error?.issues ?? []).toEqual([])   // 합성 차시는 새 세트 zod 를 통과한다 — 메모는 참고일 뿐 막지 않는다
     })
@@ -205,6 +205,15 @@ describe('staticIssues', () => {
       expect(nearlySameTask('표를 완성하시오', '1. 표를 완성하시오. 2. 가장 많은 계급을 쓰시오')).toBe(false)   // 짧은 쪽이 열 글자 미만이면 담김으로 보지 않는다
       expect(nearlySameTask('자료 A의 도수분포표에서 계급 30개 이상 40개 미만의 도수는?', '자료 A의 도수분포표에서 계급 50개 이상 60개 미만의 도수는?')).toBe(false)
       expect(nearlySameTask('가장 많은 계급을 문장으로', '도수가 가장 큰 계급은?')).toBe(false)
+      // 긴 바꿔 쓰기(고침 2026-10-01): 활동지 과제가 퀴즈 안에 거의 통째로 들어 있으면 같은 문항
+      expect(nearlySameTask('작년보다 줄어든 품목을 영어로 쓰고 과거형 동사를 쓰시오', '자료 E에서 작년보다 수가 줄어든 품목 하나를 영어로 쓰고, 그 변화를 나타내는 동사를 과거형으로 함께 쓰시오')).toBe(true)
+      expect(nearlySameTask('Which strategy would work best? Choose one and write one reason.', 'Which strategy would work best for the festival? Choose one and write one reason.')).toBe(true)
+      // 소재만 같고 묻는 것이 다른 두 문장은 같은 문항이 아니다
+      expect(nearlySameTask('자료 E에서 가장 많이 쓰인 품목과 그 개수를 쓰시오', '자료 E에서 작년보다 줄어든 품목이 왜 줄었는지 까닭을 한 문장으로 쓰시오')).toBe(false)
+      // 종류·방법을 묻는 추론 발문은 이름 묻기로 보지 않는다
+      expect(isNamingStem('어떤 방법이 가장 효과적인가?')).toBe(false)
+      expect(isNamingStem('Which type of cup did most students choose?')).toBe(false)
+      expect(isNamingStem('이 변화를 무엇이라고 하는가?')).toBe(true)
       expect(SAME_TASK_OVERLAP).toBe(0.8)
     })
   })

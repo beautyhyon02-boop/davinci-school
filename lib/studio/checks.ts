@@ -244,7 +244,7 @@ const BLANK = /_{2,}|＿+|\(\s*\)|\[\s*\]|（\s*）|□+/
 export function blankFilled(stem: string, key: string): string | null {
   const sentences = stem.split(/(?<=[.!?。])\s+|\n+/).filter((s) => BLANK.test(s))
   if (sentences.length === 0) return null
-  const filled = flatKey(sentences.map((s) => s.replace(new RegExp(BLANK.source, 'g'), ` ${key} `)).join(' '))
+  const filled = flatKey(sentences.map((s) => s.replace(new RegExp(BLANK.source, 'g'), () => ` ${key} `)).join(' '))
   return filled.length >= EXPOSED_ANSWER_MIN * 2 ? filled : null
 }
 /** 노출 검사 단위 — [어디, 글, 답 자리인가]. 답 자리 = 짧은 예상 답·기대 답(SHORT_EXPECTED 이하 — 교사용 인정 기준이 아니라 답 그 자체). */
@@ -269,11 +269,11 @@ export function lessonExposureUnits(l: LessonExposureLike, quizIndex: number): E
   return units
 }
 /**
- * 가르친 개념·용어의 이름을 묻는 발문(무엇이라 하는가·부르는가, 어느/무슨 단계·차원·종류·성질, "…단계는?"·"…성질은?", 용어, What is … called,
- * which stage/step, the term/name for). L-10 은 회상 문항이 가르친 낱말을 묻는 것을 허용하므로 그 용어가 수업 글에 있는 것은 노출로 보지 않는다 —
+ * 가르친 개념·용어의 이름을 묻는 발문(무엇이라 하는가·부르는가, 어느/무슨 단계·차원·성질, "…단계는?"·"…성질은?", 용어, What is … called,
+ * which stage/step, the term/name for). 종류·방법·type·kind 는 추론 발문("어떤 방법이 가장 효과적인가")에도 흔해 넣지 않는다. L-10 은 회상 문항이 가르친 낱말을 묻는 것을 허용하므로 그 용어가 수업 글에 있는 것은 노출로 보지 않는다 —
  * 이런 발문은 빈칸 채우기(blankFilled)와 종전 판정(quizCopySource)으로만 본다.
  */
-const NAMING_STEM = /무엇이라(고)?\s*(하|부르)|(무슨|어느|어떤)\s*\S*\s*(단계|차원|종류|성질|방법|용어)|(단계|성질|차원|종류|용어|이름)(은|는|인가|입니까)\s*\?|용어|\bcalled\b|\bwhich\s+(stage|step|type|kind)\b|\bthe\s+(term|name)\s+for\b/i
+const NAMING_STEM = /무엇이라(고)?\s*(하|부르)|(무슨|어느|어떤)\s*\S*\s*(단계|차원|성질|용어)|(단계|성질|차원|용어|이름)(은|는|인가|입니까)\s*\?|용어|\bcalled\b|\bwhich\s+(stage|step)\b|\bthe\s+(term|name)\s+for\b/i
 export const isNamingStem = (q: string) => NAMING_STEM.test(q)
 /**
  * 퀴즈 정답이 이 차시의 글에 그대로 적혀 있는가(L-13). 정답 표기(" / "로 나눈 것) 하나하나를 공백·대소문자·부호를 무시하고 찾는다:
@@ -302,7 +302,7 @@ export function quizAnswerExposure(quiz: { q?: string; answer?: string }, units:
   return null
 }
 /** 퀴즈가 활동지 과제를 되풀이했을 때의 메모 문구(L-13). */
-export const quizRepeatsWorksheetNote = (taskNo: number) => `활동지 과제 ${taskNo}과 사실상 같음`
+export const quizRepeatsWorksheetNote = (taskNo: number) => `활동지 과제 ${taskNo}번과 사실상 같음`
 /** 비교용 낱말: 소문자, 조사 한 겹을 뗀 두 글자 이상 낱말(questionStems 와 같은 자르기, 묻는 말은 남긴다). */
 function overlapTokens(text: string): Set<string> {
   const out = new Set<string>()
@@ -316,7 +316,7 @@ function overlapTokens(text: string): Set<string> {
 export const SAME_TASK_OVERLAP = 0.8
 /**
  * 두 문장(퀴즈 발문·활동지 과제)이 사실상 같은가(L-13): 공백·대소문자·부호를 무시하고 같거나 한쪽(열 글자 이상)이 다른 쪽을 통째로 담거나,
- * 낱말(세 개 이상)이 긴 쪽 기준 80% 이상 겹치면.
+ * 낱말(세 개 이상)이 긴 쪽 기준 80% 이상 겹치거나, 짧은 쪽(다섯 낱말 이상)이 거의 통째로 긴 쪽에 들어 있으면(긴 바꿔 쓰기).
  */
 export function nearlySameTask(a: string, b: string): boolean {
   const fa = flatKey(a); const fb = flatKey(b)
@@ -327,7 +327,10 @@ export function nearlySameTask(a: string, b: string): boolean {
   if (ta.size < 3 || tb.size < 3) return false
   let common = 0
   for (const t of ta) if (tb.has(t)) common++
-  return common / Math.max(ta.size, tb.size) >= SAME_TASK_OVERLAP
+  if (common / Math.max(ta.size, tb.size) >= SAME_TASK_OVERLAP) return true
+  // 한쪽이 다른 쪽의 긴 바꿔 쓰기일 때 — 짧은 쪽(다섯 낱말 이상)이 거의 통째로 긴 쪽에 들어 있고, 긴 쪽의 절반 이상이 겹친다
+  const shorter = Math.min(ta.size, tb.size)
+  return shorter >= 5 && common >= 5 && common / shorter >= 0.95 && common / Math.max(ta.size, tb.size) >= 0.5
 }
 
 /** 3단계 검사가 볼 수 있는 자료 본문: 4단계 확정본(다시 검토할 때)과 대주제 공유 자료. 보통 3단계 시점에는 공유 자료만 있다. */
