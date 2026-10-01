@@ -67,7 +67,7 @@ export default async function StudentAssignmentPage({ params }: { params: Promis
         </section>
         {/* 이 차시가 쓰는 자료(표·자동 그래프·설명글) — 결석생도 앱만 보고 풀 수 있어야 한다(스펙 §5.2). */}
         <MaterialsSection materials={snapshot.materials.filter((m) => materialIds.includes(m.id))} sharedIds={snapshot.shared_material_ids ?? []} />
-        {/* 마지막 교수 차시의 자기 점검표(L-21, 2026-10-01): 단원 평가 채점 요소의 이름만 — 설계상 학생이 읽는 것. 척도 서술·답·feedback_plan 은 넘기지 않는다. */}
+        {/* 마지막 교수 차시의 자기 점검표(L-21, 2026-10-01): 단원 평가 채점 요소의 이름만 — 설계상 학생이 읽는 것. 척도 서술·답·교사용 확인·피드백 계획은 넘기지 않는다. */}
         {(lesson.self_check?.length ?? 0) > 0 && (
           <section data-self-check-list className="rounded-2xl bg-white p-5">
             <p className="text-sm font-semibold text-ink-500">{copy.selfCheck.heading}</p>

@@ -478,20 +478,30 @@ describe('stage 4 — 자료 내부 모순 금지(2026-09-26)', () => {
   })
 })
 
-describe('5단계 생성 입력 크기 가드(Hobby 300초, 5단계 effort high — 통째 예시 2건 주입 뒤에도 45k자 미만)', () => {
+// 2026-10-02: 교육청 지침 칸이 더해져 생성이 44.3k/43.8k(45k 가드 턱밑), 검토가 52.5k/53.3k(가드 없음)였다 → 5단계가 쓰지 않는 prior 칸을 덜어
+// 생성 ≤ 41k·검토 ≤ 48k 로 둔다(stages.ts PRIOR_PRUNE 주석). 7단계 검토도 같은 상한.
+describe('5단계 생성·검토 입력 크기 가드(Hobby 300초, 5단계 effort high — 통째 예시 2건 주입 뒤에도 생성 ≤ 41k·검토 ≤ 48k)', () => {
   const j = (f: string) => JSON.parse(readFileSync(f, 'utf8'))
   const shared = j('docs/samples/2026-09-20-중1-일회용품-공유자료.json')
   for (const [subject, suf, stdFile] of [['수학', '', 'standards-math.json'], ['과학', '-과학', 'standards-science.json']] as const) {
-    it(`${subject}: v2 fixture prior(0·2·3·4단계 + 공유 자료)로 만든 5단계 생성 입력 < 45,000자이고 통째 예시 2건을 싣는다`, () => {
-      const F = 'data/studio-fixtures/'
-      const prior = { stage0: j(`${F}stage0-generate.json`), stage2: j(`${F}stage2-generate${suf}.json`), stage3: j(`${F}stage3-generate${suf}.json`), stage4: j(`${F}stage4-generate${suf}.json`), shared_materials: shared }
-      const c = { theme: { title: '학교 축제 일회용품 줄이기', level: '중', grade: 1, subjects: [subject] }, subject, standards: j(`${F}${stdFile}`), prior }
+    const F = 'data/studio-fixtures/'
+    const prior = { stage0: j(`${F}stage0-generate.json`), stage2: j(`${F}stage2-generate${suf}.json`), stage3: j(`${F}stage3-generate${suf}.json`), stage4: j(`${F}stage4-generate${suf}.json`), stage5: j(`${F}stage5-generate${suf}.json`), shared_materials: shared }
+    const c = { theme: { title: '학교 축제 일회용품 줄이기', level: '중', grade: 1, subjects: [subject] }, subject, standards: j(`${F}${stdFile}`), prior }
+    it(`${subject}: v2 fixture prior(0·2·3·4단계 + 공유 자료)로 만든 5단계 생성 입력 ≤ 41,000자이고 통째 예시 2건을 싣는다`, () => {
       const u = buildPrompt(5, c).user
-      expect(u.length).toBeLessThan(45_000)
+      expect(u.length).toBeLessThanOrEqual(41_000)
       const knowledge = u.split('\n\n과제: ')[0]
       expect(knowledge.split('채점 기준표(').length - 1).toBe(2)
       expect(answerLines(knowledge).length).toBeGreaterThanOrEqual(2)
       expect(u).toContain('"stage4"'); expect(u).toContain('"shared_materials"')   // 실제 prior가 들어간 크기다
+    })
+    it(`${subject}: 5단계 검토 입력(3·4단계 + 공유 자료 + 생성 결과) ≤ 48,000자, 7단계 검토 입력(3·5단계 + 생성 결과) ≤ 48,000자`, () => {
+      const r5 = buildReviewPrompt(5, c, j(`${F}stage5-generate${suf}.json`)).user
+      expect(r5.length).toBeLessThanOrEqual(48_000)
+      expect(r5).toContain('"stage3"'); expect(r5).toContain('"stage4"'); expect(r5).toContain('"shared_materials"'); expect(r5).toContain('"grade_boundaries"')
+      const r7 = buildReviewPrompt(7, c, j(`${F}stage7-generate${suf}.json`)).user
+      expect(r7.length).toBeLessThanOrEqual(48_000)
+      expect(r7).toContain('"stage3"'); expect(r7).toContain('"stage5"'); expect(r7).toContain('"criteria_phrases"')
     })
   }
 })
@@ -503,25 +513,29 @@ describe('교육청 재구성 예시 수준 (대표 2026-10-01): L-14~L-21 과�
   const focus = (stage: Stage, c = ctx) => buildReviewPrompt(stage, c, {}).user.split('검토 초점: ')[1].split('\n\n생성 결과')[0]
   it('stage 2 task asks for reason_note, [지식]/[기능] + prerequisites, scope_note (without narrowing the standard) and criteria_draft; review mirrors it', () => {
     const t = task(2)
-    for (const s of ['reason_note 1~2문장', '중심 코드와 매개 요소', '[지식]/[기능]', 'prerequisites 1~3개', 'scope_note 1~3줄', '다루지 않는 범위', '성취기준 문장 자체는 좁히지 않는다(L-16)', 'criteria_draft', '"~하기" 3~4개']) expect(t, s).toContain(s)
+    for (const s of ['reason_note 1~2문장', '중심 코드와 매개 요소', '[지식]/[기능]', 'prerequisites 1~3개', 'scope_note 1~3줄', '다루지 않는 범위', '성취기준 문장 자체는 좁히지 않는다(L-16)', 'criteria_draft', '핵심 평가 요소 초안 3~4개', '"~하기" 문장이 아니다', '글자 그대로 들어가고']) expect(t, s).toContain(s)
+    // 2026-10-02: "교과서 기준 n차시 분량" 줄은 검증할 수 없어 뺐다(L-14); criteria_draft 는 "~하기"가 아니라 5단계 요소 이름 꼴
+    expect(t).not.toContain('교과서 기준'); expect(t).not.toContain('"~하기" 3~4개')
     const f = focus(2)
-    for (const s of ['reason_note', '[지식]/[기능]', 'scope_note', '문장을 좁혔으면 level', 'criteria_draft', '그것만으로 반려하지 않는다']) expect(f, s).toContain(s)
+    for (const s of ['reason_note', '[지식]/[기능]', 'scope_note', '문장을 좁혔으면 level', 'criteria_draft가 짧은 명사구 3~4개', '"~하기" 문장이면 other', '그것만으로 반려하지 않는다']) expect(f, s).toContain(s)
   })
   it('stage 3 task asks for criteria_focus, 발문 사다리 + if_stuck per question, worksheet ≠ 발문 with 질문형 도움말, flaw_check only in worksheets, feedback_plan, last-lesson self_check (names only); review mirrors it', () => {
     const t = task(3)
-    for (const s of ['criteria_focus = 그 차시가 길러 주는 단원 평가 요소 이름', '2단계 criteria_draft의 이름을 그대로, L-17', '자료 관찰 → 추론 → 종합·판단의 사다리', '회상은 퀴즈 D~E로 보내며', 'if_stuck은 발문마다 다르게', 'L-18',
+    for (const s of ['criteria_focus = 그 차시가 길러 주는 단원 평가 채점 요소 이름', '2단계 criteria_draft의 이름은 글자 그대로 넣고 세트 구조(서술형·논술형의 요소 수)에 필요한 이름은 더 둘 수 있다, L-17', '자료 관찰 → 추론 → 종합·판단의 사다리', '회상은 퀴즈 D~E로 보내며', 'if_stuck은 발문마다 다르게', 'L-18',
       '과제는 발문 문장을 복사하지 않고', '용어 확인 → 자료에서 사실 적기 → 판단·비교 + 이유', '답·수치·결론 없는 질문형 활동 도움말', '하 지원·상 확장', 'flaw_check: true', '평가 문항·세트 자료에는 넣지 않는다, L-19',
-      'feedback_plan(교수 차시마다: who 개별/모둠/전체', '다음 차시의 전제 1개', 'sentence_frame', 'L-20', '"단원 평가에서 보는 것"', 'self_check(차시 수준)에 요소마다 "나는 ~했다"', '요소 이름만으로', '척도 서술·답·결론은 보여 주지 않는다, L-21']) expect(t, s).toContain(s)
+      'feedback_plan(교수 차시마다: who 개별/모둠/전체', '다음 차시의 전제 1개', 'sentence_frame', 'L-20', '"단원 평가에서 보는 것"', '채점 요소 이름·조건의 종류·산출물의 요소와 가짓수를 보여 주고(배점·만점은 5단계가 정하므로 말하지 않는다)', 'lessons[].self_check(차시 수준 — 활동지의 worksheet.self_check와 다른 칸)에 요소마다 "나는 ~했다"', '요소 이름만으로', '척도 서술·답·결론은 보여 주지 않는다, L-21']) expect(t, s).toContain(s)
+    expect(t).not.toContain('이름·만점')   // 3단계는 배점을 모른다(2026-10-02)
     const f = focus(3)
-    for (const s of ['L-18~L-21', '모두 회상이거나 if_stuck이 두 발문 이상 같은 일반 문장이면 level', '활동지 과제가 발문 문장과 같거나', '활동 도움말이 답·수치·결론을 담으면 other', 'flaw_check', 'feedback_plan이 없거나', 'self_check(요소 이름만, 3~5개)', 'criteria_focus 이름이 2단계 criteria_draft와 다르면 coverage']) expect(f, s).toContain(s)
+    for (const s of ['L-18~L-21', '모두 회상이거나 if_stuck이 두 발문 이상 같은 일반 문장이면 level', '활동지 과제가 발문 문장과 같거나', '활동 도움말이 답·수치·결론을 담으면 other', 'flaw_check', 'feedback_plan이 없거나', 'lessons[].self_check(요소 이름만, 3~5개 — 활동지 worksheet.self_check와 다른 칸)', '척도 서술·만점·답을 담았으면 other(L-21)', '2단계 criteria_draft의 이름이 lesson_map의 criteria_focus 어디에도 글자 그대로 없으면 coverage(L-17 — criteria_focus에 이름을 더 두는 것은 괜찮다)']) expect(f, s).toContain(s)
   })
-  it('stage 5 task and review reuse the criteria_focus / criteria_draft names for criterion names (L-17)', () => {
-    expect(task(5)).toContain('요소 이름은 3단계 lesson_map의 criteria_focus(2단계 criteria_draft)에 적힌 이름을 그대로 쓴다')
-    expect(task(5)).toContain('이름을 바꿔야 하면 references에 그 까닭을 적는다(L-17)')
-    expect(focus(5)).toContain('criteria_focus(2단계 criteria_draft)의 이름과 다른데 references에 까닭이 없으면 coverage(L-17')
+  it('stage 5 task and review reuse the criteria_focus names verbatim and may add criteria; only a criteria_focus name missing from stage 5 is flagged (L-17, 2026-10-02)', () => {
+    expect(task(5)).toContain('요소 이름은 3단계 lesson_map의 criteria_focus에 적힌 이름을 글자 그대로 쓰고, 세트 구조에 필요하면 요소를 더 둘 수 있다')
+    expect(task(5)).toContain('criteria_focus의 이름이 채점 요소에서 빠지면 안 된다; 이름을 바꿔야 하면 references에 그 까닭을 적는다(L-17)')
+    expect(focus(5)).toContain('3단계 lesson_map.criteria_focus에 적힌 이름이 두 문항의 채점 요소 이름에 글자 그대로 없는데 references에 까닭이 없으면 coverage(L-17')
+    expect(focus(5)).toContain('채점 요소를 더 두는 것은 괜찮다')
   })
   it('stage 3 generate carries the subject reference-unit block (structure only, source line, no 2015 codes) and stage 2 the one-line form; review prompts and other stages do not', () => {
-    for (const [subject, title] of [['국어', '토론'], ['수학', '이차함수'], ['사회', '산업의 국가 간 이전'], ['과학', '상태 변화'], ['영어', '친환경 제품']] as const) {
+    for (const [subject, title] of [['국어', '토론'], ['수학', '이차함수의 그래프 그리기(중학교, 6차시 — 다른 학년 단원, 구조만)'], ['사회', '산업의 국가 간 이전'], ['과학', '상태 변화'], ['영어', '친환경 제품']] as const) {
       const c = { ...ctx, theme: { ...ctx.theme, subjects: [subject] }, subject }
       const u3 = buildPrompt(3, c).user
       expect(u3, subject).toContain(`참고 — 공개 예시 단원의 구조(과목: ${subject}). 구조만 참고하고 문장·자료는 쓰지 않는다; 우리 세트는 이보다 한 단계 높은 사고(관찰 → 추론 → 종합)를 요구한다.`)
@@ -545,23 +559,45 @@ describe('교육청 재구성 예시 수준 (대표 2026-10-01): L-14~L-21 과�
     expect(buildPrompt(3, { ...ctx, subject: '미술' }).user).not.toContain('참고 — 공개 예시 단원')
     expect(buildPrompt(0, { theme: { title: 't', level: '중', grade: 1, subjects: ['수학'] }, subject: '', standards: [], prior: {} }).user).not.toContain('참고 — 공개 예시 단원')
   })
-  it('prior pruning keeps the size guards: stage 5 drops feedback_plan·prerequisites, stage 6 drops unit_plan·등급표·피드백 틀·level_map (generate and review alike)', () => {
-    const prior = {
-      stage2: { standards: [], reconstruction: 'R', prerequisites: ['PREREQ_MARK'], scope_note: 'SCOPE_MARK' },
-      stage3: { unit_plan: { set_title: 'UNIT_MARK' }, lessons: [{ no: 1, topic: 'LESSON_MARK', feedback_plan: { who: '개별', how: 'FEEDBACK_MARK' }, self_check: ['SELF_MARK'] }] },
-      stage4: { materials: [] },
-      stage5: { items: [{ rubric: { criteria: [{ name: 'RUBRIC_MARK' }] }, level_map: [{ level: 'A', min: 1, max: 2, trait: 'LEVELMAP_MARK' }] }], grade_boundaries: [{ grade: 1, min: 0, max: 1, band: 'GRADE_MARK' }], feedback_templates: { 상: 'FT_MARK' }, references: ['REF_MARK'] },
+  it('prior pruning keeps the size guards: stage 5 drops the teacher-only lesson keys and 2단계 extras, stage 6 drops unit_plan·등급표·피드백 틀·level_map, stage 7 drops 준비물·병합·시간·힌트 and 예시답안·등급표 (generate and review alike)', () => {
+    const lesson = {
+      no: 1, topic: 'LESSON_MARK', goal: 'GOAL_MARK', standards: ['[9수04-02]'], materials_used: ['A'], time_budget: { intro_min: 10, main_min: 40, wrapup_min: 10, note: 'TIME_MARK' },
+      flow: { intro: ['INTRO_MARK'], main: [{ step_label: 'MAIN_MARK', minutes: 40, activities: ['ACT_MARK'] }], wrapup: ['WRAPUP_MARK'] },
+      teacher_script: { questions: [{ prompt: 'Q_MARK', expected_answer: 'EXPECTED_MARK', if_stuck: 'STUCK_MARK' }] },
+      materials_needed: ['NEEDED_MARK'], caution_notes: ['CAUTION_MARK'], images: ['IMAGE_MARK'], mergeable_with: 2, merge_note: 'MERGE_MARK',
+      worksheet: { tasks: [{ no: 1, prompt: 'TASK_MARK', expected: 'TASKEXP_MARK', tier: '기본' }], self_check: ['WSSELF_MARK'] },
+      formative_check: { quiz: [{ q: 'QUIZ_MARK', type: 'short', choices: null, answer: 'ANSWER_MARK', explanation: 'EXPLAIN_MARK', level_ref: 'C', competency: 'COMP_MARK' }] },
+      feedback_plan: { who: '개별', how: 'FEEDBACK_MARK' }, self_check: ['SELF_MARK'],
     }
+    const prior = {
+      stage2: { standards: [{ code: '[9수04-02]', original_text: 'ORIG_MARK', reconstructed_text: 'RECON_MARK', reason_note: 'REASON_MARK', learning_elements: ['ELEM_MARK'] }], reconstruction: 'R', prerequisites: ['PREREQ_MARK'], scope_note: 'SCOPE_MARK', key_question_candidates: ['KQC_MARK'], criteria_draft: ['DRAFT_MARK'], level_anchor: ['ANCHOR_MARK'] },
+      stage3: { unit_plan: { set_title: 'UNIT_MARK' }, lessons: [lesson] },
+      stage4: { materials: [] },
+      stage5: { items: [{ rubric: { criteria: [{ name: 'RUBRIC_MARK', scale: [{ points: 0, descriptor: 'DESC_MARK' }] }] }, exemplar_answers: [{ text: 'EXEMPLAR_MARK' }], level_map: [{ level: 'A', min: 1, max: 2, trait: 'LEVELMAP_MARK' }] }], grade_boundaries: [{ grade: 1, min: 0, max: 1, band: 'GRADE_MARK' }], feedback_templates: { 상: 'FT_MARK' }, references: ['REF_MARK'] },
+    }
+    // 5단계(2026-10-02): 가르친 내용(전개·발문·과제·퀴즈 문항·정답·수준·역량·self_check 이름)과 2단계 재구성·범위·초안·level_anchor 는 남고, 교사 운영 칸과 힌트·해설·형식 상수·도입·정리·활동지 자기평가·원문(머리말에 있다)·해설·후보·선수 학습은 빠진다
+    const keep5 = ['LESSON_MARK', 'GOAL_MARK', 'MAIN_MARK', 'ACT_MARK', 'Q_MARK', 'EXPECTED_MARK', 'TASK_MARK', 'TASKEXP_MARK', 'QUIZ_MARK', 'ANSWER_MARK', 'COMP_MARK', 'TIME_MARK', 'SELF_MARK', 'UNIT_MARK', 'RECON_MARK', 'ELEM_MARK', 'SCOPE_MARK', 'DRAFT_MARK', 'ANCHOR_MARK']
+    const drop5 = ['FEEDBACK_MARK', 'CAUTION_MARK', 'NEEDED_MARK', 'IMAGE_MARK', 'MERGE_MARK', 'INTRO_MARK', 'WRAPUP_MARK', 'STUCK_MARK', 'EXPLAIN_MARK', 'WSSELF_MARK', 'PREREQ_MARK', 'KQC_MARK', 'ORIG_MARK', 'REASON_MARK']
     const u5 = buildPrompt(5, { ...ctx, prior }).user
-    for (const m of ['SCOPE_MARK', 'LESSON_MARK', 'SELF_MARK', 'UNIT_MARK']) expect(u5, m).toContain(m)
-    for (const m of ['FEEDBACK_MARK', 'PREREQ_MARK']) expect(u5, m).not.toContain(m)
+    for (const m of keep5) expect(u5, m).toContain(m)
+    for (const m of drop5) expect(u5, m).not.toContain(m)
+    expect(u5).not.toContain('"mergeable_with"'); expect(u5).not.toContain('"type": "short"'); expect(u5).not.toContain('"choices"')
+    const r5 = buildReviewPrompt(5, { ...ctx, prior }, {}).user
+    for (const m of ['LESSON_MARK', 'ACT_MARK', 'Q_MARK', 'TASK_MARK', 'QUIZ_MARK', 'ANSWER_MARK', 'SELF_MARK', 'UNIT_MARK']) expect(r5, m).toContain(m)
+    for (const m of ['FEEDBACK_MARK', 'CAUTION_MARK', 'NEEDED_MARK', 'IMAGE_MARK', 'MERGE_MARK', 'INTRO_MARK', 'WRAPUP_MARK', 'STUCK_MARK', 'EXPLAIN_MARK', 'WSSELF_MARK']) expect(r5, m).not.toContain(m)
     for (const u of [buildPrompt(6, { ...ctx, prior }).user, buildReviewPrompt(6, { ...ctx, prior }, {}).user]) {
-      for (const m of ['LESSON_MARK', 'FEEDBACK_MARK', 'RUBRIC_MARK']) expect(u, m).toContain(m)
+      for (const m of ['LESSON_MARK', 'FEEDBACK_MARK', 'RUBRIC_MARK', 'EXEMPLAR_MARK', 'MERGE_MARK', 'CAUTION_MARK']) expect(u, m).toContain(m)
       for (const m of ['UNIT_MARK', 'LEVELMAP_MARK', 'GRADE_MARK', 'FT_MARK', 'REF_MARK']) expect(u, m).not.toContain(m)
+    }
+    // 7단계(안내장): 활동·퀴즈(문제·정답·해설)·피드백 계획·채점표 요소 이름·척도 서술·피드백 틀은 남고, 준비물·이미지·병합·시간·발문 힌트와 예시답안·A~E·등급표·참고 목록은 빠진다
+    for (const u of [buildPrompt(7, { ...ctx, prior }).user, buildReviewPrompt(7, { ...ctx, prior }, {}).user]) {
+      for (const m of ['LESSON_MARK', 'ACT_MARK', 'QUIZ_MARK', 'ANSWER_MARK', 'EXPLAIN_MARK', 'FEEDBACK_MARK', 'RUBRIC_MARK', 'DESC_MARK', 'FT_MARK', 'Q_MARK', 'CAUTION_MARK', 'UNIT_MARK']) expect(u, m).toContain(m)
+      for (const m of ['NEEDED_MARK', 'IMAGE_MARK', 'MERGE_MARK', 'TIME_MARK', 'STUCK_MARK', 'EXEMPLAR_MARK', 'LEVELMAP_MARK', 'GRADE_MARK', 'REF_MARK']) expect(u, m).not.toContain(m)
     }
     // 3단계 생성·4단계 생성은 손대지 않는다
     expect(buildPrompt(3, { ...ctx, prior }).user).toContain('PREREQ_MARK')
     expect(buildPrompt(4, { ...ctx, prior }).user).toContain('FEEDBACK_MARK')
+    expect(buildPrompt(4, { ...ctx, prior }).user).toContain('STUCK_MARK')
   })
 })
 

@@ -238,17 +238,21 @@ describe('L-14~L-21 교육청 재구성 예시 자료집 지침 (대표 2026-10-
     expect(spec).toContain('`[교육청2021]` 교육부·시도교육청')
   })
   it('G-1 reason_note·차시 분량, G-2 [지식]/[기능]·prerequisites, G-3 scope_note keeps L-01, G-4 criteria_draft → criteria_focus → taught_in', () => {
-    expect(text('L-14').text).toMatch(/reason_note/); expect(text('L-14').text).toMatch(/중심 코드/); expect(text('L-14').text).toMatch(/매개 요소/); expect(text('L-14').text).toMatch(/교수 차시 n개 \+ 평가 1차시/)
+    expect(text('L-14').text).toMatch(/reason_note/); expect(text('L-14').text).toMatch(/중심 코드/); expect(text('L-14').text).toMatch(/매개 요소/); expect(text('L-14').text).not.toMatch(/교과서 기준/)   // 2026-10-02: 차시 분량 줄은 검증할 수 없어 뺐다
     expect(text('L-15').text).toMatch(/\[지식\]/); expect(text('L-15').text).toMatch(/\[기능\]/); expect(text('L-15').text).toMatch(/prerequisites/)
     expect(text('L-16').text).toMatch(/좁히지 않는다\(L-01·L-02 유지\)/); expect(text('L-16').text).toMatch(/scope_note/); expect(text('L-16').text).toMatch(/다루지 않는 범위/); expect(text('L-16').text).toMatch(/용어의 뜻/)
     expect(text('L-17').text).toMatch(/criteria_draft/); expect(text('L-17').text).toMatch(/criteria_focus/); expect(text('L-17').text).toMatch(/taught_in\(C-39\)/)
+    // 2026-10-02: 초안 3~4개 ≠ 5단계 6~7 요소 모순 해소 — 초안은 요소 이름 꼴의 핵심 이름, criteria_focus·5단계는 이름을 더 둘 수 있고 criteria_focus 이름이 5단계에 없을 때만 어긋남
+    for (const s of ['핵심 평가 요소 초안(criteria_draft)을 3~4개', '짧은 명사구', '"~하기" 문장이 아니다', '글자 그대로 들어가고', '이름은 더 둘 수 있다', '요소를 더 둘 수 있다', '5단계 채점 요소에 없을 때만 어긋난 것으로 본다']) expect(text('L-17').text, s).toContain(s)
+    expect(text('L-17').text).not.toContain('"~하기" 3~4개')
   })
   it('G-5 발문 사다리·회상은 퀴즈로·if_stuck 다르게, G-6 활동지 ≠ 발문·인지 진행·질문형 도움말·결함 찾기는 활동지에서만, G-7 feedback_plan, G-8 self_check 이름만', () => {
     expect(text('L-18').nature).toBe('P')
     for (const s of ['자료 관찰', '추론', '종합·판단', '퀴즈 D~E 문항으로 보낸다', 'if_stuck은 발문마다 다르게', '일반 문구 반복 금지', '꼬리 발문']) expect(text('L-18').text, s).toContain(s)
     for (const s of ['발문 문장을 복사하지 않고', '인지 수준만 올라가게', '질문형 활동 도움말', '하 수준 지원', '상 수준 확장', '결함 찾기', '교수 차시 활동지에서만 허용', 'flaw_check: true', '평가 문항·세트 자료에는 넣지 않는다']) expect(text('L-19').text, s).toContain(s)
     for (const s of ['feedback_plan', '다음 차시의 전제', 'who: 개별/모둠/전체', 'sentence_frame', '이전 수행 대비', '성취기준 대비 뒤처짐은 말하지 않는다']) expect(text('L-20').text, s).toContain(s)
-    for (const s of ['마지막 교수 차시', '채점 요소 이름', 'self_check', '"나는 ~했다"', '3~5개', '요소 이름만으로', '척도 서술·예시답안·답·결론은 보여 주지 않는다']) expect(text('L-21').text, s).toContain(s)
+    for (const s of ['마지막 교수 차시', '채점 요소 이름', 'lessons[].self_check(활동지의 worksheet.self_check와 다른 칸)', '"나는 ~했다"', '3~5개', '요소 이름만으로', '척도 서술·예시답안·답·결론은 보여 주지 않는다', '배점·만점은 5단계가 정하므로 여기서 말하지 않는다']) expect(text('L-21').text, s).toContain(s)
+    expect(text('L-21').text).not.toMatch(/이름.*과 만점/)   // 2026-10-02: 3단계는 배점을 모른다
     // 조건은 지침(C-32)과 같은 결: 도움말에 답·수치·결론을 담지 않는다
     expect(text('L-19').text).toContain('답·수치·결론을 담지 않는')
   })

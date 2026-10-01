@@ -92,17 +92,24 @@ for (const set of SETS) describe(`${set.subject} fixtures (v2)`, () => {
     expect(new Set([...quizzes, ...criteria].map((x) => x.competency)).size).toBe(COMPETENCIES.length)
   })
   // 교육청 재구성 예시 지침(대표 2026-10-01, L-14~L-21): 시연 fixture 가 새 칸을 보여 준다 — scripts/upgrade-fixtures-v2.ts patchStage2·guidelines·setCriteriaFocus
-  it('stage2 (L-14~L-17): reason_note + [지식]/[기능] learning_elements per standard, scope_note that keeps the standards verbatim, prerequisites, criteria_draft "~하기" 3~4', () => {
+  it('stage2 (L-14~L-17): reason_note + [지식]/[기능] learning_elements per standard, scope_note that keeps the standards verbatim (no "교과서 기준 n차시" line), prerequisites, criteria_draft = 3~4 core criterion names verbatim (2026-10-02)', () => {
     const s2 = loadFixture(`stage2-generate${set.suffix}`) as { standards: { reconstructed_text: string; original_text: string; reason_note?: string; learning_elements: string[] }[]; scope_note?: string; prerequisites?: string[]; criteria_draft?: string[] }
     for (const s of s2.standards) {
       expect(s.reason_note?.length ?? 0, s.original_text).toBeGreaterThan(20)
       expect(s.learning_elements.some((e) => e.startsWith('[지식]'))).toBe(true); expect(s.learning_elements.some((e) => e.startsWith('[기능]'))).toBe(true)
       expect(s.reconstructed_text).toBe(s.original_text)   // G-3: 범위 메모를 두되 성취기준 문장은 좁히지 않는다
     }
-    expect(s2.scope_note).toMatch(/다루지 않(는다|고)/); expect(s2.scope_note).toMatch(/→ 교수 차시 5개 \+ 평가 1차시/)
+    expect(s2.scope_note).toMatch(/다루지 않(는다|고)/); expect(s2.scope_note).not.toMatch(/교과서 기준/)   // L-14(2026-10-02): 차시 분량 줄은 검증할 수 없어 뺐다
     expect(s2.prerequisites?.length).toBeGreaterThanOrEqual(1)
     expect(s2.criteria_draft?.length).toBeGreaterThanOrEqual(3); expect(s2.criteria_draft?.length).toBeLessThanOrEqual(4)
-    for (const c of s2.criteria_draft ?? []) expect(c).toMatch(/기$/)
+    // L-17(2026-10-02): 초안은 "~하기" 문장이 아니라 5단계 채점 요소 이름 꼴의 짧은 명사구이고, criteria_focus 와 5단계 요소에 글자 그대로 있다(요소는 더 둘 수 있다)
+    const focus = new Set((loadFixture(`stage3-generate${set.suffix}`) as { unit_plan: { lesson_map: { criteria_focus?: string[] }[] } }).unit_plan.lesson_map.flatMap((r) => r.criteria_focus ?? []))
+    const names = new Set((loadFixture(`stage5-generate${set.suffix}`) as { items: { rubric: { criteria: { name: string }[] } }[] }).items.flatMap((it) => it.rubric.criteria.map((c) => c.name)))
+    for (const c of s2.criteria_draft ?? []) {
+      expect(c).not.toMatch(/하기$/); expect(c.length).toBeLessThanOrEqual(20)
+      expect(focus.has(c), c).toBe(true); expect(names.has(c), c).toBe(true)
+    }
+    expect(names.size).toBeGreaterThan(s2.criteria_draft?.length ?? 0)   // 6~7 요소 > 초안 3~4개
   })
   it('stage3 (L-17·L-19·L-20·L-21): criteria_focus mirrors taught_in, worksheet tasks never copy a 발문, exactly one flaw_check task (expected names the flaw), feedback_plan on every teaching lesson, self_check (names only) on the last one', () => {
     type L = { no: number; kind: string; teacher_script: { questions: { prompt: string }[] }; worksheet: { tasks: { no: number; prompt: string; expected: string; flaw_check?: boolean }[] }; feedback_plan?: { who: string; how: string; sentence_frame?: string }; self_check?: string[] }

@@ -592,7 +592,7 @@ describe('교육청 재구성 예시 지침 메모 (L-19 활동지 ≠ 발문·�
   })
   it('L-19: a worksheet task whose sentence equals a teacher 발문 (ignoring spaces·case·punctuation) is noted with both numbers; a different sentence is not', () => {
     const copied = full().map((l) => (l.no === 3 ? { ...l, worksheet: { ...l.worksheet, tasks: l.worksheet.tasks.map((t) => (t.no === 2 ? { ...t, prompt: ' 도수의  합은? ' } : t)) } } : l))
-    expect(guideline(copied)).toEqual(['3차시 활동지 과제 2이 발문 2과 같은 문장 — 활동지는 발문과 다른 과제로(L-19)'])
+    expect(guideline(copied)).toEqual(['3차시 활동지 과제 2번이 발문 2번과 같은 문장 — 활동지는 발문과 다른 과제로(L-19)'])
     const reworded = full().map((l) => (l.no === 3 ? { ...l, worksheet: { ...l.worksheet, tasks: l.worksheet.tasks.map((t) => (t.no === 2 ? { ...t, prompt: '도수의 합이 부스 수와 같은지 확인해 보자' } : t)) } } : l))
     expect(guideline(reworded)).toEqual([])
   })
@@ -614,5 +614,17 @@ describe('교육청 재구성 예시 지침 메모 (L-19 활동지 ≠ 발문·�
     ])
     expect(staticIssues(5, assessmentV2, { standards, prior: {} }).filter((i) => i.detail.includes('L-17'))).toEqual([])
     expect(Assessment.safeParse(assessmentV2).success).toBe(true)
+  })
+  it('L-17 (stage 5): a criteria_focus name that the references (id·source) already mention — the rename was explained — is not noted; criteria beyond criteria_focus never are (2026-10-02)', () => {
+    const map = [{ lesson_no: 1, criteria_focus: ['계산', '상대도수 계산'] }]
+    const ctx = { standards, prior: { stage3: { unit_plan: { lesson_map: map }, lessons: [1, 2, 3, 4, 5].map((no) => ({ ...lessonV2, no })) } } }
+    // references 는 문항마다(items[].references) — 두 번째 문항에 적어도 짚지 않는다
+    const notes = (references: { id: string; source: string }[]) => staticIssues(5, { ...assessmentV2, items: assessmentV2.items.map((it, i) => (i === assessmentV2.items.length - 1 ? { ...it, references } : it)) }, ctx).map((i) => i.detail).filter((d) => d.includes('L-17'))
+    expect(notes([])).toHaveLength(1)
+    expect(notes([{ id: 'rename', source: '"상대도수 계산"은 서술형 요소 "계산"으로 합쳤다' }])).toEqual([])
+    expect(notes([{ id: '상대도수 계산 → 계산', source: '이름을 줄임' }])).toEqual([])
+    expect(notes([{ id: 'x', source: '다른 이야기' }])).toHaveLength(1)
+    // criteria_focus 에 없는 채점 요소(요소를 더 둔 것)는 짚지 않는다 — assessmentV2 의 요소는 map 의 이름보다 많다
+    expect(assessmentV2.items.flatMap((it) => it.rubric.criteria).length).toBeGreaterThan(1)
   })
 })

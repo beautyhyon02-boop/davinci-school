@@ -22,10 +22,14 @@ export const EDITABLE_FIELDS: Record<EditableStage, FieldSpec[]> = {
   2: [
     text('reconstruction'),
     text('standards[].reconstructed_text'),
+    // 재구조화 해설(L-14, 2026-10-02) — 없는 옛 출력에서는 칸이 되지 않는다
+    text('standards[].reason_note'),
     text('learning_goals[].text'),
     text('key_question_candidates[]'),
-    // 세트 범위 메모(L-16, 2026-10-01) — 없는 옛 출력에서는 칸이 되지 않는다
+    // 세트 범위 메모(L-16)·선수 학습(L-15)·평가 요소 초안(L-17, 짧은 이름 한 줄) — 없는 옛 출력에서는 칸이 되지 않는다
     text('scope_note'),
+    line('prerequisites[]'),
+    line('criteria_draft[]'),
   ],
   3: [
     line('lessons[].topic'),

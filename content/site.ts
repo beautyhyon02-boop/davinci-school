@@ -448,6 +448,8 @@ export const app = {
           learning_goals: () => '학습 목표',
           key_question_candidates: () => '핵심질문 후보',
           scope_note: () => '세트 범위 메모',
+          prerequisites: () => '선수 학습',
+          criteria_draft: () => '평가 요소 초안',
           lessons: (tag: string) => `${tag}차시`,
           materials: (tag: string) => `자료 ${tag}`,
           items: (tag: string) => `${tag}번 문항`,
@@ -463,9 +465,12 @@ export const app = {
           // 2단계
           'reconstruction': () => '재구성 문장',
           'standards[].reconstructed_text': () => '재구성 문장',
+          'standards[].reason_note': () => '재구조화 해설',
           'learning_goals[].text': (ix: number[], p: FieldParent) => `학습 목표 ${nth(ix[0])} (${String(p.axis ?? '')})`,
           'key_question_candidates[]': (ix: number[]) => `후보 ${nth(ix[0])}`,
           'scope_note': () => '세트 범위 메모',
+          'prerequisites[]': (ix: number[]) => `선수 학습 ${nth(ix[0])}`,
+          'criteria_draft[]': (ix: number[]) => `평가 요소 초안 ${nth(ix[0])}`,
           // 3단계
           'lessons[].topic': () => '주제',
           'lessons[].goal': () => '목표',

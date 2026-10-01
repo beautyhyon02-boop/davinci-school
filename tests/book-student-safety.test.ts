@@ -157,6 +157,13 @@ describe('학생 경로에는 교재가 없다', () => {
     for (const f of files('app/student')) expect(readFileSync(f, 'utf8'), f).not.toMatch(/components\/book|lib\/book/)
     expect(readdirSync('app/(book)').sort()).toEqual(['admin', 'teacher'])
   })
+  // 교육청 지침 칸(2026-10-01)은 교사용이다 — 학생 화면 코드는 그 칸 이름을 어디에도(주석에도) 적지 않는다(마지막 교수 차시 self_check 의 이름만 학생에게 간다)
+  it('no file under app/student references the teacher-only guideline fields (feedback_plan·scope_note·flaw_check·reason_note·criteria_draft·criteria_focus)', () => {
+    const files = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap((d) => (d.isDirectory() ? files(`${dir}/${d.name}`) : /\.tsx?$/.test(d.name) ? [`${dir}/${d.name}`] : []))
+    const list = files('app/student')
+    expect(list.length).toBeGreaterThan(0)
+    for (const f of list) expect(readFileSync(f, 'utf8'), f).not.toMatch(/feedback_plan|scope_note|flaw_check|reason_note|criteria_draft|criteria_focus/)
+  })
   it('the English translations fixture really has translation text (so the scan above checked something)', () => {
     expect(englishTranslations.materials.length).toBeGreaterThan(0)
     expect(englishTranslations.exemplar_answers.length).toBeGreaterThan(0)

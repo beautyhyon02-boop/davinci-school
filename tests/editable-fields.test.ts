@@ -117,6 +117,35 @@ describe('helpers', () => {
     expect(() => setAtPath(s5, ['items', 0, 'nope'], 'x')).toThrow(/no such path/)
   })
 
+  // 교육청 지침 칸(2026-10-02): 2단계 재구조화 해설·선수 학습·평가 요소 초안도 문장 고치기 칸 — 없는 옛 출력에서는 칸이 되지 않는다
+  it('stage 2: reason_note (per standard), prerequisites[] and criteria_draft[] are fields with labels; old outputs without them get no field', () => {
+    const s2 = fx('stage2-generate')
+    const fields = expandFields(2, s2)
+    const notes = fields.filter((f) => f.pattern === 'standards[].reason_note')
+    expect(notes).toHaveLength(s2.standards.length)
+    expect(notes.map((f) => f.group.tag)).toEqual(s2.standards.map((s: { code: string }) => s.code))
+    expect(notes.every((f) => f.multiline)).toBe(true)
+    expect(copy.labels['standards[].reason_note']([0], notes[0].parent)).toBe('재구조화 해설')
+    const pre = fields.filter((f) => f.pattern === 'prerequisites[]')
+    expect(pre.map((f) => f.value)).toEqual(s2.prerequisites)
+    expect(pre.map((f) => copy.labels[f.pattern](f.indices, f.parent))).toEqual(s2.prerequisites.map((_: string, i: number) => `선수 학습 ${i + 1}`))
+    const draft = fields.filter((f) => f.pattern === 'criteria_draft[]')
+    expect(draft.map((f) => f.value)).toEqual(s2.criteria_draft)
+    expect(draft.every((f) => !f.multiline && f.group.key === 'criteria_draft')).toBe(true)
+    expect(copy.groups.criteria_draft('')).toBe('평가 요소 초안'); expect(copy.groups.prerequisites('')).toBe('선수 학습')
+    // 고친 값이 그 자리에 들어가고 2단계 zod 를 통과한다
+    const next = applyFieldEdits(s2, fields, { [draft[0].id]: '자료 읽기의 정확성', [pre[0].id]: '초등 표 읽기', [notes[0].id]: '통계 영역 안에서 위계가 뚜렷해 유지한다 — 다음 성취기준의 도구가 된다.' })
+    expect(next.criteria_draft[0]).toBe('자료 읽기의 정확성'); expect(next.prerequisites[0]).toBe('초등 표 읽기'); expect(next.standards[0].reason_note).toMatch(/^통계 영역/)
+    expect(validateEdited(2, next, fields)).toBeNull()
+    // 옛 출력(칸이 없음): 그 패턴의 칸이 나오지 않고 다른 칸은 그대로
+    const old = structuredClone(s2)
+    delete old.prerequisites; delete old.criteria_draft
+    for (const s of old.standards) delete s.reason_note
+    const oldFields = expandFields(2, old)
+    expect(oldFields.some((f) => ['standards[].reason_note', 'prerequisites[]', 'criteria_draft[]'].includes(f.pattern))).toBe(false)
+    expect(oldFields.some((f) => f.pattern === 'scope_note')).toBe(true)
+  })
+
   it('validateEdited points at the field whose sentence broke the schema', () => {
     const fields = expandFields(3, output)
     const next = applyFieldEdits(output, fields, { 'lessons.0.goal': '짧음' })

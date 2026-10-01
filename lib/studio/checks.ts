@@ -337,7 +337,7 @@ export function nearlySameTask(a: string, b: string): boolean {
 /** [TS] 메모 문구(원장·관리자가 읽는다). */
 export const FEEDBACK_PLAN_MISSING = '확인·피드백 계획(feedback_plan)이 없음 — 3단계를 다시 생성하면 채워집니다(L-20)'
 export const SELF_CHECK_MISSING = '마지막 수업 차시의 자기 점검표(self_check)가 없음 — 3단계를 다시 생성하면 채워집니다(L-21)'
-export const TASK_COPIES_QUESTION = (taskNo: number, questionNo: number) => `활동지 과제 ${taskNo}이 발문 ${questionNo}과 같은 문장 — 활동지는 발문과 다른 과제로(L-19)`
+export const TASK_COPIES_QUESTION = (lessonNo: number, taskNo: number, questionNo: number) => `${lessonNo}차시 활동지 과제 ${taskNo}번이 발문 ${questionNo}번과 같은 문장 — 활동지는 발문과 다른 과제로(L-19)`
 export const FLAW_NOT_IN_EXPECTED = (taskNo: number) => `활동지 과제 ${taskNo}: 결함 찾기(flaw_check)인데 기대 답에 무엇이 결함인지 적혀 있지 않음(L-19)`
 export const FLAW_IN_SESSION = '평가 차시에 결함 찾기(flaw_check) 과제 — 결함 찾기는 수업 차시 활동지에서만(L-19)'
 /** 기대 답이 결함(틀린 곳·고칠 곳)을 말하는가 — 낱말로만 본다(뜻은 [AI] 검토). */
@@ -368,7 +368,7 @@ export function guidelineLessonIssues(lessons: GuidelineLessonLike[]): Issue[] {
     for (const [k, t] of tasks.entries()) {
       const no = t.no ?? k + 1
       const same = questions.findIndex((q) => !!q.prompt && !!t.prompt && flatKey(q.prompt) === flatKey(t.prompt))
-      if (same >= 0) issues.push({ kind: 'other', detail: `${l.no}차시 ${TASK_COPIES_QUESTION(no, same + 1)}` })
+      if (same >= 0) issues.push({ kind: 'other', detail: TASK_COPIES_QUESTION(l.no, no, same + 1) })
       if (t.flaw_check && !expectedNamesFlaw(t.expected ?? '')) issues.push({ kind: 'other', detail: `${l.no}차시 ${FLAW_NOT_IN_EXPECTED(no)}` })
     }
     if (!l.feedback_plan) issues.push({ kind: 'other', detail: `${l.no}차시: ${FEEDBACK_PLAN_MISSING}` })
@@ -378,19 +378,24 @@ export function guidelineLessonIssues(lessons: GuidelineLessonLike[]): Issue[] {
 }
 /** [TS] 메모 문구(L-17). */
 export const CRITERIA_FOCUS_UNMATCHED = (lessonNo: number, name: string) => `lesson_map ${lessonNo}차시 criteria_focus "${name}": 5단계 채점 요소에 같은 이름이 없음 — 요소 이름을 맞추거나 references에 바꾼 까닭을 적는다(L-17)`
+type ReferenceLike = { id?: string; source?: string } | string
 /**
  * L-17: 3단계 확정본(prior.stage3)의 lesson_map.criteria_focus 이름 가운데 두 문항의 채점 요소 이름(name)과 하나도 같지 않은 것을 적는다(이름마다 한 번).
- * 마지막 교수 차시의 자기 점검표가 그 이름으로 학생에게 보였으므로 5단계가 이름을 바꾸면 어긋난다. 3단계가 prior 에 없거나 criteria_focus 가 없으면 건너뛴다.
+ * 마지막 교수 차시의 자기 점검표가 그 이름으로 학생에게 보였으므로 5단계가 이름을 바꾸면 어긋난다 — 다만 문항의 references(id·source)에 그 옛 이름이 적혀 있으면
+ * 바꾼 까닭을 밝힌 것으로 보고 짚지 않는다(메모가 "references에 적는다"고 안내하므로 적은 뒤에는 다시 뜨지 않는다). 채점 요소를 더 두는 것은 보지 않는다.
+ * 3단계가 prior 에 없거나 criteria_focus 가 없으면 건너뛴다.
  */
-export function criteriaFocusIssues(items: { rubric: { criteria: { name: string }[] } }[], ctx: CheckCtx): Issue[] {
+export function criteriaFocusIssues(items: { rubric: { criteria: { name: string }[] } }[], ctx: CheckCtx, references: ReferenceLike[] = []): Issue[] {
+  // references 는 문항마다 있다(items[].references) — 호출자가 두 문항의 것을 합쳐 넘긴다
   const map = (ctx.prior.stage3 as { unit_plan?: { lesson_map?: { lesson_no: number; criteria_focus?: string[] }[] | null } | null } | undefined)?.unit_plan?.lesson_map
   if (!Array.isArray(map)) return []
   const names = new Set(items.flatMap((it) => it.rubric.criteria.map((c) => norm(c.name))))
+  const refText = norm(references.map((r) => (typeof r === 'string' ? r : `${r.id ?? ''} ${r.source ?? ''}`)).join(' '))
   const issues: Issue[] = []
   const seen = new Set<string>()
   for (const row of map) {
     for (const f of row.criteria_focus ?? []) {
-      if (names.has(norm(f)) || seen.has(f)) continue
+      if (names.has(norm(f)) || seen.has(f) || (norm(f) && refText.includes(norm(f)))) continue
       seen.add(f)
       issues.push({ kind: 'other', detail: CRITERIA_FOCUS_UNMATCHED(row.lesson_no, f) })
     }
@@ -698,7 +703,7 @@ function assessmentIssues(o: AssessmentT, ctx: CheckCtx): Issue[] {
   issues.push(...placementIssues(o, ctx))
   issues.push(...taughtInIssues(o.items, ctx))
   issues.push(...competencyIssues(o.items, ctx))
-  issues.push(...criteriaFocusIssues(o.items, ctx))
+  issues.push(...criteriaFocusIssues(o.items, ctx, o.items.flatMap((it) => it.references ?? [])))
   const setMaterials = (ctx.prior.stage4 as MaterialsT | undefined)?.materials
   if (Array.isArray(setMaterials)) issues.push(...materialUseIssues(setMaterials, ctx, o.items))
   const lessons3 = (ctx.prior.stage3 as Partial<LessonDesignT> | undefined)?.lessons
