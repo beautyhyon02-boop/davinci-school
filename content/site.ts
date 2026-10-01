@@ -436,10 +436,9 @@ export const app = {
         changedCount: (n: number) => `고친 칸 ${n}개`,
         save: '저장',
         saving: '저장 중…',
-        saved: '저장했습니다. 이 단계를 다시 읽고 [확인]하세요.',
+        saved: '저장했습니다. 확인한 단계는 확인 상태가 그대로이고, 뒤 단계는 바뀌지 않았습니다.',
         reset: '고친 것 되돌리기',
-        resetWarning: (from: number) => `${from}~7단계가 초기화됩니다. 계속할까요?`,
-        resetConfirm: '네, 뒤 단계를 초기화하고 저장합니다',
+        lightEditNote: (from: number) => `문장만 고치는 것이라 ${from}~7단계는 그대로 둡니다. 고친 문장이 뒤 단계 글(교사용 지침·안내장 틀 등)과 어긋나면 그 단계도 문장 고치기로 맞춰 주세요. 구조를 바꾸려면 [JSON 편집]을 쓰세요(뒤 단계가 초기화됩니다).`,
         fieldError: (label: string, message: string) => `${label}: ${message}`,
         // 고르기 칸(역량 꼬리표)에서 아직 값이 없을 때의 첫 줄
         optionEmpty: '고르지 않음',

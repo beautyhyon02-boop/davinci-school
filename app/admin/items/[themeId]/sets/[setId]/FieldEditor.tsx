@@ -20,8 +20,9 @@ function groupLabel(top: string, tag: string): string {
 
 /**
  * 문장 고치기(대표 2026-09-26): 단계 출력의 문장만 칸으로 고쳐 저장한다. 저장은 고친 출력 전체를 saveStageEdit 로 보낸다 —
- * 형식 검사(zod) → 저장 → 뒤 단계 초기화(downstreamResets) → 자동 검사 메모 다시 계산. 이 단계는 '생성됨(편집됨)'으로 돌아가
- * 다시 [확인]해야 한다. 뒤 단계(laterStages: 준비 전이 아닌 단계)가 있으면 초기화 확인 칸을 체크해야 저장된다.
+ * 형식 검사(zod) → 저장(mode 'light') → 자동 검사 메모 다시 계산. 문장만 고치는 것이므로 **뒤 단계를 초기화하지 않고**, 이미 확인한
+ * 단계는 확인 상태를 유지한다(2026-10-01). 뒤 단계(laterStages)가 있으면 "뒤 단계 글과 어긋나면 그 단계도 고치라"는 안내만 보인다.
+ * 구조를 바꾸는 고침은 [JSON 편집](mode 'full' — 뒤 단계 초기화)으로 한다.
  */
 export function FieldEditor({
   setId,
@@ -40,15 +41,14 @@ export function FieldEditor({
   const fields = useMemo(() => expandFields(stage, output), [stage, output])
   const groups = useMemo(() => groupFields(fields), [fields])
   const [values, setValues] = useState<Record<string, string>>(() => Object.fromEntries(fields.map((f) => [f.id, f.value])))
-  const [confirmed, setConfirmed] = useState(false)
   const [error, setError] = useState<{ fieldId?: string; message: string } | null>(null)
   const [pending, startTransition] = useTransition()
 
   if (fields.length === 0) return <p className="mt-3 text-sm text-ink-500">{copy.empty}</p>
 
   const changed = fields.filter((f) => values[f.id] !== f.value).length
-  const needsConfirm = laterStages.length > 0
-  const canSave = changed > 0 && (!needsConfirm || confirmed) && !pending
+  const hasLater = laterStages.length > 0
+  const canSave = changed > 0 && !pending
 
   function setValue(id: string, v: string) {
     setValues((prev) => ({ ...prev, [id]: v }))
@@ -72,13 +72,12 @@ export function FieldEditor({
       return
     }
     startTransition(async () => {
-      const res = await saveStageEdit(setId, stage, JSON.stringify(next))
+      const res = await saveStageEdit(setId, stage, JSON.stringify(next), 'light')
       if (!res.ok) {
         setError({ message: res.error })
         return
       }
       // 저장 안내는 StagePanel 이 보인다 — 저장된 새 출력으로 이 칸들이 다시 그려진다(key)
-      setConfirmed(false)
       onSaved(res.status)
     })
   }
@@ -121,13 +120,9 @@ export function FieldEditor({
         </fieldset>
       ))}
 
-      {needsConfirm && (
+      {hasLater && (
         <div className="rounded-xl bg-lemon-50 p-3 text-sm">
-          <p className="font-semibold">{copy.resetWarning(stage + 1)}</p>
-          <label className="mt-1 flex items-center gap-2">
-            <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} />
-            {copy.resetConfirm}
-          </label>
+          <p>{copy.lightEditNote(stage + 1)}</p>
         </div>
       )}
 

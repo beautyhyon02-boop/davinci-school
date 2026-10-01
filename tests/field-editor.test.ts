@@ -35,7 +35,7 @@ describe('FieldEditor (5단계)', () => {
     expect(html).toContain('name="items.0.stem"')
     expect(text(html)).toContain(output.items[0].stem.slice(0, 20))
     expect(text(html)).toContain(copy.changedCount(0))
-    expect(text(html)).not.toContain(copy.resetWarning(6))
+    expect(text(html)).not.toContain(copy.lightEditNote(6))
   })
 
   it('an old output without competency tags shows the pick field with 고르지 않음 selected', () => {
@@ -47,10 +47,9 @@ describe('FieldEditor (5단계)', () => {
     expect(count(html, `<option value="" selected="">${copy.optionEmpty}</option>`)).toBe(n)
   })
 
-  it('asks before resetting later stages: warning line + confirm checkbox', () => {
+  it('does not ask to reset later stages (문장 고치기 = light edit, 2026-10-01): a note only, no checkbox', () => {
     const html = render([6, 7])
-    expect(text(html)).toContain(copy.resetWarning(6))
-    expect(text(html)).toContain(copy.resetConfirm)
-    expect(html).toContain('type="checkbox"')
+    expect(text(html)).toContain(copy.lightEditNote(6))
+    expect(html).not.toContain('type="checkbox"')
   })
 })

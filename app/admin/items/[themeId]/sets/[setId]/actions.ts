@@ -84,7 +84,12 @@ async function editNotes(supabase: Awaited<ReturnType<typeof createClient>>, set
  * 생성과 같은 확정 게이트를 먼저 적용하고(canEditStage), 저장에 성공하면 이 단계를 근거로 삼은 하위 단계(n+1..7)를
  * idle 로 되돌린다 — 그러지 않으면 낡은 근거 위의 출력이 accepted 로 남아 그대로 게시된다.
  */
-export async function saveStageEdit(setId: string, stage: Stage, json: string): Promise<SaveEditResult> {
+/**
+ * mode 'light' = 문장 고치기(FieldEditor): 문장만 고친 것이므로 뒤 단계를 초기화하지 않고, 이미 확인한 단계는 확인 상태를 유지한다
+ * (2026-10-01 — 영어 세트 퀴즈 5문항을 고치려고 4~7단계를 다시 만들 수는 없다). 'full' = JSON 편집: 구조가 바뀔 수 있으므로 종전대로
+ * 뒤 단계를 준비 전으로 되돌리고 이 단계는 다시 [확인]한다.
+ */
+export async function saveStageEdit(setId: string, stage: Stage, json: string, mode: 'full' | 'light' = 'full'): Promise<SaveEditResult> {
   await assertAdmin()
 
   let parsed: unknown
@@ -138,8 +143,9 @@ export async function saveStageEdit(setId: string, stage: Stage, json: string): 
 
   const now = new Date().toISOString()
   const notes = await editNotes(supabase, setId, stage, r.data)
+  const light = mode === 'light'
   const status: StageStatus = {
-    state: 'generated',
+    state: light && prev.state === 'accepted' ? 'accepted' : 'generated',
     attempt: prev.attempt,
     output: r.data,
     updated_at: now,
@@ -153,7 +159,7 @@ export async function saveStageEdit(setId: string, stage: Stage, json: string): 
   })
   if (rpcErr) return { ok: false, error: errors.saveFailed }
 
-  for (const reset of downstreamResets(stage, stageStatus, now)) {
+  for (const reset of light ? [] : downstreamResets(stage, stageStatus, now)) {
     const { error: resetErr } = await supabase.rpc('set_stage_status', {
       p_item_set_id: setId,
       p_key: `stage${reset.stage}`,
