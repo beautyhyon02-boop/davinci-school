@@ -5,6 +5,7 @@ import { PackageView } from '@/components/studio/PackageView'
 import { upgradeSnapshot, type Snapshot } from '@/lib/studio/publish'
 import { Button } from '@/components/ui/Button'
 import { PrintButton } from '@/components/classroom/PrintButton'
+import { BookButtons } from '@/components/book/BookShell'
 import { app } from '@/content/site'
 
 const copy = app.teacherItems
@@ -33,6 +34,8 @@ export default async function TeacherItemDetailPage({ params }: { params: Promis
           <Button href={`/teacher/assignments/new?set=${setId}`}>{app.classroom.assign.button}</Button>
           {/* 문제지 인쇄: 표지·자료·문항·답란만(app/globals.css html.print-questions) */}
           <PrintButton label={app.packageView.print.button} sheet="questions" />
+          {/* 제본용 교재(설계 2026-10-01): 학생용 교재·교사용 지도서 — 인쇄 전용 쪽을 새 탭으로 */}
+          <BookButtons base={`/teacher/items/${setId}`} />
         </div>
       </div>
       <div className="mt-4">

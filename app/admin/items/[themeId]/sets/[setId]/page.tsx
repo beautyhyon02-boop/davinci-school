@@ -7,6 +7,7 @@ import { SetPageTabs } from './SetPageTabs'
 import { PublishPanel } from './PublishPanel'
 import { PackageView } from '@/components/studio/PackageView'
 import { PrintButton } from '@/components/classroom/PrintButton'
+import { BookButtons } from '@/components/book/BookShell'
 import { canPublish, buildSnapshot, type DraftLessonQuizzes } from '@/lib/studio/publish'
 import type { StageStatus } from '@/lib/studio/stages'
 import { app } from '@/content/site'
@@ -124,7 +125,11 @@ export default async function SetWizardPage({ params }: { params: Promise<{ them
                   nextVersion={nextVersion}
                   initialBlockers={blockers}
                 />
-                <div className="no-print"><PrintButton label={app.packageView.print.button} sheet="questions" /></div>
+                <div className="no-print flex flex-wrap items-center gap-2">
+                  <PrintButton label={app.packageView.print.button} sheet="questions" />
+                  {/* 제본용 교재(설계 2026-10-01): 게시 판 기준, 게시 판이 없으면 초안 미리보기 표시 — 인쇄 전용 쪽을 새 탭으로 */}
+                  <BookButtons base={`/admin/items/${themeId}/sets/${setId}`} />
+                </div>
               </div>
               <PackageView snapshot={draftSnapshot} mode="admin" showAnswers />
             </div>
