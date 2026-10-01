@@ -38,6 +38,8 @@ export type CallInput<T> = {
   mode?: OutputMode
   fixtureKey: string
   log?: (entry: LogEntry) => Promise<void>
+  /** JSON 모드에서 zod 검증 전에 응답을 손보는 함수(형식 표기 같은 기계적 보정 — 예: 5단계 문두 끝 "[N점]"). 내용은 바꾸지 않는다. */
+  repair?: (raw: unknown) => unknown
 }
 export type CallResult<T> = { data: T; usage: { input: number; output: number; cacheRead: number }; model: string }
 
@@ -94,13 +96,18 @@ function briefMessage(e: unknown): string {
 const MAX_ATTEMPTS = 2
 const MAX_TOKENS = 48000 // adaptive thinking 토큰이 max_tokens에 포함되므로 5단계(xhigh)를 감안해 넉넉히 잡는다
 const RETRY_DELAY_MS = process.env.NODE_ENV === 'test' ? 0 : 1000
+/**
+ * 요청 시간 한도(Vercel Hobby 300초). 첫 시도가 이보다 오래 걸렸으면 다시 불러도 한도 안에 못 끝나 함수가 그냥 끊기고
+ * (실패 상태조차 저장되지 않아 화면은 '준비 전' 그대로 — 2026-10-01 영어 5단계), 그러니 곧바로 실패를 돌려준다.
+ */
+const REQUEST_BUDGET_MS = Number(process.env.AI_REQUEST_BUDGET_MS ?? 290_000)
 
 function usageOf(m: Pick<Anthropic.Message, 'usage'> | undefined) {
   return { input: m?.usage?.input_tokens ?? 0, output: m?.usage?.output_tokens ?? 0, cacheRead: m?.usage?.cache_read_input_tokens ?? 0 }
 }
 
 /** JSON 모드 응답 텍스트 → 검증된 값. 실패하면 사유를 담은 Error 를 던진다(로그에는 briefMessage 로 ≤400자). */
-function parseJsonReply<T>(schema: ZodType<T>, text: string): T {
+function parseJsonReply<T>(schema: ZodType<T>, text: string, repair?: (raw: unknown) => unknown): T {
   const unfenced = text.trim().replace(/^```[a-zA-Z]*\s*/, '').replace(/\s*```$/, '')
   const a = unfenced.indexOf('{')
   const b = unfenced.lastIndexOf('}')
@@ -111,7 +118,7 @@ function parseJsonReply<T>(schema: ZodType<T>, text: string): T {
   } catch (e) {
     throw new Error(`invalid JSON: ${briefMessage(e)}`)
   }
-  const r = schema.safeParse(raw)
+  const r = schema.safeParse(repair ? repair(raw) : raw)
   if (!r.success) {
     const issues = r.error.issues
     const head = issues.slice(0, 5).map(i => `${i.path.join('.') || '(root)'}: ${i.message}`).join('; ')
@@ -184,7 +191,7 @@ export async function callStructured<T>(inp: CallInput<T>): Promise<CallResult<T
     const text = content.map(b => (b.type === 'text' ? b.text : '')).join('')
     if (mode === 'json') {
       try {
-        return { ok: true, data: parseJsonReply(inp.schema, text), usage }
+        return { ok: true, data: parseJsonReply(inp.schema, text, inp.repair), usage }
       } catch (e) {
         return { ok: false, detail: briefMessage(e), usage }
       }
@@ -195,6 +202,7 @@ export async function callStructured<T>(inp: CallInput<T>): Promise<CallResult<T
   }
 
   let lastDetail = ''
+  const startedAt = Date.now()
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     const mode: OutputMode = grammarFallback.has(inp.schema) ? 'json' : (inp.mode ?? 'structured')
     let r: Once<T>
@@ -214,6 +222,12 @@ export async function callStructured<T>(inp: CallInput<T>): Promise<CallResult<T
     }
     lastDetail = r.detail
     await inp.log?.({ model, ...r.usage, ok: false, error: `unparsable (attempt ${attempt}): ${lastDetail}` })
+    // 남은 시간이 첫 시도만큼도 안 되면 다시 부르지 않는다 — 한도에 끊겨 아무 상태도 남지 않는 것보다 '실패'를 남기는 편이 낫다
+    const elapsed = Date.now() - startedAt
+    if (attempt < MAX_ATTEMPTS && elapsed * 2 > REQUEST_BUDGET_MS) {
+      await inp.log?.({ model, input: 0, output: 0, cacheRead: 0, ok: false, error: `retry skipped: ${Math.round(elapsed / 1000)}s elapsed, budget ${Math.round(REQUEST_BUDGET_MS / 1000)}s` })
+      throw new Error(`AI output could not be parsed (retry skipped — ${Math.round(elapsed / 1000)}s elapsed): ${lastDetail}`)
+    }
     if (attempt < MAX_ATTEMPTS && RETRY_DELAY_MS > 0) await new Promise(done => setTimeout(done, RETRY_DELAY_MS))
   }
   throw new Error(`AI output could not be parsed after ${MAX_ATTEMPTS} attempts: ${lastDetail}`)

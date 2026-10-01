@@ -2,6 +2,7 @@ import { STAGE_SCHEMAS, Review, type Stage, type ReviewT } from './schemas'
 import { buildPrompt, buildReviewPrompt, type Ctx } from './prompts/stages'
 import { staticIssues, type Issue } from './checks'
 import { enrichOutput } from './enrich'
+import { repairOutput } from './repair'
 import { callStructured, type OutputMode } from '@/lib/ai/claude'
 import { MAX_ATTEMPTS, EXHAUSTED_ERROR } from './max-attempts'
 import type { ZodType } from 'zod'
@@ -216,7 +217,7 @@ export async function runStage({ itemSetId, stage, action, repo }: { itemSetId: 
     let status: StageStatus
     try {
       const r = await callStructured({ stage, role: 'generate', schema: STAGE_SCHEMAS[stage] as ZodType<unknown>, system: p.system, user: p.user,
-        effort: effortFor(stage), mode: STAGE_OUTPUT_MODE[stage], fixtureKey: p.fixtureKey,
+        effort: effortFor(stage), mode: STAGE_OUTPUT_MODE[stage], fixtureKey: p.fixtureKey, repair: (raw) => repairOutput(stage, raw),
         log: e => repo.log({ itemSetId, stage, role: 'generate', attempt, ...e }) })
       // 서버가 채우는 값(2단계 level_anchor, 5단계 min_competency)을 넣은 뒤 저장한다 — 모델 원출력이 아니라 이것이 검사·확인·게시의 대상
       const data = enrichOutput(stage, r.data, { standards: ctx.standards, prior: ctx.prior })
