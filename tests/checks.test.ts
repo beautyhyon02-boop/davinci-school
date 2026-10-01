@@ -285,11 +285,11 @@ describe('staticIssues', () => {
     expect(inventedActors(['교환학생'], '')).toEqual([])
     expect(inventedActors(['중학생 어린이'], '축제')).toEqual(['어린이'])
   })
-  it('stage 5: criterion names must differ across the two items (the 단원 평가 차시 notice splits them by name)', () => {
+  it('stage 5: the same criterion name across the two items is fine (L-17) — only a competency mismatch is noted (2026-10-02)', () => {
     const prior = { stage4: { materials }, stage3: { lessons: [] } }
     const dup = structuredClone(assessmentV2); dup.items[0].rubric.criteria[0].name = dup.items[1].rubric.criteria[0].name
-    expect(staticIssues(5, dup, { standards, prior }).filter((i) => i.detail.includes('겹침')).map((i) => i.kind)).toEqual(['rubric'])
-    expect(staticIssues(5, assessmentV2, { standards, prior }).filter((i) => i.detail.includes('겹침'))).toEqual([])
+    dup.items[0].rubric.criteria[0].competency = dup.items[1].rubric.criteria[0].competency
+    expect(staticIssues(5, dup, { standards, prior }).filter((i) => i.detail.includes('겹침') || i.detail.includes('역량 꼬리표가 다름'))).toEqual([])
   })
   // C-39(대표 2026-09-29, 영어 서술형 "비교급·최상급 표현을 쓰면 2점" — 그 표현을 배웠어야 채점 요소로 넣을 수 있다): 요소마다 가르친 교수 차시(taught_in).
   // 참고 메모(other)일 뿐 막지 않는다 — zod 는 taught_in 을 요구하지 않는다(옛 판·옛 초안).
@@ -626,5 +626,22 @@ describe('교육청 재구성 예시 지침 메모 (L-19 활동지 ≠ 발문·�
     expect(notes([{ id: 'x', source: '다른 이야기' }])).toHaveLength(1)
     // criteria_focus 에 없는 채점 요소(요소를 더 둔 것)는 짚지 않는다 — assessmentV2 의 요소는 map 의 이름보다 많다
     expect(assessmentV2.items.flatMap((it) => it.rubric.criteria).length).toBeGreaterThan(1)
+  })
+})
+
+// 2026-10-02 영어 세트: L-17(criteria_focus 이름 그대로) 뒤로 두 문항이 같은 요소 이름을 쓰는 것은 자연스럽다 — 역량 꼬리표가 다를 때만 짚는다
+describe('duplicate criterion names across items', () => {
+  it('notes only when the same name carries different competency tags', async () => {
+    const { staticIssues } = await import('@/lib/studio/checks')
+    const fixture = JSON.parse(readFileSync('data/studio-fixtures/stage5-generate.json', 'utf8')) as { items: { rubric: { criteria: { name: string; competency?: string }[] } }[] }
+    const sameName = structuredClone(fixture)
+    sameName.items[1].rubric.criteria[0].name = sameName.items[0].rubric.criteria[0].name
+    sameName.items[1].rubric.criteria[0].competency = sameName.items[0].rubric.criteria[0].competency
+    const quiet = staticIssues(5, sameName, { theme: { title: 't', level: '중', grade: 1, subjects: ['수학'] }, subject: '수학', standards: [], prior: {} }).filter((i) => i.detail.includes('역량 꼬리표가 다름'))
+    expect(quiet).toEqual([])
+    sameName.items[1].rubric.criteria[0].competency = sameName.items[0].rubric.criteria[0].competency === '자료 읽기' ? '글로 표현하기' : '자료 읽기'
+    const loud = staticIssues(5, sameName, { theme: { title: 't', level: '중', grade: 1, subjects: ['수학'] }, subject: '수학', standards: [], prior: {} }).filter((i) => i.detail.includes('역량 꼬리표가 다름'))
+    expect(loud).toHaveLength(1)
+    expect(loud[0].kind).toBe('other')
   })
 })

@@ -667,10 +667,14 @@ function assessmentIssues(o: AssessmentT, ctx: CheckCtx): Issue[] {
   // 세트 구조(대표 2026-09-26): zod 가 생성 때 거르지만, 검토는 저장된 출력(옛 판·손으로 고친 판)에도 돌므로 다시 본다
   for (const m of structureIssues(o.items)) issues.push({ kind: 'rubric', detail: `문항 구조: ${m}` })
   for (const [i, it] of o.items.entries()) if (!it.rubric.holistic) issues.push({ kind: 'rubric', detail: `문항 ${i + 1}(${it.kind}): 총체적 상/중/하가 없음 — 두 문항 모두 분석적 + 총체적 채점표(C-15)` })
-  // 단원 평가 차시 안내장·채점은 두 문항의 요소를 이름으로 가른다(notice_plan.criteria_phrases, 안내장 AI 초안) — 문항 사이에 같은 이름이 있으면 섞인다
-  const names = o.items.flatMap((it) => it.rubric.criteria.map((c) => c.name))
-  const dup = [...new Set(names.filter((n, k) => names.indexOf(n) !== k))]
-  if (dup.length) issues.push({ kind: 'rubric', detail: `채점 요소 이름이 문항 사이에 겹침(${dup.join(', ')}) — 문항마다 다른 이름을 쓴다` })
+  // 두 문항이 같은 요소 이름을 쓰는 것은 L-17(criteria_focus 이름 그대로) 이후 자연스럽다 — 안내장·리포트의 문구 은행이 이름으로 묶이므로
+  // 같은 이름은 같은 것을 재는 요소여야 한다. 그래서 이름은 같은데 역량 꼬리표(C-40)가 다를 때만 짚는다(2026-10-02, 영어 세트).
+  const byName = new Map<string, Set<string>>()
+  for (const it of o.items) for (const c of it.rubric.criteria) {
+    if (!c.competency) continue
+    const set = byName.get(c.name) ?? new Set<string>(); set.add(c.competency); byName.set(c.name, set)
+  }
+  for (const [name, comps] of byName) if (comps.size > 1) issues.push({ kind: 'other', detail: `채점 요소 "${name}"이(가) 두 문항에 있는데 역량 꼬리표가 다름(${[...comps].join(' / ')}) — 같은 요소면 같은 역량으로(C-40)` })
   for (const b of o.grade_boundaries) {
     const want = levelRefFor(b.grade)
     if (b.level_ref !== want) issues.push({ kind: 'rubric', detail: `등급 ${b.grade}의 level_ref(${b.level_ref})가 7등급↔수준 대응표(${want})와 다름` })
