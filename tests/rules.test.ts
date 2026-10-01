@@ -9,8 +9,8 @@ describe('rules v2', () => {
     expect(new Set(ids).size).toBe(ids.length)
     const spec = readFileSync('docs/superpowers/specs/2026-09-25-item-studio-v2-design.md', 'utf8')
     for (const id of ids) expect(spec.split(`| ${id} |`).length - 1, id).toBe(1)
-    // 부록 A: 공통 38(C-31 대표 확정값, C-32 조건=지침(2026-09-26), C-33 자료 설계·유형(대표 연수 2기), C-34·C-36·C-37 경기2025, C-39 배운 것만 채점·C-40 역량 꼬리표(대표 2026-09-29) 포함) + 차시 12 + 과목 40(국6·수7·사7·역3·과8·영9 — S-영-08 번역·S-영-09 공동 자료 영어판(대표 2026-09-29), S-사-07 사회 통합(대표 2026-09-30)) + 채점 10(G-10 경기2025) + 안내장 12 = 112
-    expect(ids.length).toBe(38 + 12 + 40 + 10 + 12)
+    // 부록 A: 공통 38(C-31 대표 확정값, C-32 조건=지침(2026-09-26), C-33 자료 설계·유형(대표 연수 2기), C-34·C-36·C-37 경기2025, C-39 배운 것만 채점·C-40 역량 꼬리표(대표 2026-09-29) 포함) + 차시 13(L-13 정답 노출·활동지 되풀이 금지, 2026-10-01 영어 세트 검토) + 과목 40(국6·수7·사7·역3·과8·영9 — S-영-08 번역·S-영-09 공동 자료 영어판(대표 2026-09-29), S-사-07 사회 통합(대표 2026-09-30)) + 채점 10(G-10 경기2025) + 안내장 12 = 113
+    expect(ids.length).toBe(38 + 13 + 40 + 10 + 12)
   })
   it('the spec appendix has no rule row that the code lacks', () => {
     const spec = readFileSync('docs/superpowers/specs/2026-09-25-item-studio-v2-design.md', 'utf8')
@@ -201,6 +201,21 @@ describe('경기2025: 사다리 설계·동점 두 줄·답안 틀·오류 이�
     expect(c32.text).toContain('논술형 문항에만 2~4개')
     const docs = readFileSync('docs/STATUS.md', 'utf8')
     expect(docs).toContain('C-35')
+  })
+})
+
+// 2026-10-01 영어 세트 실제 검토: 정답 "Bring your own cup"이 전개 문장에, "plastic cups"가 발문 예상 답에 그대로; 활동지 도전 과제 = 퀴즈 3; B라고 붙인 퀴즈가 회상.
+describe('L-13 퀴즈 정답 노출·활동지 되풀이 금지 (2026-10-01 영어 세트 검토)', () => {
+  const spec = readFileSync('docs/superpowers/specs/2026-09-25-item-studio-v2-design.md', 'utf8')
+  const row = (id: string) => spec.split('\n').find((line) => line.startsWith(`| ${id} |`))!
+  it('exists as PS/v2-1001 in the lesson rules; spec row identical; tag in the legend; reaches every subject prompt', () => {
+    const l13 = LESSON_RULES.find((r) => r.id === 'L-13')!
+    expect(l13.nature).toBe('PS'); expect(l13.tags).toEqual(['v2-1001'])
+    for (const s of ['전개·발문·활동지 문장에 그대로 적혀 있지 않아야', '옮겨 적으면 답이 되는 구·문장 금지', '가르친 용어의 이름을 묻는 회상 문항은 예외', 'B 수준 퀴즈는 활동지가 아직 묻지 않은 관계·추론·까닭 있는 선택', '활동지와 퀴즈는 서로 다른 것을 확인한다']) expect(l13.text, s).toContain(s)
+    expect(row('L-13')).toBe(`| L-13 | ${l13.text} | P+S | [v2-1001] |`)
+    expect(spec).toContain('`[v2-1001]` 2026-10-01 영어 세트 실제 검토')
+    for (const subject of ['수학', '과학', '영어']) expect(rulesFor(subject)).toMatch(/^L-13 퀴즈 정답\(낱말·구\)은/m)
+    expect(LESSON_RULES).toHaveLength(13)
   })
 })
 

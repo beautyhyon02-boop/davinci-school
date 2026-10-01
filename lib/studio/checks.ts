@@ -231,6 +231,105 @@ export function quizCopySource(quiz: { q?: string; answer?: string }, units: Sou
   }
   return null
 }
+// ── L-13 정답 노출·활동지 되풀이(2026-10-01 영어 세트 실제 검토: 정답 "Bring your own cup"이 전개 문장에, "the survey"가 전개의
+// "According to the survey"에, "plastic cups"가 발문 예상 답 "Forty percent of students chose plastic cups."와 활동지 기대 답에 그대로;
+// 활동지 도전 과제와 퀴즈 3이 같은 문항. 종전 quizCopySource 는 발문 내용어가 그 문장에 60% 이상 겹칠 때만 짚어 "활동지" 하나만 잡았다) ──
+/** 글자 비교용: 소문자, 공백·문장부호·기호 제거. */
+const flatKey = (s: string) => s.toLowerCase().replace(/[\s\p{P}\p{S}]+/gu, '')
+/** 이 글자 수(공백·부호 제외) 이하의 정답 표기("405"·"Ask"·"석유")는 어디에나 나오므로 그대로 들어 있는지 보지 않는다 — 빈칸 채운 문장(blankFilled)으로만 본다. */
+export const EXPOSED_ANSWER_MIN = 4
+/** 발문·과제의 빈칸 표시: ___, ＿, (   ), [  ], （ ）, □. */
+const BLANK = /_{2,}|＿+|\(\s*\)|\[\s*\]|（\s*）|□+/
+/** 퀴즈 발문에서 빈칸이 든 문장에 정답을 채운 글(비교용 flatKey). 빈칸이 없으면 null. */
+export function blankFilled(stem: string, key: string): string | null {
+  const sentences = stem.split(/(?<=[.!?。])\s+|\n+/).filter((s) => BLANK.test(s))
+  if (sentences.length === 0) return null
+  const filled = flatKey(sentences.map((s) => s.replace(new RegExp(BLANK.source, 'g'), ` ${key} `)).join(' '))
+  return filled.length >= EXPOSED_ANSWER_MIN * 2 ? filled : null
+}
+/** 노출 검사 단위 — [어디, 글, 답 자리인가]. 답 자리 = 짧은 예상 답·기대 답(SHORT_EXPECTED 이하 — 교사용 인정 기준이 아니라 답 그 자체). */
+type ExposureUnit = [where: string, text: string, answerSlot: boolean]
+type LessonExposureLike = LessonTextLike & { formative_check?: { quiz?: { q?: string; answer?: string; explanation?: string }[] | null } | null }
+export function lessonExposureUnits(l: LessonExposureLike, quizIndex: number): ExposureUnit[] {
+  const units: ExposureUnit[] = []
+  for (const t of l.flow?.intro ?? []) units.push(['도입', t, false])
+  for (const [k, m] of (l.flow?.main ?? []).entries()) for (const t of m.activities ?? []) units.push([`전개 ${k + 1}단계`, t, false])
+  for (const t of l.flow?.wrapup ?? []) units.push(['정리', t, false])
+  for (const q of l.teacher_script?.questions ?? []) {
+    if (q.prompt) units.push(['교사 발문', q.prompt, false])
+    if (q.expected_answer) units.push(['교사 발문 예상 답', q.expected_answer, q.expected_answer.length <= SHORT_EXPECTED])
+    if (q.if_stuck) units.push(['교사 발문 힌트', q.if_stuck, false])
+  }
+  for (const [k, t] of (l.worksheet?.tasks ?? []).entries()) {
+    const no = (t as { no?: number }).no ?? k + 1
+    if (t.prompt) units.push([`활동지 과제 ${no}`, t.prompt, false])
+    if (t.expected) units.push([`활동지 기대 답 ${no}`, t.expected, t.expected.length <= SHORT_EXPECTED])
+  }
+  for (const [k, q] of (l.formative_check?.quiz ?? []).entries()) if (k !== quizIndex && q.explanation) units.push([`퀴즈 ${k + 1} 해설`, q.explanation, false])
+  return units
+}
+/**
+ * 가르친 개념·용어의 이름을 묻는 발문(무엇이라 하는가·부르는가, 어느/무슨 단계·차원·종류·성질, "…단계는?"·"…성질은?", 용어, What is … called,
+ * which stage/step, the term/name for). L-10 은 회상 문항이 가르친 낱말을 묻는 것을 허용하므로 그 용어가 수업 글에 있는 것은 노출로 보지 않는다 —
+ * 이런 발문은 빈칸 채우기(blankFilled)와 종전 판정(quizCopySource)으로만 본다.
+ */
+const NAMING_STEM = /무엇이라(고)?\s*(하|부르)|(무슨|어느|어떤)\s*\S*\s*(단계|차원|종류|성질|방법|용어)|(단계|성질|차원|종류|용어|이름)(은|는|인가|입니까)\s*\?|용어|\bcalled\b|\bwhich\s+(stage|step|type|kind)\b|\bthe\s+(term|name)\s+for\b/i
+export const isNamingStem = (q: string) => NAMING_STEM.test(q)
+/**
+ * 퀴즈 정답이 이 차시의 글에 그대로 적혀 있는가(L-13). 정답 표기(" / "로 나눈 것) 하나하나를 공백·대소문자·부호를 무시하고 찾는다:
+ * 구(두 낱말 이상)는 도입·전개·정리·교사 발문(발문·예상 답·힌트)·활동지(과제·기대 답)·다른 퀴즈 해설 어디에 있어도, 낱말 하나(네 글자 이상)는
+ * 답 자리(짧은 예상 답·기대 답)에 있을 때만 — 용어 하나가 수업 문장·해설에 나오는 것은 자연스럽다(L-10 회상 문항). 세 글자 이하("405"·"Ask")는
+ * 발문의 빈칸을 채운 문장이 그대로 있을 때만(이 판정은 모든 정답에 적용). 발문 자체가 그 표기를 담은 것(갈래를 늘어놓고 고르게 하는 발문)과
+ * 개념의 이름을 묻는 발문(isNamingStem)은 글자 노출을 보지 않는다. 찾은 자리와 그 표기를 돌려준다(없으면 null).
+ */
+export function quizAnswerExposure(quiz: { q?: string; answer?: string }, units: ExposureUnit[]): { where: string[]; key: string } | null {
+  const keys = (quiz.answer ?? '').split('/').map((k) => k.trim()).filter(Boolean)
+  const q = quiz.q ?? ''
+  const stem = flatKey(q)
+  const textual = !isNamingStem(q) && !keys.some((k) => flatKey(k).length >= EXPOSED_ANSWER_MIN && stem.includes(flatKey(k)))
+  for (const key of keys) {
+    const flat = flatKey(key)
+    const phrase = key.split(/\s+/).length >= 2
+    const filled = blankFilled(q, key)
+    const where: string[] = []
+    for (const [place, text, answerSlot] of units) {
+      const ft = flatKey(text)
+      const exposed = (textual && flat.length >= EXPOSED_ANSWER_MIN && (phrase || answerSlot) && ft.includes(flat)) || (filled !== null && ft.includes(filled))
+      if (exposed && !where.includes(place)) where.push(place)
+    }
+    if (where.length) return { where, key }
+  }
+  return null
+}
+/** 퀴즈가 활동지 과제를 되풀이했을 때의 메모 문구(L-13). */
+export const quizRepeatsWorksheetNote = (taskNo: number) => `활동지 과제 ${taskNo}과 사실상 같음`
+/** 비교용 낱말: 소문자, 조사 한 겹을 뗀 두 글자 이상 낱말(questionStems 와 같은 자르기, 묻는 말은 남긴다). */
+function overlapTokens(text: string): Set<string> {
+  const out = new Set<string>()
+  for (const raw of text.toLowerCase().split(/[^가-힣a-z0-9.]+/)) {
+    const t = raw.replace(/\.+$/, '').replace(TAIL, '')
+    if (t.length >= 2) out.add(t)
+  }
+  return out
+}
+/** 이 비율 이상 낱말이 겹치면 사실상 같은 문항으로 본다. */
+export const SAME_TASK_OVERLAP = 0.8
+/**
+ * 두 문장(퀴즈 발문·활동지 과제)이 사실상 같은가(L-13): 공백·대소문자·부호를 무시하고 같거나 한쪽(열 글자 이상)이 다른 쪽을 통째로 담거나,
+ * 낱말(세 개 이상)이 긴 쪽 기준 80% 이상 겹치면.
+ */
+export function nearlySameTask(a: string, b: string): boolean {
+  const fa = flatKey(a); const fb = flatKey(b)
+  if (!fa || !fb) return false
+  if (fa === fb) return true
+  if (Math.min(fa.length, fb.length) >= 10 && (fa.includes(fb) || fb.includes(fa))) return true
+  const ta = overlapTokens(a); const tb = overlapTokens(b)
+  if (ta.size < 3 || tb.size < 3) return false
+  let common = 0
+  for (const t of ta) if (tb.has(t)) common++
+  return common / Math.max(ta.size, tb.size) >= SAME_TASK_OVERLAP
+}
+
 /** 3단계 검사가 볼 수 있는 자료 본문: 4단계 확정본(다시 검토할 때)과 대주제 공유 자료. 보통 3단계 시점에는 공유 자료만 있다. */
 function knownMaterials(ctx: CheckCtx): { id: string; body?: string | null }[] {
   const own = (ctx.prior.stage4 as { materials?: { id: string; body?: string | null }[] } | undefined)?.materials
@@ -271,8 +370,17 @@ function lessonIssues(o: LessonDesignT, ctx: CheckCtx): Issue[] {
       for (const [i, q] of l.formative_check.quiz.entries()) if (!hasCompetency(q)) issues.push({ kind: 'other', detail: `${l.no}차시 퀴즈 ${i + 1}: ${COMPETENCY_MISSING}` })
       const units = lessonSourceUnits(l, materials)
       for (const [i, q] of l.formative_check.quiz.entries()) {
+        // L-13(2026-10-01 영어 세트 검토): 정답 표기가 도입·전개·정리·발문(예상 답)·활동지(기대 답)·다른 퀴즈 해설에 그대로 있으면 자리와 표기를 적는다 —
+        // 그것이 없을 때만 종전 판정(발문 내용어가 겹치는 문장·자료 본문)으로 본다. 둘 다 참고 메모(막지 않음).
+        const exposed = quizAnswerExposure(q, lessonExposureUnits(l, i))
+        if (exposed) { issues.push({ kind: 'other', detail: `${l.no}차시 퀴즈 ${i + 1}: ${QUIZ_COPIED}(${exposed.where.join('·')} — "${exposed.key}")` }); continue }
         const where = quizCopySource(q, units)
         if (where) issues.push({ kind: 'other', detail: `${l.no}차시 퀴즈 ${i + 1}: ${QUIZ_COPIED}(${where})` })
+      }
+      // L-13: 활동지 과제를 그대로 되풀이한 퀴즈 — 활동지와 퀴즈는 서로 다른 것을 확인한다(참고 메모)
+      for (const [i, q] of l.formative_check.quiz.entries()) {
+        const same = l.worksheet.tasks.find((t) => nearlySameTask(q.q, t.prompt))
+        if (same) issues.push({ kind: 'other', detail: `${l.no}차시 퀴즈 ${i + 1}: ${quizRepeatsWorksheetNote(same.no)}` })
       }
     }
     for (const q of l.teacher_script.questions) if (norm(q.if_stuck) === norm(q.expected_answer)) issues.push({ kind: 'other', detail: `${l.no}차시 발문 힌트가 정답과 같음` })

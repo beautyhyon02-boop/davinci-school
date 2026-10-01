@@ -1,6 +1,6 @@
 // tests/checks.test.ts
 import { describe, it, expect } from 'vitest'
-import { staticIssues, inventedActors, statesAnswer, quizCopySource, lessonSourceUnits, questionStems, looksEnglish, TRANSLATION_MISSING } from '@/lib/studio/checks'
+import { staticIssues, inventedActors, statesAnswer, quizCopySource, lessonSourceUnits, questionStems, looksEnglish, TRANSLATION_MISSING, quizAnswerExposure, lessonExposureUnits, blankFilled, isNamingStem, nearlySameTask, EXPOSED_ANSWER_MIN, SAME_TASK_OVERLAP } from '@/lib/studio/checks'
 import { readFileSync } from 'node:fs'
 import { englishMaterials, englishItems, englishGuide } from './fixtures/english-guide'
 import { statesAnswer as compatStatesAnswer } from '@/lib/studio/compat'
@@ -131,6 +131,82 @@ describe('staticIssues', () => {
     expect(units).toEqual([['수업 흐름', '자료 A의 40번대 값 41·42·44·45·47을 줄기와 잎 그림으로 나타낸다']])
     expect(quizCopySource({ q: '자료 A의 40번대 값을 줄기와 잎 그림으로 나타낼 때 잎의 개수는?', answer: '1' }, units)).toBeNull()
     expect(quizCopySource({ q: '자료 A의 40번대 값을 줄기와 잎 그림으로 나타낼 때 가장 작은 값은?', answer: '41' }, units)).toBe('수업 흐름')
+  })
+  // 2026-10-01 영어 세트 실제 검토: 정답 "Bring your own cup"이 전개 문장에, "the survey"가 전개의 "According to the survey"에, "plastic cups"가
+  // 발문 예상 답 "Forty percent of students chose plastic cups."와 활동지 기대 답에 그대로; 활동지 도전 과제 = 퀴즈 3. 종전 [TS]는 "2차시 퀴즈 2: …(활동지)"만 잡았다.
+  describe('L-13 정답 노출·활동지 되풀이 (2026-10-01 영어 세트 실제 검토)', () => {
+    const one = [standards[0]]
+    const design = (lessons: unknown[]) => ({ unit_plan: { set_title: 't', set_key_question: 'q?', lesson_map: [], assessment_plan: { formative: 'f', summative_placement: [{ lesson_no: 6, kind: '서술형' }, { lesson_no: 6, kind: '논술형' }], rubric_note: { 상: 'a', 중: 'b', 하: 'c' } } }, lessons })
+    const [q1, q2, q3] = lessonV2.formative_check.quiz
+    const english = {
+      ...lessonV2, no: 2,
+      flow: { intro: ['Review: what did we learn about cups yesterday?'], main: [
+        { step_label: 'Survey reading', minutes: 20, activities: ['Read the survey table. According to the survey, forty percent of students chose plastic cups.', 'There are 405 booths at the festival.'] },
+        { step_label: 'Strategies', minutes: 20, activities: ['Strategy 2: Bring your own cup — you get a 500 won discount at every booth.'] } ], wrapup: ['Quiz'] },
+      teacher_script: { questions: [
+        { prompt: 'Which item did forty percent of students choose?', expected_answer: 'Forty percent of students chose plastic cups.', if_stuck: 'Look at the biggest number in the table.' },
+        { prompt: 'How many booths are there?', expected_answer: '405', if_stuck: 'Count the rows.' } ] },
+      worksheet: { tasks: [
+        { no: 1, prompt: 'Write the number of booths in the table.', tier: '기본', level_ref: 'D~E', answer_space: 'short', expected: '405' },
+        { no: 2, prompt: 'Which item was chosen most? Write the item and its percent.', tier: '표준', level_ref: 'C', answer_space: 'short', expected: 'plastic cups, 40%' },
+        { no: 3, prompt: 'Which strategy would work best at our school festival? Choose one strategy and write one reason.', tier: '도전', level_ref: 'A~B', answer_space: 'lines', expected: 'Any strategy with a reason from the survey' } ], self_check: ['I read the table'] },
+      formative_check: { quiz: [
+        { ...q1, q: 'What should students do to get a discount at the booth?', answer: 'Bring your own cup' },
+        { ...q2, q: 'Which item did forty percent of students choose? Write the item.', answer: 'plastic cups' },
+        { ...q3, q: 'Which strategy would work best at our school festival? Choose one strategy and write one reason.', answer: 'Ask' } ] },
+    }
+    const notes = (l: unknown) => staticIssues(3, design([{ ...lessonV2, no: 1 }, l, ...[3, 4, 5].map((no) => ({ ...lessonV2, no })), assessmentSession(6)]), { standards: one, prior: {} })
+      .map((i) => i.detail).filter((d) => d.includes('본문에 그대로') || d.includes('사실상 같음'))
+    it('영어 차시: 전개 문장·발문 예상 답·활동지 기대 답에 그대로 있는 정답 구를 자리와 표기로 적고, 활동지 도전 과제를 되풀이한 퀴즈 3을 짚는다; 세 글자 답("Ask")은 보지 않는다', () => {
+      expect(notes(english)).toEqual([
+        '2차시 퀴즈 1: 정답이 본문에 그대로 있음(전개 2단계 — "Bring your own cup")',
+        '2차시 퀴즈 2: 정답이 본문에 그대로 있음(전개 1단계·교사 발문 예상 답·활동지 기대 답 2 — "plastic cups")',
+        '2차시 퀴즈 3: 활동지 과제 3과 사실상 같음',
+      ])
+      expect(Lesson.safeParse(english).error?.issues ?? []).toEqual([])   // 합성 차시는 새 세트 zod 를 통과한다 — 메모는 참고일 뿐 막지 않는다
+    })
+    it('quizAnswerExposure: 구는 어디서든, 낱말 하나는 짧은 예상 답·기대 답에서만, 세 글자 이하는 빈칸을 채운 문장이 그대로 있을 때만; 개념 이름을 묻는 발문과 발문에 답이 든 문항은 보지 않는다', () => {
+      const units = lessonExposureUnits(english, 1)
+      // "According to ___" 빈칸 채우기 — 구 "the survey"는 전개의 "According to the survey"에 그대로
+      expect(quizAnswerExposure({ q: 'According to ___, forty percent of students chose plastic cups. Fill in the blank.', answer: 'the survey' }, units)).toEqual({ where: ['전개 1단계', '활동지 기대 답 3'], key: 'the survey' })
+      // 수 답은 다른 문장에 있어도 보지 않는다 — 빈칸을 채운 문장이 그대로 있을 때만(405 — "There are 405 booths at the festival.")
+      expect(quizAnswerExposure({ q: 'How many booths are in the table? Write the number.', answer: '405' }, units)).toBeNull()
+      expect(quizAnswerExposure({ q: 'There are ___ booths at the festival. Fill in the blank.', answer: '405' }, units)).toEqual({ where: ['전개 1단계'], key: '405' })
+      expect(quizAnswerExposure({ q: 'There are ___ booths at the festival.', answer: '450' }, units)).toBeNull()
+      expect(blankFilled('There are ___ booths.', '405')).toBe('thereare405booths'); expect(blankFilled('No blank here.', '405')).toBeNull()
+      // 정답 표기 가운데 하나가 구이고 활동지 기대 답에 그대로 있으면 그 표기를 적는다; 세 글자 "Ask"만이면 보지 않는다
+      expect(quizAnswerExposure({ q: 'Which strategy would work best? Choose one and write one reason.', answer: 'Ask / any strategy with a reason' }, units)).toEqual({ where: ['활동지 기대 답 3'], key: 'any strategy with a reason' })
+      expect(quizAnswerExposure({ q: 'Which strategy would work best? Choose one and write one reason.', answer: 'Ask' }, units)).toBeNull()
+      // 정답 표기가 여럿이면 하나하나 본다; 대소문자·공백·부호는 무시
+      expect(quizAnswerExposure({ q: 'What is the second strategy?', answer: 'use a tumbler / bring your OWN cup!' }, units)).toEqual({ where: ['전개 2단계'], key: 'bring your OWN cup!' })
+      // 발문 자체에 정답 표기가 든 문항(갈래를 늘어놓고 고르게 함)은 본문 노출이 아니다
+      expect(quizAnswerExposure({ q: 'Is "Bring your own cup" a strategy for booths or for students?', answer: 'students / for students' }, units)).toBeNull()
+      // 다른 퀴즈의 해설에 정답 구가 있으면 그 자리
+      const withExplanation = { ...english, formative_check: { quiz: [{ ...q1, explanation: 'The booth gives a discount if you bring your own cup.' }, q2, q3] } }
+      expect(quizAnswerExposure({ q: 'What should students do to get a discount?', answer: 'bring your own cup' }, lessonExposureUnits(withExplanation, 1))).toEqual({ where: ['전개 2단계', '퀴즈 1 해설'], key: 'bring your own cup' })
+      expect(lessonExposureUnits(withExplanation, 0).some(([w]) => w === '퀴즈 1 해설')).toBe(false)   // 자기 해설은 보지 않는다
+      // 한국어: 가르친 용어의 이름을 묻는 회상 문항(L-10)은 예외 — 발문 예상 답·활동지 기대 답이 같은 용어여도 짚지 않는다
+      const ko = { ...lessonV2, teacher_script: { questions: [{ prompt: '전체 도수에서 차지하는 비율을 무엇이라 하는가?', expected_answer: '상대도수', if_stuck: '비율을 떠올려 보자' }] },
+        worksheet: { ...lessonV2.worksheet, tasks: [{ ...lessonV2.worksheet.tasks[0], prompt: '비율을 무엇이라 하는가?', expected: '상대도수' }] } }
+      const koUnits = lessonExposureUnits(ko, 0)
+      expect(quizAnswerExposure({ q: '어떤 계급의 도수가 전체 도수에서 차지하는 비율을 무엇이라 하는가?', answer: '상대도수' }, koUnits)).toBeNull()
+      expect(quizAnswerExposure({ q: '탐구 과정에서 개수를 센 활동은 어느 단계인가?', answer: '자료 수집' }, lessonExposureUnits({ ...lessonV2, flow: { ...lessonV2.flow, intro: ['문제 인식 → 가설 설정 → 자료 수집 → 결론 도출'] } }, 0))).toBeNull()
+      for (const q of ['어떤 계급의 도수가 전체 도수에서 차지하는 비율을 무엇이라 하는가?', '탐구 과정의 어느 단계인가?', '오래 남는 문제의 원인이 되는 성질은? ("잘 ~ 않는다" 꼴)', 'What is this stage called?', 'Which step comes next?']) expect(isNamingStem(q), q).toBe(true)
+      expect(isNamingStem('What should students do to get a discount?')).toBe(false)
+      // 이름을 묻는 발문이 아니면 낱말 하나도 짧은 예상 답·기대 답에 그대로 있을 때 짚는다(긴 인정 기준·수업 문장에 있는 것은 아니다)
+      expect(quizAnswerExposure({ q: '두 해의 비율을 견줄 때 개수 대신 무엇으로 비교하는가?', answer: '상대도수' }, koUnits)).toEqual({ where: ['교사 발문 예상 답', '활동지 기대 답 1'], key: '상대도수' })
+      const longOnly = lessonExposureUnits({ ...lessonV2, flow: { ...lessonV2.flow, intro: ['상대도수로 비교하는 까닭을 정리'] }, teacher_script: { questions: [] }, worksheet: { ...lessonV2.worksheet, tasks: [{ ...lessonV2.worksheet.tasks[2], expected: '개수와 상대도수가 다르게 말하는 품목을 예로 들어 설명하면 인정' }] } }, 0)
+      expect(quizAnswerExposure({ q: '두 해의 비율을 견줄 때 개수 대신 무엇으로 비교하는가?', answer: '상대도수' }, longOnly)).toBeNull()
+      expect(EXPOSED_ANSWER_MIN).toBe(4)
+    })
+    it('nearlySameTask: 같은 문장·한쪽이 다른 쪽을 통째로 담은 문장·낱말 80% 이상 겹침은 같은 문항, 새 사례는 아니다', () => {
+      expect(nearlySameTask('Which strategy would work best? Choose one and write one reason.', 'which strategy would work best — choose one and write one reason!')).toBe(true)
+      expect(nearlySameTask('자료 A의 도수분포표에서 계급 30개 이상 40개 미만의 도수는?', '자료 A의 도수분포표에서 계급 30개 이상 40개 미만의 도수를 쓰시오')).toBe(true)
+      expect(nearlySameTask('표를 완성하시오', '1. 표를 완성하시오. 2. 가장 많은 계급을 쓰시오')).toBe(false)   // 짧은 쪽이 열 글자 미만이면 담김으로 보지 않는다
+      expect(nearlySameTask('자료 A의 도수분포표에서 계급 30개 이상 40개 미만의 도수는?', '자료 A의 도수분포표에서 계급 50개 이상 60개 미만의 도수는?')).toBe(false)
+      expect(nearlySameTask('가장 많은 계급을 문장으로', '도수가 가장 큰 계급은?')).toBe(false)
+      expect(SAME_TASK_OVERLAP).toBe(0.8)
+    })
   })
   it('stage 4: size conventions and raw-data leakage hints', () => {
     const big = { materials: [{ ...materials[0], table: { columns: ['a'], rows: Array.from({ length: 30 }, (_, i) => [i]) } }] }

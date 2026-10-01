@@ -67,6 +67,14 @@ describe('prompts v2', () => {
     expect(review).toMatch(/A~B 학생용 확장 활동\(발문 또는 활동지 도전 과제\)을 1개 이상 두었는지 — 없으면 level/)
     expect(buildPrompt(3, ctx).system).toMatch(/L-10 퀴즈 3문항은 모두 단답형이되 수준을 나눈다/)
   })
+  it('stage 3 (2026-10-01 영어 세트 검토, L-13): 과제는 정답이 전개·발문(예상 답)·활동지에 그대로 없을 것과 B 퀴즈는 활동지가 묻지 않은 것을 묻는다는 한 문장; 검토는 예상 답·기대 답·해설 노출과 회상인 B를 짚는다', () => {
+    const task = buildPrompt(3, ctx).user.split('과제: ')[1]
+    expect(task).toMatch(/퀴즈 정답\(낱말·구\)은 그 차시의 전개·발문\(예상 답 포함\)·활동지 문장에 그대로 적혀 있지 않아야 하고, B 수준 퀴즈는 활동지가 아직 묻지 않은 관계·추론·까닭 있는 선택을 묻는다 — 활동지와 퀴즈는 서로 다른 것을 확인한다\(L-13\)/)
+    const review = buildReviewPrompt(3, ctx, {}).user.split('검토 초점: ')[1]
+    expect(review).toMatch(/발문 예상 답·활동지 기대 답·다른 퀴즈 해설에 정답 구가 그대로 있어도 같다; 어느 자리인지 detail에 적는다/)
+    expect(review).toMatch(/B라고 붙인 퀴즈가 활동지 과제와 같은 것을 묻거나 실제로는 회상이고 역량 꼬리표도 그에 맞지 않으면 level\(L-13/)
+    expect(buildPrompt(3, ctx).system).toMatch(/^L-13 퀴즈 정답\(낱말·구\)은/m)
+  })
   it('stage 3 (오너 규칙 2026-09-26 보완): materials_used는 이 과목에 꼭 필요한 자료만 — 공유 자료는 0~2개, 그 밖은 4단계에서 이 과목 전용 ID를 미리 정한다', () => {
     const task = buildPrompt(3, ctx).user.split('과제: ')[1]
     expect(task).toMatch(/이 과목 수업에 꼭 필요한 자료만 적는다/)
