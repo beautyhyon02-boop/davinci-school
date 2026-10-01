@@ -30,7 +30,8 @@ async function postAction(setId: string, stage: number, action: WizardActionKind
     body: JSON.stringify({ action }),
   })
   const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(data?.message ?? errors.generic)
+  // 502/504 = 게이트웨이가 함수를 끊음(Hobby 300초 한도) — 응답 본문이 JSON 이 아니라 message 가 없다
+  if (!res.ok) throw new Error(data?.message ?? ((res.status === 504 || res.status === 502 || res.status === 408) ? errors.timeout : errors.generic))
   return data.status as StageStatus
 }
 

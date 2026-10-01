@@ -189,7 +189,10 @@ export function stageNotes(ctx: Awaited<ReturnType<Repo['loadContext']>>, stage:
  * 단계별 생각 깊이. 5단계는 원래 xhigh였으나 Vercel Hobby의 요청 한도(300초)에 4분으로 닿아(2026-09-26 실측)
  * 기본을 high로 낮춘다. 환경변수 STUDIO_STAGE5_EFFORT=xhigh 로 되돌릴 수 있다(Pro 요금제·한도 상향 시).
  */
-export function effortFor(stage: Stage): 'high' | 'xhigh' {
+export function effortFor(stage: Stage): 'medium' | 'high' | 'xhigh' {
+  // 3단계(차시 설계)는 출력이 가장 길어(교수 차시 5개 × 흐름·발문·활동지·퀴즈·피드백 계획) 2026-10-01 지침 보강 뒤 Hobby 300초 한도를
+  // 넘겨 끊겼다(기록조차 안 남음). 생각 깊이를 medium 으로 낮춰 시간을 줄인다 — 결과 길이는 그대로. STUDIO_STAGE3_EFFORT=high 로 되돌린다.
+  if (stage === 3) return process.env.STUDIO_STAGE3_EFFORT === 'high' ? 'high' : 'medium'
   if (stage !== 5) return 'high'
   return process.env.STUDIO_STAGE5_EFFORT === 'xhigh' ? 'xhigh' : 'high'
 }

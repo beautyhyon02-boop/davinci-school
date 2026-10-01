@@ -197,9 +197,14 @@ describe('effortFor — 5단계 생각 깊이(Hobby 300초 한도)', () => {
     const { effortFor } = await import('@/lib/studio/stages')
     const prev = process.env.STUDIO_STAGE5_EFFORT
     delete process.env.STUDIO_STAGE5_EFFORT
-    expect(effortFor(5)).toBe('high'); expect(effortFor(3)).toBe('high')
+    const prev3 = process.env.STUDIO_STAGE3_EFFORT
+    delete process.env.STUDIO_STAGE3_EFFORT
+    // 3단계는 medium(2026-10-01 — 출력이 가장 길어 300초 한도를 넘기던 것), 나머지는 high
+    expect(effortFor(5)).toBe('high'); expect(effortFor(3)).toBe('medium'); expect(effortFor(4)).toBe('high')
     process.env.STUDIO_STAGE5_EFFORT = 'xhigh'
+    process.env.STUDIO_STAGE3_EFFORT = 'high'
     expect(effortFor(5)).toBe('xhigh'); expect(effortFor(3)).toBe('high')
     if (prev === undefined) delete process.env.STUDIO_STAGE5_EFFORT; else process.env.STUDIO_STAGE5_EFFORT = prev
+    if (prev3 === undefined) delete process.env.STUDIO_STAGE3_EFFORT; else process.env.STUDIO_STAGE3_EFFORT = prev3
   })
 })
