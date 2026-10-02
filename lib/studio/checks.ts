@@ -7,6 +7,8 @@ import { QUIZ_SHORT_ONLY, isShortQuiz, quizLevelSpreadOk } from './schemas'
 import { titleHasSourceMarker, usedMaterialIds, mentionedMaterialIds, MAX_SET_MATERIALS } from './materials'
 import { sortScale, zeroStep } from './scale'
 import { COMPETENCIES } from './competency'
+import { nextSetMaterialLetter } from './shared-selection'
+import { recountNotes } from './recount'
 
 export type Issue = { kind: ReviewKind; detail: string }
 export type CheckCtx = {
@@ -19,6 +21,11 @@ export type CheckCtx = {
    * prior.shared_materials에서 온다(stages.ts staticCheck). 대표 결정 2026-09-28부터는 이 세트가 체크한 공동 자료만(item_sets.shared_material_ids).
    */
   sharedMaterialIds?: string[]
+  /**
+   * 대주제 공동 자료 **전체**의 ID(체크하지 않은 것 포함 — loadContext 의 themeMaterialIds, stages.ts staticCheck 가 넘긴다). 체크하지 않은 공동 자료의
+   * 글자를 차시·문항·세트 자료가 쓰는지 보는 [TS] 메모(untickedShared…)가 쓴다. 없으면 그 메모는 건너뛴다.
+   */
+  themeMaterialIds?: string[]
   /** 세트 과목(선택) — 영어 세트의 공동 자료 영어판 메모(S-영-09, englishLessonCitationIssues·englishItemCitationIssues)가 쓴다. 없으면 그 메모는 건너뛴다. */
   subject?: string
 }
@@ -151,6 +158,59 @@ function englishItemCitationIssues(items: { materials_used?: string[] | null }[]
     }
   }
   return issues
+}
+
+// ── 체크하지 않은 공동 자료의 글자(2026-10-02 수학 세트: 대주제 공동 자료 A~D 가운데 A·B·C만 체크했는데 3단계가 새 세트 자료를 D로 적었다) ──
+/** 이 세트가 체크한 공동 자료 ID: ctx.sharedMaterialIds 와 prior.shared_materials 를 합친다(시험·옛 호출은 한쪽만 준다). */
+function tickedSharedIds(ctx: CheckCtx): string[] {
+  const prior = ctx.prior.shared_materials as { id?: unknown }[] | undefined
+  const fromPrior = Array.isArray(prior) ? prior.map((m) => m?.id).filter((id): id is string => typeof id === 'string') : []
+  return [...new Set([...(ctx.sharedMaterialIds ?? []), ...fromPrior])]
+}
+/** 대주제 공동 자료 가운데 이 세트가 체크하지 않은 것의 글자(오름차순). 대주제 자료 ID 전체(themeMaterialIds)를 모르면 빈 배열. */
+function untickedSharedIds(ctx: CheckCtx): string[] {
+  const ticked = tickedSharedIds(ctx)
+  return [...new Set((ctx.themeMaterialIds ?? []).filter((id) => /^[A-Z]$/.test(id) && !ticked.includes(id)))].sort()
+}
+/** 세트 자료 번호를 어디서부터 붙이는지 — 대주제 공동 자료 전체의 마지막 글자 다음(shared-selection.ts nextSetMaterialLetter). */
+function setLetterHint(ctx: CheckCtx): string {
+  const next = nextSetMaterialLetter(ctx.themeMaterialIds ?? [])
+  return next ? `세트 자료는 ${next}부터 번호를 붙인다` : '세트 자료에 쓸 글자가 남지 않았다'
+}
+/** [TS] 메모 문구(원장·관리자가 읽는다). */
+export const untickedSharedNote = (id: string, hint: string) => `체크하지 않은 공동 자료 ${id}를 가리킴 — ${hint}(공동 자료를 쓰려면 세트 화면에서 체크)`
+type FlowLike = { flow?: { intro?: string[] | null; main?: { activities?: string[] | null }[] | null; wrapup?: string[] | null } | null }
+/**
+ * [TS] 참고 메모(kind other, 막지 않음) — 3단계. 차시(단원 평가 차시 포함)의 materials_used, 또는 도입·전개·정리·활동지·발문·퀴즈 문장의 "자료 X" 언급이
+ * 체크하지 않은 공동 자료의 글자를 가리키면 차시와 글자를 적는다(차시마다 글자 하나에 한 번). 그 글자를 새 세트 자료 번호로 쓴 것이든 체크를 잊은 것이든
+ * 그대로 두면 4단계 자료가 공동 자료와 번호가 겹친다 — 세트 자료는 대주제 공동 자료 전체 다음 글자부터다.
+ */
+function untickedSharedLessonIssues(lessons: (LessonCorpusLike & FlowLike)[], ctx: CheckCtx): Issue[] {
+  const unticked = untickedSharedIds(ctx)
+  if (unticked.length === 0) return []
+  const hint = setLetterHint(ctx)
+  const issues: Issue[] = []
+  for (const l of lessons) {
+    const flow = [...(l.flow?.intro ?? []), ...(l.flow?.main ?? []).flatMap((m) => m.activities ?? []), ...(l.flow?.wrapup ?? [])].join(' ')
+    const cited = new Set([...(l.materials_used ?? []), ...mentionedMaterialIds(`${lessonOwnTexts(l)} ${flow}`)])
+    for (const id of unticked) if (cited.has(id)) issues.push({ kind: 'other', detail: `${l.no}차시: ${untickedSharedNote(id, hint)}` })
+  }
+  return issues
+}
+/** [TS] 참고 메모 — 5단계. 문항 materials_used 가 체크하지 않은 공동 자료의 글자를 가리키면 문항과 글자를 적는다. */
+function untickedSharedItemIssues(items: { materials_used?: string[] | null }[], ctx: CheckCtx): Issue[] {
+  const unticked = untickedSharedIds(ctx)
+  if (unticked.length === 0) return []
+  const hint = setLetterHint(ctx)
+  const issues: Issue[] = []
+  for (const [i, it] of items.entries()) for (const id of unticked) if ((it.materials_used ?? []).includes(id)) issues.push({ kind: 'other', detail: `문항 ${i + 1}: ${untickedSharedNote(id, hint)}` })
+  return issues
+}
+/** [TS] 참고 메모 — 4단계. 세트 자료가 체크하지 않은 공동 자료의 글자를 제 번호로 썼으면 적는다(나중에 그 공동 자료를 체크하면 게시 판에서 세트 자료가 빠진다). */
+function untickedSharedMaterialIssues(o: MaterialsT, ctx: CheckCtx): Issue[] {
+  const unticked = untickedSharedIds(ctx)
+  const hint = setLetterHint(ctx)
+  return o.materials.filter((m) => unticked.includes(m.id)).map((m) => ({ kind: 'other' as const, detail: `자료 ${m.id}: 체크하지 않은 공동 자료 ${m.id}의 번호를 세트 자료에 씀 — ${hint}(그 공동 자료를 체크하면 이 세트 자료가 게시 판에서 빠진다)` }))
 }
 
 const squashWs = (s: string) => s.replace(/\s+/g, '')
@@ -404,9 +464,10 @@ export function criteriaFocusIssues(items: { rubric: { criteria: { name: string 
 }
 
 /** 3단계 검사가 볼 수 있는 자료 본문: 4단계 확정본(다시 검토할 때)과 대주제 공유 자료. 보통 3단계 시점에는 공유 자료만 있다. */
-function knownMaterials(ctx: CheckCtx): { id: string; body?: string | null }[] {
-  const own = (ctx.prior.stage4 as { materials?: { id: string; body?: string | null }[] } | undefined)?.materials
-  const shared = ctx.prior.shared_materials as { id: string; body?: string | null }[] | undefined
+type KnownMaterial = { id: string; body?: string | null; table?: { columns?: string[] | null; rows?: (string | number)[][] | null } | null }
+function knownMaterials(ctx: CheckCtx): KnownMaterial[] {
+  const own = (ctx.prior.stage4 as { materials?: KnownMaterial[] } | undefined)?.materials
+  const shared = ctx.prior.shared_materials as KnownMaterial[] | undefined
   return [...(Array.isArray(own) ? own : []), ...(Array.isArray(shared) ? shared : [])]
 }
 
@@ -463,7 +524,11 @@ function lessonIssues(o: LessonDesignT, ctx: CheckCtx): Issue[] {
   const items5 = (ctx.prior.stage5 as { items?: { materials_used?: string[] | null }[] } | undefined)?.items
   issues.push(...sharedMaterialCitationIssues(o.lessons, items5, ctx.sharedMaterialIds))
   issues.push(...englishLessonCitationIssues(o.lessons, ctx))
+  issues.push(...untickedSharedLessonIssues(o.lessons, ctx))
   issues.push(...guidelineLessonIssues(o.lessons))
+  // 도수 다시 세기(2026-10-02 수학 세트: 기대 답이 공동 자료 A를 잘못 셈) — 차시가 쓰는 표 자료(체크한 공동 자료, 다시 검토할 때는 4단계 세트 자료도)로
+  // 기대 답·예상 답·퀴즈 정답과 해설·전개 문장의 "구간 + 개수"를 다시 세어 다른 것만 적는다(recount.ts — 참고 메모, 막지 않음)
+  for (const detail of recountNotes(o.lessons.filter((l) => !isAssessmentSession(l)), materials)) issues.push({ kind: 'other', detail })
   return issues
 }
 
@@ -681,8 +746,10 @@ function assessmentIssues(o: AssessmentT, ctx: CheckCtx): Issue[] {
   }
   const materials = ((ctx.prior.stage4 as MaterialsT | undefined)?.materials ?? []).concat(((ctx.prior.shared_materials as MaterialsT['materials'] | undefined) ?? []))
   const byId = new Map(materials.map((m) => [m.id, m]))
+  const unticked = untickedSharedIds(ctx)
   for (const [i, it] of o.items.entries()) {
-    for (const id of it.materials_used) if (materials.length && !byId.has(id)) issues.push({ kind: 'other', detail: `문항 ${i + 1}: 없는 자료 ${id}` })
+    // 체크하지 않은 공동 자료의 글자는 아래 untickedSharedItemIssues 가 까닭과 함께 적는다(같은 것을 두 번 적지 않는다)
+    for (const id of it.materials_used) if (materials.length && !byId.has(id) && !unticked.includes(id)) issues.push({ kind: 'other', detail: `문항 ${i + 1}: 없는 자료 ${id}` })
     if (materials.length && !it.materials_used.some((id) => byId.get(id)?.role === 'raw')) issues.push({ kind: 'other', detail: `문항 ${i + 1}: 원자료(raw)를 하나도 참조하지 않음` })
     issues.push(...conditionIssues(it, i, materials))
     for (const c of it.rubric.criteria) {
@@ -713,6 +780,7 @@ function assessmentIssues(o: AssessmentT, ctx: CheckCtx): Issue[] {
   const lessons3 = (ctx.prior.stage3 as Partial<LessonDesignT> | undefined)?.lessons
   if (Array.isArray(lessons3)) issues.push(...sharedMaterialCitationIssues(lessons3, o.items, ctx.sharedMaterialIds))
   issues.push(...englishItemCitationIssues(o.items, ctx))
+  issues.push(...untickedSharedItemIssues(o.items, ctx))
   return issues
 }
 
@@ -863,7 +931,7 @@ export function staticIssues(stage: Stage, output: unknown, ctx: CheckCtx): Issu
   switch (stage) {
     case 2: return reconstructionIssues(output as ReconstructionT, ctx)
     case 3: return lessonIssues(output as LessonDesignT, ctx)
-    case 4: return [...materialIssues(output as MaterialsT), ...materialUseIssues((output as MaterialsT).materials, ctx, null), ...englishVersionIssues(output as MaterialsT, ctx)]
+    case 4: return [...materialIssues(output as MaterialsT), ...materialUseIssues((output as MaterialsT).materials, ctx, null), ...englishVersionIssues(output as MaterialsT, ctx), ...untickedSharedMaterialIssues(output as MaterialsT, ctx)]
     case 5: return assessmentIssues(output as AssessmentT, ctx)
     case 6: return guideIssues(output as GuideT, ctx)
     case 7: return noticePlanIssues(output as NoticePlanT)

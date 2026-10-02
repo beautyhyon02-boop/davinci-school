@@ -18,8 +18,9 @@ export type Ctx = {
   /** 단원명(선택) — 예시 은행에서 같은 단원 예시를 고를 때만 쓴다. */
   unit?: string | null
   /**
-   * 대주제 공동 자료 **전체**의 ID(선택하지 않은 것 포함, 대표 결정 2026-09-28). 4단계 세트 자료 ID를 이 전체의 마지막 글자 다음부터
-   * 잇게 하는 데만 쓴다(sharedMaterialLettering) — 자료 내용은 prior.shared_materials(이 세트가 고른 것만)로만 들어간다.
+   * 대주제 공동 자료 **전체**의 ID(선택하지 않은 것 포함, 대표 결정 2026-09-28). 세트 자료 ID를 이 전체의 마지막 글자 다음부터
+   * 잇게 하는 데만 쓴다(4단계 sharedMaterialLettering, 3단계 lessonLettering) — 자료 내용은 prior.shared_materials(이 세트가 고른 것만)로만 들어간다.
+   * 자동 검사(stages.ts staticCheck → checks.ts CheckCtx.themeMaterialIds)도 같은 값으로 체크하지 않은 공동 자료의 글자를 짚는다.
    */
   themeMaterialIds?: string[]
 }
@@ -96,8 +97,7 @@ function englishVersionMode(ctx: Ctx): boolean {
 }
 /** 세트 자료 ID 를 이어 붙일 첫 글자(대주제 공동 자료 전체 뒤). */
 function nextLetter(ctx: Ctx): string {
-  const all = [...new Set([...sharedMaterialIds(ctx.prior), ...(ctx.themeMaterialIds ?? []).filter((id) => /^[A-Z]$/.test(id))])].sort()
-  return nextSetMaterialLetter(all) ?? 'Z'
+  return nextSetMaterialLetter(allThemeLetters(ctx)) ?? 'Z'
 }
 /** 단계 과제 문장. 영어 세트(공동 자료 체크)만 3·4·5단계의 공유 자료 문장을 S-영-09 문장으로 바꾼다 — 그 밖에는 TASKS 그대로. */
 function taskFor(stage: Stage, ctx: Ctx): string {
@@ -157,23 +157,57 @@ function sharedMaterialIds(prior: Record<string, unknown>): string[] {
  * 새 세트 자료 ID는 고른 것 뒤가 아니라 대주제 공동 자료 **전체**(ctx.themeMaterialIds)의 마지막 글자 다음부터 잇는다 —
  * [B, D]만 골라도 나중에 A·C를 체크할 수 있으므로 그 글자를 비워 둬야 ID가 겹치지 않는다(shared-selection.ts nextSetMaterialLetter).
  * 고른 것이 없어도 대주제에 공동 자료가 있으면 그 글자들을 비워 두라고 알린다.
+ * 2026-10-02(수학 세트: A~D 가운데 A·B·C만 체크했더니 새 세트 자료를 D로 적음): 어느 갈래에서나 "A~D는 대주제 공동 자료의 번호다 — 체크하지 않은 것도
+ * 세트 자료 번호로 쓰지 않는다; 세트 자료는 E부터"를 글자 그대로 덧붙인다(reservedLetters).
  */
 function sharedMaterialLettering(ctx: Ctx): string {
   const selected = sharedMaterialIds(ctx.prior)
-  const all = [...new Set([...selected, ...(ctx.themeMaterialIds ?? []).filter((id) => /^[A-Z]$/.test(id))])].sort()
+  const all = allThemeLetters(ctx)
   if (all.length === 0) return ''
   const next = nextSetMaterialLetter(all) ?? 'Z'
+  const explicit = reservedLetters(all, next)
   if (selected.length === 0) {
-    return `\n\n이 세트는 대주제 공유 자료를 쓰지 않는다. 새로 만드는 세트 자료의 ID는 ${next}부터 붙여라(${all.join(', ')}는 대주제 공유 자료 글자라 비워 둔다). 새 자료의 source.kind는 "자작"이다.`
+    return `\n\n이 세트는 대주제 공유 자료를 쓰지 않는다. 새로 만드는 세트 자료의 ID는 ${next}부터 붙여라(${all.join(', ')}는 대주제 공유 자료 글자라 비워 둔다). ${explicit} 새 자료의 source.kind는 "자작"이다.`
   }
   const reserved = all.filter((id) => !selected.includes(id))
   if (englishVersionMode(ctx)) {
     // S-영-09: 고른 공동 자료는 한국어 원본이라 학생에게 주지 않는다 — 그 글자는 비워 두고 영어판·새 자료를 다음 글자부터
     const reservedEn = reserved.length > 0 ? ` 대주제 공유 자료 ${reserved.join(', ')}는 이 세트에서 쓰지 않으므로 영어판도 만들지 않고, 그 글자도 새 자료 ID로 쓰지 않는다.` : ''
-    return `\n\n대주제 공유 자료 ID: ${selected.join(', ')} — 원본(한국어, 학생에게 주지 않음)이다. 이 글자로는 자료를 만들지 말고, 영어판과 새로 만드는 세트 자료의 ID는 ${next}부터 이어서 붙여라(같은 ID를 다시 쓰면 그 자료는 버려진다).${reservedEn} 새 자료(영어판 포함)의 source.kind는 "자작"이다.`
+    return `\n\n대주제 공유 자료 ID: ${selected.join(', ')} — 원본(한국어, 학생에게 주지 않음)이다. 이 글자로는 자료를 만들지 말고, 영어판과 새로 만드는 세트 자료의 ID는 ${next}부터 이어서 붙여라(같은 ID를 다시 쓰면 그 자료는 버려진다).${reservedEn} ${explicit} 새 자료(영어판 포함)의 source.kind는 "자작"이다.`
   }
   const reservedNote = reserved.length > 0 ? ` 대주제 공유 자료 ${reserved.join(', ')}는 이 세트에서 쓰지 않으므로 인용하지 말고, 그 글자도 새 자료 ID로 쓰지 않는다.` : ''
-  return `\n\n대주제 공유 자료 ID: ${selected.join(', ')} — 이 자료들은 다시 만들지 말고, 새로 만드는 세트 자료의 ID는 ${next}부터 이어서 붙여라(같은 ID를 다시 쓰면 그 자료는 버려진다).${reservedNote} 새 자료의 source.kind는 "자작"이다.`
+  return `\n\n대주제 공유 자료 ID: ${selected.join(', ')} — 이 자료들은 다시 만들지 말고, 새로 만드는 세트 자료의 ID는 ${next}부터 이어서 붙여라(같은 ID를 다시 쓰면 그 자료는 버려진다).${reservedNote} ${explicit} 새 자료의 source.kind는 "자작"이다.`
+}
+
+/** 대주제 공동 자료 전체의 글자(이 세트가 고른 것 + ctx.themeMaterialIds, 오름차순). */
+function allThemeLetters(ctx: Ctx): string[] {
+  return [...new Set([...sharedMaterialIds(ctx.prior), ...(ctx.themeMaterialIds ?? []).filter((id) => /^[A-Z]$/.test(id))])].sort()
+}
+/** 글자 묶음을 사람 말로: 셋 이상이 빠짐없이 이어지면 "A~D", 아니면 "A, C". */
+function letterSpan(ids: string[]): string {
+  const contiguous = ids.every((id, i) => i === 0 || id.charCodeAt(0) === ids[i - 1].charCodeAt(0) + 1)
+  return ids.length >= 3 && contiguous ? `${ids[0]}~${ids[ids.length - 1]}` : ids.join(', ')
+}
+/** 3·4단계 공용 한 문장 — 체크하지 않은 공동 자료의 글자도 비워 둔다(checks.ts 의 "체크하지 않은 공동 자료 X를 가리킴" 메모와 같은 규칙). */
+function reservedLetters(all: string[], next: string): string {
+  return `${letterSpan(all)}는 대주제 공동(공유) 자료의 번호다 — 체크하지 않은 것도 세트 자료 번호로 쓰지 않는다; 세트 자료는 ${next}부터.`
+}
+/**
+ * 3단계(차시 설계)의 자료 번호 줄(2026-10-02). 3단계는 4단계에서 만들 세트 자료의 ID를 미리 정해 materials_used 에 적는데, 그동안은 체크한 공동 자료만
+ * 보여 주고 "공유 자료 다음 글자부터"라고만 해서 — A·B·C만 체크하면 D를, 아무것도 체크하지 않으면(공동 자료 블록도 번호 안내도 없어) A를 새 세트 자료
+ * 번호로 적었다. 대주제에 공동 자료가 있으면 체크 여부와 상관없이 이 줄을 붙인다(대주제에 공동 자료가 없으면 붙이지 않는다).
+ */
+function lessonLettering(ctx: Ctx): string {
+  const selected = sharedMaterialIds(ctx.prior)
+  const all = allThemeLetters(ctx)
+  if (all.length === 0) return ''
+  const next = nextSetMaterialLetter(all) ?? 'Z'
+  const reserved = all.filter((id) => !selected.includes(id))
+  const head = `\n\n자료 번호: ${reservedLetters(all, next)}`
+  const tail = ` 4단계에서 이 과목 전용으로 만들 자료${englishVersionMode(ctx) ? '(영어판 포함)' : ''}는 ${next}부터 차례로 번호를 정해 materials_used에 적는다.`
+  if (selected.length === 0) return `${head} 이 세트는 공동 자료를 체크하지 않았다 — ${letterSpan(all)}를 materials_used에 적지 않고 활동지·발문·퀴즈 문장에서도 가리키지 않는다.${tail}`
+  const unticked = reserved.length > 0 ? ` — 체크하지 않은 ${reserved.join(', ')}는 materials_used에 적지 않고 활동지·발문·퀴즈 문장에서도 가리키지 않는다` : ''
+  return `${head} 이 세트가 체크한 공동 자료는 ${selected.join(', ')}뿐이다${unticked}.${tail}`
 }
 
 /**
@@ -207,7 +241,7 @@ function referenceBlock(stage: Stage, ctx: Ctx): string {
 }
 
 export function buildPrompt(stage: Stage, ctx: Ctx) {
-  const lettering = stage === 4 ? sharedMaterialLettering(ctx) : ''
+  const lettering = stage === 4 ? sharedMaterialLettering(ctx) : stage === 3 ? lessonLettering(ctx) : ''
   const prior = priorBlockFor(ctx, GENERATE_PRIOR[stage], GENERATE_SHARED_MATERIALS.has(stage) ? ['shared_materials'] : [], '이 단계에 필요한 것만', sharedLabels(ctx), stage)
   return {
     system: rulesFor(ctx.subject),
