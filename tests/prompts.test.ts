@@ -79,7 +79,7 @@ describe('prompts v2', () => {
     const task = buildPrompt(3, ctx).user.split('과제: ')[1]
     expect(task).toMatch(/이 과목 수업에 꼭 필요한 자료만 적는다/)
     expect(task).toMatch(/대주제 공유 자료는 이 과목 활동에 필요한 것만\(보통 0~2개\) 고르고/)
-    expect(task).toMatch(/이 과목 전용으로 만들 자료 ID\(공유 자료 다음 글자부터\)를 미리 정해 적는다/)
+    expect(task).toMatch(/이 과목 전용으로 만들 자료 ID\(대주제 공유 자료 전체 다음 글자부터\)를 미리 정해 적는다/)
     expect(task).toMatch(/단원 평가 차시의 materials_used는 5단계 문항이 쓸 자료와 같아야 한다/)
     expect(task).toMatch(/비워 두면 5단계 뒤 자동으로 채운다/)
     const review = buildReviewPrompt(3, ctx, {}).user.split('검토 초점: ')[1]

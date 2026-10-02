@@ -65,6 +65,8 @@ export function relativeFrequencies(rows: { label: string; counts: number[] }[])
 
 export type ChartSpec =
   | { kind: 'histogram'; values: number[]; binSize: number; title: string }
+  /** 이미 계급별로 센 도수분포표(읽기용 완성 그래프) — 2026-10-03 수학 세트 자료 E. polygon = 도수분포다각형도 함께 그린다. */
+  | { kind: 'binned'; bins: HistogramBin[]; polygon: boolean; title: string }
   | { kind: 'relbars'; rows: { label: string; counts: number[] }[]; columns: string[]; title: string }
   | null
 
@@ -78,6 +80,34 @@ function isString(v: unknown): v is string {
   return typeof v === 'string'
 }
 
+/** 계급 이름("10 이상 20 미만", "10~20", "10-20")에서 두 경계를 읽는다. 읽을 수 없으면 null. */
+export function parseClassLabel(label: string): { from: number; to: number } | null {
+  const m = label.match(/(-?\d+(?:\.\d+)?)\s*(?:이상|~|∼|–|-)\s*(-?\d+(?:\.\d+)?)\s*(?:미만)?/)
+  if (!m) return null
+  const from = Number(m[1]); const to = Number(m[2])
+  return Number.isFinite(from) && Number.isFinite(to) && to > from ? { from, to } : null
+}
+
+/** 계급 이름 열 + 도수 열 하나인 표(합계 줄 제외)가 이어지는 같은 크기의 계급이면 그 계급들을, 아니면 null. */
+export function binnedFromTable(columns: string[], rows: (string | number)[][]): HistogramBin[] | null {
+  if (columns.length !== 2) return null
+  const data = rows.filter((r) => !(isString(r[0]) && SUM_ROW_RE.test(r[0].trim())))
+  if (data.length < 2 || data.length > 15) return null
+  const bins: HistogramBin[] = []
+  for (const r of data) {
+    if (!isString(r[0]) || !isNumber(r[1]) || r[1] < 0 || !Number.isInteger(r[1])) return null
+    const c = parseClassLabel(r[0])
+    if (!c) return null
+    bins.push({ from: c.from, to: c.to, count: r[1] })
+  }
+  const size = bins[0].to - bins[0].from
+  for (let i = 0; i < bins.length; i++) {
+    if (bins[i].to - bins[i].from !== size) return null
+    if (i > 0 && bins[i].from !== bins[i - 1].to) return null
+  }
+  return bins
+}
+
 /**
  * 자료 표에서 어떤 그래프를 그릴 수 있는지 판별한다. **kind 가 'chart'인 자료만** 그린다(2026-10-01) — 표(table) 자료에 그래프를 자동으로
  * 붙이면 학생이 만들어야 할 도수분포표·히스토그램·상대도수가 그대로 보인다(대표 지적 2026-09-26: 자료 B의 상대도수). 표는 표로만 보인다.
@@ -89,6 +119,10 @@ export function detectChart(material: Material): ChartSpec {
   if (material.kind !== 'chart' || !material.table) return null
   const { columns, rows } = material.table
   if (rows.length === 0) return null
+
+  // 이미 정리된 도수분포표(계급 이름 + 도수) → 완성된 히스토그램. 제목·설명에 도수분포다각형이 있으면 함께 그린다.
+  const binned = binnedFromTable(columns, rows)
+  if (binned) return { kind: 'binned', bins: binned, polygon: /도수분포다각형/.test(`${material.title} ${material.body ?? ''}`), title: material.title }
 
   // 단일 숫자 행: 표가 한 행이고 숫자 값이 10개 이상 (가로로 나열된 값)
   if (rows.length === 1 && rows[0].length >= 10 && rows[0].every(isNumber)) {

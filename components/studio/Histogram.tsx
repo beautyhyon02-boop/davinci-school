@@ -1,4 +1,4 @@
-import { histogramBins } from '@/lib/studio/charts'
+import { histogramBins, type HistogramBin } from '@/lib/studio/charts'
 import { app } from '@/content/site'
 
 const copy = app.studio.charts
@@ -13,17 +13,32 @@ const BAR_FILL = '#2bb08a' // mint-500 (app/globals.css)
 const AXIS_COLOR = '#1f2430' // ink-900 (app/globals.css)
 const GRID_COLOR = '#cfd4dd' // ink-300 (app/globals.css)
 
+const LINE_COLOR = '#1f2430' // 도수분포다각형 — 흑백 인쇄에서도 보이게 진한 선
+
+/**
+ * 히스토그램. values + binSize(원자료를 세어 그림) 또는 bins(이미 센 도수분포표 — 읽기용 완성 그래프)를 받는다.
+ * polygon 이면 직사각형 윗변의 중점을 이은 도수분포다각형을 함께 그린다(양 끝에 도수 0인 계급을 하나씩 둔다).
+ */
 export function Histogram({
   values,
   binSize,
+  bins: given,
+  polygon = false,
   title,
 }: {
-  values: number[]
-  binSize: number
+  values?: number[]
+  binSize?: number
+  bins?: HistogramBin[]
+  polygon?: boolean
   title: string
 }) {
-  const bins = histogramBins(values, binSize)
-  if (bins.length === 0) return null
+  const counted = given ?? histogramBins(values ?? [], binSize ?? 10)
+  if (counted.length === 0) return null
+  const size = counted[0].to - counted[0].from
+  // 도수분포다각형은 양 끝의 도수 0인 계급까지 이어야 닫힌다 — 그릴 자리를 한 칸씩 더 둔다
+  const bins: HistogramBin[] = polygon
+    ? [{ from: counted[0].from - size, to: counted[0].from, count: 0 }, ...counted, { from: counted[counted.length - 1].to, to: counted[counted.length - 1].to + size, count: 0 }]
+    : counted
 
   const maxCount = Math.max(...bins.map((b) => b.count), 1)
   const tickStep = Math.max(1, Math.ceil(maxCount / 5))
@@ -83,18 +98,35 @@ export function Histogram({
               stroke="#ffffff"
               strokeWidth={1}
             />
-            <text
-              x={x + barWidth / 2}
-              y={y - 6}
-              textAnchor="middle"
-              fontSize={11}
-              fill={AXIS_COLOR}
-            >
-              {bin.count}
-            </text>
+            {bin.count > 0 && (
+              <text
+                x={x + barWidth / 2}
+                y={y - 6}
+                textAnchor="middle"
+                fontSize={11}
+                fill={AXIS_COLOR}
+              >
+                {bin.count}
+              </text>
+            )}
           </g>
         )
       })}
+
+      {/* 도수분포다각형: 윗변의 중점을 잇는다(양 끝은 도수 0) */}
+      {polygon && (
+        <g data-chart-polygon>
+          <polyline
+            points={bins.map((bin, i) => `${xAt(i) + barWidth / 2},${yAt(bin.count)}`).join(' ')}
+            fill="none"
+            stroke={LINE_COLOR}
+            strokeWidth={2}
+          />
+          {bins.map((bin, i) => (
+            <circle key={`p-${bin.from}`} cx={xAt(i) + barWidth / 2} cy={yAt(bin.count)} r={3} fill={LINE_COLOR} />
+          ))}
+        </g>
+      )}
 
       {/* x축 눈금 라벨 (계급 경계) */}
       {boundaries.map((b, i) => (

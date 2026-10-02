@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { histogramBins, relativeFrequencies, detectChart } from '@/lib/studio/charts'
+import { histogramBins, relativeFrequencies, detectChart, binnedFromTable, parseClassLabel } from '@/lib/studio/charts'
 import fixture from '@/data/studio-fixtures/stage4-generate.json'
 import type { z } from 'zod'
 import type { Material } from '@/lib/studio/schemas'
@@ -125,5 +125,33 @@ describe('detectChart', () => {
       images: [] as string[],
     }
     expect(detectChart(oddMaterial)).toBeNull()
+  })
+})
+
+// 2026-10-03 수학 세트 자료 E: kind 'chart' + 이미 센 도수분포표(계급 이름 + 도수) → 완성된 히스토그램(+ 도수분포다각형)
+describe('binned chart (읽기용 완성 그래프)', () => {
+  const E = {
+    id: 'E', title: '올해 축제 부스별 일회용컵 사용 개수의 히스토그램·도수분포다각형', kind: 'chart' as const, body: '직사각형 윗변의 중점을 이은 도수분포다각형이 함께 그려져 있다.',
+    table: { columns: ['컵 사용 개수(개)', '부스 수(도수)'], rows: [['10 이상 20 미만', 1], ['20 이상 30 미만', 3], ['30 이상 40 미만', 6], ['40 이상 50 미만', 5], ['50 이상 60 미만', 4], ['60 이상 70 미만', 1]] as (string | number)[][] },
+    source: { kind: '자작' as const, attribution: null, ai_assisted: false }, role: 'raw' as const, images: [] as string[],
+  }
+  it('detects the bins and the polygon flag', () => {
+    const spec = detectChart(E)
+    expect(spec?.kind).toBe('binned')
+    if (spec?.kind === 'binned') {
+      expect(spec.bins.map((b) => b.count)).toEqual([1, 3, 6, 5, 4, 1])
+      expect(spec.bins[0]).toEqual({ from: 10, to: 20, count: 1 })
+      expect(spec.polygon).toBe(true)
+    }
+  })
+  it('reads "10~20" labels, skips a 합계 row, and needs contiguous equal classes', () => {
+    expect(binnedFromTable(['계급', '도수'], [['10~20', 2], ['20~30', 5], ['합계', 7]])?.map((b) => b.count)).toEqual([2, 5])
+    expect(binnedFromTable(['계급', '도수'], [['10~20', 2], ['30~40', 5]])).toBeNull()      // 이어지지 않음
+    expect(binnedFromTable(['계급', '도수'], [['10~20', 2], ['20~40', 5]])).toBeNull()      // 크기가 다름
+    expect(binnedFromTable(['품목', '개수'], [['종이컵', 2], ['플라스틱컵', 5]])).toBeNull() // 계급 이름이 아님
+    expect(parseClassLabel('10 이상 20 미만')).toEqual({ from: 10, to: 20 })
+  })
+  it('a table-kind material with the same shape draws nothing (표는 표로만)', () => {
+    expect(detectChart({ ...E, kind: 'table' as const })).toBeNull()
   })
 })

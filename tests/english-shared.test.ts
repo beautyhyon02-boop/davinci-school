@@ -134,7 +134,7 @@ describe('프롬프트: 다른 과목·공동 자료 없는 영어 세트는 그
   it('non-영어 subjects keep the shared-material sentences and the plain "shared_materials" key', () => {
     for (const subject of ['수학', '과학', '국어', '사회']) {
       const c = ctxOf(subject, prior)
-      expect(task(buildPrompt(3, c).user)).toContain('대주제 공유 자료는 이 과목 활동에 필요한 것만(보통 0~2개) 고르고, 그 밖의 자료는 4단계에서 이 과목 전용으로 만들 자료 ID(공유 자료 다음 글자부터)를 미리 정해 적는다.')
+      expect(task(buildPrompt(3, c).user)).toContain('대주제 공유 자료는 이 과목 활동에 필요한 것만(보통 0~2개) 고르고, 그 밖의 자료는 4단계에서 이 과목 전용으로 만들 자료 ID(대주제 공유 자료 전체 다음 글자부터)를 미리 정해 적는다.')
       expect(task(buildPrompt(4, c).user)).toContain('공유 자료는 이 과목 문항이 인용할 것만 materials_used에 넣고 나머지는 쓰지 않는다.')
       expect(task(buildPrompt(4, c).user)).toContain('대주제 공유 자료 ID: B, C — 이 자료들은 다시 만들지 말고, 새로 만드는 세트 자료의 ID는 E부터 이어서 붙여라')
       expect(task(buildPrompt(5, c).user)).toContain('공유 자료는 이 문항이 실제로 인용하는 것만 넣는다 — 세트 자료와 합쳐 2~4개')
