@@ -26,9 +26,9 @@ describe('prompts v2', () => {
     expect(u).toMatch(/\[9수04-02\] 성취수준\(도달점 = C/); expect(u).toContain('주어진 자료')
     expect(u).toMatch(/통합\/재조정\/유지/); expect(u).toMatch(/지식·이해\/과정·기능\/가치·태도/)
     expect(u).toContain('merged_with'); expect(u).toMatch(/original_text와 merged_with 성취기준 원문에 있는 어휘만/)
-    // 유지여도 reconstructed_text는 원문을 그대로 옮기지 않고 틀 문장으로 쓴다(zod 형식 검사와의 충돌 해소, 2026-09-24)
-    expect(u).toMatch(/유지를 포함해 셋 다.*틀 문장으로 쓴다/)
-    expect(u).toMatch(/유지여도 original_text를 그대로 옮기지 않는다/)
+    // 2026-10-02 대표: "가지고 ~해서 ~을 할 수 있다" 틀은 문장이 꼬인다 — 원문의 서술어를 살린 자연스러운 한 문장, 유지는 원문과 같아도 된다(L-02)
+    expect(u).toMatch(/원문의 서술어를 살린 자연스러운 한 문장/)
+    expect(u).toMatch(/유지는 original_text와 같아도 되고/); expect(u).toMatch(/틀에 끼워 맞춘 말투는 쓰지 않는다\(L-02/); expect(u).not.toMatch(/\[자료\]를 가지고/)
   })
   it('stage 3 asks for unit_plan + lessons with 60-minute budgets, scripts, worksheet tiers, and includes exemplars', () => {
     const u = buildPrompt(3, ctx).user
@@ -240,8 +240,8 @@ describe('prompts v2', () => {
 describe('stage 2: 재구성 문장에는 대주제 상황을 쓰지 않는다(L-02, 오너 사례 2026-09-24)', () => {
   const task = buildPrompt(2, ctx).user.split('과제: ')[1]
   it('task says BOTH reconstructed_text and the 통합 reconstruction use only the originals + template words', () => {
-    expect(task).toContain('재구성 문장 두 가지(성취기준마다의 reconstructed_text와 통합 문장 reconstruction)는 모두 성취기준 원문의 낱말과 문장 틀 낱말')
-    expect(task).toMatch(/reconstruction, 같은 틀로 세트 성취기준 원문에 있는 어휘만 쓴다/)
+    expect(task).toContain('재구성 문장 두 가지(성취기준마다의 reconstructed_text와 통합 문장 reconstruction)는 모두 성취기준 원문의 낱말과 문법 기능어')
+    expect(task).toMatch(/reconstruction, 같은 방식의 자연스러운 한 문장 — 세트 성취기준 원문에 있는 어휘만 쓰고/)
   })
   it('task sends the 대주제 상황 to learning_goals·핵심질문·차시, not to the reconstruction', () => {
     expect(task).toMatch(/학교 축제·일회용품/)
