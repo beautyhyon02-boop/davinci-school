@@ -66,7 +66,7 @@ export function relativeFrequencies(rows: { label: string; counts: number[] }[])
 export type ChartSpec =
   | { kind: 'histogram'; values: number[]; binSize: number; title: string }
   /** 이미 계급별로 센 도수분포표(읽기용 완성 그래프) — 2026-10-03 수학 세트 자료 E. polygon = 도수분포다각형도 함께 그린다. */
-  | { kind: 'binned'; bins: HistogramBin[]; polygon: boolean; title: string }
+  | { kind: 'binned'; bins: HistogramBin[]; polygon: boolean; title: string; xLabel: string; yLabel: string }
   | { kind: 'relbars'; rows: { label: string; counts: number[] }[]; columns: string[]; title: string }
   | null
 
@@ -122,7 +122,7 @@ export function detectChart(material: Material): ChartSpec {
 
   // 이미 정리된 도수분포표(계급 이름 + 도수) → 완성된 히스토그램. 제목·설명에 도수분포다각형이 있으면 함께 그린다.
   const binned = binnedFromTable(columns, rows)
-  if (binned) return { kind: 'binned', bins: binned, polygon: /도수분포다각형/.test(`${material.title} ${material.body ?? ''}`), title: material.title }
+  if (binned) return { kind: 'binned', bins: binned, polygon: /도수분포다각형/.test(`${material.title} ${material.body ?? ''}`), title: material.title, xLabel: columns[0], yLabel: columns[1] }
 
   // 단일 숫자 행: 표가 한 행이고 숫자 값이 10개 이상 (가로로 나열된 값)
   if (rows.length === 1 && rows[0].length >= 10 && rows[0].every(isNumber)) {

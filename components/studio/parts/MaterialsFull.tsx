@@ -78,7 +78,7 @@ export function MaterialChart({ material }: { material: MaterialLike }) {
   if (!spec) return null
   // 그래프는 가운데, 최대 480px — 넓은 화면에서 화면을 다 차지하지 않게(대표님 요청 2026-09-23).
   if (spec.kind === 'histogram') return <div className="mx-auto mt-3 w-full max-w-[480px]"><Histogram values={spec.values} binSize={spec.binSize} title={spec.title} /></div>
-  if (spec.kind === 'binned') return <div className="mx-auto mt-3 w-full max-w-[480px]"><Histogram bins={spec.bins} polygon={spec.polygon} title={spec.title} /></div>
+  if (spec.kind === 'binned') return <div className="mx-auto mt-3 w-full max-w-[480px]"><Histogram bins={spec.bins} polygon={spec.polygon} title={spec.title} xLabel={spec.xLabel} yLabel={spec.yLabel} /></div>
   return <div className="mx-auto mt-3 w-full max-w-[480px]"><RelativeFreqBars rows={spec.rows} columns={spec.columns} title={spec.title} /></div>
 }
 

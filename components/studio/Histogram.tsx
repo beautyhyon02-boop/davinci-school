@@ -25,12 +25,17 @@ export function Histogram({
   bins: given,
   polygon = false,
   title,
+  xLabel,
+  yLabel,
 }: {
   values?: number[]
   binSize?: number
   bins?: HistogramBin[]
   polygon?: boolean
   title: string
+  /** 축 이름 — 주지 않으면 '값'·'도수'. 읽기용 그래프는 표의 열 이름을 쓴다. */
+  xLabel?: string
+  yLabel?: string
 }) {
   const counted = given ?? histogramBins(values ?? [], binSize ?? 10)
   if (counted.length === 0) return null
@@ -168,7 +173,7 @@ export function Histogram({
         fontSize={12}
         fill={AXIS_COLOR}
       >
-        {copy.value}
+        {xLabel ?? copy.value}
       </text>
       <text
         x={14}
@@ -178,7 +183,7 @@ export function Histogram({
         fill={AXIS_COLOR}
         transform={`rotate(-90 14 ${MARGIN.top + INNER_HEIGHT / 2})`}
       >
-        {copy.count}
+        {yLabel ?? copy.count}
       </text>
 
       {/* 차트 제목 */}
