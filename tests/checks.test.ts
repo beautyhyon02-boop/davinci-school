@@ -645,3 +645,13 @@ describe('duplicate criterion names across items', () => {
     expect(loud[0].kind).toBe('other')
   })
 })
+
+// 2026-10-03 수학 세트: "무응답이거나, 표의 칸만 그리고 …" 꼴은 무응답과 시도를 함께 적은 0점 서술이다(오탐이었다)
+describe('zeroDistinguishesAttempt — "무응답이거나, …"', () => {
+  it('accepts 무응답이거나 + 시도한 경우', async () => {
+    const { zeroDistinguishesAttempt } = await import('@/lib/studio/checks')
+    expect(zeroDistinguishesAttempt('무응답이거나, 표의 칸만 그리고 계급과 도수를 하나도 채우지 못함')).toBe(true)
+    expect(zeroDistinguishesAttempt('무응답이거나, 품목별 개수만 옮겨 적고 비율을 구하지 않음')).toBe(true)
+    expect(zeroDistinguishesAttempt('무응답')).toBe(false)
+  })
+})
