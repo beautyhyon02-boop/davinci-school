@@ -67,6 +67,10 @@ function themeHint(unknownTokens: string[], ctx: CheckCtx): string {
   return hits.length ? `대주제 상황(${hits.join(', ')})을 재구성 문장에 넣었음 — 학습 목표·차시에만 쓴다: ` : ''
 }
 
+/** 재구성 문장의 틀 말투(L-02) — 원문에 이 말이 있으면(드묾) 그대로 두어도 되므로 참고 메모로만. */
+const TEMPLATE_PHRASES = [/를?\s*가지고\s/, /하는\s*것을\s*해서/, /을\s*해서\s/, /를\s*통해\s/]
+const TEMPLATE_LABELS: Record<string, string> = { [/를?\s*가지고\s/.source]: '"가지고"', [/하는\s*것을\s*해서/.source]: '"~하는 것을 해서"', [/을\s*해서\s/.source]: '"~을 해서"', [/를\s*통해\s/.source]: '"~를 통해"' }
+
 function reconstructionIssues(o: ReconstructionT, ctx: CheckCtx): Issue[] {
   const issues: Issue[] = []
   const byCode = new Map(ctx.standards.map((s) => [s.code, s.text]))
@@ -80,6 +84,11 @@ function reconstructionIssues(o: ReconstructionT, ctx: CheckCtx): Issue[] {
   }
   const all = checkReconstructionFidelity(o.reconstruction, ctx.standards.map((s) => s.text))
   if (!all.ok) issues.push({ kind: 'fidelity', detail: `${themeHint(all.unknownTokens, ctx)}통합 문장: 원문에 없는 표현 ${all.unknownTokens.join(', ')}` })
+  // L-02(대표 2026-10-02): "가지고 ~해서/통해 ~을 할 수 있다" 틀 말투는 문장을 꼬이게 한다 — 참고 메모(막지 않음). 2026-10-03 사회 세트에서 지침을 넣고도 다시 나옴.
+  for (const [label, text] of [...o.standards.map((s) => [s.code, s.reconstructed_text] as const), ['통합 문장', o.reconstruction] as const]) {
+    const hits = TEMPLATE_PHRASES.filter((re) => re.test(text)).map((re) => TEMPLATE_LABELS[re.source] ?? re.source)
+    if (hits.length) issues.push({ kind: 'other', detail: `${label}: 틀 말투(${hits.join(', ')}) — 원문의 서술어를 살린 자연스러운 한 문장으로(L-02)` })
+  }
   return issues
 }
 

@@ -28,7 +28,7 @@ describe('staticIssues', () => {
       row(1, '학생은 적절한 매체를 가지고 정보 윤리를 준수하며 매체 활용을 해서 말하거나 쓰는 것을 할 수 있다.') ],
       reconstruction: '학생은 학교 축제의 일회용품 줄이기를 다룬 영어 안내문과 도표 자료를 가지고 사실적 정보를 설명할 수 있다.', learning_goals: [], level_anchor: [], key_question_candidates: [] }
     const theme = { title: '학교 축제 일회용품 줄이기' }
-    const details = staticIssues(2, out, { standards: en, prior: {}, theme }).map((i) => i.detail)
+    const details = staticIssues(2, out, { standards: en, prior: {}, theme }).filter((i) => i.kind !== 'other').map((i) => i.detail)   // 틀 말투 참고 메모는 따로 본다
     expect(details).toEqual([
       '대주제 상황(학교, 축제의)을 재구성 문장에 넣었음 — 학습 목표·차시에만 쓴다: [9영02-03]: 원문에 없는 표현 학교, 축제의',
       '대주제 상황(학교, 축제의, 일회용품, 줄이기를)을 재구성 문장에 넣었음 — 학습 목표·차시에만 쓴다: 통합 문장: 원문에 없는 표현 학교, 축제의, 일회용품, 줄이기를, 다룬, 영어',
@@ -41,7 +41,7 @@ describe('staticIssues', () => {
   })
   it('stage 2: 대주제 낱말이 아닌 새 내용어에는 앞머리를 붙이지 않는다', () => {
     const out = { standards: [], reconstruction: '학생은 통계청 자료를 가지고 상대도수를 구할 수 있다.', learning_goals: [], level_anchor: [], key_question_candidates: [] }
-    expect(staticIssues(2, out, { standards, prior: {}, theme: { title: '학교 축제 일회용품 줄이기' } }).map((i) => i.detail)).toEqual(['통합 문장: 원문에 없는 표현 통계청'])
+    expect(staticIssues(2, out, { standards, prior: {}, theme: { title: '학교 축제 일회용품 줄이기' } }).filter((i) => i.kind !== 'other').map((i) => i.detail)).toEqual(['통합 문장: 원문에 없는 표현 통계청'])
   })
   it('stage 3: coverage, placement, mergeable adjacency, short-only quiz, main ≥ 2 steps', () => {
     const lessons = [1, 2, 3, 4, 5].map((no) => ({ ...lessonV2, no, standards: ['[9수04-02]'], mergeable_with: no === 1 ? 4 : null })).concat({ ...assessmentSession(6), standards: ['[9수04-02]'], mergeable_with: null })
@@ -653,5 +653,18 @@ describe('zeroDistinguishesAttempt — "무응답이거나, …"', () => {
     expect(zeroDistinguishesAttempt('무응답이거나, 표의 칸만 그리고 계급과 도수를 하나도 채우지 못함')).toBe(true)
     expect(zeroDistinguishesAttempt('무응답이거나, 품목별 개수만 옮겨 적고 비율을 구하지 않음')).toBe(true)
     expect(zeroDistinguishesAttempt('무응답')).toBe(false)
+  })
+})
+
+// 2026-10-03 사회 세트: 재구성 문장의 틀 말투("가지고 ~을 해서/통해 ~할 수 있다")를 참고 메모로 짚는다(L-02)
+describe('stage 2: 틀 말투 참고 메모', () => {
+  it('notes 가지고/통해 and stays quiet on a natural sentence', () => {
+    const standards = [{ code: '[9사(일사)08-01]', text: '경제생활에서 합리적 선택의 필요성에 대해 검토하고, 비용과 편익을 고려한 합리적 선택 방안을 탐색한다.' }]
+    const base = { learning_goals: [], level_anchor: [], key_question_candidates: [] }
+    const stiff = { ...base, standards: [{ code: '[9사(일사)08-01]', original_text: standards[0].text, reconstruction_type: '유지', merged_with: [], reconstructed_text: '학생은 사례들을 가지고 비용과 편익을 고려한 검토를 통해 합리적인 선택을 위한 방안을 생각할 수 있다.', reason: [], learning_elements: [] }], reconstruction: '학생은 사례들을 가지고 검토를 통해 방안을 제시할 수 있다.' }
+    const notes = staticIssues(2, stiff, { theme: { title: 't' }, subject: '사회', standards, prior: {} }).filter((i) => i.detail.includes('틀 말투'))
+    expect(notes).toHaveLength(2); expect(notes[0].kind).toBe('other'); expect(notes[0].detail).toContain('"가지고"')
+    const natural = { ...stiff, standards: [{ ...stiff.standards[0], reconstructed_text: '경제생활에서 합리적 선택이 왜 필요한지 검토하고, 비용과 편익을 고려하여 합리적인 선택 방안을 탐색할 수 있다.' }], reconstruction: '경제생활의 사례를 검토하여 비용과 편익을 고려한 합리적 선택 방안을 탐색할 수 있다.' }
+    expect(staticIssues(2, natural, { theme: { title: 't' }, subject: '사회', standards, prior: {} }).filter((i) => i.detail.includes('틀 말투'))).toEqual([])
   })
 })
