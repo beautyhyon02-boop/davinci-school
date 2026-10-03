@@ -14,9 +14,10 @@ export const site = {
   programs: [
     { slug: 'inquiry', name: '탐구보고서', short: '질문에서 보고서까지, 5년 검증된 탐구 수업', status: 'open', accent: 'mint' },
     { slug: 'essay', name: '서논술형 수업', short: '성취기준 기반 문항과 AI 채점·피드백', status: 'open', accent: 'lemon' },
-    { slug: 'consulting', name: '대입 컨설팅', short: '탐구 이력을 대입 전략으로', status: 'soon', accent: 'lavender' },
-    { slug: 'lab', name: '다빈치랩', short: '자기주도 학습관', status: 'soon', accent: 'mint' },
-  ] as const satisfies ReadonlyArray<{ slug: ProgramSlug; name: string; short: string; status: 'open' | 'soon'; accent: 'mint' | 'lemon' | 'lavender' }>,
+    // 대표 2026-10-03: 대입 컨설팅·다빈치랩은 따로 배포된 사이트로 바로 간다(external, 새 창)
+    { slug: 'consulting', name: '대입 컨설팅', short: '탐구 이력을 대입 전략으로', status: 'open', accent: 'lavender', external: 'https://www.davinci-lab.net' },
+    { slug: 'lab', name: '다빈치랩', short: '자기주도 학습관', status: 'open', accent: 'mint', external: 'https://www.davinci-lab.co.kr' },
+  ] as const satisfies ReadonlyArray<{ slug: ProgramSlug; name: string; short: string; status: 'open' | 'soon'; accent: 'mint' | 'lemon' | 'lavender'; external?: string }>,
   why: [
     { title: '교육과정에서 출발', body: '2022 개정 교육과정 성취기준 원문에서 문항을 설계합니다.' },
     { title: '글로 남는 배움', body: '탐구와 논술의 결과가 학생의 글로 축적됩니다.' },
@@ -26,9 +27,9 @@ export const site = {
   nav: [
     { href: '/programs/inquiry', label: '탐구보고서' },
     { href: '/programs/essay', label: '서논술형' },
-    { href: '/programs/consulting', label: '대입 컨설팅' },
-    { href: '/programs/lab', label: '다빈치랩' },
-  ],
+    { href: 'https://www.davinci-lab.net', label: '대입 컨설팅', external: true },
+    { href: 'https://www.davinci-lab.co.kr', label: '다빈치랩', external: true },
+  ] as ReadonlyArray<{ href: string; label: string; external?: boolean }>,
   header: { login: '로그인', franchise: '가맹문의' },
   hero: { ctaPrimary: '서논술형 수업 보기', ctaFranchise: '가맹문의' },
   sections: {
@@ -40,7 +41,7 @@ export const site = {
     body: '본사가 교재·문항·교사용 지침서를 준비합니다.',
     button: '가맹 안내 보기',
   },
-  statusLabel: { open: '운영 중', soon: '준비 중' },
+  statusLabel: { open: '운영 중', soon: '준비 중', external: '바로 가기 ↗' },
   footer: { contactLabel: '문의' },
 }
 
@@ -55,8 +56,8 @@ export const programDetails: Record<ProgramSlug, { headline: string; paragraphs:
     paragraphs: ['2022 개정 교육과정 성취기준 원문에서 문항을 설계합니다. 학생이 답안을 제출하면 루브릭에 따라 AI가 채점하고, 잘한 점과 보완할 점을 나누어 피드백합니다.', '한 가지 대주제를 국어·영어·수학·과학·사회가 함께 다루는 융합(STEAM) 방식으로 문항을 구성합니다.'],
     bullets: ['초·중·고 × 국어·영어·수학·과학·사회(역사 포함)', '루브릭 기반 AI 채점, 30초 안에 피드백', '교사용 지침서·차시 설계·예시답안 제공'],
   },
-  consulting: { headline: '탐구 이력을 대입 전략으로', paragraphs: ['준비 중입니다.'], bullets: [] },
-  lab: { headline: '자기주도 학습관 다빈치랩', paragraphs: ['준비 중입니다.'], bullets: [] },
+  consulting: { headline: '탐구 이력을 대입 전략으로', paragraphs: ['대입 컨설팅은 별도 사이트에서 운영합니다.'], bullets: [] },
+  lab: { headline: '자기주도 학습관 다빈치랩', paragraphs: ['다빈치랩은 별도 사이트에서 운영합니다.'], bullets: [] },
 }
 
 export const auth = {
@@ -1650,6 +1651,7 @@ export const pages = {
   },
   program: {
     cta: '이 수업으로 가맹 문의',
+    external: { eyebrow: '별도 사이트', button: (name: string) => `${name} 사이트로 가기`, note: '새 창에서 열립니다.', back: '다빈치스쿨 홈으로' },
   },
   franchise: {
     title: '다빈치스쿨 가맹 안내',

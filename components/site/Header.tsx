@@ -8,7 +8,9 @@ export function Header() {
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
         <Link href="/" className="text-lg font-extrabold tracking-tight text-mint-700">{site.name}</Link>
         <nav className="hidden gap-6 text-sm text-ink-700 md:flex">
-          {site.nav.map(n => <Link key={n.href} href={n.href} className="hover:text-mint-600">{n.label}</Link>)}
+          {site.nav.map(n => n.external
+            ? <a key={n.href} href={n.href} target="_blank" rel="noopener noreferrer" className="hover:text-mint-600">{n.label}</a>
+            : <Link key={n.href} href={n.href} className="hover:text-mint-600">{n.label}</Link>)}
         </nav>
         <div className="flex items-center gap-2">
           <Button href="/login" variant="ghost">{site.header.login}</Button>

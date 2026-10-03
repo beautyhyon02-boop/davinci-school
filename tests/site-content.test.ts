@@ -6,8 +6,12 @@ describe('site content', () => {
     const slugs = site.programs.map(p => p.slug)
     expect(slugs).toEqual(['inquiry', 'essay', 'consulting', 'lab'])
   })
-  it('marks inquiry and essay as open', () => {
-    expect(site.programs.filter(p => p.status === 'open').map(p => p.slug)).toEqual(['inquiry', 'essay'])
+  it('marks all four as open; consulting and lab point at their own sites (대표 2026-10-03)', () => {
+    expect(site.programs.filter(p => p.status === 'open').map(p => p.slug)).toEqual(['inquiry', 'essay', 'consulting', 'lab'])
+    const ext = Object.fromEntries(site.programs.filter(p => 'external' in p).map(p => [p.slug, (p as { external: string }).external]))
+    expect(ext).toEqual({ consulting: 'https://www.davinci-lab.net', lab: 'https://www.davinci-lab.co.kr' })
+    expect(site.nav.filter(n => n.external).map(n => n.href)).toEqual(['https://www.davinci-lab.net', 'https://www.davinci-lab.co.kr'])
+    expect(site.statusLabel.external).toBeTruthy()
   })
   it('exposes UI copy fields used by components so the homepage never hard-codes strings', () => {
     expect(site.header.login).toBeTruthy()
