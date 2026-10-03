@@ -10,7 +10,7 @@ describe('rules v2', () => {
     const spec = readFileSync('docs/superpowers/specs/2026-09-25-item-studio-v2-design.md', 'utf8')
     for (const id of ids) expect(spec.split(`| ${id} |`).length - 1, id).toBe(1)
     // 부록 A: 공통 38(C-31 대표 확정값, C-32 조건=지침(2026-09-26), C-33 자료 설계·유형(대표 연수 2기), C-34·C-36·C-37 경기2025, C-39 배운 것만 채점·C-40 역량 꼬리표(대표 2026-09-29) 포함) + 차시 21(L-13 정답 노출·활동지 되풀이 금지, 2026-10-01 영어 세트 검토; L-14~L-21 교육청 재구성 예시 자료집 G-1~G-8, 대표 2026-10-01) + 과목 40(국6·수7·사7·역3·과8·영9 — S-영-08 번역·S-영-09 공동 자료 영어판(대표 2026-09-29), S-사-07 사회 통합(대표 2026-09-30)) + 채점 10(G-10 경기2025) + 안내장 12 = 121
-    expect(ids.length).toBe(38 + 21 + 40 + 10 + 12)
+    expect(ids.length).toBe(39 + 21 + 40 + 10 + 12)   // C-41 자료의 사실성(대표 2026-10-03)
   })
   it('the spec appendix has no rule row that the code lacks', () => {
     const spec = readFileSync('docs/superpowers/specs/2026-09-25-item-studio-v2-design.md', 'utf8')
