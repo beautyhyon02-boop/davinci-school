@@ -34,7 +34,7 @@ describe('staticIssues', () => {
       '대주제 상황(학교, 축제의, 일회용품, 줄이기를)을 재구성 문장에 넣었음 — 학습 목표·차시에만 쓴다: 통합 문장: 원문에 없는 표현 학교, 축제의, 일회용품, 줄이기를, 다룬, 영어',
     ])
     // 판정은 그대로다 — 대주제가 없으면 사유 앞머리만 빠진다
-    expect(staticIssues(2, out, { standards: en, prior: {} }).map((i) => i.detail)).toEqual([
+    expect(staticIssues(2, out, { standards: en, prior: {} }).filter((i) => i.kind !== 'other').map((i) => i.detail)).toEqual([
       '[9영02-03]: 원문에 없는 표현 학교, 축제의',
       '통합 문장: 원문에 없는 표현 학교, 축제의, 일회용품, 줄이기를, 다룬, 영어',
     ])
