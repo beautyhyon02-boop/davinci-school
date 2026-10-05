@@ -10,7 +10,7 @@ describe('rules v2', () => {
     const spec = readFileSync('docs/superpowers/specs/2026-09-25-item-studio-v2-design.md', 'utf8')
     for (const id of ids) expect(spec.split(`| ${id} |`).length - 1, id).toBe(1)
     // 부록 A: 공통 38(C-31 대표 확정값, C-32 조건=지침(2026-09-26), C-33 자료 설계·유형(대표 연수 2기), C-34·C-36·C-37 경기2025, C-39 배운 것만 채점·C-40 역량 꼬리표(대표 2026-09-29) 포함) + 차시 21(L-13 정답 노출·활동지 되풀이 금지, 2026-10-01 영어 세트 검토; L-14~L-21 교육청 재구성 예시 자료집 G-1~G-8, 대표 2026-10-01) + 과목 40(국6·수7·사7·역3·과8·영9 — S-영-08 번역·S-영-09 공동 자료 영어판(대표 2026-09-29), S-사-07 사회 통합(대표 2026-09-30)) + 채점 10(G-10 경기2025) + 안내장 12 = 121
-    expect(ids.length).toBe(39 + 21 + 40 + 10 + 12)   // C-41 자료의 사실성(대표 2026-10-03)
+    expect(ids.length).toBe(40 + 21 + 40 + 10 + 12)   // C-41 자료의 사실성(대표 2026-10-03), C-42 글자 수로 답을 유도하지 않는다(대표 2026-10-05)
   })
   it('the spec appendix has no rule row that the code lacks', () => {
     const spec = readFileSync('docs/superpowers/specs/2026-09-25-item-studio-v2-design.md', 'utf8')
@@ -329,5 +329,19 @@ describe('S-사-07 사회는 통합 과목 — 사회 세트 프롬프트는 역
       expect(t).toContain('[역사]'); expect(t).toMatch(/^S-역-03 /m); expect(t).not.toMatch(/S-사-0/)
     }
     for (const subject of ['국어', '영어', '수학', '과학']) expect(rulesFor(subject)).not.toMatch(/^S-역-/m)
+  })
+})
+
+// 대표 2026-10-05(국어 세트 2차시 퀴즈 3 "…무엇인지 다섯 글자로 쓰시오"): "글자 수에 맞춰서 답을 유도하는 건 지양" — 퀴즈·활동지·서술형·논술형에 일관되게
+describe('C-42 글자 수로 답을 유도하지 않는다 (대표 2026-10-05)', () => {
+  const spec = readFileSync('docs/superpowers/specs/2026-09-25-item-studio-v2-design.md', 'utf8')
+  const row = (id: string) => spec.split('\n').find((line) => line.startsWith(`| ${id} |`))!
+  it('exists as PS/대표 and covers 퀴즈·활동지·서술형·논술형; 답의 꼴·분량 지침은 그대로 둔다; spec row identical; reaches every subject prompt', () => {
+    const c42 = COMMON_RULES.find((r) => r.id === 'C-42')!
+    expect(c42.nature).toBe('PS'); expect(c42.tags).toEqual(['대표'])
+    for (const s of ['퀴즈·활동지 과제·평가 문항(서술형·논술형의 문두와 조건)', '글자 수·낱말 수로 답을 좁히는 단서', '"두 글자로 쓰시오"', '용어를 묻는 회상 문항은 글자 수 없이 묻고',
+      '답의 꼴을 알리는 말("한 낱말로", "짧은 구로", "한 문장으로")', '분량 지침("350자 내외", "4~6문장", "40~60단어")은 그대로 쓴다']) expect(c42.text, s).toContain(s)
+    expect(row('C-42')).toBe(`| C-42 | ${c42.text} | P+S | [대표] |`)
+    for (const subject of ['국어', '수학', '과학', '영어', '사회']) expect(rulesFor(subject)).toMatch(/^C-42 퀴즈·활동지 과제·평가 문항/m)
   })
 })

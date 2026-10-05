@@ -75,6 +75,17 @@ describe('prompts v2', () => {
     expect(review).toMatch(/B라고 붙인 퀴즈가 활동지 과제와 같은 것을 묻거나 실제로는 회상이고 역량 꼬리표도 그에 맞지 않으면 level\(L-13/)
     expect(buildPrompt(3, ctx).system).toMatch(/^L-13 퀴즈 정답\(낱말·구\)은/m)
   })
+  it('stage 3·5 (대표 2026-10-05, C-42): 과제는 글자 수·낱말 수로 답을 좁히는 단서를 두지 않게 하고 검토는 그것을 짚는다 — 분량 지침은 해당 없음', () => {
+    const task3 = buildPrompt(3, ctx).user.split('과제: ')[1]
+    expect(task3).toMatch(/퀴즈·활동지 과제에 글자 수·낱말 수로 답을 좁히는 단서\("두 글자로 쓰시오"\)를 두지 않는다\(C-42\)/)
+    const review3 = buildReviewPrompt(3, ctx, {}).user.split('검토 초점: ')[1]
+    expect(review3).toMatch(/퀴즈·활동지 과제가 글자 수·낱말 수로 답을 좁히면\("두 글자로 쓰시오"\) quiz\(C-42\)/)
+    const task5 = buildPrompt(5, ctx).user.split('과제: ')[1]
+    expect(task5).toMatch(/문두·조건에 글자 수·낱말 수로 답을 좁히는 단서\("두 글자로 쓰시오"\)를 두지 않는다 — 분량 지침\(자 내외·문장 수\)은 그대로 쓴다\(C-42\)/)
+    const review5 = buildReviewPrompt(5, ctx, {}).user.split('검토 초점: ')[1]
+    expect(review5).toMatch(/문두·조건이 글자 수·낱말 수로 답을 좁히면 other\(C-42 — 분량 지침은 해당 없음\)/)
+    expect(buildPrompt(5, ctx).system).toMatch(/^C-42 퀴즈·활동지 과제·평가 문항/m)
+  })
   it('stage 3 (오너 규칙 2026-09-26 보완): materials_used는 이 과목에 꼭 필요한 자료만 — 공유 자료는 0~2개, 그 밖은 4단계에서 이 과목 전용 ID를 미리 정한다', () => {
     const task = buildPrompt(3, ctx).user.split('과제: ')[1]
     expect(task).toMatch(/이 과목 수업에 꼭 필요한 자료만 적는다/)

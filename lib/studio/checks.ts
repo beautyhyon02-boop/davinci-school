@@ -402,6 +402,30 @@ export function nearlySameTask(a: string, b: string): boolean {
   return shorter >= 5 && common >= 5 && common / shorter >= 0.95 && common / Math.max(ta.size, tb.size) >= 0.5
 }
 
+// ── C-42 글자 수로 답을 유도하지 않는다(대표 2026-10-05, 국어 세트 2차시 퀴즈 3 "…무엇인지 다섯 글자로 쓰시오") — 참고 메모(kind other, 막지 않음) ──
+/**
+ * 글자 수·낱말 수로 답을 좁히는 단서(C-42)를 찾아 그 문구를 돌려준다(없으면 null).
+ * - 글자·음절: 한~열(1~10)일 때 — "두 글자로", "2글자로", "다섯 글자짜리", "(다섯 글자)", "다섯 글자의 낱말", "5글자 이내", "두세 글자로", "2~3글자로".
+ *   그보다 큰 수("100글자로", "300~400글자로")는 분량 지침이고, 글자가 찾을 대상일 때("두 글자를 찾아")는 단서가 아니다.
+ * - "자"만 쓴 것: 우리말 수일 때만("두 자로") — 숫자("350자로")는 분량 지침이다.
+ * - 낱말·단어·어절: 둘~다섯이고 답의 길이일 때만("두 낱말로 쓰시오", "세 단어로 답하시오", "두 낱말로 된") — "한 낱말로"는 답의 꼴을 알리는 말이고,
+ *   큰 수·범위("50단어로", "40~60단어로")는 분량 지침이며, 낱말이 재료일 때("주어진 세 단어로 문장을 완성")는 단서가 아니다.
+ * - 영어: "five-letter", "5 letter word", "in five letters", "in/with two words", "two-word", "(two words)" — "in one word"는 답의 꼴이고
+ *   편지를 뜻하는 letter("the two letters", "one letter to …")는 단서가 아니다.
+ * 분량 지침("350자 내외", "4~6문장")과 근거 개수는 글자·낱말을 세지 않으므로 걸리지 않는다. 낱말로만 본다 — 뜻은 [AI] 검토.
+ */
+const LETTER_CUE = /(?<![가-힣\d])(?:두세|서너|네댓|한|두|세|네|다섯|여섯|일곱|여덟|아홉|열|10|[1-9])(?!\d)\s*(?:글자|음절)(?:으로|로|짜리|(?=\s*(?:이내|이하|\)|의\s|낱말|단어|용어|$)))/
+const JA_CUE = /(?<![가-힣\d])(?:두세|서너|네댓|한|두|세|네|다섯|여섯|일곱|여덟|아홉|열)\s+자(?:로|(?=\s*이내))/
+const WORD_CUE = /(?<![가-힣\d~\-–−])(?:두세|서너|두|세|네|다섯|[2-5])\s*(?:낱말|단어|어절)(?:으로|로)(?=\s*(?:쓰|답|적|나타내|표현|말하|말해|정리|된|이루어진))/
+const EN_LETTER_CUE = /\b(?:one|two|three|four|five|six|seven|eight|nine|ten|\d+)(?:-letter\b|[- ]letters? (?:word|answer|term)s?\b)|\bin (?:one|two|three|four|five|six|seven|eight|nine|ten|\d+) letters\b/i
+const EN_WORD_CUE = /\b(?:in|with) (?:two|three|four|five|[2-5]) words\b|\b(?:two|three|four|five|[2-5])-word\b|\((?:two|three|four|five|[2-5]) words\)/i
+export function letterCountCue(text: string | null | undefined): string | null {
+  for (const re of [LETTER_CUE, JA_CUE, WORD_CUE, EN_LETTER_CUE, EN_WORD_CUE]) { const m = re.exec(text ?? ''); if (m) return m[0] }
+  return null
+}
+/** [TS] 메모 문구(C-42). where 는 "2차시 퀴즈 3", "문항 1 문두"처럼 자리. */
+export const letterCueNote = (where: string, cue: string) => `${where}: 글자 수로 답을 유도함("${cue}") — 글자 수 단서를 뺀다(C-42)`
+
 // ── 교육청 재구성 예시 자료집 지침 L-17·L-19·L-20·L-21(대표 2026-10-01) — 전부 참고 메모(kind other, 막지 않음) ─────────────
 /** [TS] 메모 문구(원장·관리자가 읽는다). */
 export const FEEDBACK_PLAN_MISSING = '확인·피드백 계획(feedback_plan)이 없음 — 3단계를 다시 생성하면 채워집니다(L-20)'
@@ -525,6 +549,9 @@ function lessonIssues(o: LessonDesignT, ctx: CheckCtx): Issue[] {
         const same = l.worksheet.tasks.find((t) => nearlySameTask(q.q, t.prompt))
         if (same) issues.push({ kind: 'other', detail: `${l.no}차시 퀴즈 ${i + 1}: ${quizRepeatsWorksheetNote(same.no)}` })
       }
+      // C-42(대표 2026-10-05): 글자 수·낱말 수로 답을 좁히는 단서("두 글자로 쓰시오") — 퀴즈와 활동지 과제 문장만 본다(참고 메모)
+      for (const [i, q] of l.formative_check.quiz.entries()) { const cue = letterCountCue(q.q); if (cue) issues.push({ kind: 'other', detail: letterCueNote(`${l.no}차시 퀴즈 ${i + 1}`, cue) }) }
+      for (const [k, t] of (l.worksheet?.tasks ?? []).entries()) { const cue = letterCountCue(t.prompt); if (cue) issues.push({ kind: 'other', detail: letterCueNote(`${l.no}차시 활동지 과제 ${t.no ?? k + 1}번`, cue) }) }
     }
     for (const q of l.teacher_script.questions) if (norm(q.if_stuck) === norm(q.expected_answer)) issues.push({ kind: 'other', detail: `${l.no}차시 발문 힌트가 정답과 같음` })
   }
@@ -761,6 +788,11 @@ function assessmentIssues(o: AssessmentT, ctx: CheckCtx): Issue[] {
     for (const id of it.materials_used) if (materials.length && !byId.has(id) && !unticked.includes(id)) issues.push({ kind: 'other', detail: `문항 ${i + 1}: 없는 자료 ${id}` })
     if (materials.length && !it.materials_used.some((id) => byId.get(id)?.role === 'raw')) issues.push({ kind: 'other', detail: `문항 ${i + 1}: 원자료(raw)를 하나도 참조하지 않음` })
     issues.push(...conditionIssues(it, i, materials))
+    // C-42(대표 2026-10-05): 문두·분량 칸·조건의 글자 수 단서(참고 메모) — 분량 지침("350자 내외", "4~6문장")은 letterCountCue 가 짚지 않는다.
+    // 서술형은 조건(items)이 없어 분량 칸(length)이 "두 글자" 같은 단서 자리가 될 수 있다.
+    const stemCue = letterCountCue(it.stem); if (stemCue) issues.push({ kind: 'other', detail: letterCueNote(`문항 ${i + 1} 문두`, stemCue) })
+    const lengthCue = letterCountCue(it.conditions.length); if (lengthCue) issues.push({ kind: 'other', detail: letterCueNote(`문항 ${i + 1} 분량`, lengthCue) })
+    for (const c of it.conditions.items) { const cue = letterCountCue(c.text); if (cue) issues.push({ kind: 'other', detail: letterCueNote(`문항 ${i + 1} 조건 ${c.no}`, cue) }) }
     for (const c of it.rubric.criteria) {
       // 척도는 점수로 읽는다(배열 순서 아님 — 생성 AI가 만점부터 내림차순으로 적기도 한다, lib/studio/scale.ts)
       const sorted = sortScale(c.scale)
