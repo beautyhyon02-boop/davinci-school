@@ -846,6 +846,52 @@ function placementIssues(o: AssessmentT, ctx: CheckCtx): Issue[] {
   return issues
 }
 
+// ── C-43 안쪽 칸 이름(대표 2026-10-06: 국어·과학 세트 6단계 지침서에 "merge_guide에 따라"·"척도표의 example 문장") — 참고 메모(막지 않음) ──
+/**
+ * 밑줄로 이은 영문 소문자 이름(merge_guide·per_lesson·if_stuck·time_budget_120 …). 마디마다 두 글자 이상이라 아래 첨자 표기(a_n·v_0·log_2)는
+ * 아니고, 파일 이름(work_sheet.pdf)·전자우편(kim_teacher@…)·주소의 일부(?menu_id=3)도 아니다.
+ */
+const SNAKE_NAME = /(?<![A-Za-z0-9_./?&=@-])[a-z]{2,}(?:_[a-z0-9]{2,})+(?![A-Za-z0-9_@=]|\.[A-Za-z0-9])/
+/**
+ * 홀로 놓인 스키마 낱말("척도표의 example 문장", "(example 참고)", "'example' 문장") — 앞뒤(빈칸·따옴표·쉼표를 건너) 에 영문 글자가 있으면
+ * 영어 문장 속 낱말("for example, and")이므로 아니다. 수업 내용에 흔한 낱말(scale·stem·criteria·glossary)은 넣지 않았다.
+ */
+const LONE_FIELD_NAME = /(?<![A-Za-z_.-])(?<![A-Za-z][\s,'’"]*)(?:example|descriptor|rubric|holistic|exemplar)(?![A-Za-z_-])(?![\s,'’"]*[A-Za-z])/gi
+/**
+ * 글에 섞인 안쪽 칸 이름(영문 필드 이름)을 돌려준다(없으면 null). 낱말로만 본다 — 뜻은 [AI] 검토.
+ * 한국어 낱말 뒤에 괄호로 단 풀이("채점 기준표(rubric)")는 칸 이름이 아니다. 영어 세트(english)는 수업 내용이 영어 낱말이므로 밑줄 이름만 본다.
+ */
+export function internalFieldName(text: string | null | undefined, opts: { english?: boolean } = {}): string | null {
+  const t = text ?? ''
+  const snake = SNAKE_NAME.exec(t)?.[0]
+  if (snake || opts.english) return snake ?? null
+  for (const m of t.matchAll(LONE_FIELD_NAME)) {
+    const at = m.index ?? 0
+    if (t[at - 1] === '(' && t[at + m[0].length] === ')') continue
+    return m[0]
+  }
+  return null
+}
+const fieldNameIssue = (text: string | null | undefined, where: string, english = false): Issue[] => {
+  const name = internalFieldName(text, { english })
+  return name ? [{ kind: 'other', detail: `${where}: 안쪽 칸 이름("${name}")이 글에 그대로 있음 — 화면에 보이는 한국어 이름으로 쓴다(C-43)` }] : []
+}
+/** 교사용 지침서의 글 칸(번역 칸은 빼고)에 섞인 안쪽 칸 이름 — 자리 이름은 화면의 제목 그대로. 옛 지침서(칸이 비어 있어도)에서 멈추지 않는다. */
+function guideFieldNameIssues(o: GuideT, english: boolean): Issue[] {
+  const at = (text: string | null | undefined, where: string) => fieldNameIssue(text, where, english)
+  return [
+    ...at(o.general?.purpose, '수업 의도'),
+    ...(o.general?.materials ?? []).flatMap((m, k) => at(m, `준비물 ${k + 1}`)),
+    ...at(o.general?.schedule_note, '차시 운영 메모'),
+    ...(o.glossary ?? []).flatMap((g) => at(`${g.term} ${g.explanation}`, `용어 설명 "${g.term}"`)),
+    ...(o.merge_guide ?? []).flatMap((m) => (m.skip_activities ?? []).flatMap((s) => at(s, `병합 안내 ${(m.lessons ?? []).join('·')}`))),
+    ...(o.grading_guide?.common_errors ?? []).flatMap((e) => at(`${e.error} ${e.how_to_read}`, `흔한 오답(문항 ${e.item_no})`)),
+    ...(o.grading_guide?.review_tips ?? []).flatMap((t, k) => at(t, `검수 팁 ${k + 1}`)),
+    ...at(o.grading_guide?.retry_guidance, '재도전 안내'),
+    ...(o.per_lesson ?? []).flatMap((p) => (p.notes ?? []).flatMap((n) => at(n, `${p.no}차시 유의점`))),
+  ]
+}
+
 function guideIssues(o: GuideT, ctx: CheckCtx): Issue[] {
   const lessons = ((ctx.prior.stage3 as LessonDesignT | undefined)?.lessons ?? [])
   const issues: Issue[] = []
@@ -858,6 +904,7 @@ function guideIssues(o: GuideT, ctx: CheckCtx): Issue[] {
   // 흔한 오답의 문항 번호는 5단계 문항 번호 안(지금 구조 2개) — 5단계 확정본이 prior에 없으면 건너뛴다
   const itemCount = (ctx.prior.stage5 as Partial<AssessmentT> | undefined)?.items?.length ?? 0
   for (const e of o.grading_guide.common_errors) if (itemCount && e.item_no > itemCount) issues.push({ kind: 'other', detail: `흔한 오답의 문항 ${e.item_no} — 5단계 문항은 ${itemCount}개` })
+  issues.push(...guideFieldNameIssues(o, ctx.subject === '영어'))
   issues.push(...translationIssues(o, ctx))
   return issues
 }
@@ -977,7 +1024,7 @@ const toneIssue = (text: string | null | undefined, where: string): Issue[] => {
 }
 // N-01(다른 학생 이름·점수·순위)·N-03(확정 전 AI 초안 인용)은 학생 데이터가 든 학생별 안내장에서만 판정할 수 있어 7단계 틀에는 적용하지 않는다 —
 // T8에서 N-01은 lib/classroom/notice-lint.ts(원생 목록 대조), N-03은 안내장 초안 서버 액션(확정 채점만 읽음)이 맡는다.
-function noticePlanIssues(o: NoticePlanT): Issue[] {
+function noticePlanIssues(o: NoticePlanT, english = false): Issue[] {
   const issues: Issue[] = []
   for (const p of o.per_lesson) {
     for (const [field, text] of [['topic_summary', p.topic_summary], ['preview', p.preview], ['home_study_suggestion', p.home_study_suggestion]] as const) issues.push(...noticeTextIssues(text, `${p.lesson_no}차시 ${field}`))
@@ -986,6 +1033,10 @@ function noticePlanIssues(o: NoticePlanT): Issue[] {
     issues.push(...toneIssue(p.topic_summary, `${p.lesson_no}차시 학습 요약`), ...toneIssue(p.preview, `${p.lesson_no}차시 다음 차시 예고`), ...toneIssue(p.home_study_suggestion, `${p.lesson_no}차시 가정 학습`))
     for (const q of p.quiz_notes) issues.push(...noticeTextIssues(q.wrong_note, `${p.lesson_no}차시 퀴즈 ${q.quiz_no}`), ...toneIssue(q.wrong_note, `${p.lesson_no}차시 퀴즈 ${q.quiz_no}`))
     for (const c of p.criteria_phrases ?? []) for (const t of [...c.good, ...c.improve]) issues.push(...noticeTextIssues(t, `${p.lesson_no}차시 ${c.criterion_name}`), ...toneIssue(t, `${p.lesson_no}차시 ${c.criterion_name}`))
+    // C-43: 학부모에게 가는 문장에 안쪽 칸 이름이 섞이지 않게(참고 메모)
+    issues.push(...fieldNameIssue(p.topic_summary, `${p.lesson_no}차시 학습 요약`, english), ...fieldNameIssue(p.preview, `${p.lesson_no}차시 다음 차시 예고`, english), ...fieldNameIssue(p.home_study_suggestion, `${p.lesson_no}차시 가정 학습`, english))
+    for (const q of p.quiz_notes) issues.push(...fieldNameIssue(q.wrong_note, `${p.lesson_no}차시 퀴즈 ${q.quiz_no}`, english))
+    for (const c of p.criteria_phrases ?? []) for (const t of [...c.good, ...c.improve]) issues.push(...fieldNameIssue(t, `${p.lesson_no}차시 ${c.criterion_name}`, english))
   }
   return issues
 }
@@ -998,7 +1049,7 @@ export function staticIssues(stage: Stage, output: unknown, ctx: CheckCtx): Issu
     case 4: return [...materialIssues(output as MaterialsT), ...materialUseIssues((output as MaterialsT).materials, ctx, null), ...englishVersionIssues(output as MaterialsT, ctx), ...untickedSharedMaterialIssues(output as MaterialsT, ctx)]
     case 5: return assessmentIssues(output as AssessmentT, ctx)
     case 6: return guideIssues(output as GuideT, ctx)
-    case 7: return noticePlanIssues(output as NoticePlanT)
+    case 7: return noticePlanIssues(output as NoticePlanT, ctx.subject === '영어')
     default: return []
   }
 }

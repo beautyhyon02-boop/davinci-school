@@ -86,6 +86,13 @@ describe('prompts v2', () => {
     expect(review5).toMatch(/문두·조건이 글자 수·낱말 수로 답을 좁히면 other\(C-42 — 분량 지침은 해당 없음\)/)
     expect(buildPrompt(5, ctx).system).toMatch(/^C-42 퀴즈·활동지 과제·평가 문항/m)
   })
+  it('stage 6 (대표 2026-10-06, C-43): 과제는 지침서 글에 칸 이름(영문 필드 이름)을 쓰지 않게 하고 검토는 그것을 짚는다', () => {
+    const task = buildPrompt(6, ctx).user.split('과제: ')[1]
+    expect(task).toMatch(/지침서의 글\(문장\) 안에는 칸 이름\(merge_guide·per_lesson·example 같은 영문 필드 이름\)을 쓰지 않는다 — 원장이 화면에서 보는 한국어 이름\(병합 안내·차시별 유의점·예시\)으로 쓴다\(C-43\)/)
+    const review = buildReviewPrompt(6, ctx, {}).user.split('검토 초점: ')[1]
+    expect(review).toMatch(/글에 칸 이름\(merge_guide·per_lesson·example 같은 영문 필드 이름\)이 그대로 있으면 other\(C-43\)/)
+    expect(buildPrompt(6, ctx).system).toMatch(/^C-43 원장·학생·학부모가 읽는 글/m)
+  })
   it("stage 7 (대표 2026-10-06, N-13): 과제는 모든 문장을 '~습니다'·'~봅시다'로 끝맺게 하고 검토는 '~요' 말투를 짚는다", () => {
     const task = buildPrompt(7, ctx).user.split('과제: ')[1]
     expect(task).toMatch(/quiz_notes\(퀴즈 문항마다 틀렸을 때 줄 40자 코멘트: 부분 긍정 \+ 역접 \+ 완곡, 부정 서술어 금지, '~봅시다'로 끝맺음;/)
