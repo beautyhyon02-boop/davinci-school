@@ -1,5 +1,5 @@
 {
- "quiz_notes": [{ "quiz_no": 2, "note": "계급은 정확히 찾았으나 도수를 세는 과정에서 헷갈렸어요" }],
+ "quiz_notes": [{ "quiz_no": 2, "note": "계급은 정확히 찾았으나 도수를 세는 과정을 한 번 더 확인해 봅시다" }],
  "criteria_feedback": [
   { "criterion_name": "상대도수 계산", "good_point": "상대도수 구하기 활동에서 두 해의 값을 소수 둘째 자리까지 정확하게 구함", "improve_point": null },
   { "criterion_name": "비율 변화 해석", "good_point": "변화 해석 활동에서 두 상대도수를 나란히 놓고 비교함", "improve_point": "변화는 찾았으나 무엇이 늘었는지가 흐림 — 차지하는 비율이 늘었다고 밝혀 써 봅시다" },

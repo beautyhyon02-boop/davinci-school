@@ -86,6 +86,13 @@ describe('prompts v2', () => {
     expect(review5).toMatch(/문두·조건이 글자 수·낱말 수로 답을 좁히면 other\(C-42 — 분량 지침은 해당 없음\)/)
     expect(buildPrompt(5, ctx).system).toMatch(/^C-42 퀴즈·활동지 과제·평가 문항/m)
   })
+  it("stage 7 (대표 2026-10-06, N-13): 과제는 모든 문장을 '~습니다'·'~봅시다'로 끝맺게 하고 검토는 '~요' 말투를 짚는다", () => {
+    const task = buildPrompt(7, ctx).user.split('과제: ')[1]
+    expect(task).toMatch(/quiz_notes\(퀴즈 문항마다 틀렸을 때 줄 40자 코멘트: 부분 긍정 \+ 역접 \+ 완곡, 부정 서술어 금지, '~봅시다'로 끝맺음;/)
+    expect(task).toMatch(/모든 문장은 서술이면 '~습니다', 제안이면 '~봅시다'로 끝맺어 말투를 하나로 맞춘다 — '~어요\/~봐요\/~세요' 같은 '~요' 말투를 섞지 않는다\(N-13\)/)
+    const review = buildReviewPrompt(7, ctx, {}).user.split('검토 초점: ')[1]
+    expect(review).toMatch(/문장이 '~습니다'·'~봅시다'로 끝나 말투가 하나인지 — '~요' 말투가 섞이면 notice\(N-13\)/)
+  })
   it('stage 3 (오너 규칙 2026-09-26 보완): materials_used는 이 과목에 꼭 필요한 자료만 — 공유 자료는 0~2개, 그 밖은 4단계에서 이 과목 전용 ID를 미리 정한다', () => {
     const task = buildPrompt(3, ctx).user.split('과제: ')[1]
     expect(task).toMatch(/이 과목 수업에 꼭 필요한 자료만 적는다/)

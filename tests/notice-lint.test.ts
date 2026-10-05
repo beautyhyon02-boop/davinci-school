@@ -4,9 +4,9 @@ import type { NoticeT } from '@/lib/classroom/notice-schema'
 
 const base: NoticeT = { student_name: '김OO', lesson_no: 2, date: '2026-09-29',
   lesson_context: { key_question: 'q', goal: 'g', topic_summary: '도수분포표 활동에서 표 만들기를 배웠습니다.' },
-  participation: { quiz: { correct: 2, total: 3, items: [{ q: 'a', is_correct: true, note: null }, { q: 'b', is_correct: false, note: '계급은 정확히 찾았으나 도수 세기가 헷갈렸어요' }, { q: 'c', is_correct: true, note: null }] }, director_comment: null },
+  participation: { quiz: { correct: 2, total: 3, items: [{ q: 'a', is_correct: true, note: null }, { q: 'b', is_correct: false, note: '계급은 정확히 찾았으나 도수 세기를 한 번 더 확인해 봅시다' }, { q: 'c', is_correct: true, note: null }] }, director_comment: null },
   essay_results: [{ kind: '서술형', confirmed_score: 2, total_points: 3, band: '중', criteria_feedback: [{ criterion_name: '표 완성', band_score: 2, max: 3, good_point: '표 완성 활동에서 계급을 정확하게 나눔', improve_point: '도수는 세웠으나 합계를 빠뜨림 — 다음에는 합계를 먼저 확인해 봅시다' }], retry: null }],
-  next_lesson: { preview: '다음 시간에는 히스토그램을 배워요.', home_study_suggestion: '오늘 틀린 문항과 같은 유형 1개를 다시 풀어 봅시다.' },
+  next_lesson: { preview: '다음 시간에는 히스토그램을 배웁니다.', home_study_suggestion: '오늘 틀린 문항과 같은 유형 1개를 다시 풀어 봅시다.' },
   director_message: null, footer_disclaimer: '본 안내장은 학교생활기록부가 아니며, 학원 자체 학습 기록입니다.' }
 
 describe('lintNotice', () => {

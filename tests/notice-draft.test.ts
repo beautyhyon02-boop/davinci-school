@@ -14,7 +14,10 @@ describe('draftNoticePlan', () => {
     expect(NoticePlan.safeParse(plan).error?.issues ?? []).toEqual([])
     expect(plan.per_lesson.filter((p) => p.criteria_phrases).map((p) => p.lesson_no)).toEqual([6])
     expect(plan.per_lesson.find((p) => p.lesson_no === 6)!.criteria_phrases!.map((c) => c.criterion_name)).toEqual(s5.items.flatMap((i: { rubric: { criteria: { name: string }[] } }) => i.rubric.criteria.map((c) => c.name)))
-    expect(plan.per_lesson.find((p) => p.lesson_no === 5)!.preview).toBe('다음 시간에는 단원 평가에서 서술형·논술형 문항에 답해요.')
+    expect(plan.per_lesson.find((p) => p.lesson_no === 5)!.preview).toBe('다음 시간에는 단원 평가에서 서술형·논술형 문항에 답합니다.')
+    // N-13(대표 2026-10-06): 결정적 초안의 예고 문장도 '~요'를 쓰지 않는다 — "배웁니다", 마지막 차시 "마무리했습니다"
+    expect(plan.per_lesson[0].preview).toMatch(/배웁니다\.$/)
+    expect(plan.per_lesson[plan.per_lesson.length - 1].preview).toBe('이번 세트를 마무리했습니다. 정리한 내용을 다시 읽어 봅시다.')
     expect(staticIssues(7, plan, { standards: [], prior: {} })).toEqual([])
     expect(plan.per_lesson.at(-1)?.preview).toMatch(/마무리/)
   })
@@ -29,7 +32,7 @@ describe('draftNoticePlan', () => {
     const essay = plan.per_lesson.find((p) => p.lesson_no === 5)!
     expect(essay.criteria_phrases?.map((c) => c.criterion_name)).toEqual(a.items[2].rubric.criteria.map((c) => c.name))
     expect(plan.per_lesson[0].preview).toContain(lessons[1].topic.slice(0, 5))
-    expect(plan.per_lesson.find((p) => p.lesson_no === 4)!.preview).toMatch(/논술형 문항에 답해요/)
+    expect(plan.per_lesson.find((p) => p.lesson_no === 4)!.preview).toMatch(/논술형 문항에 답합니다/)
     expect(plan.footer_disclaimer).toBe(NOTICE_DISCLAIMER)
     expect(staticIssues(7, plan, { standards: [], prior: {} })).toEqual([])
   })

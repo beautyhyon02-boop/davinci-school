@@ -131,14 +131,14 @@ function homeStudy(items: ItemT[]): string {
     : '오늘 쓴 답의 보완할 점 한 가지를 고쳐 한 문장으로 다시 써 봅시다.'
 }
 
-/** 다음 차시 예고(50자). 다음이 평가 차시(단원 평가, 옛 판의 논술형 차시)면 "배워요" 대신 그 차시의 문항에 답한다고 알린다. */
+/** 다음 차시 예고(50자). 다음이 평가 차시(단원 평가, 옛 판의 논술형 차시)면 "배웁니다" 대신 그 차시의 문항에 답한다고 알린다. 말투는 '~습니다'(N-13). */
 function previewOf(next: LessonT): string {
   const kinds = lessonAssessments(next)
   if (isAssessmentSession(next) && kinds.length) {
-    const full = `다음 시간에는 ${next.topic}에서 ${kinds.join('·')} 문항에 답해요.`
-    return full.length <= 50 ? full : `다음 시간에는 ${kinds.join('·')} 문항에 답해요.`   // 주제가 길면(옛 판 목표 문장) 주제를 뺀다
+    const full = `다음 시간에는 ${next.topic}에서 ${kinds.join('·')} 문항에 답합니다.`
+    return full.length <= 50 ? full : `다음 시간에는 ${kinds.join('·')} 문항에 답합니다.`   // 주제가 길면(옛 판 목표 문장) 주제를 뺀다
   }
-  return clip(`다음 시간에는 ${next.topic}${objectParticle(next.topic)} 배워요.`, 50)
+  return clip(`다음 시간에는 ${next.topic}${objectParticle(next.topic)} 배웁니다.`, 50)
 }
 
 /**
@@ -155,7 +155,7 @@ export function draftNoticePlan(lessons: LessonT[], assessment: AssessmentT | nu
       return {
         lesson_no: l.no,
         topic_summary: clip(l.goal, LIMIT),
-        preview: next ? previewOf(next) : '이번 세트를 마무리했어요. 정리한 내용을 다시 읽어 봅시다.',
+        preview: next ? previewOf(next) : '이번 세트를 마무리했습니다. 정리한 내용을 다시 읽어 봅시다.',
         home_study_suggestion: homeStudy(items),
         quiz_notes: l.formative_check.quiz.map((q, k) => ({ quiz_no: k + 1, wrong_note: wrongNote(q) })),
         criteria_phrases: items.length

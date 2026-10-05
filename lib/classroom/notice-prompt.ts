@@ -6,7 +6,7 @@ import type { NoticeT } from './notice-schema'
 import type { NoticeEvidence } from './notice'
 
 /**
- * 학생별 안내장 초안 프롬프트(AI 1회, role 'grade'). 첫 system 블록 = N-01~12 규칙(캐시).
+ * 학생별 안내장 초안 프롬프트(AI 1회, role 'grade'). 첫 system 블록 = N-01~13 규칙(캐시).
  * 뼈대와 근거에는 확정 채점만 들어 있다(N-03) — 미확정 AI 채점 초안은 이 함수에 오지 않는다.
  */
 export function buildNoticePrompt({ snapshot, lessonNo, skeleton, evidence = [] }: { snapshot: Snapshot; lessonNo: number; skeleton: NoticeT; evidence?: NoticeEvidence[] }) {

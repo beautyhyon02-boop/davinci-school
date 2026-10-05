@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { COMPETENCIES, COMPETENCY_MEANING } from '@/lib/studio/competency'
 import { readFileSync } from 'node:fs'
-import { rulesFor, allRuleIds, COMMON_RULES, LESSON_RULES, SUBJECT_RULES, NOTICE_RULES, GRADING_RULES_V2, GRADING_PROMPT_RULES } from '@/lib/studio/prompts/rules/index'
+import { rulesFor, allRuleIds, COMMON_RULES, LESSON_RULES, SUBJECT_RULES, NOTICE_RULES, NOTICE_PROMPT_RULES, GRADING_RULES_V2, GRADING_PROMPT_RULES } from '@/lib/studio/prompts/rules/index'
 
 describe('rules v2', () => {
   it('every rule id is unique and appears exactly once in the spec appendix', () => {
@@ -10,7 +10,7 @@ describe('rules v2', () => {
     const spec = readFileSync('docs/superpowers/specs/2026-09-25-item-studio-v2-design.md', 'utf8')
     for (const id of ids) expect(spec.split(`| ${id} |`).length - 1, id).toBe(1)
     // 부록 A: 공통 38(C-31 대표 확정값, C-32 조건=지침(2026-09-26), C-33 자료 설계·유형(대표 연수 2기), C-34·C-36·C-37 경기2025, C-39 배운 것만 채점·C-40 역량 꼬리표(대표 2026-09-29) 포함) + 차시 21(L-13 정답 노출·활동지 되풀이 금지, 2026-10-01 영어 세트 검토; L-14~L-21 교육청 재구성 예시 자료집 G-1~G-8, 대표 2026-10-01) + 과목 40(국6·수7·사7·역3·과8·영9 — S-영-08 번역·S-영-09 공동 자료 영어판(대표 2026-09-29), S-사-07 사회 통합(대표 2026-09-30)) + 채점 10(G-10 경기2025) + 안내장 12 = 121
-    expect(ids.length).toBe(40 + 21 + 40 + 10 + 12)   // C-41 자료의 사실성(대표 2026-10-03), C-42 글자 수로 답을 유도하지 않는다(대표 2026-10-05)
+    expect(ids.length).toBe(40 + 21 + 40 + 10 + 13)   // C-41 자료의 사실성(대표 2026-10-03), C-42 글자 수로 답을 유도하지 않는다(대표 2026-10-05), N-13 안내장 말투 통일(대표 2026-10-06)
   })
   it('the spec appendix has no rule row that the code lacks', () => {
     const spec = readFileSync('docs/superpowers/specs/2026-09-25-item-studio-v2-design.md', 'utf8')
@@ -30,7 +30,7 @@ describe('rules v2', () => {
     const all = COMMON_RULES.concat(Object.values(SUBJECT_RULES).flat()).map((r) => r.text).join('\n')
     expect(all).toMatch(/서술형 1문항\(6점, 채점 요소 2~3개\) \+ 논술형 1문항\(16점, 4요소 × 0~4점\) = 22점/)
     expect(all).toMatch(/4요소 × 0~4점/)
-    expect(NOTICE_RULES.map((r) => r.id)).toEqual(Array.from({ length: 12 }, (_, i) => `N-${String(i + 1).padStart(2, '0')}`))
+    expect(NOTICE_RULES.map((r) => r.id)).toEqual(Array.from({ length: 13 }, (_, i) => `N-${String(i + 1).padStart(2, '0')}`))
     expect(GRADING_RULES_V2.map((r) => r.id)[0]).toBe('G-01')
   })
   it('세트 구조 (대표 2026-09-26): C-31·C-15·C-14·L-09 와 과목 규칙이 서술형 1 + 논술형 1, 단원 평가 차시를 말한다', () => {
@@ -343,5 +343,18 @@ describe('C-42 글자 수로 답을 유도하지 않는다 (대표 2026-10-05)',
       '답의 꼴을 알리는 말("한 낱말로", "짧은 구로", "한 문장으로")', '분량 지침("350자 내외", "4~6문장", "40~60단어")은 그대로 쓴다']) expect(c42.text, s).toContain(s)
     expect(row('C-42')).toBe(`| C-42 | ${c42.text} | P+S | [대표] |`)
     for (const subject of ['국어', '수학', '과학', '영어', '사회']) expect(rulesFor(subject)).toMatch(/^C-42 퀴즈·활동지 과제·평가 문항/m)
+  })
+})
+
+// 대표 2026-10-06(과학 세트 7단계 퀴즈 오답 코멘트만 "~어요/~봐요"): "앞으로 톤앤매너를 꼭 맞추도록 지침을 추가"
+describe('N-13 안내장 말투 통일 (대표 2026-10-06)', () => {
+  const spec = readFileSync('docs/superpowers/specs/2026-09-25-item-studio-v2-design.md', 'utf8')
+  const row = (id: string) => spec.split('\n').find((line) => line.startsWith(`| ${id} |`))!
+  it("exists as PS/대표: 서술은 '~습니다', 제안은 '~봅시다', '~요' 말투를 섞지 않는다; spec row carries the same sentence; reaches the per-student notice prompt", () => {
+    const n13 = NOTICE_RULES.find((r) => r.id === 'N-13')!
+    expect(n13.nature).toBe('PS'); expect(n13.tags).toEqual(['대표'])
+    for (const s of ['말투를 하나로 맞춘다', "서술은 '~습니다'", "제안은 '~봅시다'", "'~요' 말투를 섞지 않는다", '차시·세트마다 톤앤매너가 같아야 한다']) expect(n13.text, s).toContain(s)
+    expect(row('N-13')).toBe(`| N-13 | ${n13.text} | S+P |`)
+    expect(NOTICE_PROMPT_RULES).toMatch(/^N-13 안내장의 문장은 말투를 하나로 맞춘다/m)
   })
 })

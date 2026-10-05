@@ -954,6 +954,27 @@ export function noticeTextIssues(text: string, where: string): Issue[] {
   for (const [re, why] of NOTICE_FORBIDDEN) if (re.test(text)) issues.push({ kind: 'notice', detail: `${where}: "${text.match(re)?.[0]}" — ${why}` })
   return issues
 }
+/**
+ * N-13(대표 2026-10-06, 과학 세트 7단계: 퀴즈 오답 코멘트만 "~어요/~봐요"): 안내장 문장은 '~습니다'·'~봅시다'로 끝맺는다.
+ * '~요'·'~죠'로 끝나는 첫 끝말("떠올렸어요", "보세요", "짚었죠")을 돌려준다(없으면 null) — 그 낱말 뒤에 문장 부호·쉼표·닫는 괄호·따옴표·
+ * 말줄임이 오거나 글이 끝나는 자리만 본다(문장 가운데 "…떠올렸어요, 다만 …"도 잡는다). '요'로 끝나는 낱말(필요·개요·중요 …)과
+ * 따옴표 안에 인용한 말("'왜 그럴까요?'라는 질문")은 말투가 아니므로 건너뛴다. 낱말로만 본다 — 뜻은 [AI] 검토.
+ */
+const YO_NOUNS = new Set(['필요', '불필요', '중요', '개요', '수요', '주요', '소요', '민요', '동요', '강요', '긴요'])
+const CASUAL_END = /([가-힣]+(?:요|죠))(?=[.!?,…~)\]”’"']|$)/g
+const QUOTED_TAIL = /^[.!?]?['"’”]\s*(?:이?라는|이?라고|처럼|같은|꼴)/
+export function casualEnding(text: string | null | undefined): string | null {
+  const t = (text ?? '').trim()
+  for (const m of t.matchAll(CASUAL_END)) {
+    if (YO_NOUNS.has(m[1]) || QUOTED_TAIL.test(t.slice((m.index ?? 0) + m[1].length))) continue
+    return m[1]
+  }
+  return null
+}
+const toneIssue = (text: string | null | undefined, where: string): Issue[] => {
+  const ending = casualEnding(text)
+  return ending ? [{ kind: 'notice', detail: `${where}: 말투가 '~요'로 끝남("${ending}") — 안내장은 '~습니다'·'~봅시다'로 맞춘다(N-13)` }] : []
+}
 // N-01(다른 학생 이름·점수·순위)·N-03(확정 전 AI 초안 인용)은 학생 데이터가 든 학생별 안내장에서만 판정할 수 있어 7단계 틀에는 적용하지 않는다 —
 // T8에서 N-01은 lib/classroom/notice-lint.ts(원생 목록 대조), N-03은 안내장 초안 서버 액션(확정 채점만 읽음)이 맡는다.
 function noticePlanIssues(o: NoticePlanT): Issue[] {
@@ -961,8 +982,10 @@ function noticePlanIssues(o: NoticePlanT): Issue[] {
   for (const p of o.per_lesson) {
     for (const [field, text] of [['topic_summary', p.topic_summary], ['preview', p.preview], ['home_study_suggestion', p.home_study_suggestion]] as const) issues.push(...noticeTextIssues(text, `${p.lesson_no}차시 ${field}`))
     if (!SUGGEST_ENDINGS.test(p.home_study_suggestion.trim())) issues.push({ kind: 'notice', detail: `${p.lesson_no}차시 가정 학습 제안이 청유형으로 끝나지 않음` })
-    for (const q of p.quiz_notes) issues.push(...noticeTextIssues(q.wrong_note, `${p.lesson_no}차시 퀴즈 ${q.quiz_no}`))
-    for (const c of p.criteria_phrases ?? []) for (const t of [...c.good, ...c.improve]) issues.push(...noticeTextIssues(t, `${p.lesson_no}차시 ${c.criterion_name}`))
+    // N-13: 말투('~습니다'·'~봅시다') — 학습 요약·예고·가정 학습·퀴즈 오답 코멘트·요소별 문구 모두(참고 메모)
+    issues.push(...toneIssue(p.topic_summary, `${p.lesson_no}차시 학습 요약`), ...toneIssue(p.preview, `${p.lesson_no}차시 다음 차시 예고`), ...toneIssue(p.home_study_suggestion, `${p.lesson_no}차시 가정 학습`))
+    for (const q of p.quiz_notes) issues.push(...noticeTextIssues(q.wrong_note, `${p.lesson_no}차시 퀴즈 ${q.quiz_no}`), ...toneIssue(q.wrong_note, `${p.lesson_no}차시 퀴즈 ${q.quiz_no}`))
+    for (const c of p.criteria_phrases ?? []) for (const t of [...c.good, ...c.improve]) issues.push(...noticeTextIssues(t, `${p.lesson_no}차시 ${c.criterion_name}`), ...toneIssue(t, `${p.lesson_no}차시 ${c.criterion_name}`))
   }
   return issues
 }
