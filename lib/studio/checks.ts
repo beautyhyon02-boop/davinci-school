@@ -1,6 +1,7 @@
 import type { z } from 'zod'
 import { checkReconstructionFidelity, tokensFoundIn } from './fidelity'
-import { levelRefFor } from './level-map'
+import { levelRefFor, gradeLabel } from './level-map'
+import { outOfGradeStandards } from './grade-units'
 import { structureIssues, kindFamily, sessionPlacementIssues, isAssessmentSession, lessonAssessments, ESSAY_MIN_MINUTES } from './assessment-structure'
 import type { Stage, ReviewKind, Reconstruction, LessonDesign, Materials, Assessment, TeacherGuide, NoticePlan } from './schemas'
 import { QUIZ_SHORT_ONLY, isShortQuiz, quizLevelSpreadOk } from './schemas'
@@ -14,8 +15,11 @@ export type Issue = { kind: ReviewKind; detail: string }
 export type CheckCtx = {
   standards: { code: string; text: string }[]
   prior: Record<string, unknown>
-  /** 대주제(선택) — 2단계 재구성 문장에 대주제 상황 낱말이 섞였을 때 반려 사유를 알아보기 쉽게 적는 데만 쓴다(판정은 바꾸지 않는다). */
-  theme?: { title: string }
+  /**
+   * 대주제(선택) — title은 2단계 재구성 문장에 대주제 상황 낱말이 섞였을 때 반려 사유를 알아보기 쉽게 적는 데만 쓴다(판정은 바꾸지 않는다).
+   * level·grade는 1·2단계 [TS] 참고 메모(gradeUnitIssues — 수학·과학의 성취기준이 그 학년 교과서 단원 밖, C-44)가 쓴다.
+   */
+  theme?: { title: string; level?: string; grade?: number | null }
   /**
    * 대주제 공유 자료 ID(A~Z, 오름차순 불필요). 3·5단계 [TS] 자문(공유 자료를 가리키지만 문항·활동지 어디도 안 쓴다)이 참조한다 — loadContext의
    * prior.shared_materials에서 온다(stages.ts staticCheck). 대표 결정 2026-09-28부터는 이 세트가 체크한 공동 자료만(item_sets.shared_material_ids).
@@ -71,8 +75,22 @@ function themeHint(unknownTokens: string[], ctx: CheckCtx): string {
 const TEMPLATE_PHRASES = [/를?\s*가지고\s/, /하는\s*것을\s*해서/, /을\s*해서\s/, /를\s*통해\s/]
 const TEMPLATE_LABELS: Record<string, string> = { [/를?\s*가지고\s/.source]: '"가지고"', [/하는\s*것을\s*해서/.source]: '"~하는 것을 해서"', [/을\s*해서\s/.source]: '"~을 해서"', [/를\s*통해\s/.source]: '"~를 통해"' }
 
+/**
+ * C-44(대표 2026-10-07): 학년을 정한 대주제의 수학·과학은 그 학년 교과서 단원 안에서만 — 고른 성취기준이 다른 학년 단원이면 어느 학년 어느 단원인지
+ * 적는다(참고 메모, 막지 않음). 국어·영어·사회·학년 없음은 outOfGradeStandards 가 빈 배열을 돌려준다.
+ */
+function gradeUnitIssues(codes: string[], ctx: CheckCtx): Issue[] {
+  const grade = ctx.theme?.grade
+  const level = ctx.theme?.level
+  if (grade == null || !level || !ctx.subject) return []
+  return outOfGradeStandards(level, ctx.subject, grade, codes).map((s) => ({
+    kind: 'grade_level' as const,
+    detail: `${s.code}은 ${gradeLabel(level, grade)} ${ctx.subject} 교과서 단원에 없음 — ${s.grade}학년 「${s.unit}」(C-44)`,
+  }))
+}
+
 function reconstructionIssues(o: ReconstructionT, ctx: CheckCtx): Issue[] {
-  const issues: Issue[] = []
+  const issues: Issue[] = gradeUnitIssues(o.standards.map((s) => s.code), ctx)
   const byCode = new Map(ctx.standards.map((s) => [s.code, s.text]))
   for (const s of o.standards) {
     const original = byCode.get(s.code)
@@ -1044,6 +1062,7 @@ function noticePlanIssues(o: NoticePlanT, english = false): Issue[] {
 /** 검토 AI를 부르기 전에 도는 순수 검사. 빈 배열이면 통과. zod 가 이미 거른 것은 다시 검사하지 않는다. */
 export function staticIssues(stage: Stage, output: unknown, ctx: CheckCtx): Issue[] {
   switch (stage) {
+    case 1: return gradeUnitIssues(((output as { recommended?: { code: string }[] }).recommended ?? []).map((r) => r.code), ctx)
     case 2: return reconstructionIssues(output as ReconstructionT, ctx)
     case 3: return lessonIssues(output as LessonDesignT, ctx)
     case 4: return [...materialIssues(output as MaterialsT), ...materialUseIssues((output as MaterialsT).materials, ctx, null), ...englishVersionIssues(output as MaterialsT, ctx), ...untickedSharedMaterialIssues(output as MaterialsT, ctx)]

@@ -8,6 +8,7 @@ import { gradeLabel, standardCodePrefixes } from '@/lib/studio/level-map'
 import { nextSetMaterialLetter } from '@/lib/studio/shared-selection'
 import { COMPETENCY_GLOSS } from '@/lib/studio/competency'
 import { referenceUnitBlock, referenceUnitShort } from './reference-units'
+import { gradeUnitBlock } from '@/lib/studio/grade-units'
 
 export type Ctx = {
   /** grade null = 학년 지정 안 함 → 학교급 학년군 전체(대표 결정 2026-09-26, lib/studio/level-map.ts gradeLabel) */
@@ -100,14 +101,44 @@ function nextLetter(ctx: Ctx): string {
   return nextSetMaterialLetter(allThemeLetters(ctx)) ?? 'Z'
 }
 /** 단계 과제 문장. 영어 세트(공동 자료 체크)만 3·4·5단계의 공유 자료 문장을 S-영-09 문장으로 바꾼다 — 그 밖에는 TASKS 그대로. */
+// ── C-44(대표 2026-10-07): 수학·과학은 학년 교과서 단원 안에서만, 모든 과목은 성취기준 원문 안에서만 ──
+const GRADE_UNIT_STAGES = new Set<Stage>([1, 2, 3])
+/** 1·2·3단계에 붙는 그 학년 단원 목록(수학·과학 + 학년일 때만, 나머지는 빈 문자열). */
+function gradeUnitsBlock(stage: Stage, ctx: Ctx): string {
+  if (!GRADE_UNIT_STAGES.has(stage)) return ''
+  const b = gradeUnitBlock(ctx.theme.level, ctx.subject, ctx.theme.grade)
+  return b ? `\n\n${b}` : ''
+}
+const gradeStrict = (ctx: Ctx) => gradeUnitBlock(ctx.theme.level, ctx.subject, ctx.theme.grade) !== ''
+const TASK1_BAND_SENTENCE = '2022 개정 성취기준은 학년군 단위이므로 학년군 안에서 몇 학년에 배우는 내용인지는 따지지 않는다.'
+const REVIEW1_BAND_SENTENCE = '2022 개정 성취기준은 학년군 단위이므로 학년군 안에서 몇 학년에 배우는 내용인지는 따지지 않고, 그것으로 반려하지 않는다.'
+const C44_TASK: Partial<Record<Stage, string>> = {
+  3: ' 성취기준 원문에 없는 개념·활동을 차시 목표·발문·퀴즈 정답으로 삼지 않는다(C-44).',
+  5: ' 성취기준 원문에 없는 개념·활동을 평가 요소·채점 요소·예시답안의 핵심으로 삼지 않는다(C-44).',
+}
+const C44_REVIEW: Partial<Record<Stage, string>> = {
+  3: ' 성취기준 원문에 없는 개념이 차시 목표·퀴즈 정답이면 fidelity(C-44).',
+  5: ' 성취기준 원문에 없는 개념이 채점 요소·예시답안의 핵심이면 fidelity(C-44).',
+}
+function c44Task(stage: Stage, ctx: Ctx): string {
+  const strict = stage === 3 && gradeStrict(ctx) ? ' 다른 학년 단원의 개념을 가르치거나 묻지 않는다(C-44).' : ''
+  return `${C44_TASK[stage] ?? ''}${strict}`
+}
+
 function taskFor(stage: Stage, ctx: Ctx): string {
+  let text = TASKS[stage]
+  // 단원 블록은 과제 문장보다 앞(header 다음)에 붙으므로 "위 … 목록"(검토 2026-10-07). 1단계 출력에는 부적합 칸이 없어 "추천하지 않는다"로 말한다.
+  if (stage === 1 && gradeStrict(ctx)) text = text.replace('학교급 적합성은 성취기준 코드로만 본다', '학교급 적합성은 성취기준 코드로 본다').replace(TASK1_BAND_SENTENCE, `수학·과학은 교과서 단원이 학년마다 정해져 있다 — 위 ${ctx.theme.grade}학년 단원 목록에 없는 성취기준은 추천하지 않는다(recommended에서 뺀다, C-44).`)
+  text += c44Task(stage, ctx)
   const from = SHARED_SENTENCE[stage]
   const to = ENGLISH_SHARED_SENTENCE[stage]
-  if (!from || !to || !englishVersionMode(ctx)) return TASKS[stage]
-  return TASKS[stage].replace(from, to(sharedMaterialIds(ctx.prior).join(', '), nextLetter(ctx)))
+  if (!from || !to || !englishVersionMode(ctx)) return text
+  return text.replace(from, to(sharedMaterialIds(ctx.prior).join(', '), nextLetter(ctx)))
 }
 function reviewFocusFor(stage: Stage, ctx: Ctx): string {
-  return `${REVIEW_FOCUS[stage]}${englishVersionMode(ctx) ? (ENGLISH_REVIEW_FOCUS[stage] ?? '') : ''}`
+  let text = REVIEW_FOCUS[stage]
+  if (stage === 1 && gradeStrict(ctx)) text = text.replace('이 학교급의 성취기준인지만 본다', '이 학교급의 성취기준인지 본다').replace(REVIEW1_BAND_SENTENCE, `수학·과학은 학년 교과서 단원이 정해져 있다 — 위 ${ctx.theme.grade}학년 단원 목록에 없으면 grade_level(C-44).`)
+  return `${text}${C44_REVIEW[stage] ?? ''}${englishVersionMode(ctx) ? (ENGLISH_REVIEW_FOCUS[stage] ?? '') : ''}`
 }
 
 /** 성취수준(A~E) 블록을 넣는 단계: 적합성 판단·재구성·차시(활동지 층)·문항(척도)·안내장(요소 문구). */
@@ -245,7 +276,7 @@ export function buildPrompt(stage: Stage, ctx: Ctx) {
   const prior = priorBlockFor(ctx, GENERATE_PRIOR[stage], GENERATE_SHARED_MATERIALS.has(stage) ? ['shared_materials'] : [], '이 단계에 필요한 것만', sharedLabels(ctx), stage)
   return {
     system: rulesFor(ctx.subject),
-    user: `${header(ctx)}${knowledgeBlocks(stage, ctx)}${referenceBlock(stage, ctx)}\n\n과제: ${taskFor(stage, ctx)}${stage === 1 ? schoolCodeNote(ctx) : ''}${lettering}${prior}`,
+    user: `${header(ctx)}${knowledgeBlocks(stage, ctx)}${gradeUnitsBlock(stage, ctx)}${referenceBlock(stage, ctx)}\n\n과제: ${taskFor(stage, ctx)}${stage === 1 ? schoolCodeNote(ctx) : ''}${lettering}${prior}`,
     fixtureKey: fixtureKeyFor(stage, 'generate', ctx),
   }
 }
@@ -356,6 +387,6 @@ export function buildReviewPrompt(stage: Stage, ctx: Ctx, output: unknown) {
   // 규칙은 첫 블록(캐시), 검토자 지시는 둘째 블록(캐시 없음) → 같은 과목의 생성·검토가 같은 캐시 항목을 공유한다
   const system: string[] = [rulesFor(ctx.subject), REVIEWER]
   const prior = priorBlockFor(ctx, REVIEW_PRIOR[stage], REVIEW_SHARED_MATERIALS.has(stage) ? ['shared_materials'] : [], undefined, sharedLabels(ctx), stage)
-  const user = `${header(ctx)}${knowledgeBlocks(stage, ctx)}${prior}\n\n검토 초점: ${reviewFocusFor(stage, ctx)}${stage === 1 ? schoolCodeNote(ctx) : ''}\n\n생성 결과:\n${JSON.stringify(output, null, 1)}`
+  const user = `${header(ctx)}${knowledgeBlocks(stage, ctx)}${gradeUnitsBlock(stage, ctx)}${prior}\n\n검토 초점: ${reviewFocusFor(stage, ctx)}${stage === 1 ? schoolCodeNote(ctx) : ''}\n\n생성 결과:\n${JSON.stringify(output, null, 1)}`
   return { system, user, fixtureKey: fixtureKeyFor(stage, 'review', ctx) }
 }

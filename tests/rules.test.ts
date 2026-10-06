@@ -10,7 +10,7 @@ describe('rules v2', () => {
     const spec = readFileSync('docs/superpowers/specs/2026-09-25-item-studio-v2-design.md', 'utf8')
     for (const id of ids) expect(spec.split(`| ${id} |`).length - 1, id).toBe(1)
     // 부록 A: 공통 38(C-31 대표 확정값, C-32 조건=지침(2026-09-26), C-33 자료 설계·유형(대표 연수 2기), C-34·C-36·C-37 경기2025, C-39 배운 것만 채점·C-40 역량 꼬리표(대표 2026-09-29) 포함) + 차시 21(L-13 정답 노출·활동지 되풀이 금지, 2026-10-01 영어 세트 검토; L-14~L-21 교육청 재구성 예시 자료집 G-1~G-8, 대표 2026-10-01) + 과목 40(국6·수7·사7·역3·과8·영9 — S-영-08 번역·S-영-09 공동 자료 영어판(대표 2026-09-29), S-사-07 사회 통합(대표 2026-09-30)) + 채점 10(G-10 경기2025) + 안내장 12 = 121
-    expect(ids.length).toBe(41 + 21 + 40 + 10 + 13)   // C-41 자료의 사실성(대표 2026-10-03), C-42 글자 수로 답을 유도하지 않는다(대표 2026-10-05), N-13 안내장 말투 통일·C-43 안쪽 칸 이름 금지(대표 2026-10-06)
+    expect(ids.length).toBe(42 + 21 + 40 + 10 + 13)   // C-41 자료의 사실성(대표 2026-10-03), C-42 글자 수로 답을 유도하지 않는다(대표 2026-10-05), N-13 안내장 말투 통일·C-43 안쪽 칸 이름 금지(대표 2026-10-06), C-44 학년 교과서 단원·성취기준 원문 안에서(대표 2026-10-07)
   })
   it('the spec appendix has no rule row that the code lacks', () => {
     const spec = readFileSync('docs/superpowers/specs/2026-09-25-item-studio-v2-design.md', 'utf8')
@@ -369,5 +369,18 @@ describe('C-43 안쪽 칸 이름을 글에 쓰지 않는다 (대표 2026-10-06)'
     for (const s of ['원장·학생·학부모가 읽는 글', '안쪽 칸 이름', 'merge_guide·per_lesson·criteria_focus·example 같은 영문 필드 이름', '화면에 보이는 한국어 이름(병합 안내·차시별 유의점·예시)']) expect(c43.text, s).toContain(s)
     expect(row('C-43')).toBe(`| C-43 | ${c43.text} | P+S | [대표] |`)
     for (const subject of ['국어', '수학', '과학', '영어', '사회']) expect(rulesFor(subject)).toMatch(/^C-43 원장·학생·학부모가 읽는 글/m)
+  })
+})
+
+// 대표 2026-10-07: 수학·과학은 교육과정이 학년 순서를 사실상 정해 두어 교과서 단원대로, 나머지는 학년군 안이면 유연하게 — 단 성취기준 원문에서 벗어나는 차시·문항은 없게
+describe('C-44 학년 교과서 단원·성취기준 원문 안에서 (대표 2026-10-07)', () => {
+  const spec = readFileSync('docs/superpowers/specs/2026-09-25-item-studio-v2-design.md', 'utf8')
+  const row = (id: string) => spec.split('\n').find((line) => line.startsWith(`| ${id} |`))!
+  it('exists as PS/대표: 수학·과학만 학년 단원 엄격, 모든 과목 원문 밖 금지; spec row identical; reaches every subject prompt', () => {
+    const c44 = COMMON_RULES.find((r) => r.id === 'C-44')!
+    expect(c44.nature).toBe('PS'); expect(c44.tags).toEqual(['대표'])
+    for (const s of ['수학·과학 세트는 그 학년 교과서 단원', '다른 학년 단원의 개념을 가르치거나 채점 요소로 삼지 않는다', '국어·영어·사회는', '중학교 1~3학년군 안이면 된다', '성취기준 원문에 없는 개념·활동으로 차시·문항을 설계하지 않는다']) expect(c44.text, s).toContain(s)
+    expect(row('C-44')).toBe(`| C-44 | ${c44.text} | P+S | [대표] |`)
+    for (const subject of ['국어', '수학', '과학', '영어', '사회']) expect(rulesFor(subject)).toMatch(/^C-44 학년을 정한 대주제의 수학·과학 세트는/m)
   })
 })

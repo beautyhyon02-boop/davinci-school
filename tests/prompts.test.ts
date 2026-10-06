@@ -412,8 +412,10 @@ describe('학년 선택(대표 2026-09-26): 학년이 없으면 학교급 학년
     const elem = buildPrompt(2, { ...noGrade, theme: { ...noGrade.theme, level: '초' } }).user
     expect(headerLine(elem)).toContain('초등학교(3~6학년)')
   })
-  it('stage 1 checks only the school level (code prefix) and the theme — never another grade\'s textbook', () => {
-    for (const c of [ctx, noGrade]) {
+  it('stage 1 checks only the school level (code prefix) and the theme for 국어·영어·사회 and ungraded themes — 수학·과학 + 학년 look at that grade\'s textbook units (C-44)', () => {
+    // 대표 2026-10-07(C-44): 수학·과학 + 학년은 그 학년 교과서 단원을 본다(tests/grade-units.test.ts) — 학년 없음·국어는 여전히 학교급만
+    expect(buildPrompt(1, ctx).user.split('과제: ')[1]).toMatch(/위 1학년 단원 목록에 없는 성취기준은 추천하지 않는다\(recommended에서 뺀다, C-44\)/)
+    for (const c of [noGrade, { ...ctx, subject: '국어' }]) {
       const task = buildPrompt(1, c).user.split('과제: ')[1]
       const focus = buildReviewPrompt(1, c, {}).user.split('검토 초점: ')[1].split('\n\n생성 결과')[0]
       for (const t of [task, focus]) {
