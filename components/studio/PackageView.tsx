@@ -82,7 +82,14 @@ function StandardsSection({ standards }: { standards: Snapshot['standards'] }) {
   )
 }
 
-function ReconstructionSection({ snapshot }: { snapshot: Snapshot }) {
+/** 세트 범위 메모(L-16) — 교사용(원장 패키지·관리자 미리보기). 학생 화면·문제지 인쇄에는 없다 */
+function ScopeNote({ note }: { note: string }) {
+  return <p data-scope-note data-print="omit" className="mt-3 whitespace-pre-wrap rounded-lg bg-ink-100/40 p-3 text-sm"><span className="font-semibold">{copy.scopeNoteLabel}</span> {note}</p>
+}
+
+function ReconstructionSection({ snapshot, mode }: { snapshot: Snapshot; mode: 'admin' | 'teacher' }) {
+  // 재구성(통합 문장·재구조화 표)은 본사만 본다(대표 2026-10-12) — 원장 열람에는 교사용 범위 메모만 남긴다
+  if (mode === 'teacher') return snapshot.scope_note ? <Card><ScopeNote note={snapshot.scope_note} /></Card> : null
   const c = copy.reconstructionTable.columns
   // 재구조화 해설(L-14, 2026-10-01)은 그 뒤에 만든 판에만 있다 — 하나라도 있으면 열을 더한다
   const hasNote = snapshot.reconstruction_detail.some((r) => r.reason_note)
@@ -116,8 +123,7 @@ function ReconstructionSection({ snapshot }: { snapshot: Snapshot }) {
           </table>
         </div>
       )}
-      {/* 세트 범위 메모(L-16) — 교사용(원장 패키지·관리자 미리보기). 학생 화면·문제지 인쇄에는 없다 */}
-      {snapshot.scope_note && <p data-scope-note data-print="omit" className="mt-3 whitespace-pre-wrap rounded-lg bg-ink-100/40 p-3 text-sm"><span className="font-semibold">{copy.scopeNoteLabel}</span> {snapshot.scope_note}</p>}
+      {snapshot.scope_note && <ScopeNote note={snapshot.scope_note} />}
     </Card>
   )
 }
@@ -393,7 +399,7 @@ export function PackageView({ snapshot, mode, showAnswers = false }: { snapshot:
       )}
 
       <StandardsSection standards={snapshot.standards} />
-      <ReconstructionSection snapshot={snapshot} />
+      <ReconstructionSection snapshot={snapshot} mode={mode} />
 
       <Card>
         <SectionHeading>{c.learningGoalsHeading}</SectionHeading>
@@ -426,7 +432,8 @@ export function PackageView({ snapshot, mode, showAnswers = false }: { snapshot:
       <TeacherGuideSection guide={snapshot.teacher_guide} lessons={snapshot.lessons} materials={snapshot.materials} />
       <NoticePlanSection plan={snapshot.notice_plan} />
 
-      {snapshot.references.length > 0 && (
+      {/* 참고한 공개 자료는 본사만 본다(대표 2026-10-12) */}
+      {mode === 'admin' && snapshot.references.length > 0 && (
         <Card>
           <SectionHeading>{c.assessment.referencesHeading}</SectionHeading>
           <ul className="mt-2 list-disc pl-5 text-sm">{snapshot.references.map((r) => <li key={r.id}>{r.id} — {r.source}</li>)}</ul>

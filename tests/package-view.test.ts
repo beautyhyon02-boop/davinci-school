@@ -613,3 +613,22 @@ describe('영문 자료 번역 (교사용, S-영-08)', () => {
     }
   })
 })
+
+// 대표 2026-10-12(설명회 전날): 재구성과 참고한 공개 자료는 본사만 본다 — 원장 열람(mode='teacher')에서는 숨기고, 교사용 범위 메모만 남긴다
+describe('원장 열람에서는 재구성·참고한 공개 자료를 숨긴다 (대표 2026-10-12)', () => {
+  const snap: Snapshot = { ...snapshotFor('수학'), scope_note: '이 세트는 상대도수까지만 다룹니다.', references: [{ id: 'R1', source: '교육청 예시 자료집 2021' }] }
+  it('본사 미리보기(admin)에는 재구성 카드·참고 자료 카드·범위 메모가 모두 있다', () => {
+    const h = text(render(snap, 'admin'))
+    expect(h).toContain(c.reconstructionHeading); expect(h).toContain(snap.reconstruction)
+    expect(h).toContain(c.assessment.referencesHeading); expect(h).toContain('교육청 예시 자료집 2021')
+    expect(h).toContain(c.scopeNoteLabel); expect(h).toContain('이 세트는 상대도수까지만 다룹니다.')
+  })
+  it('원장 열람(teacher)에는 재구성 문장·표와 참고 자료가 없고, 범위 메모(교사용)만 남는다', () => {
+    const html = render(snap, 'teacher'); const h = text(html)
+    expect(h).not.toContain(c.reconstructionHeading); expect(h).not.toContain(snap.reconstruction)
+    expect(h).not.toContain(c.reconstructionTable.columns.reconstructed)
+    expect(h).not.toContain(c.assessment.referencesHeading); expect(h).not.toContain('교육청 예시 자료집 2021')
+    expect(h).toContain(c.scopeNoteLabel); expect(h).toContain('이 세트는 상대도수까지만 다룹니다.')
+    expect(html).toContain('data-scope-note')
+  })
+})

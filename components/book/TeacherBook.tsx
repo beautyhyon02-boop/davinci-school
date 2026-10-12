@@ -36,7 +36,7 @@ function UnitPlanSection({ plan }: { plan: BookPlan }) {
   const p = copy.plan
   const t = plan.teacher!
   const section = plan.sections.find((s) => s.kind === 'plan')!
-  const detailOf = (code: string) => t.reconstructionDetail.find((r) => r.code === code)
+  // 재구성(재구조화 문장·해설·세트 재구성 설명)은 본사만 본다(대표 2026-10-12) — 지도서에는 성취기준 원문과 교사용 범위 메모만 싣는다
   return (
     <Section section={section}>
       <SectionHeading>{p.heading}</SectionHeading>
@@ -44,20 +44,13 @@ function UnitPlanSection({ plan }: { plan: BookPlan }) {
         <div className="book-block" data-plan-standards>
           <Heading3>{p.standards}</Heading3>
           <ul className="book-list">
-            {t.standards.map((s) => {
-              const d = detailOf(s.code)
-              return (
-                <li key={s.code} className="book-block">
-                  <p className="font-semibold">{s.code}</p>
-                  <Below kind="original" label={p.original}>{s.text}</Below>
-                  {d && <Below kind="reconstructed" label={p.reconstructed(d.reconstruction_type)}>{d.reconstructed_text === s.text ? p.sameAsOriginal : d.reconstructed_text}</Below>}
-                  {/* 재구조화 해설(L-14) — 그 뒤에 게시된 판에만 */}
-                  {d?.reason_note && <Below kind="reason-note" label={pv.reconstructionTable.columns.note}>{d.reason_note}</Below>}
-                </li>
-              )
-            })}
+            {t.standards.map((s) => (
+              <li key={s.code} className="book-block">
+                <p className="font-semibold">{s.code}</p>
+                <Below kind="original" label={p.original}>{s.text}</Below>
+              </li>
+            ))}
           </ul>
-          {t.reconstruction && <KV stacked label={p.reconstructionNote}>{t.reconstruction}</KV>}
           {/* 세트 범위 메모(L-16) — 교사용 */}
           {t.scopeNote && <div data-scope-note><KV stacked label={p.scopeNote}>{t.scopeNote}</KV></div>}
         </div>

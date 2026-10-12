@@ -258,3 +258,18 @@ describe('both books on the legacy v1 snapshot', () => {
     for (const w of sess.worksheet.tasks) below(tsec, w.prompt, w.expected)
   })
 })
+
+// 대표 2026-10-12(설명회 전날): 교사용 지도서에서도 재구성(재구조화 문장·해설·세트 재구성 설명)은 뺀다 — 성취기준 원문과 교사용 범위 메모는 남는다
+describe('TeacherBook — 재구성은 인쇄하지 않는다 (대표 2026-10-12)', () => {
+  const base = snapshotFor('수학')
+  const snap: Snapshot = { ...base, scope_note: '이 세트는 상대도수까지만 다룹니다.', reconstruction_detail: base.reconstruction_detail.map((r, i) => (i === 0 ? { ...r, reason_note: '학원 60분에 맞춰 묶음' } : r)) }
+  it('성취기준 원문과 범위 메모는 있고, 재구성 문장·해설·세트 재구성 설명은 없다', () => {
+    const html = teacher(snap); const t = text(html)
+    for (const s of snap.standards) expect(t).toContain(norm(s.text))
+    expect(t).toContain(copy.plan.scopeNote); expect(t).toContain('이 세트는 상대도수까지만 다룹니다.')
+    expect(html).not.toContain('data-book-aside="reconstructed"'); expect(html).not.toContain('data-book-aside="reason-note"')
+    expect(t).not.toContain(copy.plan.reconstructionNote); expect(t).not.toContain('재구성(')
+    expect(t).not.toContain('학원 60분에 맞춰 묶음')
+    if (snap.reconstruction) expect(t).not.toContain(norm(snap.reconstruction))
+  })
+})
