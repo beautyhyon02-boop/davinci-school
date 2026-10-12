@@ -2,6 +2,7 @@
 import { useState, useTransition } from 'react'
 import { resetStudentPassword } from './actions'
 import { app } from '@/content/site'
+import { STUDENT_DEFAULT_PASSWORD } from '@/lib/auth/student-password'
 
 const copy = app.classroom.students.reset
 
@@ -9,7 +10,7 @@ export function ResetPasswordButton({ profileId }: { profileId: string }) {
   const [result, setResult] = useState<string | null>(null)
   const [pending, start] = useTransition()
   function onClick() {
-    if (!window.confirm(copy.confirm)) return
+    if (!window.confirm(copy.confirm(STUDENT_DEFAULT_PASSWORD))) return
     start(async () => { const r = await resetStudentPassword(profileId); setResult(r.password ?? r.error ?? null) })
   }
   return (

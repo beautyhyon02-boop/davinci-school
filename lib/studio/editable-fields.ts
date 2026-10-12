@@ -52,6 +52,8 @@ export const EDITABLE_FIELDS: Record<EditableStage, FieldSpec[]> = {
     line('lessons[].formative_check.quiz[].answer'),
     text('lessons[].formative_check.quiz[].explanation'),
     pick('lessons[].formative_check.quiz[].competency', COMPETENCIES),
+    // 핵심어(L-22, 2026-10-12) — 채점에 직접 쓰이므로 손봐야 할 때가 있다. 없는 옛 출력에서는 칸이 되지 않는다
+    line('lessons[].formative_check.quiz[].keywords[]'),
   ],
   4: [
     line('materials[].title'),

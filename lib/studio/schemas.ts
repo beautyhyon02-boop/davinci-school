@@ -93,6 +93,8 @@ export const QuizItem = z.object({
   // 역량 꼬리표(C-40, 단원 리포트 육각형 6축 — 설계 2026-09-29 §3). 선택(모든 경로): 옛 판·기존 세트에는 없다 — 읽을 때 competencyOf 가 채운다.
   // 빠지면 [TS] 참고 메모만(checks.ts, 막지 않음). 교사용 표시이고 학생 화면·문제지에는 보이지 않는다.
   competency: z.enum(COMPETENCIES).optional(),
+  // 핵심어(L-22, 대표 2026-10-12): 정답에 꼭 들어가야 할 낱말 1~3개 — 채점은 글자 비교 → 핵심어 포함 → AI 뜻 판정 순. 선택(옛 판에는 없다; 빠지면 [TS] 참고 메모).
+  keywords: z.array(z.string().min(1)).min(1).max(3).optional(),
 })
 /** 새 세트 퀴즈 규칙(L-09) 위반 사유 — zod(LessonDesign)와 [TS](checks.ts)가 같은 문장을 쓴다. */
 export const QUIZ_SHORT_ONLY = '퀴즈는 단답형만(선택지 금지)'

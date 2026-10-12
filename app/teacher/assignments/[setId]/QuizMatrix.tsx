@@ -49,6 +49,9 @@ export function QuizMatrix({ setId, lessons, students, responses, finalizations,
     else setMsg(r.unfinalized ? { tone: 'info', text: copy.finalize.unfinalized } : null)
   })
 
+  // AI 뜻 판정(대표 2026-10-12): 원장이 누른 칸(overridden_by)이 아니면 판정 표시 — 부분은 "확인 필요"(노란 칸)
+  const aiOf = (r: QuizResponseRow | undefined) => (r && !r.overridden_by && !isTeacherEntered(r) ? r.ai_verdict ?? null : null)
+  const needsCheck = students.reduce((n, s) => n + Array.from({ length: cur?.quizCount ?? 0 }, (_, i) => aiOf(cell(s.assignmentId, i + 1)) === '부분').filter(Boolean).length, 0)
   const fin = lessonFinalState(lesson, ids, finalizations)
   const missing = cur ? assignmentsWithEmpty({ no: cur.no, quizCount: cur.quizCount }, ids, responses) : []
   // 고를 수 있는 학생: 이 차시에 빈칸이 있고, 이 차시가 열려 있는 학생
@@ -68,6 +71,7 @@ export function QuizMatrix({ setId, lessons, students, responses, finalizations,
             {finalizeAvailable && lessonFinalState(l.no, ids, finalizations).state === 'all' ? copy.finalize.tabDone(app.classroom.student.lessonTab(l.no)) : app.classroom.student.lessonTab(l.no)}
           </button>
         ))}
+        {needsCheck > 0 && <Badge tone="lemon">{copy.quizCell.needsCheckCount(needsCheck)}</Badge>}
       </div>
       {cur && cur.quizCount > 0 ? (
         <>
@@ -114,16 +118,22 @@ export function QuizMatrix({ setId, lessons, students, responses, finalizations,
                     const paper = isTeacherEntered(r)
                     // 이 학생에게 아직 열지 않은 차시의 빈칸: O/X 를 넣지 않는다(서버도 거절한다). 이미 넣은 칸은 고칠 수 있다.
                     const closedEmpty = !r && !isOpenFor(s)
+                    const ai = aiOf(r)
+                    const partial = ai === '부분'
+                    const byKeyword = !!r && !paper && !r.overridden_by && r.match_kind === 'keyword'
+                    const stateLabel = partial ? `${copy.quizCell.labels[state]} · ${copy.quizCell.needsCheck}` : ai ? `${copy.quizCell.labels[state]} · ${copy.quizCell.aiMark}` : byKeyword ? `${copy.quizCell.labels[state]} · ${copy.quizCell.keywordMark}` : copy.quizCell.labels[state]
                     return (
                       <td key={i} className="p-2 text-center">
                         <button type="button" disabled={next === null || pending || closedEmpty}
-                          title={r ? (paper ? copy.quizCell.teacherEntered : copy.quizCell.studentAnswer(r.response)) : closedEmpty ? copy.quizCell.notOpen : copy.quizCell.labels.empty}
-                          aria-label={copy.quizCell.aria(s.name, i + 1, copy.quizCell.labels[state])}
+                          title={r ? (paper ? copy.quizCell.teacherEntered : ai ? copy.quizCell.aiTitle(r.response, ai, r.ai_reason ?? '') : byKeyword ? copy.quizCell.keywordTitle(r.response) : copy.quizCell.studentAnswer(r.response)) : closedEmpty ? copy.quizCell.notOpen : copy.quizCell.labels.empty}
+                          aria-label={copy.quizCell.aria(s.name, i + 1, stateLabel)}
                           onClick={() => next !== null && run(() => setQuizCell(s.assignmentId, lesson, i + 1, next))}
-                          className={`h-10 w-10 rounded-full text-base font-bold ${CELL_STYLE[state]} ${next === null || closedEmpty ? 'cursor-default' : 'cursor-pointer'}`}>
+                          className={`h-10 w-10 rounded-full text-base font-bold ${partial ? 'bg-lemon-100 text-ink-900' : CELL_STYLE[state]} ${next === null || closedEmpty ? 'cursor-default' : 'cursor-pointer'}`}>
                           {state === 'empty' ? copy.noResponse : copy.quizCell.labels[state]}
                         </button>
                         {paper && <div className="mt-0.5 text-xs text-lavender-700">{copy.quizCell.paperMark}</div>}
+                        {ai && <div className={`mt-0.5 text-xs ${partial ? 'font-semibold text-ink-900' : 'text-ink-500'}`}>{partial ? copy.quizCell.needsCheck : copy.quizCell.aiMark}</div>}
+                        {!ai && byKeyword && <div className="mt-0.5 text-xs text-ink-500">{copy.quizCell.keywordMark}</div>}
                       </td>
                     )
                   })}

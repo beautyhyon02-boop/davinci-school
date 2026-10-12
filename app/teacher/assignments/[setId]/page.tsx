@@ -64,6 +64,7 @@ export default async function AssignmentSetPage({ params }: { params: Promise<{ 
       <div className="mt-4"><OpenLessonsControl setId={setId} current={minOpen} maxLessons={snapshot.lessons.length} /></div>
       <div className="mt-6"><QuizMatrix setId={setId} lessons={lessonsMeta} students={students} responses={quizRows} finalizations={finalizations.rows} finalizeAvailable={finalizations.available} /></div>
       <h2 className="mt-8 text-lg font-bold">{app.classroom.review.answersHeading}</h2>
+      <p className="mt-1 text-sm text-ink-500">{app.classroom.review.answersNote}</p>
       <div className="mt-3 space-y-6">
         {rows.map((r) => {
           const own = answerRows.filter((a) => a.assignment_id === r.id)

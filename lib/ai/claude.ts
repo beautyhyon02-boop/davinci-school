@@ -3,7 +3,7 @@ import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod'
 import { z, type ZodType } from 'zod'
 import { loadFixture } from './mock'
 
-export const MODELS = { generate: 'claude-opus-5', review: 'claude-opus-5', grade: 'claude-sonnet-5' } as const
+export const MODELS = { generate: 'claude-opus-5', review: 'claude-opus-5', grade: 'claude-sonnet-5', quiz: 'claude-haiku-5-5' } as const   // quiz: 퀴즈 뜻 판정(대표 2026-10-12, 가장 작은 모델)
 export type Effort = 'low' | 'medium' | 'high' | 'xhigh' | 'max'
 /**
  * 출력 방식.

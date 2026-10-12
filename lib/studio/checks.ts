@@ -2,6 +2,7 @@ import type { z } from 'zod'
 import { checkReconstructionFidelity, tokensFoundIn } from './fidelity'
 import { levelRefFor, gradeLabel } from './level-map'
 import { outOfGradeStandards } from './grade-units'
+import { isNumericAnswer } from '@/lib/classroom/quiz'
 import { structureIssues, kindFamily, sessionPlacementIssues, isAssessmentSession, lessonAssessments, ESSAY_MIN_MINUTES } from './assessment-structure'
 import type { Stage, ReviewKind, Reconstruction, LessonDesign, Materials, Assessment, TeacherGuide, NoticePlan } from './schemas'
 import { QUIZ_SHORT_ONLY, isShortQuiz, quizLevelSpreadOk } from './schemas'
@@ -79,6 +80,11 @@ const TEMPLATE_LABELS: Record<string, string> = { [/를?\s*가지고\s/.source]:
  * C-44(대표 2026-10-07): 학년을 정한 대주제의 수학·과학은 그 학년 교과서 단원 안에서만 — 고른 성취기준이 다른 학년 단원이면 어느 학년 어느 단원인지
  * 적는다(참고 메모, 막지 않음). 국어·영어·사회·학년 없음은 outOfGradeStandards 가 빈 배열을 돌려준다.
  */
+/** 핵심어(L-22)가 뜻이 있는 정답인가 — 정답 표기가 모두 숫자·범위("4", "0.36", "5회 이상 10회 미만" → 5~10)면 핵심어가 필요 없다. */
+export function quizNeedsKeywords(answer: string): boolean {
+  return !isNumericAnswer(answer)
+}
+
 function gradeUnitIssues(codes: string[], ctx: CheckCtx): Issue[] {
   const grade = ctx.theme?.grade
   const level = ctx.theme?.level
@@ -569,6 +575,8 @@ function lessonIssues(o: LessonDesignT, ctx: CheckCtx): Issue[] {
       }
       // C-42(대표 2026-10-05): 글자 수·낱말 수로 답을 좁히는 단서("두 글자로 쓰시오") — 퀴즈와 활동지 과제 문장만 본다(참고 메모)
       for (const [i, q] of l.formative_check.quiz.entries()) { const cue = letterCountCue(q.q); if (cue) issues.push({ kind: 'other', detail: letterCueNote(`${l.no}차시 퀴즈 ${i + 1}`, cue) }) }
+      // L-22(대표 2026-10-12): 핵심어가 없는 단답형 퀴즈는 글자 비교·AI 판정에만 기대게 된다 — 참고 메모(옛 판·옛 fixture에는 없다)
+      for (const [i, q] of l.formative_check.quiz.entries()) if (isShortQuiz(q) && quizNeedsKeywords(q.answer) && !((q as { keywords?: unknown }).keywords as unknown[] | undefined)?.length) issues.push({ kind: 'other', detail: `${l.no}차시 퀴즈 ${i + 1}: 핵심어(keywords)가 없음 — 정답 표기를 여러 꼴로 적고 핵심어 1~3개를 함께 적는다(L-22)` })
       for (const [k, t] of (l.worksheet?.tasks ?? []).entries()) { const cue = letterCountCue(t.prompt); if (cue) issues.push({ kind: 'other', detail: letterCueNote(`${l.no}차시 활동지 과제 ${t.no ?? k + 1}번`, cue) }) }
     }
     for (const q of l.teacher_script.questions) if (norm(q.if_stuck) === norm(q.expected_answer)) issues.push({ kind: 'other', detail: `${l.no}차시 발문 힌트가 정답과 같음` })

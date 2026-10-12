@@ -54,3 +54,31 @@ describe('QuizMatrix', () => {
     expect(t).not.toContain(copy.finalize.missingHeading)
   })
 })
+
+// 대표 2026-10-12: AI 뜻 판정 — 맞음은 O 에 작은 AI 표시, 부분은 노란 칸 + "확인 필요"(이유는 칸 제목에), 차시 탭 옆에 확인 필요 개수
+describe('QuizMatrix — AI 판정 표시 (대표 2026-10-12)', () => {
+  const ai = (quiz_no: number, correct: boolean, verdict: '맞음' | '부분' | '틀림', reason: string) => ({ ...row('a1', quiz_no, correct, 'student'), ai_verdict: verdict, ai_reason: reason })
+  const rows = [ai(1, true, '맞음', '같은 뜻의 다른 표현'), ai(2, false, '부분', '근거는 맞지만 목적이 빠짐'), row('a1', 3, false, 'student'), ...full.filter((r) => r.assignment_id !== 'a1')]
+  it('맞음 칸에는 AI 표시, 부분 칸에는 확인 필요 표시와 노란색, 이유는 title 에', () => {
+    const html = render({ responses: rows }); const t = text(html)
+    expect(t).toContain(copy.quizCell.aiMark)
+    expect(t).toContain(copy.quizCell.needsCheck)
+    expect(html).toContain('bg-lemon-100')
+    expect(html).toContain(copy.quizCell.aiTitle('답', '부분', '근거는 맞지만 목적이 빠짐').replace(/&/g, '&amp;'))
+  })
+  it('확인 필요 개수가 보이고, 부분이 없으면 개수 문구가 없다', () => {
+    expect(text(render({ responses: rows }))).toContain(copy.quizCell.needsCheckCount(1))
+    expect(text(render())).not.toContain(copy.quizCell.needsCheck)
+  })
+})
+
+// 독립 검토 2026-10-12: 핵심어로 맞은 칸도 원장이 알아볼 수 있게 표시한다(핵심어 오탐을 눈으로 잡을 수 있게)
+describe('QuizMatrix — 핵심어 일치 표시', () => {
+  it('match_kind keyword 인 O 칸에는 핵심어 표시와 title 이 붙고, aria-label 에도 들어간다', () => {
+    const rows = [{ ...row('a1', 1, true, 'student'), match_kind: 'keyword' as const }, ...full.filter((r) => !(r.assignment_id === 'a1' && r.quiz_no === 1))]
+    const html = render({ responses: rows }); const t = text(html)
+    expect(t).toContain(copy.quizCell.keywordMark)
+    expect(html).toContain(copy.quizCell.keywordTitle('답'))
+    expect(html).toContain(copy.quizCell.aria('김하늘', 1, `${copy.quizCell.labels.O} · ${copy.quizCell.keywordMark}`))
+  })
+})

@@ -3,7 +3,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSessionProfile } from '@/lib/auth/session'
-import { generatePassword } from '@/lib/auth/passwords'
+import { STUDENT_DEFAULT_PASSWORD } from '@/lib/auth/student-password'
 import { toLoginEmail } from '@/lib/auth/login-id'
 import { parseNewStudent, buildLoginId } from '@/lib/students/new-student'
 import { app } from '@/content/site'
@@ -32,7 +32,7 @@ export async function createStudent(_prev: IssuedState, formData: FormData): Pro
   if (seqErr || typeof seq !== 'number') return { error: errors.createFailed }
 
   const loginId = buildLoginId(academy.code, seq)
-  const password = generatePassword(8)
+  const password = STUDENT_DEFAULT_PASSWORD   // 고정값(대표 2026-10-12) — 학생이 외우기 쉽게
   const admin = createAdminClient()
   const { data: created, error } = await admin.auth.admin.createUser({
     email: toLoginEmail(loginId),
@@ -60,7 +60,7 @@ export async function resetStudentPassword(profileId: string): Promise<{ passwor
   // RLS: 원장은 자기 원 students 만 보이므로 여기서 걸러진다
   const { data: st } = await supabase.from('students').select('profile_id').eq('profile_id', profileId).eq('academy_id', s.academyId).maybeSingle()
   if (!st) return { error: errors.forbidden }
-  const password = generatePassword(8)
+  const password = STUDENT_DEFAULT_PASSWORD   // 초기화도 같은 고정값(대표 2026-10-12)
   const { error } = await createAdminClient().auth.admin.updateUserById(profileId, { password })
   if (error) return { error: errors.createFailed }
   return { password }

@@ -3,7 +3,9 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { getSessionProfile } from '@/lib/auth/session'
 import { loadAssignmentSnapshot } from '@/lib/classroom/snapshot'
-import { judgeQuiz } from '@/lib/classroom/quiz'
+import { judgeQuiz, needsAiJudge, matchKind } from '@/lib/classroom/quiz'
+import { judgeShortWithAi } from '@/lib/classroom/quiz-judge'
+import { isMissingColumn } from '@/lib/classroom/quiz-entry'
 import { isLessonOpen, isPaperItem } from '@/lib/classroom/lessons'
 import { app } from '@/content/site'
 
@@ -33,15 +35,32 @@ export async function submitQuiz(assignmentId: string, lessonNo: number, respons
 
   // service role 로 넣으므로 클라이언트 값은 문자열·길이만 받아들인다
   const resp = (i: number) => (Array.isArray(responses) && typeof responses[i] === 'string' ? responses[i].slice(0, 500) : '')
-  const rows = lesson.formative_check.quiz.map((q, i) => ({
-    assignment_id: assignmentId, lesson_no: lessonNo, quiz_no: i + 1,
-    response: resp(i), correct: judgeQuiz(q, resp(i)), source: 'student' as const,
-  }))
+  const quizzes = lesson.formative_check.quiz
+  // 채점 순서(대표 2026-10-12): 글자 비교·핵심어(judgeQuiz) → 틀린 단답형만 AI 뜻 판정(맞음이면 O, 부분·틀림이면 X). AI가 실패하면 X 그대로.
+  const verdicts = await Promise.all(quizzes.map((q, i) => (needsAiJudge(q, resp(i))
+    ? judgeShortWithAi({ subject: snapshot.cover.subject, level: snapshot.cover.level, grade: snapshot.cover.grade, q: q.q, answer: q.answer, explanation: q.explanation, keywords: q.keywords ?? null, response: resp(i) })
+    : Promise.resolve(null))))
+  // match_kind(0017): 무엇으로 맞았는지 — literal(글자 비교) / keyword(핵심어) / ai(AI 판정) / null(틀림, AI 없음). 원장 표가 핵심어·AI 칸을 표시한다.
+  const AI_COLUMNS = ['ai_verdict', 'ai_reason', 'match_kind']
+  const rows = quizzes.map((q, i) => {
+    const v = verdicts[i]
+    const kind = v ? 'ai' : matchKind(q, resp(i))
+    return {
+      assignment_id: assignmentId, lesson_no: lessonNo, quiz_no: i + 1,
+      response: resp(i), correct: v?.verdict === '맞음' ? true : judgeQuiz(q, resp(i)), source: 'student' as const,
+      ...(v ? { ai_verdict: v.verdict, ai_reason: v.reason } : {}),
+      ...(kind ? { match_kind: kind } : {}),
+    }
+  })
   // 학생에게는 quiz_responses 쓰기 정책이 없다(정오를 스스로 적지 못하게). 위의 본인·열린 차시·중복 검사를 사용자 클라이언트로
   // 마친 뒤, 서버가 judgeQuiz 로 매긴 결과를 service role 로 넣는다(gradings 와 같은 방식). unique 제약이 동시 제출을 막는다.
   const { createAdminClient } = await import('@/lib/supabase/admin')
   const admin = createAdminClient()
-  const { error } = await admin.from('quiz_responses').insert(rows)
+  let { error } = await admin.from('quiz_responses').insert(rows)
+  // 0017(ai_verdict·ai_reason·match_kind) 전: 그 열이 없으면 세 열만 빼고 다시 넣는다 — O/X 는 그대로 저장된다
+  if (error && isMissingColumn(error) && rows.some((r) => AI_COLUMNS.some((c) => c in r))) {
+    ({ error } = await admin.from('quiz_responses').insert(rows.map((r) => Object.fromEntries(Object.entries(r).filter(([k]) => !AI_COLUMNS.includes(k))))))
+  }
   if (error) return { ok: false, error: errors.saveFailed }
   // 원장이 이 차시를 이미 최종 확인한 뒤에 낸 경우: 이 학생·이 차시의 확인을 푼다(원장 화면 「확인이 풀린 학생」에 뜬다).
   // 학생 제출은 끝났으므로 표가 없거나(0014 전) 풀지 못해도 제출 결과는 그대로 돌려준다.

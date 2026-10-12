@@ -492,6 +492,7 @@ export const app = {
           'lessons[].formative_check.quiz[].answer': (ix: number[]) => `퀴즈 ${nth(ix[1])} 정답`,
           'lessons[].formative_check.quiz[].explanation': (ix: number[]) => `퀴즈 ${nth(ix[1])} 해설`,
           'lessons[].formative_check.quiz[].competency': (ix: number[]) => `퀴즈 ${nth(ix[1])} 역량`,
+          'lessons[].formative_check.quiz[].keywords[]': (ix: number[]) => `퀴즈 ${nth(ix[1])} 핵심어 ${nth(ix[2])}`,
           // 4단계
           'materials[].title': () => '제목',
           'materials[].body': () => '본문',
@@ -893,14 +894,15 @@ export const app = {
       },
       issued: {
         heading: '계정이 만들어졌습니다',
-        body: '아래 아이디와 초기 비밀번호는 지금 한 번만 보입니다. 인쇄하거나 복사해 학생에게 전해 주세요.',
+        body: '초기 비밀번호는 모든 학생이 123456입니다. 아이디를 인쇄하거나 복사해 학생에게 전해 주세요.',
         loginId: '아이디',
         password: '초기 비밀번호',
         copy: '복사',
         copied: '복사했습니다',
         close: '닫기',
       },
-      reset: { button: '비밀번호 초기화', confirm: '새 비밀번호를 만들까요? 학생은 이전 비밀번호로 로그인할 수 없게 됩니다.', done: '새 비밀번호' },
+      // 대표 2026-10-12: 학생 비밀번호는 고정값(lib/auth/student-password.ts) — 초기화하면 그 값으로 돌아간다
+      reset: { button: '비밀번호 초기화', confirm: (password: string) => `비밀번호를 ${password}(으)로 되돌릴까요? 학생은 이전 비밀번호로 로그인할 수 없게 됩니다.`, done: '비밀번호' },
       errors: {
         nameMissing: '이름을 입력하세요.',
         levelInvalid: '학교급을 고르세요.',
@@ -1019,6 +1021,14 @@ export const app = {
         studentAnswer: (response: string) => `학생이 쓴 답: ${response}`,
         teacherEntered: '원장이 넣은 칸(종이로 푼 문제)',
         notOpen: '아직 열지 않은 차시라 O/X 를 넣을 수 없습니다.',
+        // AI 뜻 판정(대표 2026-10-12): 글자가 달라도 뜻이 같으면 O(AI 표시), 일부만 맞으면 X + 확인 필요(노란 칸). 원장이 누르면 원장 판정이 우선.
+        aiMark: 'AI',
+        needsCheck: '확인 필요',
+        needsCheckCount: (n: number) => `확인 필요 ${n}칸`,
+        aiTitle: (response: string, verdict: string, reason: string) => `학생이 쓴 답: ${response} — AI 판정 ${verdict}: ${reason}`,
+        // 핵심어(L-22)로 맞은 칸 — 글자는 달라도 핵심어가 다 들어 있어 O 가 된 것. 원장이 눈으로 확인할 수 있게 표시한다.
+        keywordMark: '핵심어',
+        keywordTitle: (response: string) => `학생이 쓴 답: ${response} — 핵심어가 모두 들어 있어 정답으로 봄`,
       },
       fillEmpty: '종이로 푼 학생 O 채우기',
       fillEmptyHint: '누르면 학생 목록이 나옵니다. 종이로 푼 학생만 골라 빈칸을 O 로 채우고, 그다음 틀린 칸만 눌러 X 로 바꾸세요.',
@@ -1041,7 +1051,9 @@ export const app = {
         missingHeading: '아직 O/X 가 없는 학생',
         missingNote: '그대로 최종 확인해도 됩니다. 빈칸은 리포트에서 "기록 없음"으로 빠집니다.',
       },
-      answersHeading: '답안·검수',
+      // 대표 2026-10-12: 서·논술형은 마지막(단원 평가) 차시의 것 — 퀴즈 표 아래 붙어 있어 차시 소속으로 오해하지 않게 제목·한 줄 안내
+      answersHeading: '단원 평가(마지막 차시) 답안·검수',
+      answersNote: '서·논술형은 마지막 차시(단원 평가)에서 씁니다. 그 차시를 열기 전에는 답안이 비어 있습니다.',
       status: { none: '미제출', pending: '채점 중', drafted: '검수 대기', confirmed: '공개됨', failed: '실패', rejected: '다시 쓰기 요청', retry: '재도전 중' },
       attempt: (n: number) => `${n}회차`,
       studentAnswer: '학생 답안',

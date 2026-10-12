@@ -19,6 +19,15 @@ import { canSetCell, emptyCells, teacherQuizRow, affectedFinalizations, fillCand
 export type EntryResult = { ok: true; unfinalized: boolean } | { ok: false; reason: 'not-allowed' | 'not-open' | 'save-failed' | 'unfinalize-failed' }
 export type UnfinalizeResult = { ok: true; removed: boolean } | { ok: false }
 
+/** 마이그레이션 0017 전: quiz_responses 에 ai_verdict·ai_reason 열이 없어 PostgREST 가 거절한 경우(PGRST204 / 42703). */
+export function isMissingColumn(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false
+  const e = error as { code?: unknown; message?: unknown }
+  if (e.code === 'PGRST204' || e.code === '42703') return true
+  const m = typeof e.message === 'string' ? e.message : ''
+  return /could not find the '.*' column|column .* does not exist/i.test(m)
+}
+
 /**
  * 표가 없어서 난 오류인가(마이그레이션 0014 전). PostgREST PGRST205(스키마 캐시에 표 없음)·Postgres 42P01(relation 없음),
  * 또는 코드 없이 문장만 온 경우 그 문장으로 알아본다. 그 밖의 오류(권한·네트워크 등)는 표 없음으로 치지 않는다.

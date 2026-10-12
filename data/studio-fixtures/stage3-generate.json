@@ -199,6 +199,9 @@
             "answer": "통계적 탐구 문제 / 탐구 문제",
             "explanation": "마신 컵 수라는 자료를 모아 답하므로 통계적 탐구 문제이다. 느낌을 말한 질문과 다르다.",
             "level_ref": "D~E",
+            "keywords": [
+              "탐구 문제"
+            ],
             "competency": "지식·이해"
           },
           {
@@ -208,6 +211,9 @@
             "answer": "우리 학교 1학년 학생 / 1학년 학생 / 1학년 학생들",
             "explanation": "자료를 얻을 사람이나 사물이 조사 대상이다. 이 질문은 우리 학교 1학년 학생들을 조사한다.",
             "level_ref": "C",
+            "keywords": [
+              "1학년"
+            ],
             "competency": "자료 읽기"
           },
           {
@@ -339,6 +345,9 @@
             "answer": "계급",
             "explanation": "변량을 나눈 구간이 계급이고, 구간의 너비가 계급의 크기이다.",
             "level_ref": "D~E",
+            "keywords": [
+              "계급"
+            ],
             "competency": "지식·이해"
           },
           {
@@ -487,6 +496,9 @@
             "answer": "도수",
             "explanation": "점의 높이는 그 계급의 도수이다. 점은 히스토그램 직사각형 윗변의 가운데에 찍는다.",
             "level_ref": "D~E",
+            "keywords": [
+              "도수"
+            ],
             "competency": "지식·이해"
           },
           {
@@ -627,6 +639,9 @@
             "answer": "상대도수",
             "explanation": "상대도수는 그 계급의 도수를 도수의 총합으로 나눈 값이다.",
             "level_ref": "D~E",
+            "keywords": [
+              "상대도수"
+            ],
             "competency": "지식·이해"
           },
           {
@@ -782,6 +797,9 @@
             "answer": "출처",
             "explanation": "수치를 가져온 곳이 출처이다. 근거에는 수치·단위와 함께 출처를 적는다.",
             "level_ref": "D~E",
+            "keywords": [
+              "출처"
+            ],
             "competency": "글로 표현하기"
           }
         ]

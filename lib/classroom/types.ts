@@ -11,7 +11,8 @@ export type AssignmentRow = {
   id: string; item_set_id: string; item_set_version: number; academy_id: string; student_id: string
   due_at: string | null; allow_retry: boolean; open_lessons: number; closed: boolean; created_at: string
 }
-export type QuizResponseRow = { assignment_id: string; lesson_no: number; quiz_no: number; response: string; correct: boolean; source: AnswerSource }
+/** ai_verdict·ai_reason(0017, 대표 2026-10-12): AI 뜻 판정과 이유 — 글자 비교로 맞았거나 AI를 안 부른 줄은 null/없음. overridden_by 가 있으면 원장 판정이 우선. */
+export type QuizResponseRow = { assignment_id: string; lesson_no: number; quiz_no: number; response: string; correct: boolean; source: AnswerSource; ai_verdict?: '맞음' | '부분' | '틀림' | null; ai_reason?: string | null; match_kind?: 'literal' | 'keyword' | 'ai' | null; overridden_by?: string | null }
 export type AnswerRow = {
   id: string; assignment_id: string; item_no: number; attempt: number; body: string; source: AnswerSource
   photo_path: string | null; saved_at: string; submitted_at: string | null

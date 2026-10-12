@@ -670,3 +670,14 @@ describe('6단계 생성 입력 크기 가드(S-영-08로 4단계 자료가 들�
     })
   }
 })
+
+describe('stage 3 (대표 2026-10-12, L-22): 과제는 정답 표기 여러 꼴·핵심어를 요구하고 검토는 빠진 것을 짚는다', () => {
+  it('task: answer 에 받아들일 표기 2~4개, keywords 에 핵심어 1~3개', () => {
+    const task = buildPrompt(3, ctx).user.split('과제: ')[1]
+    expect(task).toMatch(/answer는 받아들일 표기를 " \/ "로 2~4개 적고\(영어는 관사·대소문자 말고 다른 표현·동의 구, 한국어는 어순·조사·축약이 다른 꼴\), keywords에는 정답에 꼭 들어가야 할 핵심어 1~3개를 적는다\(L-22; 정답이 숫자·범위뿐이면 keywords는 비워 둔다\)/)
+  })
+  it('review: 표기가 하나뿐이거나 keywords 가 없으면 quiz', () => {
+    const review = buildReviewPrompt(3, ctx, {}).user.split('검토 초점: ')[1]
+    expect(review).toMatch(/단답형 정답 표기가 하나뿐이거나 keywords가 없으면 quiz\(L-22; 정답이 숫자·범위뿐인 문항은 keywords 없음이 정상\)\. /)
+  })
+})
