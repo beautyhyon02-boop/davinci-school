@@ -1,6 +1,7 @@
 import { programDetails, site, pages } from '@/content/site'
 import { Section } from '@/components/site/Section'
 import { Button } from '@/components/ui/Button'
+import type { ReactNode } from 'react'
 
 type OpenProgramSlug = 'inquiry' | 'essay'
 
@@ -9,7 +10,8 @@ const heroBg: Record<OpenProgramSlug, string> = {
   essay: 'bg-lemon-50',
 }
 
-export function ProgramPage({ slug }: { slug: OpenProgramSlug }) {
+/** extra: 소개 아래에 붙는 칸(탐구보고서의 RED 보고서, 대표 2026-10-15). */
+export function ProgramPage({ slug, extra }: { slug: OpenProgramSlug; extra?: ReactNode }) {
   const p = site.programs.find(x => x.slug === slug)!
   const d = programDetails[slug]
   return (
@@ -29,6 +31,7 @@ export function ProgramPage({ slug }: { slug: OpenProgramSlug }) {
         </div>
         <Button href="/franchise" variant="accent" className="mt-10">{pages.program.cta}</Button>
       </Section>
+      {extra}
     </>
   )
 }

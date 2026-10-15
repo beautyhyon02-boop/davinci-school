@@ -436,7 +436,7 @@ describe('site content', () => {
     expect(app.roleLabel.student).toBeTruthy()
     expect(app.logout).toBeTruthy()
 
-    expect(app.nav.admin.map(n => n.href)).toEqual(['/admin', '/admin/academies', '/admin/items', '/admin/inquiries', '/admin/standards', '/admin/inquiry'])
+    expect(app.nav.admin.map(n => n.href)).toEqual(['/admin', '/admin/academies', '/admin/items', '/admin/inquiries', '/admin/standards', '/admin/inquiry', '/admin/red'])   // RED 보고서(대표 2026-10-15)
     expect(app.nav.teacher.map(n => n.href)).toEqual(['/teacher', '/teacher/students', '/teacher/items', '/teacher/assignments', '/teacher/reports', '/teacher/inquiry'])
     expect(app.nav.student.map(n => n.href)).toEqual(['/student', '/student/inquiry'])
 
