@@ -74,7 +74,7 @@ function SetRow({ set }: { set: RedSet }) {
         <span className="w-24 text-sm text-ink-500">{set.date}</span>
         <span className="rounded-full bg-lavender-100 px-2 py-0.5 text-xs text-lavender-700">{copy.redType[set.redType]}</span>
         <span className="rounded-full bg-mint-50 px-2 py-0.5 text-xs text-mint-700">{set.series}{set.subject ? ` · ${set.subject}` : ''}</span>
-        <span className="min-w-0 flex-1 font-semibold">{set.title}</span>
+        <span className="w-full font-semibold sm:w-auto sm:min-w-0 sm:flex-1">{set.title}</span>   {/* 좁은 화면(390px)에서는 제목이 한 줄을 다 쓴다(PRD US-008) */}
         <span className="flex gap-2">{file('student', set.student)}{file('teacher', set.teacher)}</span>
       </div>
       {set.summary && <p className="mt-2 text-sm text-ink-700">{set.summary}</p>}
