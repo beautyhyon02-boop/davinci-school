@@ -923,12 +923,16 @@ export const app = {
       },
       // 대표 2026-10-12: 학생 비밀번호는 고정값(lib/auth/student-password.ts) — 초기화하면 그 값으로 돌아간다
       reset: { button: '비밀번호 초기화', confirm: (password: string) => `비밀번호를 ${password}(으)로 되돌릴까요? 학생은 이전 비밀번호로 로그인할 수 없게 됩니다.`, done: '비밀번호' },
+      // 대표 2026-10-15: 퇴원은 지우지 않고 숨김 + 로그인 차단(lib/students/withdraw.ts), 반이동은 학교급·학년 바꾸기
+      withdraw: { button: '퇴원', confirm: (name: string) => `${name} 학생을 퇴원 처리할까요? 목록·배정 화면에서 사라지고 로그인할 수 없게 됩니다. 답안·채점 기록은 남습니다.` },
+      move: { button: '반이동', submit: '바꾸기', cancel: '취소', done: '바꿨습니다' },
       errors: {
         nameMissing: '이름을 입력하세요.',
         levelInvalid: '학교급을 고르세요.',
         gradeInvalid: '학년은 1~6 사이 숫자여야 합니다.',
         createFailed: '계정을 만들지 못했습니다. 잠시 후 다시 시도하세요.',
         forbidden: '권한이 없습니다.',
+        updateFailed: '저장하지 못했습니다. 잠시 후 다시 시도하세요.',
       },
     },
     assign: {

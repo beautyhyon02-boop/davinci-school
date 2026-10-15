@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { enrolledIds } from '@/lib/students/withdraw'
 import { isMissingTable } from '@/lib/classroom/quiz-entry'
 import { InquiryReport, InquiryTask, Outline, DEFAULT_OUTLINE, emptyReport, type InquiryReport as Report } from './schema'
 import { progressOf } from './outline'
@@ -109,7 +110,9 @@ export async function loadTaskAssignments(db: SupabaseClient, viewer: InquiryVie
     if (viewer.role === 'teacher') q = q.eq('academy_id', viewer.academyId as string)
     const { data: asg, error } = await q.order('created_at')
     if (error) return unavailable(error, 'inquiry_assignments')
-    const assignments = (asg ?? []) as AssignmentRow[]
+    // 퇴원(enrolled=false)한 학생의 배정은 원장 목록에서 뺀다(대표 2026-10-15)
+    const enrolled = await enrolledIds(db, [...new Set(((asg ?? []) as AssignmentRow[]).map((a) => a.student_id))])
+    const assignments = ((asg ?? []) as AssignmentRow[]).filter((a) => enrolled.has(a.student_id))
     if (assignments.length === 0) return { available: true, loadFailed: false, rows: [] }
     const ids = assignments.map((a) => a.id)
     const studentIds = [...new Set(assignments.map((a) => a.student_id))]
@@ -143,9 +146,11 @@ export async function countAssignmentsByTask(db: SupabaseClient, viewer: Inquiry
   const counts = new Map<string, number>()
   if (viewer.role !== 'teacher' || !viewer.academyId) return counts
   try {
-    const { data, error } = await db.from('inquiry_assignments').select('task_id').eq('academy_id', viewer.academyId).order('task_id')
+    const { data, error } = await db.from('inquiry_assignments').select('task_id, student_id').eq('academy_id', viewer.academyId).order('task_id')
     if (error) return counts
-    for (const r of (data ?? []) as { task_id: string }[]) counts.set(r.task_id, (counts.get(r.task_id) ?? 0) + 1)
+    const rows = (data ?? []) as { task_id: string; student_id: string }[]
+    const enrolled = await enrolledIds(db, [...new Set(rows.map((r) => r.student_id))])   // 퇴원 학생은 세지 않는다
+    for (const r of rows) if (enrolled.has(r.student_id)) counts.set(r.task_id, (counts.get(r.task_id) ?? 0) + 1)
   } catch { /* 안내는 loadTasks 가 한다 */ }
   return counts
 }

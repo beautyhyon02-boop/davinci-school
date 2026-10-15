@@ -6,6 +6,7 @@ import { getSessionProfile } from '@/lib/auth/session'
 import { STUDENT_DEFAULT_PASSWORD } from '@/lib/auth/student-password'
 import { toLoginEmail } from '@/lib/auth/login-id'
 import { parseNewStudent, buildLoginId } from '@/lib/students/new-student'
+import { WITHDRAW_BAN_DURATION } from '@/lib/students/withdraw'
 import { app } from '@/content/site'
 
 const errors = app.classroom.students.errors
@@ -64,4 +65,40 @@ export async function resetStudentPassword(profileId: string): Promise<{ passwor
   const { error } = await createAdminClient().auth.admin.updateUserById(profileId, { password })
   if (error) return { error: errors.createFailed }
   return { password }
+}
+
+/** 자기 학원 학생인지(RLS 로 다른 학원은 안 보인다). */
+async function findOwnStudent(profileId: string, academyId: string) {
+  const supabase = await createClient()
+  const { data } = await supabase.from('students').select('profile_id').eq('profile_id', profileId).eq('academy_id', academyId).maybeSingle()
+  return data ? supabase : null
+}
+
+/** 퇴원 처리(대표 2026-10-15): 로그인 차단 + enrolled=false → 목록·배정·리포트·대시보드에서 빠진다. 기록은 남는다. */
+export async function withdrawStudent(profileId: string): Promise<{ ok?: true; error?: string }> {
+  const s = await assertTeacher()
+  const supabase = await findOwnStudent(profileId, s.academyId)
+  if (!supabase) return { error: errors.forbidden }
+  // 차단이 먼저(검토 2026-10-15): 숨긴 뒤 차단이 실패하면 다시 누를 줄이 없다. 갱신이 실패하면 차단을 도로 푼다.
+  const admin = createAdminClient()
+  const { error: banErr } = await admin.auth.admin.updateUserById(profileId, { ban_duration: WITHDRAW_BAN_DURATION })
+  if (banErr) return { error: errors.updateFailed }
+  const { error } = await supabase.from('students').update({ enrolled: false }).eq('profile_id', profileId).eq('academy_id', s.academyId)
+  if (error) { await admin.auth.admin.updateUserById(profileId, { ban_duration: 'none' }); return { error: errors.updateFailed } }
+  revalidatePath('/teacher/students'); revalidatePath('/teacher/assignments'); revalidatePath('/teacher')
+  return { ok: true }
+}
+
+/** 반이동(대표 2026-10-15) = 학교급·학년 바꾸기. 검증은 학생 추가와 같은 규칙. */
+export async function moveStudent(profileId: string, formData: FormData): Promise<{ ok?: true; error?: string }> {
+  const s = await assertTeacher()
+  const fd = new FormData(); fd.set('name', '-'); fd.set('level', String(formData.get('level') ?? '')); fd.set('grade', String(formData.get('grade') ?? ''))
+  const r = parseNewStudent(fd)
+  if (!r.ok) return { error: errors[r.error] }
+  const supabase = await findOwnStudent(profileId, s.academyId)
+  if (!supabase) return { error: errors.forbidden }
+  const { error } = await supabase.from('students').update({ level: r.data.level, grade: r.data.grade }).eq('profile_id', profileId).eq('academy_id', s.academyId)
+  if (error) return { error: errors.updateFailed }
+  revalidatePath('/teacher/students')
+  return { ok: true }
 }

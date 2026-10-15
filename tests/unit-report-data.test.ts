@@ -25,7 +25,7 @@ const criteria = (snapshot: typeof snapMath, itemNo: number, drop = 0) =>
 function tables() {
   return {
     students: [
-      { profile_id: 's1', academy_id: 'ac1', seq: 7 }, { profile_id: 's2', academy_id: 'ac1', seq: 8 }, { profile_id: 's9', academy_id: 'ac2', seq: 1 },
+      { profile_id: 's1', academy_id: 'ac1', enrolled: true, seq: 7 }, { profile_id: 's2', academy_id: 'ac1', enrolled: true, seq: 8 }, { profile_id: 's9', academy_id: 'ac2', enrolled: true, seq: 1 },
     ],
     profiles: [{ id: 's1', name: '김하늘' }, { id: 's2', name: '이바다' }, { id: 's9', name: '박다른' }],
     academies: [{ id: 'ac1', name: '다빈치 하늘원' }, { id: 'ac2', name: '다빈치 바다원' }],
@@ -198,6 +198,11 @@ describe('loadReportIndex', () => {
     expect(st.map((s) => s.status)).toEqual(['none', 'none'])
     expect(JSON.stringify(idx)).not.toContain('박다른')            // 다른 원 학생
   })
+  it('퇴원(enrolled=false)한 학생은 목록에서 빠진다(대표 2026-10-15) — 배정·기록은 그대로 둔 채', async () => {
+    const t = tables(); (t.students[1] as Record<string, unknown>).enrolled = false
+    const idx = await loadReportIndex(db(t).client, teacher)
+    expect(idx.themes[0].students.map((s) => s.name)).toEqual(['김하늘'])
+  })
   it('admin sees every academy; a teacher without an academy sees nothing', async () => {
     const idx = await loadReportIndex(db().client, admin)
     expect(idx.themes[0].students.map((s) => s.name)).toEqual(['김하늘', '박다른', '이바다'])
@@ -262,7 +267,7 @@ describe('loadReportIndex — 줄이 많을 때(1000줄 한도·긴 .in() 목록
     const many = Array.from({ length: N }, (_, i) => i)
     return {
       ...t,
-      students: many.map((i) => ({ profile_id: id('s', i), academy_id: 'ac1', seq: i })),
+      students: many.map((i) => ({ profile_id: id('s', i), academy_id: 'ac1', enrolled: true, seq: i })),
       profiles: many.map((i) => ({ id: id('s', i), name: id('학생', i) })),
       assignments: many.map((i) => ({ id: id('a', i), item_set_id: 'set-math', item_set_version: 1, academy_id: 'ac1', student_id: id('s', i), created_at: NOW })),
       quiz_responses: [],

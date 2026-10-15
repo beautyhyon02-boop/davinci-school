@@ -4,24 +4,27 @@ import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { app } from '@/content/site'
+import { enrolledOnly } from '@/lib/students/withdraw'
 
 const copy = app.classroom.assign
 
-type Row = { item_set_id: string; item_set_version: number; open_lessons: number; due_at: string | null; item_sets: { subject: string; themes: { title: string } | null } | null }
+type Row = { item_set_id: string; item_set_version: number; open_lessons: number; due_at: string | null; item_sets: { subject: string; themes: { title: string } | null } | null; students: { enrolled: boolean } | null }
 
 export default async function TeacherAssignmentsPage() {
   const supabase = await createClient()
   const [{ data: rows }, { data: pending }] = await Promise.all([
-    supabase.from('assignments').select('item_set_id, item_set_version, open_lessons, due_at, item_sets(subject, themes(title))').order('created_at', { ascending: false }),
-    supabase.from('gradings').select('answer_id, answers(assignment_id, assignments(item_set_id))').eq('status', 'drafted'),
+    supabase.from('assignments').select('item_set_id, item_set_version, open_lessons, due_at, item_sets(subject, themes(title)), students!assignments_student_id_fkey(enrolled)').order('created_at', { ascending: false }),
+    supabase.from('gradings').select('answer_id, answers(assignment_id, assignments(item_set_id, students!assignments_student_id_fkey(enrolled)))').eq('status', 'drafted'),
   ])
   const pendingBySet: Record<string, number> = {}
   for (const g of pending ?? []) {
-    const setId = (g.answers as unknown as { assignments: { item_set_id: string } | null } | null)?.assignments?.item_set_id
+    const asg = (g.answers as unknown as { assignments: { item_set_id: string; students: { enrolled: boolean } | null } | null } | null)?.assignments
+    if (asg?.students?.enrolled === false) continue   // 퇴원 학생의 검수 대기는 세지 않는다
+    const setId = asg?.item_set_id
     if (setId) pendingBySet[setId] = (pendingBySet[setId] ?? 0) + 1
   }
   const groups = new Map<string, { row: Row; count: number; minOpen: number }>()
-  for (const r of (rows ?? []) as unknown as Row[]) {
+  for (const r of enrolledOnly((rows ?? []) as unknown as Row[])) {   // 퇴원 학생 배정은 세지 않는다(대표 2026-10-15)
     const g = groups.get(r.item_set_id)
     if (g) { g.count += 1; g.minOpen = Math.min(g.minOpen, r.open_lessons) } else groups.set(r.item_set_id, { row: r, count: 1, minOpen: r.open_lessons })
   }

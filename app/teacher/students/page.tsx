@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NewStudentForm } from './NewStudentForm'
-import { ResetPasswordButton } from './ResetPasswordButton'
+import { StudentActions } from './StudentActions'
 import { app } from '@/content/site'
 
 const copy = app.classroom.students
@@ -34,7 +34,7 @@ export default async function TeacherStudentsPage() {
                   <td className="p-3">{app.studio.theme.meta(r.level, r.grade)}</td>
                   <td className="p-3 font-mono text-xs">{r.profiles?.login_id}</td>
                   <td className="p-3">{counts[r.profile_id] ?? 0}</td>
-                  <td className="p-3"><ResetPasswordButton profileId={r.profile_id} /></td>
+                  <td className="p-3"><StudentActions profileId={r.profile_id} name={r.profiles?.name ?? ''} level={r.level} grade={r.grade} /></td>
                 </tr>
               ))}
             </tbody>

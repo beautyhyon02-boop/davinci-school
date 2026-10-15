@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/Badge'
 import { overallFor, gradeFor } from '@/lib/classroom/scoring'
 import { itemLabels } from '@/lib/studio/assessment-structure'
 import { loadFinalizations } from '@/lib/classroom/quiz-entry'
+import { enrolledOnly } from '@/lib/students/withdraw'
 import { app } from '@/content/site'
 import type { AssignmentRow, AnswerRow, GradingRow, QuizResponseRow } from '@/lib/classroom/types'
 
@@ -22,13 +23,14 @@ const copy = app.classroom.assign
 
 // assignments.student_id → students(profile_id) 이지 profiles 로 곧장 이어지지 않으므로
 // assignments→students 에는 FK 가 둘(student_id, academy 복합키)이라 !inner 만 쓰면 PostgREST 가 모호하다고 거부한다 — student_id FK 이름을 명시한다.
-type Row = AssignmentRow & { students: { profile_id: string; profiles: { name: string } | null } | null }
+type Row = AssignmentRow & { students: { profile_id: string; enrolled: boolean; profiles: { name: string } | null } | null }
 
 export default async function AssignmentSetPage({ params }: { params: Promise<{ setId: string }> }) {
   const { setId } = await params
   const supabase = await createClient()
-  const { data } = await supabase.from('assignments').select('*, students!assignments_student_id_fkey(profile_id, profiles(name))').eq('item_set_id', setId).order('created_at')
-  const rows = (data ?? []) as unknown as Row[]
+  const { data } = await supabase.from('assignments').select('*, students!assignments_student_id_fkey(profile_id, enrolled, profiles(name))').eq('item_set_id', setId).order('created_at')
+  // 퇴원(enrolled=false)한 학생의 배정은 화면에서 뺀다(대표 2026-10-15) — 줄·기록은 남아 있다
+  const rows = enrolledOnly((data ?? []) as unknown as Row[])
   if (rows.length === 0) notFound()
   const snapshot = await loadAssignmentSnapshot(supabase, setId, rows[0].item_set_version)
   if (!snapshot) notFound()

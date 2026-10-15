@@ -74,6 +74,12 @@ describe('loaders', () => {
     expect((await loadTaskAssignments(db, admin, T1)).rows).toHaveLength(2)
     expect([...(await countAssignmentsByTask(db, teacher1)).entries()]).toEqual([[T1, 1]])
   })
+  it('퇴원(enrolled=false)한 학생의 탐구 배정은 원장 목록·수에서 빠진다(대표 2026-10-15)', async () => {
+    const { db, raw } = world()
+    ;(raw.tables.students[0] as Record<string, unknown>).enrolled = false
+    expect((await loadTaskAssignments(db, teacher1, T1)).rows).toEqual([])
+    expect([...(await countAssignmentsByTask(db, teacher1)).entries()]).toEqual([])
+  })
   it('loadAssignmentView checks the academy / owner before reading anything else', async () => {
     const { db, raw } = world()
     raw.reads.length = 0

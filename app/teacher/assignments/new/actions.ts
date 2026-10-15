@@ -24,8 +24,8 @@ export async function createAssignments(setId: string, _prev: AssignState, formD
   const version = await latestPublishedVersion(supabase, setId)
   if (version === null) return { error: errors.setNotFound }
 
-  // RLS(teacher_rw_assignments)가 academy_id 를 검사한다. 학생이 이 원 소속인지도 확인한다.
-  const { data: own } = await supabase.from('students').select('profile_id').in('profile_id', studentIds).eq('academy_id', s.academyId)
+  // RLS(teacher_rw_assignments)가 academy_id 를 검사한다. 학생이 이 원 소속이고 재원 중인지도 확인한다(퇴원 학생 배정 금지, 2026-10-15).
+  const { data: own } = await supabase.from('students').select('profile_id').in('profile_id', studentIds).eq('academy_id', s.academyId).eq('enrolled', true)
   const ownIds = new Set((own ?? []).map((r) => r.profile_id))
   const rows = studentIds.filter((id) => ownIds.has(id)).map((studentId) => ({
     item_set_id: setId, item_set_version: version, academy_id: s.academyId, student_id: studentId,

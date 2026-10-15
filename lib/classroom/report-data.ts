@@ -273,11 +273,17 @@ async function readIndex(db: SupabaseClient, viewer: ReportViewer, empty: Report
     return orThrow<AssignmentLite>(q.order('id').range(from, to))
   })
   if (assignments.length === 0) return empty
+  // 퇴원(enrolled=false)한 학생의 배정은 목록에서 뺀다(대표 2026-10-15)
+  const enrolledRows = await fetchByIds<{ profile_id: string }>([...new Set(assignments.map((a) => a.student_id))], (chunk, from, to) =>
+    db.from('students').select('profile_id').in('profile_id', chunk).eq('enrolled', true).order('profile_id').range(from, to))
+  const enrolled = new Set(enrolledRows.map((r) => r.profile_id))
+  const live = assignments.filter((a) => enrolled.has(a.student_id))
+  if (live.length === 0) return empty
 
-  const aids = assignments.map((a) => a.id)
-  const setIds = [...new Set(assignments.map((a) => a.item_set_id))]
-  const studentIds = [...new Set(assignments.map((a) => a.student_id))]
-  const versions = [...new Map(assignments.map((a) => [`${a.item_set_id}@${a.item_set_version}`, a])).values()]
+  const aids = live.map((a) => a.id)
+  const setIds = [...new Set(live.map((a) => a.item_set_id))]
+  const studentIds = [...new Set(live.map((a) => a.student_id))]
+  const versions = [...new Map(live.map((a) => [`${a.item_set_id}@${a.item_set_version}`, a])).values()]
 
   const [itemSets, profiles, answers, finalizations, snaps, reports] = await Promise.all([
     fetchByIds<ItemSetLite>(setIds, (chunk, from, to) => db.from('item_sets').select('id, theme_id, subject, key_question').in('id', chunk).order('id').range(from, to)),
@@ -307,7 +313,7 @@ async function readIndex(db: SupabaseClient, viewer: ReportViewer, empty: Report
   const names = new Map(profiles.map((p) => [p.id, p.name]))
   const setById = new Map(itemSets.map((s) => [s.id, s]))
   const byTheme = new Map<string, AssignmentLite[]>()
-  for (const a of assignments) {
+  for (const a of live) {
     const set = setById.get(a.item_set_id)
     if (!set) continue
     if (!byTheme.has(set.theme_id)) byTheme.set(set.theme_id, [])
