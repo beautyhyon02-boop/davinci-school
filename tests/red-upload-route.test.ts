@@ -41,7 +41,7 @@ describe('POST /api/red/upload', () => {
   it('본사: 저장소에 올리고 줄을 넣는다(구분·종류·시리즈·과목·제목·날짜)', async () => {
     const res = await POST(request([{ name: NAME }], '2026-10-15'))
     expect(await res.json()).toEqual({ outcomes: [{ name: NAME, status: 'uploaded' }] })
-    expect(state.calls[0]).toEqual(['upload', [`red/BASIC/2026-10-15/${NAME}`]])
+    expect(state.calls[0][0]).toBe('upload'); expect(String(state.calls[0][1][0])).toMatch(/^red\/BASIC\/2026-10-15\/[0-9a-f-]{36}\.docx$/)   // 키는 ASCII uuid — 한글 이름은 줄에만
     expect(state.calls[1][0]).toBe('insert')
     expect(state.calls[1][1][0]).toMatchObject({ filename: NAME, category: 'BASIC', kind: 'teacher', series: '사물놀이', subject: '물리', title: '01 줄로 떠 있는 구조물(텐세그리티)', report_date: '2026-10-15', hidden: false, audience: 'teacher' })
   })
@@ -56,7 +56,7 @@ describe('POST /api/red/upload', () => {
     const res = await POST(request([{ name: NAME }], '2026-10-15'))
     expect(await res.json()).toEqual({ outcomes: [{ name: NAME, status: 'failed', error: 'db_failed' }] })
     expect(state.calls.map((c) => c[0])).toEqual(['upload', 'insert', 'remove'])
-    expect(state.calls[2][1][0]).toEqual([`red/BASIC/2026-10-15/${NAME}`])
+    expect(state.calls[2][1][0]).toEqual([state.calls[0][1][0]])   // 올린 그 경로를 지운다
   })
   it('너무 큰 요청(또는 길이 없는 요청)은 본문을 읽기 전에 413', async () => {
     expect((await POST(request([{ name: NAME }], undefined, String(20 * 1024 * 1024)))).status).toBe(413)

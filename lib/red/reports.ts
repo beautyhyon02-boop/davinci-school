@@ -70,8 +70,11 @@ export function groupRedSets(rows: RedReportRow[], category?: RedCategory): RedS
   return [...sets.values()].sort((a, b) => (b.date.localeCompare(a.date)) || latestUpload(b).localeCompare(latestUpload(a)))
 }
 
-/** 저장소 경로: red/{구분}/{날짜}/{파일 이름}. 파일 이름의 경로 문자만 걸러낸다(한글·괄호는 그대로). */
-export function redStoragePath(category: RedCategory, date: string, filename: string): string {
-  const safe = filename.replace(/[\\/:*?"<>|]/g, '_').trim()
-  return `red/${category}/${date}/${safe}`
+/**
+ * 저장소 경로: red/{구분}/{날짜}/{id}.docx — Supabase Storage 는 키에 한글을 받지 않는다("Invalid key", 2026-10-15 실제 올리기에서 확인).
+ * 한글 파일 이름은 resources.filename 에만 두고 내려받을 때 그 이름으로 준다(createSignedUrl download). id 는 uuid 같은 ASCII 문자열.
+ */
+export function redStoragePath(category: RedCategory, date: string, id: string): string {
+  const safe = id.replace(/[^A-Za-z0-9._-]/g, '_')
+  return `red/${category}/${date}/${safe}.docx`
 }

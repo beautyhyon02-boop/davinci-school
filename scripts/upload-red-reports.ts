@@ -5,6 +5,7 @@
  * .env.local 의 NEXT_PUBLIC_SUPABASE_URL·SUPABASE_SERVICE_ROLE_KEY 로 service role 클라이언트를 만든다 — 본사 컴퓨터에서만 돌린다.
  */
 import { readdirSync, readFileSync, existsSync, statSync } from 'node:fs'
+import { randomUUID } from 'node:crypto'
 import { join, resolve } from 'node:path'
 import { createClient } from '@supabase/supabase-js'
 import { validateRedUpload } from '../lib/red/upload-rules'
@@ -38,7 +39,7 @@ async function main() {
     if (!check.ok) { failed += 1; console.log(`실패: ${name} — ${check.error}`); continue }
     const { data: dup } = await admin.from('resources').select('id').eq('filename', name).maybeSingle()
     if (dup) { skipped += 1; console.log(`이미 있음: ${name}`); continue }
-    const path = redStoragePath(check.parsed.category, date, name)
+    const path = redStoragePath(check.parsed.category, date, randomUUID())
     const { error: upErr } = await admin.storage.from('resources').upload(path, buf, { contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', upsert: true })
     if (upErr) { failed += 1; console.log(`실패: ${name} — 저장소 ${upErr.message}`); continue }
     const { error: dbErr } = await admin.from('resources').insert({

@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { randomUUID } from 'node:crypto'
 import { getSessionProfileOrNull } from '@/lib/auth/session'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { validateRedUpload, RED_MAX_SIZE_BYTES, type RedUploadOutcome } from '@/lib/red/upload-rules'
@@ -36,7 +37,7 @@ export async function POST(req: NextRequest) {
     if (!check.ok) { outcomes.push({ name: file.name, status: 'failed', error: check.error }); continue }
     const { data: dup } = await admin.from('resources').select('id').eq('filename', file.name).maybeSingle()
     if (dup) { outcomes.push({ name: file.name, status: 'duplicate' }); continue }
-    const path = redStoragePath(check.parsed.category, date, file.name)
+    const path = redStoragePath(check.parsed.category, date, randomUUID())
     const { error: upErr } = await admin.storage.from('resources').upload(path, file, { contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', upsert: true })
     if (upErr) { outcomes.push({ name: file.name, status: 'failed', error: 'upload_failed' }); continue }
     const { error: dbErr } = await admin.from('resources').insert({

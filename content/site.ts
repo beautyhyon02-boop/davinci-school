@@ -30,7 +30,8 @@ export const site = {
     { href: 'https://www.davinci-lab.net', label: '대입 컨설팅', external: true },
     { href: 'https://www.davinci-lab.co.kr', label: '다빈치랩', external: true },
   ] as ReadonlyArray<{ href: string; label: string; external?: boolean }>,
-  header: { login: '로그인', franchise: '가맹문의' },
+  // 로그인돼 있으면 [내 화면]·[로그아웃](대표 2026-10-15) — home 은 역할별 이름
+  header: { login: '로그인', franchise: '가맹문의', logout: '로그아웃', home: { admin: '본사 화면', teacher: '원장 화면', student: '학생 화면' } as Record<'admin' | 'teacher' | 'student', string> },
   hero: { ctaPrimary: '서논술형 수업 보기', ctaFranchise: '가맹문의' },
   sections: {
     programs: { eyebrow: 'PROGRAMS', title: '다빈치스쿨의 네 가지 수업' },

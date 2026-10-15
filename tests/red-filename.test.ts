@@ -53,9 +53,9 @@ describe('redSetKey · groupRedSets — 교사용·학생용을 한 세트로 �
   })
 })
 
-describe('redStoragePath — 경로 문자를 걸러낸다', () => {
-  it('슬래시·역슬래시·콜론 등은 _ 로, 한글·괄호·공백은 그대로', () => {
-    expect(redStoragePath('BASIC', '2026-10-15', 'RED Basic a_b 교사용 완성보고서(초등).docx')).toBe('red/BASIC/2026-10-15/RED Basic a_b 교사용 완성보고서(초등).docx')
-    expect(redStoragePath('ADVANCED', '2026-10-15', '../..\\x:y*z?.docx')).toBe('red/ADVANCED/2026-10-15/.._.._x_y_z_.docx')
+describe('redStoragePath — ASCII id 로만(Storage 키에 한글 불가)', () => {
+  it('red/{구분}/{날짜}/{id}.docx, id 의 이상한 문자는 _ 로', () => {
+    expect(redStoragePath('BASIC', '2026-10-15', '3f2a1c0e-1111-2222-3333-444455556666')).toBe('red/BASIC/2026-10-15/3f2a1c0e-1111-2222-3333-444455556666.docx')
+    expect(redStoragePath('ADVANCED', '2026-10-15', '../한글 id:x')).toBe('red/ADVANCED/2026-10-15/..____id_x.docx')   // / 한 글 공백 : → _
   })
 })
