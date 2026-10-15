@@ -1695,7 +1695,6 @@ export const pages = {
     empty: '아직 올라온 보고서가 없습니다.',
     filterAll: '전체',
     count: (n: number) => `${n}세트`,
-    downloadFailed: '내려받기 주소를 만들지 못했습니다. 다시 눌러 주세요.',
   },
   program: {
     cta: '이 수업으로 가맹 문의',

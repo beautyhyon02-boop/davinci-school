@@ -14,7 +14,6 @@ const row = (over: Partial<RedReportRow>): RedReportRow => ({
   report_date: '2026-10-15', storage_path: 'red/x', hidden: false, size_bytes: 1, uploaded_at: '2026-10-15T00:00:00Z', ...over,
 })
 const rows = [row({ id: 't1' }), row({ id: 's1', kind: 'student' }), row({ id: 'a1', category: 'ADVANCED', series: '과학뉴스', subject: '생명', title: '수면과 기억' })]
-const noop = async () => ({ url: 'x' })
 
 describe('RedGate', () => {
   it('로그인 전: 안내 + 로그인 단추(돌아올 경로 포함), 파일 이름은 없다', () => {
@@ -29,19 +28,20 @@ describe('RedGate', () => {
 
 describe('RedLibrary', () => {
   it('BASIC 탭이 기본: 세트 한 줄에 날짜·시리즈·과목·제목과 학생용·교사용 단추, ADVANCED 세트는 보이지 않는다', () => {
-    const html = renderToStaticMarkup(createElement(RedLibrary, { rows, requestUrl: noop })); const t = text(html)
+    const html = renderToStaticMarkup(createElement(RedLibrary, { rows })); const t = text(html)
     expect(t).toContain(copy.tabs.BASIC); expect(t).toContain(copy.tabs.ADVANCED)
     expect(t).toContain('01 줄로 떠 있는 구조물(텐세그리티)'); expect(t).toContain('사물놀이 · 물리'); expect(t).toContain('2026-10-15')
     expect(t).toContain(copy.download.student); expect(t).toContain(copy.download.teacher)
+    expect(html).toContain('href="/api/red/download/s1"'); expect(html).toContain('href="/api/red/download/t1"')   // 내려받기는 라우트 링크(한글 이름 그대로)
     expect(t).not.toContain('수면과 기억')
     expect(t).toContain(copy.count(1))
   })
   it('한쪽 파일만 있으면 "준비 중"으로 표시하고, 숨긴 줄은 빠진다', () => {
     const only = [row({ id: 't1' }), row({ id: 'h', kind: 'student', hidden: true })]
-    const t = text(renderToStaticMarkup(createElement(RedLibrary, { rows: only, requestUrl: noop })))
+    const t = text(renderToStaticMarkup(createElement(RedLibrary, { rows: only })))
     expect(t).toContain(copy.missing.student); expect(t).toContain(copy.download.teacher)
   })
   it('세트가 없으면 빈 안내', () => {
-    expect(text(renderToStaticMarkup(createElement(RedLibrary, { rows: [], requestUrl: noop })))).toContain(copy.empty)
+    expect(text(renderToStaticMarkup(createElement(RedLibrary, { rows: [] })))).toContain(copy.empty)
   })
 })

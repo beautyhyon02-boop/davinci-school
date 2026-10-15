@@ -4,8 +4,16 @@
  * 이 모듈은 순수 함수만 — 파일 이름 읽기, 세트(교사용+학생용) 묶기. DB·저장소는 app/admin/red·app/(public)/programs/inquiry 쪽.
  */
 
-/** 내려받기 서명 URL 유효 시간(초) — 누른 사람이 바로 받는 데만 쓴다. 주소가 새어도 곧 만료된다. */
-export const RED_SIGNED_URL_SECONDS = 60
+export const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+
+/**
+ * 내려받기 헤더(2026-10-15, 대표: "파일명이 한글이 아니다"): 서명 URL 의 download 매개변수는 한글 이름을 그대로 못 전해서,
+ * 서버 라우트(/api/red/download/[id])가 파일을 읽어 RFC 6266 꼴로 돌려준다 — filename* 에 UTF-8 로 적고, 그것을 못 읽는 옛 브라우저용 ASCII 이름도 함께.
+ */
+export function contentDisposition(filename: string): string {
+  const ascii = filename.replace(/[^\x20-\x7E]/g, '_').replace(/["\\]/g, '_')
+  return `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(filename)}`
+}
 
 export type RedCategory = 'BASIC' | 'ADVANCED'
 export type RedKind = 'teacher' | 'student'

@@ -1,38 +1,52 @@
-// RED 보고서 내려받기 서버 액션(독립 검토 2026-10-15가 권한 시험을 권함): 로그인 전·학생은 주소를 못 받고, 원장은 보이는 줄만, 본사는 숨긴 줄도.
+// GET /api/red/download/[id](대표 2026-10-15 "파일명이 한글이 아니다" → 서명 URL 대신 라우트가 한글 이름 그대로 내려준다):
+// 로그인 전·학생은 못 받고, 원장은 보이는 줄만, 본사는 숨긴 줄도. Content-Disposition 은 filename*(UTF-8) + ASCII 대체 이름.
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 type Row = { id: string; filename: string; storage_path: string; hidden: boolean } | null
-const state: { session: Record<string, unknown> | null; row: Row; signed: unknown[] } = { session: null, row: null, signed: [] }
+const state: { session: Record<string, unknown> | null; row: Row; downloads: string[] } = { session: null, row: null, downloads: [] }
 vi.mock('@/lib/auth/session', () => ({ getSessionProfileOrNull: vi.fn(async () => state.session) }))
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn(async () => ({ from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: state.row }) }) }) }) })) }))
-vi.mock('@/lib/supabase/admin', () => ({ createAdminClient: () => ({ storage: { from: () => ({ createSignedUrl: async (...args: unknown[]) => { state.signed.push(args); return { data: { signedUrl: 'https://signed/x' }, error: null } } }) } }) }))
-const { redDownloadUrl } = await import('@/app/(public)/programs/inquiry/actions')
-const { pages } = await import('@/content/site')
-const { RED_SIGNED_URL_SECONDS } = await import('@/lib/red/reports')
+vi.mock('@/lib/supabase/admin', () => ({ createAdminClient: () => ({ storage: { from: () => ({ download: async (path: string) => { state.downloads.push(path); return { data: new Blob(['PK-docx']), error: null } } }) } }) }))
+const { GET } = await import('@/app/api/red/download/[id]/route')
+const { contentDisposition } = await import('@/lib/red/reports')
 
-const visible = { id: 'r1', filename: 'RED Basic 사물놀이 물리_01 학생용 작성양식(초등).docx', storage_path: 'red/BASIC/2026-10-15/f.docx', hidden: false }
-beforeEach(() => { state.session = null; state.row = visible; state.signed = [] })
+const ID = '3f2a1c0e-1111-2222-3333-444455556666'
+const visible = { id: ID, filename: 'RED Basic 사물놀이 물리_01 학생용 작성양식(초등).docx', storage_path: 'red/BASIC/2026-10-15/x.docx', hidden: false }
+const call = (id = ID) => GET(new Request(`http://localhost/api/red/download/${id}`) as never, { params: Promise.resolve({ id }) })
+beforeEach(() => { state.session = null; state.row = visible; state.downloads = [] })
 
-describe('redDownloadUrl', () => {
-  it('로그인 전·학생 계정은 주소를 받지 못하고 서명 URL 을 만들지 않는다', async () => {
-    expect(await redDownloadUrl('r1')).toEqual({ error: pages.redReports.studentOnly })
+describe('contentDisposition', () => {
+  it('한글 이름은 filename* 에 UTF-8 로, ASCII 대체 이름은 _ 로', () => {
+    expect(contentDisposition('RED 보고서(초등).docx')).toBe(`attachment; filename="RED ___(__).docx"; filename*=UTF-8''${encodeURIComponent('RED 보고서(초등).docx')}`)
+    expect(contentDisposition('a"b.docx')).toContain('filename="a_b.docx"')
+  })
+})
+
+describe('GET /api/red/download/[id]', () => {
+  it('로그인 전 401, 학생 403 — 파일을 읽지 않는다', async () => {
+    expect((await call()).status).toBe(401)
     state.session = { role: 'student', userId: 's1' }
-    expect(await redDownloadUrl('r1')).toEqual({ error: pages.redReports.studentOnly })
-    expect(state.signed).toEqual([])
+    expect((await call()).status).toBe(403)
+    expect(state.downloads).toEqual([])
   })
-  it('원장은 보이는 줄의 60초 서명 URL(파일 이름으로 내려받기)을 받는다', async () => {
+  it('원장: 파일을 읽어 docx 로, 한글 파일 이름 그대로 내려준다', async () => {
     state.session = { role: 'teacher', userId: 't1', academyId: 'ac1' }
-    expect(await redDownloadUrl('r1')).toEqual({ url: 'https://signed/x' })
-    expect(state.signed).toEqual([[visible.storage_path, RED_SIGNED_URL_SECONDS, { download: visible.filename }]])
+    const res = await call()
+    expect(res.status).toBe(200)
+    expect(res.headers.get('content-type')).toContain('wordprocessingml')
+    expect(res.headers.get('content-disposition')).toBe(contentDisposition(visible.filename))
+    expect(state.downloads).toEqual([visible.storage_path])
+    expect(await res.text()).toBe('PK-docx')
   })
-  it('원장은 숨긴 줄·없는 줄을 받지 못하고, 본사는 숨긴 줄도 받는다', async () => {
+  it('원장은 숨긴 줄·없는 줄·이상한 id 는 404, 본사는 숨긴 줄도 받는다', async () => {
     state.session = { role: 'teacher', userId: 't1', academyId: 'ac1' }
     state.row = { ...visible, hidden: true }
-    expect(await redDownloadUrl('r1')).toEqual({ error: pages.redReports.downloadFailed })
+    expect((await call()).status).toBe(404)
     state.row = null
-    expect(await redDownloadUrl('r1')).toEqual({ error: pages.redReports.downloadFailed })
-    expect(state.signed).toEqual([])
+    expect((await call()).status).toBe(404)
+    expect((await call('../etc')).status).toBe(404)
+    expect(state.downloads).toEqual([])
     state.session = { role: 'admin', userId: 'a1' }; state.row = { ...visible, hidden: true }
-    expect(await redDownloadUrl('r1')).toEqual({ url: 'https://signed/x' })
+    expect((await call()).status).toBe(200)
   })
 })
