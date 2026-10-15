@@ -43,7 +43,7 @@ describe('POST /api/red/upload', () => {
     expect(await res.json()).toEqual({ outcomes: [{ name: NAME, status: 'uploaded' }] })
     expect(state.calls[0][0]).toBe('upload'); expect(String(state.calls[0][1][0])).toMatch(/^red\/BASIC\/2026-10-15\/[0-9a-f-]{36}\.docx$/)   // 키는 ASCII uuid — 한글 이름은 줄에만
     expect(state.calls[1][0]).toBe('insert')
-    expect(state.calls[1][1][0]).toMatchObject({ filename: NAME, category: 'BASIC', kind: 'teacher', series: '사물놀이', subject: '물리', title: '01 줄로 떠 있는 구조물(텐세그리티)', report_date: '2026-10-15', hidden: false, audience: 'teacher' })
+    expect(state.calls[1][1][0]).toMatchObject({ filename: NAME, category: 'BASIC', kind: 'teacher', series: '사물놀이', subject: '물리', title: '01 줄로 떠 있는 구조물(텐세그리티)', report_date: '2026-10-15', status: 'pending', red_type: 'E', created_by: 'a1', audience: 'teacher' })   // PRD 2026-10-16: 올리면 검수대기, 본사가 [게시]
   })
   it('같은 이름은 duplicate 로 건너뛰고 올리지 않는다; 이름 틀이 다르면 failed(bad_name)', async () => {
     state.existing.add(NAME)

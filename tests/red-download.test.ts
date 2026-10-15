@@ -1,8 +1,8 @@
 // GET /api/red/download/[id](대표 2026-10-15 "파일명이 한글이 아니다" → 서명 URL 대신 라우트가 한글 이름 그대로 내려준다):
-// 로그인 전·학생은 못 받고, 원장은 보이는 줄만, 본사는 숨긴 줄도. Content-Disposition 은 filename*(UTF-8) + ASCII 대체 이름.
+// 로그인 전·학생은 못 받고, 원장은 게시된 줄만, 본사는 검수대기·보류 줄도. Content-Disposition 은 filename*(UTF-8) + ASCII 대체 이름.
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-type Row = { id: string; filename: string; storage_path: string; hidden: boolean } | null
+type Row = { id: string; filename: string; storage_path: string; status: 'pending' | 'published' | 'hold' } | null
 const state: { session: Record<string, unknown> | null; row: Row; downloads: string[] } = { session: null, row: null, downloads: [] }
 vi.mock('@/lib/auth/session', () => ({ getSessionProfileOrNull: vi.fn(async () => state.session) }))
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn(async () => ({ from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: state.row }) }) }) }) })) }))
@@ -11,7 +11,7 @@ const { GET } = await import('@/app/api/red/download/[id]/route')
 const { contentDisposition } = await import('@/lib/red/reports')
 
 const ID = '3f2a1c0e-1111-2222-3333-444455556666'
-const visible = { id: ID, filename: 'RED Basic 사물놀이 물리_01 학생용 작성양식(초등).docx', storage_path: 'red/BASIC/2026-10-15/x.docx', hidden: false }
+const visible = { id: ID, filename: 'RED Basic 사물놀이 물리_01 학생용 작성양식(초등).docx', storage_path: 'red/BASIC/2026-10-15/x.docx', status: 'published' as const }
 const call = (id = ID) => GET(new Request(`http://localhost/api/red/download/${id}`) as never, { params: Promise.resolve({ id }) })
 beforeEach(() => { state.session = null; state.row = visible; state.downloads = [] })
 
@@ -38,15 +38,17 @@ describe('GET /api/red/download/[id]', () => {
     expect(state.downloads).toEqual([visible.storage_path])
     expect(await res.text()).toBe('PK-docx')
   })
-  it('원장은 숨긴 줄·없는 줄·이상한 id 는 404, 본사는 숨긴 줄도 받는다', async () => {
+  it('원장은 게시 안 된 줄·없는 줄·이상한 id 는 404, 본사는 검수대기·보류 줄도 받는다', async () => {
     state.session = { role: 'teacher', userId: 't1', academyId: 'ac1' }
-    state.row = { ...visible, hidden: true }
+    state.row = { ...visible, status: 'hold' }
+    expect((await call()).status).toBe(404)
+    state.row = { ...visible, status: 'pending' }
     expect((await call()).status).toBe(404)
     state.row = null
     expect((await call()).status).toBe(404)
     expect((await call('../etc')).status).toBe(404)
     expect(state.downloads).toEqual([])
-    state.session = { role: 'admin', userId: 'a1' }; state.row = { ...visible, hidden: true }
+    state.session = { role: 'admin', userId: 'a1' }; state.row = { ...visible, status: 'pending' }
     expect((await call()).status).toBe(200)
   })
 })
