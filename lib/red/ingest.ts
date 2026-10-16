@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { validateRedUpload, RED_MAX_SIZE_BYTES, type RedUploadOutcome } from './upload-rules'
+import { validateRedUpload, hasZipSignature, readHead, RED_MAX_SIZE_BYTES, type RedUploadOutcome } from './upload-rules'
 import { redStoragePath, DOCX_MIME } from './reports'
 import { todayKst } from '@/lib/classroom/notice'
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -21,7 +21,7 @@ export async function readRedForm(req: Request): Promise<{ files: File[]; date: 
 
 /**
  * RED 파일 받아들이기(PRD 2026-10-16): 본사 올리기 라우트(/api/red/upload)·생성기 intake(/api/red/intake)·내 스크립트가 같은 길을 쓴다.
- * 파일마다: 이름 틀·크기 검증 → 같은 이름이면 건너뜀 → 비공개 저장소에 올림(키는 ASCII uuid) → resources 줄(검수대기) → 줄 실패면 올린 파일을 지운다.
+ * 파일마다: 확장자·크기·이름 틀 검증 → ZIP 서명 확인 → 같은 이름이면 건너뜀 → 비공개 저장소에 올림(키는 ASCII uuid) → resources 줄(검수대기) → 줄 실패면 올린 파일을 지운다.
  * admin 은 service role 클라이언트(저장소 정책이 없어 서버만 쓴다).
  */
 type AdminLike = Pick<SupabaseClient, 'from' | 'storage'>
@@ -32,7 +32,9 @@ export async function ingestRedFiles(admin: AdminLike, files: RedIngestFile[], o
   const outcomes: RedIngestOutcome[] = []
   for (const file of files) {
     const check = validateRedUpload({ name: file.name, size: file.size, type: file.type })
-    if (!check.ok) { outcomes.push({ name: file.name, status: 'failed', error: check.error }); continue }
+    if (!check.ok) { outcomes.push({ name: file.name, status: 'failed', error: check.error, ...(check.detail !== undefined ? { detail: check.detail } : {}) }); continue }
+    // 이름만 .docx 인 다른 파일은 여기서 걸린다 — docx 는 ZIP 이라 앞 4바이트가 50 4B 03 04(본사 2026-10-16)
+    if (!hasZipSignature(await readHead(file.body))) { outcomes.push({ name: file.name, status: 'failed', error: 'bad_content', detail: file.type ?? '' }); continue }
     const { data: dup } = await admin.from('resources').select('id').eq('filename', file.name).maybeSingle()
     if (dup) { outcomes.push({ name: file.name, status: 'duplicate' }); continue }
     const id = randomUUID()

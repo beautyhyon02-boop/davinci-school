@@ -100,8 +100,8 @@ function EditForm({ r, pending, run, onSaved }: { r: RedReportRow; pending: bool
     try {
       const fd = new FormData(); fd.append('file', file)
       const res = await fetch(`/api/red/replace/${r.id}`, { method: 'POST', body: fd })
-      const body = (await res.json().catch(() => ({}))) as { error?: string }
-      setNote(res.ok ? copy.form.replaced : copy.errors[body.error ?? ''] ?? copy.errors.upload_failed)
+      const body = (await res.json().catch(() => ({}))) as { error?: string; detail?: string }
+      setNote(res.ok ? copy.form.replaced : (copy.errors[body.error ?? ''] ?? copy.errors.upload_failed) + (body.detail !== undefined ? ` ${copy.typeDetail(body.detail)}` : ''))
       if (res.ok) router.refresh()
     } catch { setNote(copy.errors.upload_failed) } finally { setBusy(false); e.target.value = '' }
   }

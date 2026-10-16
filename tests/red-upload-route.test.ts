@@ -19,9 +19,10 @@ vi.mock('@/lib/supabase/admin', () => ({
 const { POST } = await import('@/app/api/red/upload/route')
 
 const NAME = 'RED Basic 사물놀이 물리_01 줄로 떠 있는 구조물(텐세그리티) 교사용 완성보고서(초등).docx'
-function request(files: { name: string; bytes?: number }[], date?: string, contentLength = '5000') {
+const zipBytes = (n: number) => { const b = new Uint8Array(n); b.set([0x50, 0x4b, 0x03, 0x04]); return b }
+function request(files: { name: string; bytes?: number; zip?: boolean; type?: string }[], date?: string, contentLength = '5000') {
   const fd = new FormData()
-  for (const f of files) fd.append('files', new File([new Uint8Array(f.bytes ?? 1000)], f.name, { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }))
+  for (const f of files) fd.append('files', new File([f.zip === false ? new Uint8Array(f.bytes ?? 1000) : zipBytes(f.bytes ?? 1000)], f.name, { type: f.type ?? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }))
   if (date) fd.set('date', date)
   const req = new Request('http://localhost/api/red/upload', { method: 'POST', body: fd })
   // Request 가 content-length 를 스스로 정하지 않으므로 라우트가 보는 헤더를 흉내 낸다
@@ -57,6 +58,14 @@ describe('POST /api/red/upload', () => {
     expect(await res.json()).toEqual({ outcomes: [{ name: NAME, status: 'failed', error: 'db_failed' }] })
     expect(state.calls.map((c) => c[0])).toEqual(['upload', 'insert', 'remove'])
     expect(state.calls[2][1][0]).toEqual([state.calls[0][1][0]])   // 올린 그 경로를 지운다
+  })
+  it('MIME 이 엉뚱해도(application/zip) 확장자가 .docx 면 올린다; 내용이 ZIP 이 아니면 bad_content 와 받은 형식을 돌려주고 올리지 않는다', async () => {
+    const ok = await POST(request([{ name: NAME, type: 'application/zip' }], '2026-10-15'))
+    expect(await ok.json()).toEqual({ outcomes: [{ name: NAME, status: 'uploaded' }] })
+    state.calls = []
+    const bad = await POST(request([{ name: NAME, zip: false, type: 'text/plain' }], '2026-10-15'))
+    expect(await bad.json()).toEqual({ outcomes: [{ name: NAME, status: 'failed', error: 'bad_content', detail: 'text/plain' }] })
+    expect(state.calls).toEqual([])
   })
   it('너무 큰 요청(또는 길이 없는 요청)은 본문을 읽기 전에 413', async () => {
     expect((await POST(request([{ name: NAME }], undefined, String(20 * 1024 * 1024)))).status).toBe(413)

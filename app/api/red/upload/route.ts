@@ -18,5 +18,5 @@ export async function POST(req: NextRequest) {
   if (!form) return NextResponse.json({ error: 'bad request' }, { status: 400 })
   const outcomes = await ingestRedFiles(createAdminClient(), form.files.map((f) => ({ name: f.name, size: f.size, type: f.type, body: f })), { date: form.date, createdBy: s.userId })
   // 관리 화면에는 id 가 필요 없다(올림/이미 있음/실패만)
-  return NextResponse.json({ outcomes: outcomes.map((o) => ({ name: o.name, status: o.status, ...(o.error ? { error: o.error } : {}) })) })
+  return NextResponse.json({ outcomes: outcomes.map((o) => ({ name: o.name, status: o.status, ...(o.error ? { error: o.error } : {}), ...(o.detail !== undefined ? { detail: o.detail } : {}) })) })
 }

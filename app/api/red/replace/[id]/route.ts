@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto'
 import { getSessionProfileOrNull } from '@/lib/auth/session'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { MAX_CONTENT_LENGTH_BYTES } from '@/lib/red/ingest'
-import { RED_MAX_SIZE_BYTES } from '@/lib/red/upload-rules'
+import { RED_MAX_SIZE_BYTES, isDocxName, hasZipSignature, readHead } from '@/lib/red/upload-rules'
 import { redStoragePath, DOCX_MIME, type RedCategory } from '@/lib/red/reports'
 
 export const maxDuration = 60
@@ -11,7 +11,7 @@ const ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 /**
  * POST /api/red/replace/[id] (본사만, PRD 2026-10-16 US-006): form 의 file(docx) 로 줄의 파일을 바꾼다 — 새 경로에 올리고 줄(파일 이름·경로·크기)을 고친 뒤 옛 파일을 지운다.
- * 이름 틀은 묻지 않는다(메타는 줄에 이미 있다). 줄 갱신이 실패하면 새 파일을 지워 반쪽을 남기지 않는다.
+ * 이름 틀은 묻지 않는다(메타는 줄에 이미 있다). docx 판별은 확장자 + ZIP 서명. 줄 갱신이 실패하면 새 파일을 지워 반쪽을 남기지 않는다.
  */
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const s = await getSessionProfileOrNull()
@@ -27,7 +27,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   let form: FormData
   try { form = await req.formData() } catch { return NextResponse.json({ error: 'bad request' }, { status: 400 }) }
   const file = form.get('file')
-  if (!(file instanceof File) || !/\.docx$/i.test(file.name) || file.size <= 0 || file.size > RED_MAX_SIZE_BYTES) return NextResponse.json({ error: 'invalid_type' }, { status: 422 })
+  if (!(file instanceof File) || file.size <= 0 || file.size > RED_MAX_SIZE_BYTES) return NextResponse.json({ error: 'file_too_large' }, { status: 422 })
+  // docx 판별은 확장자로만, 내용은 ZIP 서명으로(본사 2026-10-16). 거절에는 받은 file.type 을 붙인다.
+  if (!isDocxName(file.name)) return NextResponse.json({ error: 'invalid_type', detail: file.type ?? '' }, { status: 422 })
+  if (!hasZipSignature(await readHead(file))) return NextResponse.json({ error: 'bad_content', detail: file.type ?? '' }, { status: 422 })
   // 같은 이름의 다른 줄이 있으면(resources_filename_uniq) 올리기 전에 409 — 올린 뒤 갱신 실패로 알게 되지 않게(검토 2026-10-16)
   const { data: dup } = await admin.from('resources').select('id').eq('filename', file.name).maybeSingle()
   if (dup && dup.id !== id) return NextResponse.json({ error: 'duplicate' }, { status: 409 })

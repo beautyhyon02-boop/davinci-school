@@ -19,9 +19,10 @@ vi.mock('@/lib/supabase/admin', () => ({
 const { POST } = await import('@/app/api/red/replace/[id]/route')
 
 const ID = '3f2a1c0e-1111-2222-3333-444455556666'
-function request(name: string, contentLength = '5000') {
+function request(name: string, contentLength = '5000', zip = true, type = 'application/octet-stream') {
   const fd = new FormData()
-  fd.append('file', new File([new Uint8Array(1200)], name, { type: 'application/octet-stream' }))
+  const b = new Uint8Array(1200); if (zip) b.set([0x50, 0x4b, 0x03, 0x04])
+  fd.append('file', new File([b], name, { type }))
   const req = new Request(`http://localhost/api/red/replace/${ID}`, { method: 'POST', body: fd })
   Object.defineProperty(req, 'headers', { value: new Headers({ 'content-length': contentLength }) })
   return req as never
@@ -44,6 +45,12 @@ describe('POST /api/red/replace/[id]', () => {
     expect(String(state.calls[0][1][0])).toMatch(/^red\/BASIC\/2026-10-15\/[0-9a-f-]{36}\.docx$/)
     expect(state.calls[1][1][0]).toMatchObject({ filename: '새 파일.docx', storage_path: state.calls[0][1][0], size_bytes: 1200 })
     expect(state.calls[2][1][0]).toEqual(['red/BASIC/2026-10-15/old.docx'])
+  })
+  it('내용이 ZIP(docx)이 아니면 422 bad_content 와 받은 형식, 올리지 않는다; MIME 이 엉뚱해도 내용이 맞으면 통과', async () => {
+    const bad = await POST(request('새 파일.docx', '5000', false, 'text/plain'), { params: Promise.resolve({ id: ID }) })
+    expect(bad.status).toBe(422); expect(await bad.json()).toEqual({ error: 'bad_content', detail: 'text/plain' })
+    expect(state.calls).toEqual([])
+    expect((await POST(request('새 파일.docx', '5000', true, 'application/x-foo'), { params: Promise.resolve({ id: ID }) })).status).toBe(200)
   })
   it('같은 이름의 다른 줄이 이미 있으면 409, 올리지 않는다', async () => {
     state.taken.add('새 파일.docx')

@@ -21,7 +21,9 @@ export function RedUploadForm() {
     if (!files || files.length === 0) return
     setBusy(true); setLines([])
     const out: string[] = []
-    const line = (o: RedUploadOutcome) => o.status === 'uploaded' ? copy.result.uploaded(o.name) : o.status === 'duplicate' ? copy.result.duplicate(o.name) : copy.result.failed(o.name, copy.errors[o.error ?? ''] ?? o.error ?? '')
+    // 거절 사유에 실제로 받은 file.type 을 붙인다(본사 2026-10-16) — 어떤 형식으로 들어왔는지 보고 판단할 수 있게
+    const why = (error?: string, detail?: string) => (copy.errors[error ?? ''] ?? error ?? '') + (detail !== undefined ? ` ${copy.typeDetail(detail)}` : '')
+    const line = (o: RedUploadOutcome) => o.status === 'uploaded' ? copy.result.uploaded(o.name) : o.status === 'duplicate' ? copy.result.duplicate(o.name) : copy.result.failed(o.name, why(o.error, o.detail))
     try {
       // 파일마다 한 요청 — Vercel 은 본문 4.5MB 를 넘는 요청을 JSON 없이 413 으로 끊는다(독립 검토 2026-10-15). 응답이 JSON 이 아니어도 줄 하나로 보인다.
       for (const f of Array.from(files)) {

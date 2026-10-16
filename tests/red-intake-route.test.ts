@@ -17,7 +17,7 @@ const { POST } = await import('@/app/api/red/intake/route')
 const NAME = 'RED E Advanced_과학뉴스 생명과학_걸을 때마다 혈액순환을 읽는 스마트 신발 교사용 완성보고서.docx'
 function request(key: string | null, names = [NAME]) {
   const fd = new FormData()
-  for (const n of names) fd.append('files', new File([new Uint8Array(1000)], n, { type: 'application/octet-stream' }))
+  for (const n of names) { const b = new Uint8Array(1000); b.set([0x50, 0x4b, 0x03, 0x04]); fd.append('files', new File([b], n, { type: 'application/octet-stream' })) }
   fd.set('date', '2026-10-16')
   const req = new Request('http://localhost/api/red/intake', { method: 'POST', body: fd })
   const headers = new Headers({ 'content-length': '5000' })
