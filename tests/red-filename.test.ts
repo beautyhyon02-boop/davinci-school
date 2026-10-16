@@ -19,6 +19,14 @@ describe('parseRedFilename', () => {
     expect(parseRedFilename('RED D Advanced_인문사회뉴스 사회_청소년 선거권 교사용 완성보고서.docx')).toMatchObject({ ok: true, redType: 'D', category: 'ADVANCED', series: '인문사회뉴스', subject: '사회' })
     expect(parseRedFilename('RED X Basic_독서_제목 교사용 완성보고서.docx')).toEqual({ ok: false, reason: 'pattern' })
   })
+  it('수준 표시의 괄호가 빠졌거나 띄어쓰기로 붙어도 읽는다(본사 2026-10-16: "완성보고서초등.docx" 로 들어온 파일이 거절됨)', () => {
+    expect(parseRedFilename('RED Basic 사물놀이 화학_02 거꾸로 든 물병과 공기의 비밀 교사용 완성보고서초등.docx')).toEqual({
+      ok: true, category: 'BASIC', kind: 'teacher', series: '사물놀이', subject: '화학', title: '02 거꾸로 든 물병과 공기의 비밀', redType: 'E',
+    })
+    expect(parseRedFilename('RED Basic 사물놀이 화학_02 거꾸로 든 물병과 공기의 비밀 학생용 작성양식 중고등.docx')).toMatchObject({ ok: true, category: 'ADVANCED', kind: 'student' })
+    expect(parseRedFilename('RED E Advanced_과학뉴스 생명_제목 교사용 완성보고서 중고.docx')).toMatchObject({ ok: true, category: 'ADVANCED', redType: 'E' })
+    expect(parseRedFilename('RED Basic 사물놀이 화학_제목 교사용 완성보고서.docx')).toEqual({ ok: false, reason: 'pattern' })   // 옛 틀은 수준 표시가 꼭 있어야 한다
+  })
   it('시리즈와 과목은 띄어쓰기로 — 밑줄로 나누면 첫 밑줄까지가 시리즈, 나머지는 제목(검토 2026-10-16, 생성기 작성자가 알 것)', () => {
     expect(parseRedFilename('RED E Advanced_과학뉴스_생명과학_제목 교사용 완성보고서.docx')).toMatchObject({ ok: true, series: '과학뉴스', subject: '', title: '생명과학_제목' })
   })

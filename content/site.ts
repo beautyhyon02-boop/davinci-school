@@ -190,7 +190,7 @@ export const app = {
     result: { uploaded: (name: string) => `올림(검수대기): ${name}`, duplicate: (name: string) => `이미 있음: ${name}`, failed: (name: string, why: string) => `실패: ${name} — ${why}` },
     errors: {
       file_too_large: '10MB 를 넘거나 비어 있습니다', invalid_type: '파일 이름이 .docx 로 끝나지 않습니다', bad_content: '내용이 docx(ZIP)가 아닙니다 — 이름만 .docx 인 파일입니다',
-      bad_name: '파일 이름이 틀(RED E Advanced_시리즈 과목_제목 교사용 완성보고서.docx 또는 RED Basic 시리즈_제목 교사용 완성보고서(초등).docx)과 다릅니다',
+      bad_name: '파일 이름이 틀(RED E Advanced_시리즈 과목_제목 교사용 완성보고서.docx 또는 RED Basic 시리즈_제목 교사용 완성보고서(초등).docx)과 다릅니다 — 끝의 수준 표시(초등/중고등)와 "교사용 완성보고서"/"학생용 작성양식" 글자를 확인하세요',
       upload_failed: '저장소에 올리지 못했습니다', db_failed: '목록에 넣지 못했습니다', duplicate: '같은 이름의 파일이 이미 있습니다', invalid: '입력이 올바르지 않습니다. 종류·구분·날짜·제목·링크(http로 시작)를 확인하세요.',
     } as Record<string, string>,
     typeDetail: (type: string) => `(받은 형식: ${type || '없음'})`,

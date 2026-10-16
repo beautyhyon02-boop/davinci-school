@@ -71,13 +71,14 @@ export function parseRedFilename(filename: string): ParsedRedFilename {
   const name = filename.trim().replace(/\s+\.docx$/i, '.docx')   // 확장자 앞 공백은 지운다(검토 2026-10-16)
   if (!/\.docx$/i.test(name)) return { ok: false, reason: 'extension' }
   const stem = name.replace(/\.docx$/i, '')
-  const fresh = stem.match(/^RED ([RED]) (Basic|Advanced)_(.+?)_(.+?) (교사용 완성보고서|학생용 작성양식)(?:\((초등|중고등|중고|중등|고등)\))?$/)
+  // 수준 표시는 "(초등)" 이 원칙이지만 괄호가 빠지거나("…완성보고서초등") 띄어쓰기로 붙어도("… 중고등") 읽는다(본사 2026-10-16 실제 파일).
+  const fresh = stem.match(/^RED ([RED]) (Basic|Advanced)_(.+?)_(.+?) (교사용 완성보고서|학생용 작성양식)(?:\s*\(?(초등|중고등|중고|중등|고등)\)?)?$/)
   if (fresh) {
     const category = CATEGORY_BY_WORD[fresh[2]]
     if (fresh[6] && CATEGORY_BY_LEVEL[fresh[6]] !== category) return { ok: false, reason: 'pattern' }   // Basic 인데 (중고등) 처럼 어긋나면 거부
     return { ok: true, category, kind: KIND_BY_LABEL[fresh[5]], redType: fresh[1] as RedType, ...splitSeries(fresh[3]), title: fresh[4].trim() }
   }
-  const legacy = stem.match(/^RED Basic (.+?)_(.+) (교사용 완성보고서|학생용 작성양식)\((초등|중고등|중고|중등|고등)\)$/)
+  const legacy = stem.match(/^RED Basic (.+?)_(.+) (교사용 완성보고서|학생용 작성양식)\s*\(?(초등|중고등|중고|중등|고등)\)?$/)
   if (!legacy) return { ok: false, reason: 'pattern' }
   return { ok: true, category: CATEGORY_BY_LEVEL[legacy[4]], kind: KIND_BY_LABEL[legacy[3]], redType: 'E', ...splitSeries(legacy[1]), title: legacy[2].trim() }
 }
