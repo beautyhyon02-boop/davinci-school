@@ -54,6 +54,8 @@ export type ParsedRedFilename =
 const KIND_BY_LABEL: Record<string, RedKind> = { '교사용 완성보고서': 'teacher', '학생용 작성양식': 'student' }
 const CATEGORY_BY_LEVEL: Record<string, RedCategory> = { '초등': 'BASIC', '중고등': 'ADVANCED', '중고': 'ADVANCED', '중등': 'ADVANCED', '고등': 'ADVANCED' }
 const CATEGORY_BY_WORD: Record<string, RedCategory> = { Basic: 'BASIC', Advanced: 'ADVANCED' }
+/** 낱말 틀의 종류 낱말 → 종류 글자(2026-10-18). */
+const TYPE_BY_WORD: Record<string, RedType> = { Debate: 'D', Reading: 'R', Essay: 'E' }
 
 /** "사물놀이 물리"처럼 시리즈 + 과목 두 낱말일 수 있다(마지막 낱말들을 과목으로) — 한 낱말이면 과목은 빈 값. */
 function splitSeries(raw: string): { series: string; subject: string } {
@@ -62,7 +64,7 @@ function splitSeries(raw: string): { series: string; subject: string } {
 }
 
 /**
- * 두 가지 이름 틀을 읽는다.
+ * 세 가지 이름 틀을 읽는다(세 번째는 아래 낱말 틀 — 디베이트·독서 생성기, 2026-10-18).
  * - 옛 틀(생성기 build.js): `RED Basic {series}_{stem} {교사용 완성보고서|학생용 작성양식}({초등|중고등}).docx` — 여기서 "Basic" 은 상표 낱말이고 수준은 괄호에서. 종류는 E(소논문).
  * - 새 틀(PRD 2026-10-16): `RED {R|E|D} {Basic|Advanced}_{series}_{stem} {종류}.docx` — 글자가 종류, 낱말이 수준. 끝에 (초등) 같은 괄호가 붙어도 된다(수준과 어긋나면 거부).
  * 시리즈와 과목은 **띄어쓰기**로("과학뉴스 생명과학"). 밑줄로 나누면 첫 밑줄까지가 시리즈, 나머지가 제목이 된다 — 생성기 이름 규칙.
@@ -79,8 +81,12 @@ export function parseRedFilename(filename: string): ParsedRedFilename {
     return { ok: true, category, kind: KIND_BY_LABEL[fresh[5]], redType: fresh[1] as RedType, ...splitSeries(fresh[3]), title: fresh[4].trim() }
   }
   const legacy = stem.match(/^RED Basic (.+?)_(.+) (교사용 완성보고서|학생용 작성양식)\s*\(?(초등|중고등|중고|중등|고등)\)?$/)
-  if (!legacy) return { ok: false, reason: 'pattern' }
-  return { ok: true, category: CATEGORY_BY_LEVEL[legacy[4]], kind: KIND_BY_LABEL[legacy[3]], redType: 'E', ...splitSeries(legacy[1]), title: legacy[2].trim() }
+  if (legacy) return { ok: true, category: CATEGORY_BY_LEVEL[legacy[4]], kind: KIND_BY_LABEL[legacy[3]], redType: 'E', ...splitSeries(legacy[1]), title: legacy[2].trim() }
+  // 낱말 틀(디베이트 생성기, 본사 2026-10-18 실제 파일): `RED Debate {시리즈 과목}_{논제} {교사용 진행안|학생용 토론양식}{수준}` — 낱말이 종류, 수준은 끝 표시(괄호·공백 무관, 꼭 있어야 한다).
+  // 교사용·학생용 뒤 역할 낱말(진행안·토론양식·지도안·토론양식-칼포퍼 …)은 종류마다 달라 묻지 않는다. 디베이트는 논제가 곧 제목(topic 열은 따로 두지 않는다).
+  const worded = stem.match(/^RED (Debate|Reading|Essay) (.+?)_(.+?) (교사용|학생용)\s*(\S*?)\s*\(?(초등|중고등|중고|중등|고등)\)?$/)
+  if (!worded) return { ok: false, reason: 'pattern' }
+  return { ok: true, category: CATEGORY_BY_LEVEL[worded[6]], kind: worded[4] === '교사용' ? 'teacher' : 'student', redType: TYPE_BY_WORD[worded[1]], ...splitSeries(worded[2]), title: worded[3].trim() }
 }
 
 /** 교사용·학생용을 한 세트로 묶는 키 — 구분·종류·시리즈·과목·제목이 같으면 같은 세트. */

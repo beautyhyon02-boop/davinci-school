@@ -86,3 +86,25 @@ describe('redStoragePath — ASCII id 로만(Storage 키에 한글 불가)', () 
     expect(redStoragePath('ADVANCED', '2026-10-15', '../한글 id:x')).toBe('red/ADVANCED/2026-10-15/..____id_x.docx')   // / 한 글 공백 : → _
   })
 })
+
+// 본사 2026-10-18: 디베이트 생성기가 보낸 "RED Debate …" 파일 2개가 intake 에서 bad_name 으로 거절됨(서버는 RED Basic·RED {R|E|D} {수준} 틀만 읽었다).
+// 디베이트 틀: `RED Debate {시리즈 과목}_{논제} {교사용 진행안|학생용 토론양식}{수준}.docx` — 낱말 Debate/Reading/Essay 가 종류, 수준은 끝 표시(괄호·공백 유무 무관).
+describe('parseRedFilename — 디베이트·독서 틀(RED Debate / RED Reading, 2026-10-18)', () => {
+  it('RED Debate … 교사용 진행안{수준} → D·teacher, 논제가 제목', () => {
+    expect(parseRedFilename('RED Debate 인문사회_02 5년째 유류세 인하 이제 끝내야 하는가 교사용 진행안중고등.docx')).toEqual({
+      ok: true, category: 'ADVANCED', kind: 'teacher', redType: 'D', series: '인문사회', subject: '', title: '02 5년째 유류세 인하 이제 끝내야 하는가',
+    })
+    expect(parseRedFilename('RED Debate 인문사회_02 5년째 유류세 인하 이제 끝내야 하는가 학생용 토론양식중고등.docx')).toMatchObject({ ok: true, kind: 'student', redType: 'D', category: 'ADVANCED' })
+  })
+  it('수준 표시는 괄호·띄어쓰기 어느 쪽이든 되고, 시리즈 뒤 낱말은 과목; 학생용 양식 이름에 붙은 형식(-칼포퍼)도 읽는다', () => {
+    expect(parseRedFilename('RED Debate 인문사회 경제_결혼서비스 가격 공개 의무화와 과태료 정당한가 교사용 진행안 (중고등).docx')).toMatchObject({ ok: true, series: '인문사회', subject: '경제', title: '결혼서비스 가격 공개 의무화와 과태료 정당한가', redType: 'D' })
+    expect(parseRedFilename('RED Debate 생활_급식 잔반 줄이기 벌점제 필요한가 학생용 토론양식(초등).docx')).toMatchObject({ ok: true, category: 'BASIC', kind: 'student', redType: 'D' })
+    expect(parseRedFilename('RED Debate 인문사회_결혼서비스 가격 공개 의무화와 과태료 정당한가 학생용 토론양식-칼포퍼중고등.docx')).toMatchObject({ ok: true, kind: 'student', title: '결혼서비스 가격 공개 의무화와 과태료 정당한가' })
+  })
+  it('RED Reading … 은 R, RED Essay … 은 E; 교사용·학생용 뒤 역할 낱말은 무엇이든 되지만 수준 표시는 꼭 있어야 한다', () => {
+    expect(parseRedFilename('RED Reading 독서_데미안 교사용 지도안(중고등).docx')).toMatchObject({ ok: true, redType: 'R', kind: 'teacher', series: '독서', title: '데미안' })
+    expect(parseRedFilename('RED Essay 과학뉴스 생명과학_제목 학생용 작성양식(초등).docx')).toMatchObject({ ok: true, redType: 'E', kind: 'student', category: 'BASIC' })
+    expect(parseRedFilename('RED Debate 인문사회_논제 교사용 진행안.docx')).toEqual({ ok: false, reason: 'pattern' })
+    expect(parseRedFilename('RED Debate 인문사회_논제 요약본(중고등).docx')).toEqual({ ok: false, reason: 'pattern' })
+  })
+})
