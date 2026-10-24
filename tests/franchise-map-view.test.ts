@@ -25,8 +25,9 @@ describe('FranchiseMap', () => {
   it('전체 수·시·도 칩(있는 곳만)·이름 한 줄에 하나', () => {
     expect(html).toContain(copy.total(3))
     // 칩·소제목은 요소 글자로만 비교(지도 aria-label '서울 0곳' 에 걸리지 않게 > < 로 감싼다)
-    expect(html).toContain(`>${copy.chip('경기', 2)}<`)
-    expect(html).toContain(`>${copy.chip('부산', 1)}<`)
+    expect(html).toMatch(new RegExp(`<button[^>]*aria-pressed="true"[^>]*>${copy.allChip}</button>`))
+    expect(html).toMatch(new RegExp(`<button[^>]*aria-pressed="false"[^>]*>${copy.chip('경기', 2)}</button>`))
+    expect(html).toMatch(new RegExp(`<button[^>]*aria-pressed="false"[^>]*>${copy.chip('부산', 1)}</button>`))
     expect(html).not.toContain(`>${copy.chip('서울', 0)}<`)
     expect(html.indexOf('가온원')).toBeLessThan(html.indexOf('하늘원'))
   })
@@ -35,6 +36,13 @@ describe('FranchiseMap', () => {
     expect(html).toContain('href="https://b.example.com/"')
     expect(html).not.toContain('href="https://b.example.com/x')
     expect(html).toMatch(/<li[^>]*>\s*<span[^>]*>가온원<\/span>/)
+  })
+  it('http(s) 가 아닌 홈페이지 값은 링크로 만들지 않고 이름만 보인다', () => {
+    const bad = renderToStaticMarkup(createElement(FranchiseMap, {
+      groups: groupBySido([{ name: '위험원', sido: '서울' as const, website: 'javascript:alert(1)' }]),
+    }))
+    expect(bad).not.toContain('href="javascript:')
+    expect(bad).toMatch(/<li[^>]*>\s*<span[^>]*>위험원<\/span>/)
   })
   it('출처와 독도 표식', () => {
     expect(html).toContain(copy.credit)

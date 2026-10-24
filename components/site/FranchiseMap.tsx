@@ -32,7 +32,7 @@ export function FranchiseMap({ groups }: { groups: MapGroups }) {
               tabIndex={0}
               aria-label={copy.regionAria(s.code, n)}
               aria-pressed={picked === s.code}
-              className={`cursor-pointer stroke-white stroke-[1.5] transition ${fill} ${picked === s.code ? 'stroke-mint-700' : ''}`}
+              className={`cursor-pointer stroke-[1.5] transition ${fill} ${picked === s.code ? 'stroke-mint-700' : 'stroke-white'}`}
               onClick={() => toggle(s.code)}
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(s.code) } }}
             />
@@ -44,7 +44,7 @@ export function FranchiseMap({ groups }: { groups: MapGroups }) {
         {KOREA_MAP.markers.map((m) => (
           <g key={m.name}>
             <circle cx={m.x} cy={m.y} r={2.5} className="fill-ink-300" />
-            <text x={m.x + 5} y={m.y} dominantBaseline="central" className="fill-ink-500 text-[11px]">{m.name === '독도' ? copy.dokdo : m.name}</text>
+            <text x={m.x + 5} y={m.y} dominantBaseline="central" className="fill-ink-500 text-[11px]">{copy.dokdo}</text>
           </g>
         ))}
       </svg>
@@ -74,7 +74,7 @@ export function FranchiseMap({ groups }: { groups: MapGroups }) {
 }
 
 function AcademyName({ a }: { a: MapAcademy }) {
-  if (!a.website) return <span className="text-ink-700">{a.name}</span>
+  if (!/^https?:\/\//i.test(a.website)) return <span className="text-ink-700">{a.name}</span>
   return (
     <a href={a.website} target="_blank" rel="noopener noreferrer" className="font-semibold text-mint-700 underline-offset-2 hover:underline" title={copy.newWindow}>
       {a.name} <span aria-hidden="true">↗</span>
