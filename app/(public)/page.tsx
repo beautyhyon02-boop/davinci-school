@@ -2,6 +2,7 @@ import { site } from '@/content/site'
 import { Button } from '@/components/ui/Button'
 import { Section } from '@/components/site/Section'
 import { ProgramCard } from '@/components/site/ProgramCard'
+import { FranchiseMapSection } from '@/components/site/FranchiseMapSection'
 
 export default function HomePage() {
   return (
@@ -24,6 +25,8 @@ export default function HomePage() {
           </dl>
         </div>
       </section>
+
+      <FranchiseMapSection />
 
       <Section eyebrow={site.sections.programs.eyebrow} title={site.sections.programs.title}>
         <div className="grid gap-5 md:grid-cols-2">

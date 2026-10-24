@@ -1,5 +1,6 @@
 import { Section } from '@/components/site/Section'
 import { InquiryForm } from '@/components/site/InquiryForm'
+import { FranchiseMapSection } from '@/components/site/FranchiseMapSection'
 import { pages } from '@/content/site'
 
 export default function FranchisePage() {
@@ -12,6 +13,7 @@ export default function FranchisePage() {
           <p className="mt-4 max-w-2xl text-lg text-ink-700">{f.intro}</p>
         </div>
       </div>
+      <FranchiseMapSection />
       <Section title={f.formTitle}>
         <InquiryForm />
       </Section>
