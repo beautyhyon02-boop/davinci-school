@@ -45,4 +45,13 @@ describe('loadMapAcademies', () => {
     expect(spy).toHaveBeenCalledTimes(1)
     spy.mockRestore()
   })
+  it('rpc 가 예외를 던져도 빈 목록이고 기록을 한 번 남긴다(공개 페이지가 깨지지 않게)', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    expect(await loadMapAcademies(db(async () => { throw new Error('boom') }))).toEqual([])
+    expect(spy).toHaveBeenCalledTimes(1)
+    spy.mockRestore()
+  })
+  it('data 가 배열이 아니면 빈 목록', async () => {
+    expect(await loadMapAcademies(db(async () => ({ data: { oops: true }, error: null })))).toEqual([])
+  })
 })
