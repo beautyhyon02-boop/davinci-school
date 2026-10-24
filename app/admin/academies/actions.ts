@@ -7,6 +7,7 @@ import { getSessionProfile } from '@/lib/auth/session'
 import { parseAcademy } from '@/lib/academies/validate'
 import { generatePassword } from '@/lib/auth/passwords'
 import { app } from '@/content/site'
+import { isPlan } from '@/lib/academies/plan'
 
 const copy = app.adminAcademies
 
@@ -47,4 +48,26 @@ export async function createTeacherAccount(
   if (error) return { error: error.message }
   revalidatePath(`/admin/academies/${academyId}`)
   return { issued: { email, password } }
+}
+
+/** 가맹 상품 바꾸기(PRD 2026-10-20): 본사만. 바꾸면 그 원의 원장에게 RED 자료실이 바로 열리거나 닫힌다(RLS·API 가 academies.plan 을 본다). */
+export async function setAcademyPlan(
+  academyId: string,
+  _prev: { error?: string; saved?: boolean } | undefined,
+  formData: FormData,
+) {
+  const s = await getSessionProfile()
+  if (s.role !== 'admin') throw new Error('forbidden')
+  const plan = String(formData.get('plan') ?? '')
+  if (!isPlan(plan)) return { error: copy.errors.planInvalid }
+  const note = String(formData.get('plan_note') ?? '').trim()
+  const supabase = await createClient()
+  const { error } = await supabase.from('academies')
+    .update({ plan, plan_note: note, plan_changed_at: new Date().toISOString(), plan_changed_by: s.userId })
+    .eq('id', academyId)
+  if (error) return { error: error.message }
+  revalidatePath(`/admin/academies/${academyId}`)
+  revalidatePath('/admin/academies')
+  revalidatePath('/programs/inquiry')
+  return { saved: true }
 }

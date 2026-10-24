@@ -3,8 +3,10 @@ import { useActionState } from 'react'
 import { createAcademy } from '../actions'
 import { Button } from '@/components/ui/Button'
 import { app } from '@/content/site'
+import { PLANS, DEFAULT_PLAN } from '@/lib/academies/plan'
 
 const copy = app.adminAcademies.form
+const planCopy = app.adminAcademies.plan
 const input = 'rounded-xl border border-ink-300 px-4 py-3 font-normal'
 
 export function AcademyForm() {
@@ -28,6 +30,18 @@ export function AcademyForm() {
         {copy.labels.directorPhone}
         <input name="director_phone" className={input} />
       </label>
+      <fieldset className="grid gap-2 text-sm font-semibold">
+        {planCopy.label}
+        {PLANS.map(p => (
+          <label key={p} className="flex items-start gap-2 font-normal">
+            <input type="radio" name="plan" value={p} defaultChecked={p === DEFAULT_PLAN} className="mt-1" />
+            <span>
+              <span className="font-semibold">{planCopy.names[p]}</span>
+              <span className="block text-ink-500">{planCopy.help[p]}</span>
+            </span>
+          </label>
+        ))}
+      </fieldset>
       {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
       <Button type="submit" disabled={pending}>{copy.submit}</Button>
     </form>

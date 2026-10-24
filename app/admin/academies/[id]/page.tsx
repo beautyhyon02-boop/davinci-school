@@ -1,6 +1,8 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { TeacherAccountForm } from './TeacherAccountForm'
+import { PlanForm } from './PlanForm'
+import { isPlan } from '@/lib/academies/plan'
 import { app } from '@/content/site'
 
 const copy = app.adminAcademies
@@ -20,6 +22,8 @@ export default async function AcademyPage({ params }: { params: Promise<{ id: st
       <p className="mt-1 text-ink-500">
         {a.region} · {copy.detailMeta.studentCapacity(a.student_capacity)} · {copy.detailMeta.monthlyGradingLimit(a.monthly_grading_limit)}
       </p>
+      <h2 className="mt-8 text-lg font-bold">{copy.plan.changeHeading}</h2>
+      <PlanForm academyId={id} academyName={a.name} current={isPlan(a.plan) ? a.plan : 'essay_only'} note={a.plan_note ?? ''} changedAt={a.plan_changed_at ?? null} />
       <h2 className="mt-8 text-lg font-bold">{copy.teacherAccount.heading}</h2>
       <ul className="mt-2 space-y-1">
         {(teachers ?? []).map(t => <li key={t.id}>{t.name} · {t.login_id}</li>)}

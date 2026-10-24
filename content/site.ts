@@ -220,8 +220,22 @@ export const app = {
   },
   adminAcademies: {
     listTitle: '가맹원 관리',
-    columns: { code: '코드', name: '이름', region: '지역', teacherCount: '원장 수', studentCount: '학생 수' },
+    columns: { code: '코드', name: '이름', region: '지역', plan: '가맹 상품', teacherCount: '원장 수', studentCount: '학생 수' },
     newButton: '새 가맹원',
+    // 가맹 상품(PRD 2026-10-20): davinci 다빈치스쿨 가맹(RED 열림) / essay_only 서논술 전용(RED 소개까지만)
+    plan: {
+      label: '가맹 상품',
+      names: { davinci: '다빈치스쿨 가맹', essay_only: '서논술 전용' } as Record<'davinci' | 'essay_only', string>,
+      help: { davinci: 'RED 자료실(탐구보고서)을 내려받을 수 있습니다.', essay_only: 'RED 는 소개 화면까지만 보입니다. 서논술 기능은 그대로.' } as Record<'davinci' | 'essay_only', string>,
+      filterAll: '전체',
+      summary: (davinci: number, essayOnly: number) => `다빈치스쿨 가맹 ${davinci}곳 · 서논술 전용 ${essayOnly}곳`,
+      changeHeading: '가맹 상품 바꾸기',
+      note: '메모 (계약일, 가맹점명 등 — 선택)',
+      confirm: (name: string, plan: string) => `${name}을(를) '${plan}'(으)로 바꿉니다. RED 자료실이 바로 열리거나 닫힙니다. 계속할까요?`,
+      submit: '저장',
+      saved: '저장했습니다.',
+      changedAt: (when: string) => `마지막 변경 ${when}`,
+    },
     form: {
       labels: { code: '원 코드', name: '원 이름', region: '지역', directorPhone: '원장 연락처' },
       submit: '등록',
@@ -245,6 +259,7 @@ export const app = {
       codeTaken: '이미 있는 원 코드입니다.',
       teacherMissing: '이메일과 이름을 입력하세요.',
       invalidInput: '입력을 확인하세요.',
+      planInvalid: '가맹 상품 값이 올바르지 않습니다.',
     },
   },
   adminStandards: {
@@ -1721,6 +1736,17 @@ export const pages = {
     count: (n: number) => `${n}세트`,
     more: (n: number) => `더 보기(${n}세트 더)`,
     links: '참고 자료',
+    // 서논술 전용 원장(PRD 2026-10-20 「RED 이용 권한 분리」) — 소개까지만: 갈래·건수·최근 날짜와 가맹 안내. 자료 제목은 나가지 않는다.
+    planGate: {
+      heading: 'RED 자료실은 다빈치스쿨 가맹 원장님께 제공됩니다.',
+      body: '지금 로그인하신 계정은 서논술 전용 가맹입니다. 다빈치스쿨 가맹을 맺으면 아래 세 갈래의 교사용·학생용 자료를 바로 내려받을 수 있습니다 (수준: Basic 초등 · Advanced 중고등).',
+      files: { R: '교사용 독서안내 · 학생용 독서탐구양식', E: '교사용 완성보고서 · 학생용 작성양식', D: '교사용 진행안 · 학생용 토론양식' } as Record<'R' | 'E' | 'D', string>,
+      count: (n: number, latest: string | null) => `자료 ${n}개` + (latest ? ` · 최근 ${latest.slice(0, 10)}` : ''),
+      preparing: '준비 중',
+      daily: (total: number) => `매일 새 자료가 올라옵니다 — 현재 ${total}개.`,
+      contact: '가맹 문의하기',
+      contactPending: '가맹 문의 창구는 준비 중입니다. 다빈치스쿨 본사로 연락해 주세요.',
+    },
   },
   program: {
     cta: '이 수업으로 가맹 문의',
