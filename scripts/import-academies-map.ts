@@ -42,16 +42,28 @@ async function main() {
     const code = r.code ?? fresh[k++]
     return { kind: '새로' as const, id: null, code, r }
   })
+  // 표의 코드가 '다른 이름의' 기존 원 코드와 겹치면 경고, 표와 이름이 안 맞은 기존 원도 알림(예: 001 대구 표기 차이)
+  const byCode = new Map((existing ?? []).map((a) => [a.code, a]))
+  for (const r of rows) {
+    const hit = r.code ? byCode.get(r.code) : undefined
+    if (hit && hit.name !== r.name) console.log(`경고: 코드 ${r.code} 는 이미 "${hit.name}" 의 코드입니다 (${r.name})`)
+  }
+  const csvNames = new Set(rows.map((r) => r.name))
+  for (const a of existing ?? []) if (!csvNames.has(a.name)) console.log(`표에 없는 기존 원: ${a.code} · ${a.name}`)
   for (const p of plan) console.log(`${p.kind} · ${p.r.name} · ${p.r.sido} · ${p.code} · ${p.r.website || '(홈페이지 없음)'}`)
   console.log(`새로 ${plan.filter((p) => p.kind === '새로').length} · 갱신 ${plan.filter((p) => p.kind === '갱신').length} · 문제 ${problems.length}`)
   if (!apply) { console.log('미리 보기만 했습니다. 실제로 넣으려면 --apply 를 붙이세요.'); return }
+  let ok = 0, failed = 0
   for (const p of plan) {
     // 갱신은 sido 와 '비어 있지 않은' website·region 만(기존 값·지도 표시 여부는 건드리지 않음). 새 줄의 show_on_map 은 열 기본값(true).
     const q = p.kind === '갱신'
       ? admin.from('academies').update({ sido: p.r.sido, ...(p.r.website ? { website: p.r.website } : {}), ...(p.r.region ? { region: p.r.region } : {}) }).eq('id', p.id!)
       : admin.from('academies').insert({ code: p.code, name: p.r.name, sido: p.r.sido, website: p.r.website, region: p.r.region || null })
     const { error: e } = await q
+    if (e) failed++; else ok++
     console.log(e ? `실패 · ${p.r.name}: ${e.message}` : `됨 · ${p.kind} · ${p.r.name}`)
   }
+  console.log(`됨 ${ok} · 실패 ${failed}`)
+  if (failed > 0) process.exitCode = 1
 }
 main().catch((e) => { console.error(e); process.exit(1) })

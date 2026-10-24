@@ -90,7 +90,7 @@ supabase db push
 ### 1-6. 전국 가맹원 지도: 마이그레이션 0021 → `git push` → 표 넣기 (2026-10-25)
 1. `supabase db push`(0021 `academy_map`: academies 칸 셋 + 함수 `public_map_academies`).
 2. `git push` → 배포 뒤 비로그인 창으로 홈을 연다 — 가맹원이 0곳이면 아직 지도 칸이 없다(정상).
-3. 표(이름·시도·홈페이지[,시/군/구][,코드], CSV UTF-8) → `npx tsx scripts/import-academies-map.ts 표.csv`(미리 보기) → 문제 줄 고침 → `--apply`.
+3. 표(이름·시도·홈페이지[,시/군/구][,코드], CSV UTF-8) → `npx tsx scripts/import-academies-map.ts 표.csv`(미리 보기) → 문제 줄 고침 → `--apply`. 반드시 프로젝트 폴더에서 실행한다(스크립트가 현재 폴더의 `.env.local` 을 읽는다). `--apply` 전에 미리 보기의 새로/갱신 줄을 하나씩 확인한다 — 특히 001(대구)이 「새로」가 아니라 「갱신」으로 나와야 하고, 「경고」·「표에 없는 기존 원」 줄이 있으면 이름·코드 표기를 먼저 고친다.
 4. 홈·가맹 안내에서 지도·숫자·이름 링크 확인. 기존 001(대구)은 가맹원 관리 → 상세 → 「지도 정보」에서 시·도만 고른다.
 
 ### 2. 그 다음에만 `studio-v2` → main 병합·배포
