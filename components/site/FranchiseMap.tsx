@@ -16,7 +16,7 @@ export function FranchiseMap({ groups }: { groups: MapGroups }) {
   const count = (s: Sido) => groups.bySido[s]?.count ?? 0
   const toggle = (s: Sido) => setPicked((p) => (p === s ? null : s))
   const present = SIDOS.filter((s) => count(s) > 0)
-  const shown: Sido[] = picked ? [picked] : present
+  const shown: Sido[] = picked ? (count(picked) > 0 ? [picked] : []) : present
 
   return (
     <div className="grid gap-8 md:grid-cols-[1.1fr_1fr]">
@@ -33,14 +33,15 @@ export function FranchiseMap({ groups }: { groups: MapGroups }) {
               tabIndex={0}
               aria-label={copy.regionAria(s.code, n)}
               aria-pressed={picked === s.code}
-              className={`cursor-pointer stroke-[1.5] transition ${fill} ${picked === s.code ? 'stroke-mint-700' : 'stroke-white'}`}
+              className={`cursor-pointer stroke-[1.5] outline-none transition focus-visible:stroke-ink-900 focus-visible:stroke-[3] ${fill} ${picked === s.code ? 'stroke-mint-700' : n > 0 ? 'stroke-white' : 'stroke-ink-300'}`}
               onClick={() => toggle(s.code)}
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(s.code) } }}
             />
           )
         })}
+        {picked && <path d={KOREA_MAP.sidos.find((s) => s.code === picked)!.d} fillRule="evenodd" className="pointer-events-none fill-none stroke-mint-700 stroke-[2]" />}
         {KOREA_MAP.sidos.filter((s) => count(s.code) > 0).map((s) => (
-          <text key={s.code} x={s.label[0]} y={s.label[1]} textAnchor="middle" dominantBaseline="central" className="pointer-events-none fill-mint-700 text-[22px] font-extrabold">{count(s.code)}</text>
+          <text key={s.code} aria-hidden="true" x={s.label[0]} y={s.label[1]} textAnchor="middle" dominantBaseline="central" className="pointer-events-none fill-mint-700 text-[22px] font-extrabold">{count(s.code)}</text>
         ))}
         {KOREA_MAP.markers.map((m) => (
           <g key={m.name}>

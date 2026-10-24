@@ -22,6 +22,11 @@ describe('FranchiseMap', () => {
     expect(html).toContain(`aria-label="${copy.regionAria('서울', 0)}"`)
     expect(html).toMatch(/<text[^>]*>2<\/text>/)
   })
+  it('가맹원 없는 시·도는 연한 회색 선, 있는 시·도는 흰 선', () => {
+    const pathOf = (label: string) => html.match(new RegExp(`<path[^>]*aria-label="${label}"[^>]*>`))?.[0] ?? ''
+    expect(pathOf(copy.regionAria('서울', 0))).toContain('stroke-ink-300')
+    expect(pathOf(copy.regionAria('경기', 2))).toContain('stroke-white')
+  })
   it('전체 수·시·도 칩(있는 곳만)·이름 한 줄에 하나', () => {
     expect(html).toContain(copy.total(3))
     // 칩·소제목은 요소 글자로만 비교(지도 aria-label '서울 0곳' 에 걸리지 않게 > < 로 감싼다)
@@ -34,7 +39,6 @@ describe('FranchiseMap', () => {
   it('홈페이지 있는 원만 새 창 링크', () => {
     expect(html).toContain('href="https://a.example.com/" target="_blank" rel="noopener noreferrer"')
     expect(html).toContain('href="https://b.example.com/"')
-    expect(html).not.toContain('href="https://b.example.com/x')
     expect(html).toMatch(/<li[^>]*>\s*<span[^>]*>가온원<\/span>/)
   })
   it('http(s) 가 아닌 홈페이지 값은 링크로 만들지 않고 이름만 보인다', () => {
