@@ -65,6 +65,13 @@ describe('site content', () => {
     expect(pages.franchise.errors.generic).toBeTruthy()
     expect(pages.franchise.errors.submitFailed).toBeTruthy()
   })
+  it('exposes franchise map copy', () => {
+    expect(pages.franchiseMap.title).toBeTruthy()
+    expect(pages.franchiseMap.total(3)).toContain('3')
+    expect(pages.franchiseMap.chip('서울', 2)).toBe('서울 2')
+    expect(pages.franchiseMap.none('세종')).toContain('세종')
+    expect(pages.franchiseMap.credit).toContain('Natural Earth')
+  })
   it('exposes admin inquiries inbox copy (title, columns, status labels, empty state)', () => {
     expect(app.adminInquiries.title).toBeTruthy()
     expect(app.adminInquiries.columns.date).toBeTruthy()

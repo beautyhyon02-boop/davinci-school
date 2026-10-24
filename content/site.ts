@@ -1752,6 +1752,19 @@ export const pages = {
     cta: '이 수업으로 가맹 문의',
     external: { eyebrow: '별도 사이트', button: (name: string) => `${name} 사이트로 가기`, note: '새 창에서 열립니다.', back: '다빈치스쿨 홈으로' },
   },
+  // 전국 가맹원 지도(대표 2026-10-25, 설계 2026-10-25-franchise-map-design.md §4). 나가는 자료는 이름·시도·홈페이지뿐.
+  franchiseMap: {
+    eyebrow: 'NATIONWIDE',
+    title: '전국 가맹원',
+    total: (n: number) => `전국 가맹원 ${n}곳`,
+    allChip: '전체',
+    chip: (sido: string, n: number) => `${sido} ${n}`,
+    regionAria: (sido: string, n: number) => `${sido} ${n}곳`,
+    none: (sido: string) => `${sido}에는 아직 가맹원이 없습니다.`,
+    newWindow: '새 창에서 열림',
+    credit: '지도: Natural Earth',
+    dokdo: '독도',
+  },
   franchise: {
     title: '다빈치스쿨 가맹 안내',
     intro: '본사가 교재·문항·교사용 지침서·AI 채점 시스템을 제공합니다. 원장님은 학생과 수업에 집중하세요.',
