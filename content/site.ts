@@ -12,7 +12,8 @@ export const site = {
     { label: '누적 수업 기간', value: '5년' },
   ],
   programs: [
-    { slug: 'inquiry', name: '탐구보고서', short: '질문에서 보고서까지, 5년 검증된 탐구 수업', status: 'open', accent: 'mint' },
+    // 수업 이름은 「RED」(대표 2026-10-25) — R 독서(Reading)·E 탐구보고서(Essay)·D 토론(Debate) 자료 세 갈래
+    { slug: 'inquiry', name: 'RED', short: '독서·탐구보고서·토론, 5년 검증된 탐구 수업', status: 'open', accent: 'mint' },
     { slug: 'essay', name: '서논술형 수업', short: '성취기준 기반 문항과 AI 채점·피드백', status: 'open', accent: 'lemon' },
     // 대표 2026-10-03: 대입 컨설팅·다빈치랩은 따로 배포된 사이트로 바로 간다(external, 새 창)
     { slug: 'consulting', name: '대입 컨설팅', short: '탐구 이력을 대입 전략으로', status: 'open', accent: 'lavender', external: 'https://www.davinci-lab.net' },
@@ -49,7 +50,7 @@ export const site = {
 export const programDetails: Record<ProgramSlug, { headline: string; paragraphs: string[]; bullets: string[] }> = {
   inquiry: {
     headline: '질문에서 보고서까지, 스스로 완성하는 탐구',
-    paragraphs: ['5년간 40권의 교재로 다듬어진 탐구보고서 수업입니다. 학생은 질문을 세우고, 자료를 모으고, 보고서로 정리하는 과정을 학년별로 반복합니다.'],
+    paragraphs: ['RED는 독서(Reading)·탐구보고서(Essay)·토론(Debate) 세 갈래로 이루어진 다빈치스쿨의 탐구 수업입니다.', '5년간 40권의 교재로 다듬어진 탐구보고서 수업입니다. 학생은 질문을 세우고, 자료를 모으고, 보고서로 정리하는 과정을 학년별로 반복합니다.'],
     bullets: ['초·중·고 학년별 교재 40권', '주제 선정 → 자료 조사 → 보고서 작성의 3단계', '원장님용 수업 지도안 제공'],
   },
   essay: {
