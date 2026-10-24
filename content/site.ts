@@ -220,7 +220,7 @@ export const app = {
   },
   adminAcademies: {
     listTitle: '가맹원 관리',
-    columns: { code: '코드', name: '이름', region: '지역', plan: '가맹 상품', teacherCount: '원장 수', studentCount: '학생 수' },
+    columns: { code: '코드', name: '이름', sido: '시·도', region: '시/군/구', plan: '가맹 상품', teacherCount: '원장 수', studentCount: '학생 수' },
     newButton: '새 가맹원',
     // 가맹 상품(PRD 2026-10-20): davinci 다빈치스쿨 가맹(RED 열림) / essay_only 서논술 전용(RED 소개까지만)
     plan: {
@@ -236,8 +236,12 @@ export const app = {
       saved: '저장했습니다.',
       changedAt: (when: string) => `마지막 변경 ${when}`,
     },
+    // 지도 정보(대표 2026-10-25): 시·도·홈페이지·지도 표시 — 홈페이지 「전국 가맹원」 지도가 읽는다.
+    map: { heading: '지도 정보', submit: '저장', saved: '저장했습니다.', columnsMissing: '지도 칸이 아직 준비되지 않았습니다. 마이그레이션 0021 을 적용하면 열립니다.' },
     form: {
-      labels: { code: '원 코드', name: '원 이름', region: '지역', directorPhone: '원장 연락처' },
+      labels: { code: '원 코드', name: '원 이름', region: '시/군/구 (선택)', sido: '시·도', website: '홈페이지 주소 (선택)', showOnMap: '홈페이지 지도에 표시', directorPhone: '원장 연락처' },
+      sidoNone: '선택 안 함',
+      websitePlaceholder: '예: www.example.com',
       submit: '등록',
     },
     teacherAccount: {
@@ -260,6 +264,8 @@ export const app = {
       teacherMissing: '이메일과 이름을 입력하세요.',
       invalidInput: '입력을 확인하세요.',
       planInvalid: '가맹 상품 값이 올바르지 않습니다.',
+      sidoInvalid: '시·도 값이 올바르지 않습니다.',
+      websiteInvalid: '홈페이지 주소를 확인하세요(예: www.example.com).',
     },
   },
   adminStandards: {

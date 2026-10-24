@@ -48,6 +48,7 @@ export default async function AcademiesPage({ searchParams }: { searchParams: Pr
             <tr>
               <th className="p-3">{copy.columns.code}</th>
               <th className="p-3">{copy.columns.name}</th>
+              <th className="p-3">{copy.columns.sido}</th>
               <th className="p-3">{copy.columns.region}</th>
               <th className="p-3">{copy.columns.plan}</th>
               <th className="p-3">{copy.columns.teacherCount}</th>
@@ -64,6 +65,7 @@ export default async function AcademiesPage({ searchParams }: { searchParams: Pr
                     <Link href={`/admin/academies/${a.id}`} className="font-semibold text-mint-700 underline">{a.code}</Link>
                   </td>
                   <td className="p-3">{a.name}</td>
+                  <td className="p-3">{a.sido ?? ''}</td>
                   <td className="p-3">{a.region}</td>
                   <td className="p-3">
                     <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${plan === 'davinci' ? 'bg-mint-100 text-mint-700' : 'bg-ink-100 text-ink-700'}`}>
