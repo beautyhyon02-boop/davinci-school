@@ -48,7 +48,17 @@ function centroid(r: Ring): [number, number] {
 }
 const MIN_AREA = 4 // px² — 이보다 작은 섬(약 2~3km²)은 뺀다. 울릉도는 남고 독도는 표식으로 따로 찍는다.
 /** 숫자 자리 보정(작거나 치우친 곳). 경기의 중심은 서울 쪽으로 쏠리므로 바깥으로 민다. 화면을 보고 맞춘 값. */
-const LABEL_OFFSET: Partial<Record<Sido, [number, number]>> = {}
+const LABEL_OFFSET: Partial<Record<Sido, [number, number]>> = { 경기: [24, 27] }
+
+/** 점이 고리 안인가(짝수-홀수 규칙). */
+function inRing(x: number, y: number, r: Ring): boolean {
+  let inside = false
+  for (let i = 0, j = r.length - 1; i < r.length; j = i++) {
+    const [xi, yi] = r[i], [xj, yj] = r[j]
+    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside
+  }
+  return inside
+}
 
 function main() {
   const src = process.argv[2]
@@ -63,13 +73,21 @@ function main() {
     if (seen.has(code)) throw new Error(`시·도 겹침: ${code}`)
     seen.add(code)
     const polys: number[][][][] = f.geometry.type === 'Polygon' ? [f.geometry.coordinates as number[][][]] : (f.geometry.coordinates as number[][][][])
-    const rings = polys.map((poly) => project(poly[0])) // 바깥 고리만(구멍 없음)
-    const largest = rings.reduce((a, b) => (area(a) >= area(b) ? a : b))
-    const kept = rings.filter((r) => r === largest || area(r) >= MIN_AREA)
-    const d = kept.map((r) => 'M' + r.map(([x, y]) => `${x},${y}`).join('L') + 'Z').join('')
-    const [cx, cy] = centroid(largest)
+    // 다각형마다 바깥 고리 + 구멍(예: 경기 안의 서울). 가장 큰 바깥 고리가 아니면 MIN_AREA 미만 고리는 뺀다(구멍은 자기 바깥 고리가 남았을 때만).
+    const shapes = polys.map((poly) => ({ outer: project(poly[0]), holes: poly.slice(1).map(project) }))
+    const main = shapes.reduce((a, b) => (area(a.outer) >= area(b.outer) ? a : b))
+    const rings: Ring[] = []
+    for (const sh of shapes) {
+      if (sh !== main && area(sh.outer) < MIN_AREA) continue
+      rings.push(sh.outer, ...sh.holes.filter((h) => area(h) >= MIN_AREA))
+    }
+    const d = rings.map((r) => 'M' + r.map(([x, y]) => `${x},${y}`).join('L') + 'Z').join('')
+    const [cx, cy] = centroid(main.outer)
     const [dx, dy] = LABEL_OFFSET[code] ?? [0, 0]
-    out.push({ code, d, label: [+(cx + dx).toFixed(1), +(cy + dy).toFixed(1)] })
+    const label: [number, number] = [+(cx + dx).toFixed(1), +(cy + dy).toFixed(1)]
+    if (!inRing(label[0], label[1], main.outer) || main.holes.some((h) => inRing(label[0], label[1], h)))
+      throw new Error(`${code} 숫자 자리 (${label[0]},${label[1]}) 가 경계 밖/구멍 안 — LABEL_OFFSET 보정 필요`)
+    out.push({ code, d, label })
   }
   if (out.length !== 17) throw new Error(`시·도가 17개가 아님: ${out.length} (${[...seen].join(', ')})`)
   out.sort((a, b) => SIDOS.indexOf(a.code) - SIDOS.indexOf(b.code))

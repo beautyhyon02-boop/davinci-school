@@ -28,6 +28,7 @@ export function FranchiseMap({ groups }: { groups: MapGroups }) {
             <path
               key={s.code}
               d={s.d}
+              fillRule="evenodd"
               role="button"
               tabIndex={0}
               aria-label={copy.regionAria(s.code, n)}

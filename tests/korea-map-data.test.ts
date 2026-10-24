@@ -18,6 +18,12 @@ describe('korea-sido.json', () => {
       expect(y).toBeGreaterThan(0); expect(y).toBeLessThan(h)
     }
   })
+  it('경기는 서울 자리가 구멍으로 뚫려 있고(M 이 여럿) 숫자는 서울 숫자와 15px 이상 떨어져 있다', () => {
+    const g = KOREA_MAP.sidos.find((s) => s.code === '경기')!
+    const seoul = KOREA_MAP.sidos.find((s) => s.code === '서울')!
+    expect(g.d.split('M').length - 1).toBeGreaterThan(1)
+    expect(Math.hypot(g.label[0] - seoul.label[0], g.label[1] - seoul.label[1])).toBeGreaterThan(15)
+  })
   it('viewBox 는 너비 600, 출처는 Natural Earth, 독도 표식이 있다', () => {
     expect(KOREA_MAP.viewBox).toMatch(/^0 0 600 \d+$/)
     expect(KOREA_MAP.source).toContain('Natural Earth')
