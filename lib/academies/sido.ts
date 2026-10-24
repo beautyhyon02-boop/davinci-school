@@ -18,5 +18,5 @@ const LONG: Record<string, Sido> = {
 export function toSido(input: string): Sido | null {
   const s = input.replace(/\s+/g, '')
   if (isSido(s)) return s
-  return LONG[s] ?? null
+  return Object.hasOwn(LONG, s) ? LONG[s] : null
 }

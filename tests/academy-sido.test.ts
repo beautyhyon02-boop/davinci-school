@@ -34,5 +34,7 @@ describe('시·도', () => {
     expect(toSido('평양')).toBeNull()
     expect(toSido('')).toBeNull()
     expect(toSido('경')).toBeNull()
+    expect(toSido('constructor')).toBeNull()
+    expect(toSido('__proto__')).toBeNull()
   })
 })
