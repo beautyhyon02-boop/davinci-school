@@ -25,7 +25,7 @@ export const site = {
   ],
   contact: { email: 'davincischooloffice@gmail.com' },
   nav: [
-    { href: '/programs/inquiry', label: '탐구보고서' },
+    { href: '/programs/inquiry', label: 'RED' },   // 머리말 메뉴는 「RED」(대표 2026-10-25 — 탐구보고서 페이지가 RED 자료실 입구)
     { href: '/programs/essay', label: '서논술형' },
     { href: 'https://www.davinci-lab.net', label: '대입 컨설팅', external: true },
     { href: 'https://www.davinci-lab.co.kr', label: '다빈치랩', external: true },
