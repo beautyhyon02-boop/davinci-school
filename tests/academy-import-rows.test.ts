@@ -24,6 +24,17 @@ describe('parseImportCsv', () => {
     const { rows } = parseImportCsv('﻿이름,시도,홈페이지\n"하늘, 원",서울,')
     expect(rows[0].name).toBe('하늘, 원')
   })
+  it('CSV 안 같은 이름은 뒤쪽을 문제로 보고하고 첫 줄만 남긴다', () => {
+    const { rows, problems } = parseImportCsv('이름,시도,홈페이지\n하늘원,경기,\n바다원,부산,\n하늘원,서울,')
+    expect(rows.map((r) => r.name)).toEqual(['하늘원', '바다원'])
+    expect(rows[0].sido).toBe('경기')
+    expect(problems).toEqual(['4행: 같은 이름 "하늘원" 이 2행에도 있음'])
+  })
+  it('영어 머리 줄(name,sido,website)도 받는다', () => {
+    const { rows, problems } = parseImportCsv('name,sido,website\nA원,경기,a.com')
+    expect(problems).toEqual([])
+    expect(rows).toEqual([{ name: 'A원', sido: '경기', website: 'https://a.com/', region: '', code: null }])
+  })
   it('필수 열이 없으면 problems 하나', () => {
     expect(parseImportCsv('홈페이지,지역\nx,y').problems).toEqual(['머리 줄에 이름·시도 열이 없음'])
   })

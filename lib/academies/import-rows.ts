@@ -27,7 +27,7 @@ export function parseImportCsv(text: string): { rows: ImportRow[]; problems: str
   const col = (keys: string[]) => head.findIndex((h) => keys.map((k) => k.toLowerCase()).includes(h))
   const ix = { name: col(HEAD.name), sido: col(HEAD.sido), website: col(HEAD.website), region: col(HEAD.region), code: col(HEAD.code) }
   if (ix.name < 0 || ix.sido < 0) return { rows: [], problems: ['머리 줄에 이름·시도 열이 없음'] }
-  const rows: ImportRow[] = []; const problems: string[] = []
+  const rows: ImportRow[] = []; const problems: string[] = []; const firstRow = new Map<string, number>()
   lines.slice(1).forEach((line, i) => {
     const n = i + 2; const c = splitCsvLine(line); const get = (k: number) => (k >= 0 ? c[k] ?? '' : '')
     const name = get(ix.name)
@@ -38,6 +38,9 @@ export function parseImportCsv(text: string): { rows: ImportRow[]; problems: str
     if (website === null) { problems.push(`${n}행: 홈페이지 주소가 틀림 "${get(ix.website)}"`); return }
     const codeRaw = get(ix.code).toLowerCase()
     if (codeRaw && !/^[a-z0-9]{3,12}$/.test(codeRaw)) { problems.push(`${n}행: 코드가 틀림 "${codeRaw}"(영문 소문자·숫자 3~12자)`); return }
+    const dupRow = firstRow.get(name)
+    if (dupRow !== undefined) { problems.push(`${n}행: 같은 이름 "${name}" 이 ${dupRow}행에도 있음`); return }
+    firstRow.set(name, n)
     rows.push({ name, sido, website, region: get(ix.region), code: codeRaw || null })
   })
   return { rows, problems }
