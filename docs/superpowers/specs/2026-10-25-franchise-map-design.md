@@ -42,10 +42,10 @@ grant execute on function public.public_map_academies() to anon, authenticated;
 ## 3. 지도 그림 (`data/map/korea-sido.json`)
 
 - 출처: **Natural Earth 1:10m Admin 1 – States, Provinces**(공개 도메인, naturalearthdata.com). 대한민국 17개 시·도 polygon 을 한 번 변환해 SVG 경로 글자로 저장한다. 손으로 그리지 않는다.
-- 변환 스크립트 `scripts/build-korea-map.ts`: GeoJSON(내려받은 파일 경로를 인자로) → 메르카토르 비슷한 단순 투영(위도·경도 → viewBox 0 0 600 760, 동일 비율) → 좌표를 소수 1자리로 → 작은 섬(면적 하한)을 쳐 내 글자 수를 줄임(목표 200KB 이하) → `{ viewBox, sidos: [{ code, name, d, label: [x, y] }] }`. Natural Earth 의 이름(영문 `name`/`name_ko`)을 17개 짧은 이름으로 맞추는 대응표는 스크립트 안에 둔다. 대응이 안 되는 polygon 이 있으면 스크립트가 멈춘다(지어내지 않음).
+- 변환 스크립트 `scripts/build-korea-map.ts`: GeoJSON(내려받은 파일 경로를 인자로) → 메르카토르 비슷한 단순 투영(위도·경도 → 너비 600 고정, 높이는 비율대로(viewBox `0 0 600 H`)) → 좌표를 소수 1자리로 → 작은 섬(면적 하한)을 쳐 내 글자 수를 줄임(목표 200KB 이하) → `{ viewBox, sidos: [{ code, name, d, label: [x, y] }] }`. Natural Earth 의 이름(영문 `name`/`name_ko`)을 17개 짧은 이름으로 맞추는 대응표는 스크립트 안에 둔다. 대응이 안 되는 polygon 이 있으면 스크립트가 멈춘다(지어내지 않음).
 - 숫자(가맹원 수)를 찍는 자리 `label` 은 polygon 중심(centroid)이고, 세종·인천·울산·부산처럼 작거나 치우친 곳은 스크립트 안의 보정표로 옮긴다(글자가 경계 밖으로 나가지 않게).
 - 생성된 JSON 은 커밋한다(배포가 원본 파일에 기대지 않게). 페이지 아래 작은 글자로 "지도: Natural Earth".
-- 시험: 17개 모두 있고 코드가 겹치지 않고 `d` 가 비어 있지 않다; viewBox 가 정해진 값.
+- 시험: 17개 모두 있고 코드가 겹치지 않고 `d` 가 비어 있지 않다; viewBox 는 `0 0 600 <높이>`; 200KB 아래.
 
 ## 4. 화면
 
