@@ -75,6 +75,23 @@ export const auth = {
       invalid: '아이디 또는 비밀번호가 맞지 않습니다.',
     },
   },
+  // 원장·본사 비밀번호 바꾸기(/account/password, 대표 2026-10-29)
+  password: {
+    title: '비밀번호 바꾸기',
+    labels: { current: '현재 비밀번호', next: '새 비밀번호 (8자 이상)', confirm: '새 비밀번호 확인' },
+    submit: '바꾸기',
+    submitting: '바꾸는 중…',
+    done: '바꿨습니다. 다음 로그인부터 새 비밀번호를 쓰세요.',
+    errors: {
+      missing: '세 칸을 모두 입력하세요.',
+      tooShort: '새 비밀번호는 8자 이상이어야 합니다.',
+      mismatch: '새 비밀번호 확인이 다릅니다.',
+      same: '현재 비밀번호와 같습니다.',
+      currentWrong: '현재 비밀번호가 맞지 않습니다.',
+      studentNotAllowed: '학생 비밀번호는 원장님이 정합니다.',
+      failed: '바꾸지 못했습니다. 잠시 뒤 다시 시도하세요.',
+    },
+  },
 }
 
 /**
@@ -148,6 +165,7 @@ export const app = {
   // 서논술 잠금 안내(/teacher/locked) — 다빈치 베이직 원장이 서논술 주소로 들어왔을 때(대표 2026-10-29)
   essayLock: { title: '서논술 수업은 다빈치올 가맹에 포함됩니다', body: '지금 로그인한 원은 다빈치 베이직 가맹입니다. 서논술 수업을 열려면 본사에 문의해 주세요.', home: '홈으로' },
   logout: '로그아웃',
+  passwordLink: '비밀번호 바꾸기',
   nav: {
     admin: [
       { href: '/admin', label: '대시보드' },

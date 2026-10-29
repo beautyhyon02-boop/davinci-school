@@ -13,8 +13,9 @@ export function AppShell({ role, name, nav, children }: { role: Role; name: stri
         <nav className="mt-8 flex flex-col gap-1">
           {nav.map(n => <Link key={n.href} href={n.href} className="rounded-xl px-3 py-2 text-sm font-medium text-ink-700 hover:bg-mint-50">{n.label}</Link>)}
         </nav>
-        <form action="/auth/signout" method="post" className="mt-auto">
-          <p className="mb-2 text-sm text-ink-500">{name}</p>
+        <form action="/auth/signout" method="post" className="mt-auto flex flex-col items-start gap-2">
+          <p className="text-sm text-ink-500">{name}</p>
+          {role !== 'student' && <Link href="/account/password" className="text-sm text-ink-500 hover:text-ink-900">{app.passwordLink}</Link>}
           <button className="text-sm text-ink-500 hover:text-ink-900">{app.logout}</button>
         </form>
       </aside>
