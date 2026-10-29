@@ -17,7 +17,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
   if (!s) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   if (s.role !== 'teacher' && s.role !== 'admin') return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   // 서논술 전용 원장(PRD 2026-10-20): 주소를 직접 쳐도 받을 수 없다. RLS 도 한 번 더 거른다.
-  if (!canUseRed(s.role, s.plan)) return NextResponse.json({ error: 'plan_required', plan: 'davinci' }, { status: 403 })
+  if (!canUseRed(s.role, s.plan)) return NextResponse.json({ error: 'plan_required', plan: 'davinci_basic' }, { status: 403 })
   const { id } = await ctx.params
   if (!ID_RE.test(id)) return NextResponse.json({ error: 'not_found' }, { status: 404 })
   const supabase = await createClient()

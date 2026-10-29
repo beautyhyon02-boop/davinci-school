@@ -89,6 +89,7 @@ export const auth = {
       same: '현재 비밀번호와 같습니다.',
       currentWrong: '현재 비밀번호가 맞지 않습니다.',
       studentNotAllowed: '학생 비밀번호는 원장님이 정합니다.',
+      weak: '새 비밀번호가 너무 약합니다. 더 길거나 복잡하게 정하세요.',
       failed: '바꾸지 못했습니다. 잠시 뒤 다시 시도하세요.',
     },
   },

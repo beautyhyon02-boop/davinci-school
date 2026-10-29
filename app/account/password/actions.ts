@@ -27,7 +27,10 @@ export async function changePassword(_prev: ChangePasswordState, formData: FormD
   if (signInError) return { error: errors.currentWrong }
 
   const { error: updateError } = await supabase.auth.updateUser({ password: next })
-  if (updateError) return { error: errors.failed }
+  if (updateError) {
+    // 오류 문장은 보이지 않고 코드만 본다(weak_password 등).
+    return { error: /weak|password/i.test(updateError.code ?? '') ? errors.weak : errors.failed }
+  }
 
   return { done: true }
 }

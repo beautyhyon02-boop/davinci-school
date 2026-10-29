@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { getSessionProfile } from '@/lib/auth/session'
+import { requireEssayPage } from '@/lib/auth/essay-access.server'
 import { upgradeSnapshot } from '@/lib/studio/publish'
 import { buildBookPlan, type BookKind } from '@/lib/book/plan'
 import { BookShell } from '@/components/book/BookShell'
@@ -17,7 +17,7 @@ const isKind = (k: string): k is BookKind => (KINDS as readonly string[]).includ
 export default async function TeacherBookPage({ params }: { params: Promise<{ setId: string; kind: string }> }) {
   const { setId, kind } = await params
   if (!isKind(kind)) notFound()
-  const s = await getSessionProfile()
+  const s = await requireEssayPage() // 서논술 잠금(다빈치 베이직 원장은 /teacher/locked 로) — 이 경로 그룹은 teacher/layout 을 거치지 않으므로 여기서 직접
   if (s.role !== 'teacher' && s.role !== 'admin') notFound()
   const supabase = await createClient()
   const { data } = await supabase

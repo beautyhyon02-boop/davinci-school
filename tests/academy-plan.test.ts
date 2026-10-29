@@ -3,7 +3,7 @@ import { PLANS, canUseRed, canUseEssay, isPlan, DEFAULT_PLAN } from '@/lib/acade
 import { parseAcademy } from '@/lib/academies/validate'
 
 // 없앤 옛 상품 값 — 글자를 쪼개 둔다(코드 쪽에 옛 값 글자가 남지 않았는지 grep 으로 확인하기 위해)
-const OLD_PLAN = ['essay', 'only'].join('_')
+const OLD_PLAN = 'essay_only'
 
 // 대표 2026-10-29 「가맹 상품 두 단계」: 다빈치올(RED·서논술) / 다빈치 베이직(RED 만)
 describe('plan', () => {

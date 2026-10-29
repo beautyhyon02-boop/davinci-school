@@ -2,13 +2,14 @@
  * 처음 40곳 등록(대표 2026-10-25, 설계 §6).
  *   npx tsx scripts/import-academies-map.ts <표.csv> [--apply]
  * 기본은 미리 보기(무엇을 넣고 고칠지 표로만). --apply 를 붙여야 쓴다. CSV 는 UTF-8(엑셀: "CSV UTF-8" 로 저장), 머리 줄 이름,시도,홈페이지[,시/군/구][,코드].
- * 이름이 같은 원이 이미 있으면 sido 와 비어 있지 않은 website·region 만 채운다(코드·계정·plan·지도 표시 여부는 그대로). 없으면 새 줄(코드는 표의 것, 없으면 g001 부터). 계정은 만들지 않는다.
+ * 이름이 같은 원이 이미 있으면 sido 와 비어 있지 않은 website·region 만 채운다(코드·계정·plan·지도 표시 여부는 그대로). 없으면 새 줄(코드는 표의 것, 없으면 g001 부터; plan 은 명시적으로 다빈치 베이직 — 마이그레이션 0022 적용 전에는 check 제약에 걸려 실패하므로, 반드시 0022 뒤에 --apply). 계정은 만들지 않는다.
  * .env.local 의 NEXT_PUBLIC_SUPABASE_URL·SUPABASE_SERVICE_ROLE_KEY 로 service role — 본사 컴퓨터에서만.
  */
 import { readFileSync, existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { createClient } from '@supabase/supabase-js'
 import { parseImportCsv, nextCodes } from '../lib/academies/import-rows'
+import { DEFAULT_PLAN } from '../lib/academies/plan'
 
 function loadEnv() {
   const p = resolve(process.cwd(), '.env.local')
@@ -58,7 +59,7 @@ async function main() {
     // 갱신은 sido 와 '비어 있지 않은' website·region 만(기존 값·지도 표시 여부는 건드리지 않음). 새 줄의 show_on_map 은 열 기본값(true).
     const q = p.kind === '갱신'
       ? admin.from('academies').update({ sido: p.r.sido, ...(p.r.website ? { website: p.r.website } : {}), ...(p.r.region ? { region: p.r.region } : {}) }).eq('id', p.id!)
-      : admin.from('academies').insert({ code: p.code, name: p.r.name, sido: p.r.sido, website: p.r.website, region: p.r.region || null })
+      : admin.from('academies').insert({ code: p.code, name: p.r.name, sido: p.r.sido, website: p.r.website, region: p.r.region || null, plan: DEFAULT_PLAN })
     const { error: e } = await q
     if (e) failed++; else ok++
     console.log(e ? `실패 · ${p.r.name}: ${e.message}` : `됨 · ${p.kind} · ${p.r.name}`)

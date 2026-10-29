@@ -35,6 +35,6 @@ describe('비밀번호 바꾸기 문구', () => {
     for (const v of [auth.password.labels.current, auth.password.labels.next, auth.password.labels.confirm, auth.password.submit, auth.password.submitting, auth.password.done]) {
       expect(v).toBeTruthy()
     }
-    expect(Object.keys(e).sort()).toEqual(['currentWrong', 'failed', 'mismatch', 'missing', 'same', 'studentNotAllowed', 'tooShort'])
+    expect(Object.keys(e).sort()).toEqual(['currentWrong', 'failed', 'mismatch', 'missing', 'same', 'studentNotAllowed', 'tooShort', 'weak'])
   })
 })

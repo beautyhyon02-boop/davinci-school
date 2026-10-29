@@ -90,11 +90,12 @@ supabase db push
 ### 1-6. 전국 가맹원 지도: 마이그레이션 0021 → `git push` → 표 넣기 (2026-10-25)
 1. `supabase db push`(0021 `academy_map`: academies 칸 셋 + 함수 `public_map_academies`).
 2. `git push` → 배포 뒤 비로그인 창으로 홈을 연다 — 가맹원이 0곳이면 아직 지도 칸이 없다(정상).
-3. 표(이름·시도·홈페이지[,시/군/구][,코드], CSV UTF-8) → `npx tsx scripts/import-academies-map.ts 표.csv`(미리 보기) → 문제 줄 고침 → `--apply`. 반드시 프로젝트 폴더에서 실행한다(스크립트가 현재 폴더의 `.env.local` 을 읽는다). `--apply` 전에 미리 보기의 새로/갱신 줄을 하나씩 확인한다 — 특히 001(대구)이 「새로」가 아니라 「갱신」으로 나와야 하고, 「경고」·「표에 없는 기존 원」 줄이 있으면 이름·코드 표기를 먼저 고친다.
+3. **`--apply` 는 0022(1-7)까지 적용된 뒤에만 — 먼저 하면 그 원들이 다빈치올이 되어 가맹원 관리에서 베이직으로 바꿔야 한다.** 표(이름·시도·홈페이지[,시/군/구][,코드], CSV UTF-8) → `npx tsx scripts/import-academies-map.ts 표.csv`(미리 보기) → 문제 줄 고침 → `--apply`. 반드시 프로젝트 폴더에서 실행한다(스크립트가 현재 폴더의 `.env.local` 을 읽는다). `--apply` 전에 미리 보기의 새로/갱신 줄을 하나씩 확인한다 — 특히 001(대구)이 「새로」가 아니라 「갱신」으로 나와야 하고, 「경고」·「표에 없는 기존 원」 줄이 있으면 이름·코드 표기를 먼저 고친다.
 4. 홈·가맹 안내에서 지도·숫자·이름 링크 확인. 기존 001(대구)은 가맹원 관리 → 상세 → 「지도 정보」에서 시·도만 고른다.
 
 ### 1-7. 가맹 상품 두 단계·비밀번호 바꾸기: 마이그레이션 0022 → `git push` → 기존 원 상품 확인 (2026-10-29)
-1. `supabase db push`(0022 `plan_tiers`: 옛 '서논술 전용' 값을 다빈치올로, 기본 다빈치 베이직, RED 정책 두 상품). **코드 배포보다 먼저** — 0022 전에 배포되면 기존 원장은 RED·서논술이 모두 닫혀 보이고 새 가맹원 등록이 "가맹 상품 칸이 아직 준비되지 않았습니다"로 막힌다. 오류 `constraint "academies_plan_check" does not exist` 가 나면 SQL Editor 에서 `select conname from pg_constraint where conrelid = 'academies'::regclass and conname like '%plan%'` 로 이름을 확인해 0022 의 이름을 맞춘다.
+0. **0021·0022 는 `supabase db push` 한 번에 함께 적용되며, 1-6 의 표 넣기(`--apply`)는 반드시 0022 뒤에만 한다.** 0022 전에 이미 `--apply` 를 했다면 그때 들어간 원은 모두 다빈치올이 되었으므로, 가맹원 관리에서 다빈치 베이직으로 바꿔야 한다.
+1. `supabase db push`(0022 `plan_tiers`: 옛 '서논술 전용' 값을 다빈치올로, 기본 다빈치 베이직, RED 정책 두 상품). **코드 배포보다 먼저** — 0022 전에 배포되면 기존 원장은 RED·서논술이 모두 닫혀 보이고 새 가맹원 등록이 "가맹 상품 칸이 아직 준비되지 않았습니다"로 막힌다. push 뒤 SQL Editor 에서 `select conname, pg_get_constraintdef(oid) from pg_constraint where conrelid = 'academies'::regclass and contype = 'c';` 를 실행해, `plan` 을 다루는 check 가 정확히 하나이고 `davinci`·`davinci_basic` 두 값이 나오는지 확인한다.
 2. `git push` → 배포.
 3. 가맹원 관리에서 원마다 상품을 확인한다 — 기존 원은 모두 **다빈치올**로 바뀌어 있다. 서논술을 안 쓰는 원은 상세 → 「가맹 상품 바꾸기」 → 다빈치 베이직.
 4. 원장 계정 발급 순서: [새 가맹원]에서 **가맹 상품을 고른다(기본 베이직)** → 등록 → 「원장 계정 발급」. 베이직 원장은 원장 화면에 홈·교과융합탐구보고서만 보이고 서논술 메뉴가 없다.
