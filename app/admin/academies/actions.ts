@@ -29,7 +29,8 @@ export async function createAcademy(_prev: { error?: string } | undefined, formD
     const { code, name, region, director_phone, plan } = r.data
     ;({ data, error } = await supabase.from('academies').insert({ code, name, region, director_phone, plan }).select('id').single())
   }
-  if (error || !data) return { error: error?.code === '23505' ? copy.errors.codeTaken : (error?.message ?? copy.errors.invalidInput) }
+  // 23514(check 위반): 마이그레이션 0022 전이라 기본 상품 davinci_basic 이 옛 check 에 걸린 경우
+  if (error || !data) return { error: error?.code === '23505' ? copy.errors.codeTaken : error?.code === '23514' ? copy.errors.planMigration : (error?.message ?? copy.errors.invalidInput) }
   redirect(`/admin/academies/${data.id}`)
 }
 

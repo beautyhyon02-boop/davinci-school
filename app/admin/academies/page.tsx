@@ -2,12 +2,12 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/Button'
 import { countByAcademy } from '@/lib/academies/counts'
-import { isPlan, type Plan } from '@/lib/academies/plan'
+import { isPlan, DEFAULT_PLAN, type Plan } from '@/lib/academies/plan'
 import { app } from '@/content/site'
 
 const copy = app.adminAcademies
 
-/** 가맹원 목록. ?plan=davinci|essay_only 로 가맹 상품별 필터(PRD 2026-10-20). */
+/** 가맹원 목록. ?plan=davinci|davinci_basic 로 가맹 상품별 필터(PRD 2026-10-20). */
 export default async function AcademiesPage({ searchParams }: { searchParams: Promise<{ plan?: string }> }) {
   const { plan: planParam } = await searchParams
   const filter: Plan | null = isPlan(planParam) ? planParam : null
@@ -18,7 +18,8 @@ export default async function AcademiesPage({ searchParams }: { searchParams: Pr
   ])
   const counts = countByAcademy(profiles ?? [])
   const all = academies ?? []
-  const nDavinci = all.filter(a => a.plan === 'davinci').length
+  const nAll = all.filter(a => a.plan === 'davinci').length
+  const nBasic = all.filter(a => a.plan === 'davinci_basic').length
   const list = filter ? all.filter(a => a.plan === filter) : all
 
   const chip = (value: Plan | null, label: string) => (
@@ -36,11 +37,11 @@ export default async function AcademiesPage({ searchParams }: { searchParams: Pr
         <h1 className="text-2xl font-bold">{copy.listTitle}</h1>
         <Button href="/admin/academies/new">{copy.newButton}</Button>
       </div>
-      <p className="mt-2 text-sm text-ink-500">{copy.plan.summary(nDavinci, all.length - nDavinci)}</p>
+      <p className="mt-2 text-sm text-ink-500">{copy.plan.summary(nAll, nBasic)}</p>
       <div className="mt-3 flex flex-wrap gap-2">
         {chip(null, copy.plan.filterAll)}
         {chip('davinci', copy.plan.names.davinci)}
-        {chip('essay_only', copy.plan.names.essay_only)}
+        {chip('davinci_basic', copy.plan.names.davinci_basic)}
       </div>
       <div className="mt-4 overflow-x-auto rounded-2xl bg-white">
         <table className="w-full text-sm">
@@ -58,7 +59,7 @@ export default async function AcademiesPage({ searchParams }: { searchParams: Pr
           <tbody>
             {list.map(a => {
               const c = counts[a.id] ?? { teachers: 0, students: 0 }
-              const plan: Plan = isPlan(a.plan) ? a.plan : 'essay_only'
+              const plan: Plan = isPlan(a.plan) ? a.plan : DEFAULT_PLAN
               return (
                 <tr key={a.id} className="border-t border-ink-100">
                   <td className="p-3">

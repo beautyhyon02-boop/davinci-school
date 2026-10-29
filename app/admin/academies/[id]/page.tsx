@@ -4,7 +4,7 @@ import { TeacherAccountForm } from './TeacherAccountForm'
 import { PlanForm } from './PlanForm'
 import { MapInfoForm } from './MapInfoForm'
 import { isSido } from '@/lib/academies/sido'
-import { isPlan } from '@/lib/academies/plan'
+import { isPlan, DEFAULT_PLAN } from '@/lib/academies/plan'
 import { app } from '@/content/site'
 
 const copy = app.adminAcademies
@@ -25,7 +25,7 @@ export default async function AcademyPage({ params }: { params: Promise<{ id: st
         {a.region} · {copy.detailMeta.studentCapacity(a.student_capacity)} · {copy.detailMeta.monthlyGradingLimit(a.monthly_grading_limit)}
       </p>
       <h2 className="mt-8 text-lg font-bold">{copy.plan.changeHeading}</h2>
-      <PlanForm academyId={id} academyName={a.name} current={isPlan(a.plan) ? a.plan : 'essay_only'} note={a.plan_note ?? ''} changedAt={a.plan_changed_at ?? null} />
+      <PlanForm academyId={id} academyName={a.name} current={isPlan(a.plan) ? a.plan : DEFAULT_PLAN} note={a.plan_note ?? ''} changedAt={a.plan_changed_at ?? null} />
       <h2 className="mt-8 text-lg font-bold">{copy.map.heading}</h2>
       <MapInfoForm academyId={id} sido={isSido(a.sido) ? a.sido : null} website={a.website ?? ''} showOnMap={a.show_on_map ?? true} />
       <h2 className="mt-8 text-lg font-bold">{copy.teacherAccount.heading}</h2>

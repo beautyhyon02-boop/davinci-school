@@ -30,7 +30,7 @@ describe('GET /api/red/download/[id]', () => {
     expect(state.downloads).toEqual([])
   })
   it('원장: 파일을 읽어 docx 로, 한글 파일 이름 그대로 내려준다', async () => {
-    state.session = { role: 'teacher', userId: 't1', academyId: 'ac1' }
+    state.session = { role: 'teacher', userId: 't1', academyId: 'ac1', plan: 'davinci' }
     const res = await call()
     expect(res.status).toBe(200)
     expect(res.headers.get('content-type')).toContain('wordprocessingml')
@@ -39,7 +39,7 @@ describe('GET /api/red/download/[id]', () => {
     expect(await res.text()).toBe('PK-docx')
   })
   it('원장은 게시 안 된 줄·없는 줄·이상한 id 는 404, 본사는 검수대기·보류 줄도 받는다', async () => {
-    state.session = { role: 'teacher', userId: 't1', academyId: 'ac1' }
+    state.session = { role: 'teacher', userId: 't1', academyId: 'ac1', plan: 'davinci' }
     state.row = { ...visible, status: 'hold' }
     expect((await call()).status).toBe(404)
     state.row = { ...visible, status: 'pending' }
