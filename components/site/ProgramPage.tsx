@@ -10,8 +10,11 @@ const heroBg: Record<OpenProgramSlug, string> = {
   essay: 'bg-lemon-50',
 }
 
-/** extra: 소개 아래에 붙는 칸(탐구보고서의 RED 보고서, 대표 2026-10-15). */
-export function ProgramPage({ slug, extra }: { slug: OpenProgramSlug; extra?: ReactNode }) {
+/**
+ * extra: 소개 아래에 붙는 칸(탐구보고서의 RED 보고서, 대표 2026-10-15).
+ * cta: 있으면 기본 [가맹 문의] 단추 대신 이것을 보인다(서논술형 — 로그인·상품별 단추, 대표 2026-10-29).
+ */
+export function ProgramPage({ slug, extra, cta }: { slug: OpenProgramSlug; extra?: ReactNode; cta?: ReactNode }) {
   const p = site.programs.find(x => x.slug === slug)!
   const d = programDetails[slug]
   return (
@@ -29,7 +32,7 @@ export function ProgramPage({ slug, extra }: { slug: OpenProgramSlug; extra?: Re
             {d.bullets.map(b => <li key={b} className="flex gap-2"><span className="text-mint-600">✓</span>{b}</li>)}
           </ul>
         </div>
-        <Button href="/franchise" variant="accent" className="mt-10">{pages.program.cta}</Button>
+        {cta ?? <Button href="/franchise" variant="accent" className="mt-10">{pages.program.cta}</Button>}
       </Section>
       {extra}
     </>
