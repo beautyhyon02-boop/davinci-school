@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { getSessionProfile } from '@/lib/auth/session'
+import { requireEssayPage } from '@/lib/auth/essay-access.server'
 import { loadAssignmentSnapshot } from '@/lib/classroom/snapshot'
 import { Notice } from '@/lib/classroom/notice-schema'
 import { NoticeView } from '@/components/classroom/NoticeView'
@@ -21,10 +21,10 @@ const copy = app.classroom.notice
  * 레이아웃이 원장만 들이지만 여기서도 역할을 다시 본다. 읽기는 원장 클라이언트(RLS: 자기 원 배정의 안내장만, 학생 정책 없음).
  */
 export default async function NoticePage({ params }: { params: Promise<{ setId: string; assignmentId: string; lessonNo: string }> }) {
+  const s = await requireEssayPage()
   const { setId, assignmentId, lessonNo: raw } = await params
   const lessonNo = Number(raw)
   if (!Number.isInteger(lessonNo) || lessonNo < 1 || lessonNo > 8) notFound()
-  const s = await getSessionProfile()
   if (s.role !== 'teacher') notFound()
   const supabase = await createClient()
   const { data: a } = await supabase.from('assignments')

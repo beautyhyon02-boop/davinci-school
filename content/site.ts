@@ -145,6 +145,8 @@ const SOCIAL_FAMILY_LABELS: Record<string, string> = {
 
 export const app = {
   roleLabel: { admin: '본사 관리자', teacher: '원장님', student: '학생' },
+  // 서논술 잠금 안내(/teacher/locked) — 다빈치 베이직 원장이 서논술 주소로 들어왔을 때(대표 2026-10-29)
+  essayLock: { title: '서논술 수업은 다빈치올 가맹에 포함됩니다', body: '지금 로그인한 원은 다빈치 베이직 가맹입니다. 서논술 수업을 열려면 본사에 문의해 주세요.', home: '홈으로' },
   logout: '로그아웃',
   nav: {
     admin: [
@@ -176,6 +178,9 @@ export const app = {
       body: '학생 현황과 최근 결과가 여기에 표시됩니다.',
       stats: { pending: (n: number) => `검수 대기 ${n}건`, assignments: (n: number) => `진행 중 배정 ${n}개`, students: (n: number) => `학생 ${n}명` },
       links: { review: '검수하러 가기', assign: '문항 찾기', students: '학생 관리' },
+      // 다빈치 베이직 원장 홈(서논술 잠김) — 카드 셋 대신 이 안내와 RED 자료실 단추(대표 2026-10-29)
+      basicNote: '서논술 수업은 다빈치올 가맹에 포함됩니다. 본사에 문의해 주세요.',
+      basicRedLink: 'RED 자료실 열기',
     },
     student: { title: '내 과제', body: '아직 배정된 과제가 없어요.' },
   },

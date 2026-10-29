@@ -1,3 +1,4 @@
+import { requireEssayPage } from '@/lib/auth/essay-access.server'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { Badge } from '@/components/ui/Badge'
@@ -12,6 +13,7 @@ type Row = { id: string; subject: string; level: string; grade: number | null; v
 
 // RLS(스펙 §4.4): item_sets는 status='published'일 때만 원장(authenticated)이 읽을 수 있고, 원 구분 없이 전체 공개다.
 export default async function TeacherItemsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
+  await requireEssayPage()
   const sp = await searchParams
   const level = sp.level ?? ''
   const subject = sp.subject ?? ''

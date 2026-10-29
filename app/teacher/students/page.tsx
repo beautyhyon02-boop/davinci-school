@@ -1,3 +1,4 @@
+import { requireEssayPage } from '@/lib/auth/essay-access.server'
 import { createClient } from '@/lib/supabase/server'
 import { NewStudentForm } from './NewStudentForm'
 import { StudentActions } from './StudentActions'
@@ -8,6 +9,7 @@ const copy = app.classroom.students
 type Row = { profile_id: string; level: string; grade: number; seq: number; profiles: { name: string; login_id: string | null } | null }
 
 export default async function TeacherStudentsPage() {
+  await requireEssayPage()
   const supabase = await createClient()
   const [{ data: students }, { data: assignments }] = await Promise.all([
     supabase.from('students').select('profile_id, level, grade, seq, profiles(name, login_id)').eq('enrolled', true).order('seq'),

@@ -2,6 +2,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { getSessionProfile } from '@/lib/auth/session'
+import { assertEssayAccess } from '@/lib/auth/essay-access'
 import { app } from '@/content/site'
 import type { Criterion } from '@/lib/classroom/types'
 import { loadAssignmentSnapshot } from '@/lib/classroom/snapshot'
@@ -24,6 +25,7 @@ export type ActionResult = { ok: true } | { ok: false; error: string }
 async function assertTeacher() {
   const s = await getSessionProfile()
   if (s.role !== 'teacher' || !s.academyId) throw new Error('forbidden')
+  assertEssayAccess(s)   // 다빈치 베이직 원장은 서논술 동작 불가 — 모든 export 가 이 함수를 거친다(대표 2026-10-29)
   return { ...s, academyId: s.academyId }
 }
 

@@ -28,7 +28,7 @@ const { withdrawStudent, moveStudent } = await import('@/app/teacher/students/ac
 const { enrolledOnly, WITHDRAW_BAN_DURATION } = await import('@/lib/students/withdraw')
 const errors = app.classroom.students.errors
 
-beforeEach(() => { state.session = { role: 'teacher', academyId: 'ac1', userId: 't1' }; state.studentFound = true; state.updates = []; state.adminCalls = []; state.updateError = false; state.onUpdate = undefined; state.onAdmin = undefined })
+beforeEach(() => { state.session = { role: 'teacher', academyId: 'ac1', userId: 't1', plan: 'davinci' }; state.studentFound = true; state.updates = []; state.adminCalls = []; state.updateError = false; state.onUpdate = undefined; state.onAdmin = undefined })
 
 describe('문구', () => {
   it('학생 관리 동작 칸에 퇴원·반이동 상자 문구가 있다', () => {
@@ -87,6 +87,12 @@ describe('세션 제한', () => {
     state.session = session
     await expect(withdrawStudent('p1')).rejects.toThrow('forbidden')
     await expect(moveStudent('p1', new FormData())).rejects.toThrow('forbidden')
+    expect(state.updates).toEqual([]); expect(state.adminCalls).toEqual([])
+  })
+  it('다빈치 베이직 원장은 essay_plan_required 로 막힌다(대표 2026-10-29)', async () => {
+    state.session = { role: 'teacher', academyId: 'ac1', userId: 't1', plan: 'davinci_basic' }
+    await expect(withdrawStudent('p1')).rejects.toThrow('essay_plan_required')
+    await expect(moveStudent('p1', new FormData())).rejects.toThrow('essay_plan_required')
     expect(state.updates).toEqual([]); expect(state.adminCalls).toEqual([])
   })
 })

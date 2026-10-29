@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSessionProfileOrNull } from '@/lib/auth/session'
+import { canUseEssay } from '@/lib/academies/plan'
 import { runGrading } from '@/lib/classroom/grade'
 
 export const maxDuration = 800 // Vercel Pro + Fluid Compute 한도(2026-10-02 요금제 올림). Hobby 로 되돌리면 300 으로.
@@ -14,6 +15,8 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
   const supabase = await createClient()
   let allowed = s.role === 'admin'
   if (s.role === 'teacher') {
+    // 다빈치 베이직 원장은 서논술 채점을 못 돌린다(대표 2026-10-29)
+    if (!canUseEssay(s.role, s.plan)) return NextResponse.json({ error: 'plan_required', plan: 'davinci' }, { status: 403 })
     const { data } = await supabase.from('gradings').select('id').eq('id', id).maybeSingle()
     allowed = !!data
   } else if (s.role === 'student') {

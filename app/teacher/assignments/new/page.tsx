@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { getSessionProfile } from '@/lib/auth/session'
+import { requireEssayPage } from '@/lib/auth/essay-access.server'
 import { latestPublishedVersion, loadAssignmentSnapshot } from '@/lib/classroom/snapshot'
 import { AssignForm, type StudentOption } from './AssignForm'
 import { app } from '@/content/site'
@@ -8,9 +8,9 @@ import { app } from '@/content/site'
 const copy = app.classroom.assign
 
 export default async function NewAssignmentPage({ searchParams }: { searchParams: Promise<{ set?: string }> }) {
+  const s = await requireEssayPage()
   const { set: setId } = await searchParams
   if (!setId) notFound()
-  const s = await getSessionProfile()
   const supabase = await createClient()
   const version = await latestPublishedVersion(supabase, setId)
   if (version === null) notFound()

@@ -2,6 +2,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getSessionProfile } from '@/lib/auth/session'
+import { assertEssayAccess } from '@/lib/auth/essay-access'
 import { latestPublishedVersion } from '@/lib/classroom/snapshot'
 import { app } from '@/content/site'
 
@@ -12,6 +13,7 @@ export type AssignState = { error?: string } | undefined
 export async function createAssignments(setId: string, _prev: AssignState, formData: FormData): Promise<AssignState> {
   const s = await getSessionProfile()
   if (s.role !== 'teacher' || !s.academyId) throw new Error('forbidden')
+  assertEssayAccess(s)   // 다빈치 베이직 원장은 배정 불가(대표 2026-10-29)
   const studentIds = formData.getAll('student').map(String).filter(Boolean)
   if (studentIds.length === 0) return { error: errors.noStudents }
   const openLessons = Number.parseInt(String(formData.get('open_lessons') ?? '1'), 10)

@@ -165,7 +165,7 @@ describe('hasUnsentDraft — 쓰다 만 글', () => {
 })
 
 describe('서버 액션 (세션·클라이언트 가짜)', () => {
-  const asTeacher = () => { state.session = { role: 'teacher', academyId: 'ac1', userId: 't1' } }
+  const asTeacher = () => { state.session = { role: 'teacher', academyId: 'ac1', userId: 't1', plan: 'davinci' } }
   const asStudent = (id: string) => { state.session = { role: 'student', academyId: 'ac1', userId: `st-${id}` } }
 
   it('fillEmptyQuiz fills the ticked students only and needs at least one', async () => {

@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { getSessionProfile } from '@/lib/auth/session'
+import { requireEssayPage } from '@/lib/auth/essay-access.server'
 import { loadReportIndex, type ReportViewer } from '@/lib/classroom/report-data'
 import { Badge } from '@/components/ui/Badge'
 import { app } from '@/content/site'
@@ -15,7 +15,7 @@ const TONE = { none: 'gray', draft: 'lemon', confirmed: 'mint' } as const
  * 읽다가 오류가 나면 목록 대신 안내 한 줄만 보인다(0개로 잘못 보이지 않게).
  */
 export default async function TeacherReportsPage() {
-  const s = await getSessionProfile()
+  const s = await requireEssayPage()
   if (s.role !== 'teacher' && s.role !== 'admin') notFound()
   const viewer: ReportViewer = { role: s.role, userId: s.userId, academyId: s.academyId }
   const supabase = await createClient()

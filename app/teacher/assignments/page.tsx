@@ -1,3 +1,4 @@
+import { requireEssayPage } from '@/lib/auth/essay-access.server'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { Card } from '@/components/ui/Card'
@@ -11,6 +12,7 @@ const copy = app.classroom.assign
 type Row = { item_set_id: string; item_set_version: number; open_lessons: number; due_at: string | null; item_sets: { subject: string; themes: { title: string } | null } | null; students: { enrolled: boolean } | null }
 
 export default async function TeacherAssignmentsPage() {
+  await requireEssayPage()
   const supabase = await createClient()
   const [{ data: rows }, { data: pending }] = await Promise.all([
     supabase.from('assignments').select('item_set_id, item_set_version, open_lessons, due_at, item_sets(subject, themes(title)), students!assignments_student_id_fkey(enrolled)').order('created_at', { ascending: false }),

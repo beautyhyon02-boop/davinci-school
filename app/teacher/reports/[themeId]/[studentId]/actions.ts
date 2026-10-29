@@ -2,6 +2,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { getSessionProfile } from '@/lib/auth/session'
+import { assertEssayAccess } from '@/lib/auth/essay-access'
 import { app } from '@/content/site'
 import { saveUnitReport, reopenUnitReport, type SaveReason } from '@/lib/classroom/report-save'
 import type { ReportViewer } from '@/lib/classroom/report-data'
@@ -21,7 +22,10 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 async function viewerOrNull(): Promise<ReportViewer | null> {
   const s = await getSessionProfile()
   if (s.role === 'admin') return { role: 'admin', userId: s.userId, academyId: null }
-  if (s.role === 'teacher' && s.academyId) return { role: 'teacher', userId: s.userId, academyId: s.academyId }
+  if (s.role === 'teacher' && s.academyId) {
+    assertEssayAccess(s)   // 다빈치 베이직 원장은 리포트 동작 불가 — 세 export 모두 이 함수를 거친다(대표 2026-10-29)
+    return { role: 'teacher', userId: s.userId, academyId: s.academyId }
+  }
   return null
 }
 

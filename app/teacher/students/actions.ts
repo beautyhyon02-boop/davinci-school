@@ -3,6 +3,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSessionProfile } from '@/lib/auth/session'
+import { assertEssayAccess } from '@/lib/auth/essay-access'
 import { STUDENT_DEFAULT_PASSWORD } from '@/lib/auth/student-password'
 import { toLoginEmail } from '@/lib/auth/login-id'
 import { parseNewStudent, buildLoginId } from '@/lib/students/new-student'
@@ -14,6 +15,7 @@ const errors = app.classroom.students.errors
 async function assertTeacher() {
   const s = await getSessionProfile()
   if (s.role !== 'teacher' || !s.academyId) throw new Error('forbidden')
+  assertEssayAccess(s)   // 다빈치 베이직 원장은 서논술(학생 관리) 동작 불가 — 모든 export 가 이 함수를 거친다(대표 2026-10-29)
   return { ...s, academyId: s.academyId }
 }
 

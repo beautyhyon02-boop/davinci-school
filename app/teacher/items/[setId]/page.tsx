@@ -1,3 +1,4 @@
+import { requireEssayPage } from '@/lib/auth/essay-access.server'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
@@ -12,6 +13,7 @@ const copy = app.teacherItems
 
 // 최신 버전 스냅샷만 보여준다 — RLS(item_set_versions)가 status='published' 세트의 스냅샷만 authenticated에게 허용한다.
 export default async function TeacherItemDetailPage({ params }: { params: Promise<{ setId: string }> }) {
+  await requireEssayPage()
   const { setId } = await params
   const supabase = await createClient()
 

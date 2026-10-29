@@ -35,7 +35,7 @@ vi.mock('@/lib/supabase/admin', () => ({
 const { STUDENT_DEFAULT_PASSWORD } = await import('@/lib/auth/student-password')
 const { app } = await import('@/content/site')
 
-beforeEach(() => { state.session = { role: 'teacher', academyId: 'ac1', userId: 't1' }; state.adminCalls = []; state.studentFound = true })
+beforeEach(() => { state.session = { role: 'teacher', academyId: 'ac1', userId: 't1', plan: 'davinci' }; state.adminCalls = []; state.studentFound = true })
 
 describe('STUDENT_DEFAULT_PASSWORD', () => {
   it('is 123456 (대표 2026-10-12) and satisfies the Supabase minimum length of 6', () => {
@@ -76,7 +76,7 @@ describe('학생 계정 서버 액션 — 막는 것(검토 2026-10-12)', () => 
   it.each([
     ['학생', { role: 'student', academyId: 'ac1', userId: 's1' }],
     ['관리자', { role: 'admin', academyId: null, userId: 'a1' }],
-    ['학원 없는 원장', { role: 'teacher', academyId: null, userId: 't2' }],
+    ['학원 없는 원장', { role: 'teacher', academyId: null, userId: 't2', plan: 'davinci' }],
   ])('%s 세션은 두 액션 모두 forbidden 으로 던지고 admin 호출이 없다', async (_who, session) => {
     state.session = session
     const { resetStudentPassword, createStudent } = await import('@/app/teacher/students/actions')

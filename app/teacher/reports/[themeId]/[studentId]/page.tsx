@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { getSessionProfile } from '@/lib/auth/session'
+import { requireEssayPage } from '@/lib/auth/essay-access.server'
 import { loadReportSource, type ReportViewer } from '@/lib/classroom/report-data'
 import { buildUnitReport } from '@/lib/classroom/report'
 import { editsFromStored, reportDataKey, restrictReport } from '@/lib/classroom/report-edit'
@@ -20,9 +20,9 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
  * 마이그레이션 0014 전이면 퀴즈 최종 확인·저장된 리포트를 "없음"으로 읽고 안내 줄만 보인다.
  */
 export default async function UnitReportPage({ params }: { params: Promise<{ themeId: string; studentId: string }> }) {
+  const s = await requireEssayPage()
   const { themeId, studentId } = await params
   if (!UUID.test(themeId) || !UUID.test(studentId)) notFound()
-  const s = await getSessionProfile()
   if (s.role !== 'teacher' && s.role !== 'admin') notFound()
   const viewer: ReportViewer = { role: s.role, userId: s.userId, academyId: s.academyId }
   const supabase = await createClient()
