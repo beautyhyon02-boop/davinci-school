@@ -942,12 +942,16 @@ export const app = {
   },
   teacherItems: {
     title: '문항 찾기',
-    filters: {
-      levelLabel: '학교급',
-      levelAll: '전체',
-      subjectLabel: '과목',
-      subjectAll: '전체',
-      submit: '검색',
+    // 두 단계(대표 2026-11-06): 대주제 상자 → 과목 카드. 학교급·과목 검색 칸은 없앴다(대주제가 몇 개 안 됨).
+    themeList: {
+      intro: '대주제를 고르면 과목별 세트가 보입니다.',
+      subjectCount: (n: number) => `${n}과목`,
+      open: '과목 보기',
+    },
+    subjectList: {
+      back: '← 대주제 목록',
+      intro: '과목을 골라 세트를 열어 보세요.',
+      notFound: '그 대주제에 게시된 세트가 없습니다.',
     },
     card: {
       versionLabel: (v: number) => `버전 ${v}`,

@@ -412,13 +412,15 @@ describe('site content', () => {
     expect(c.answersToggle).toBeTruthy()
   })
 
-  it('exposes teacherItems copy (title, filters, card, empty, detail)', () => {
+  it('exposes teacherItems copy (title, theme/subject lists, card, empty, detail)', () => {
     expect(app.teacherItems.title).toBeTruthy()
-    expect(app.teacherItems.filters.levelLabel).toBeTruthy()
-    expect(app.teacherItems.filters.levelAll).toBeTruthy()
-    expect(app.teacherItems.filters.subjectLabel).toBeTruthy()
-    expect(app.teacherItems.filters.subjectAll).toBeTruthy()
-    expect(app.teacherItems.filters.submit).toBeTruthy()
+    // 두 단계(대표 2026-11-06): 대주제 상자 → 과목 카드
+    expect(app.teacherItems.themeList.intro).toBeTruthy()
+    expect(app.teacherItems.themeList.subjectCount(3)).toContain('3')
+    expect(app.teacherItems.themeList.open).toBeTruthy()
+    expect(app.teacherItems.subjectList.back).toBeTruthy()
+    expect(app.teacherItems.subjectList.intro).toBeTruthy()
+    expect(app.teacherItems.subjectList.notFound).toBeTruthy()
     expect(app.teacherItems.card.versionLabel(2)).toContain('2')
     expect(app.teacherItems.card.meta('중', 2)).toContain('중')
     expect(app.teacherItems.card.open).toBeTruthy()

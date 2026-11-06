@@ -17,6 +17,7 @@ export async function login(_prev: { error?: string } | undefined, formData: For
 
   const role = data.user.app_metadata?.role as Role | undefined
   // ?next=… 로 온 사이트 안 경로가 있으면 거기로(탐구보고서 페이지의 RED 보고서 로그인 단추, 2026-10-15). 바깥 주소는 safeNextPath 가 버린다.
+  // 원장은 홈페이지 메인으로(대표 2026-11-06: 메인에서 RED·서논술 가운데 골라 들어간다). 학생·본사는 자기 화면으로.
   const next = safeNextPath(formData.get('next'))
-  redirect(next ?? (role ? homePathFor(role) : '/'))
+  redirect(next ?? (role === 'teacher' ? '/' : role ? homePathFor(role) : '/'))
 }
