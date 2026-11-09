@@ -276,6 +276,10 @@ export const app = {
       submitting: '발급 중…',
       issuedNotice: '아래 정보를 원장님께 전달하세요. 이 화면을 벗어나면 비밀번호를 다시 볼 수 없습니다.',
       labels: { id: '아이디:', password: '초기 비밀번호:' },
+      // 발급할 때 가맹 상품도 고른다(대표 2026-11-09) — 고른 상품은 그 학원에 저장된다
+      planLabel: '가맹 상품',
+      planNote: '선택한 상품이 이 학원에 저장됩니다. 나중에 「가맹 상품 바꾸기」에서 바꿀 수 있습니다.',
+      issuedPlan: (plan: string) => `가맹 상품: ${plan}`,
     },
     detailMeta: {
       studentCapacity: (n: number) => `학생 정원 ${n}`,

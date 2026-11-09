@@ -32,7 +32,7 @@ export default async function AcademyPage({ params }: { params: Promise<{ id: st
       <ul className="mt-2 space-y-1">
         {(teachers ?? []).map(t => <li key={t.id}>{t.name} · {t.login_id}</li>)}
       </ul>
-      <TeacherAccountForm academyId={id} />
+      <TeacherAccountForm academyId={id} currentPlan={isPlan(a.plan) ? a.plan : DEFAULT_PLAN} />
     </>
   )
 }

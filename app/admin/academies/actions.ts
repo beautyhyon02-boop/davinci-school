@@ -7,7 +7,7 @@ import { getSessionProfile } from '@/lib/auth/session'
 import { parseAcademy, parseAcademyMap } from '@/lib/academies/validate'
 import { generatePassword } from '@/lib/auth/passwords'
 import { app } from '@/content/site'
-import { isPlan } from '@/lib/academies/plan'
+import { isPlan, type Plan } from '@/lib/academies/plan'
 import { isMissingColumn } from '@/lib/classroom/quiz-entry'
 
 const copy = app.adminAcademies
@@ -34,15 +34,27 @@ export async function createAcademy(_prev: { error?: string } | undefined, formD
   redirect(`/admin/academies/${data.id}`)
 }
 
+/**
+ * 원장 계정 발급. 폼에서 고른 가맹 상품을 먼저 그 학원에 저장하고(대표 2026-11-09 — 발급할 때 올·베이직을 구분해 체크), 그다음 계정을 만든다.
+ * 상품 저장이 실패하면 계정도 만들지 않는다(두 번 눌러 중복 계정이 생기지 않게 순서를 이렇게 둔다).
+ */
 export async function createTeacherAccount(
   academyId: string,
-  _prev: { error?: string; issued?: { email: string; password: string } } | undefined,
+  _prev: { error?: string; issued?: { email: string; password: string; plan: Plan } } | undefined,
   formData: FormData,
 ) {
-  await assertAdmin()
+  const s = await getSessionProfile()
+  if (s.role !== 'admin') throw new Error('forbidden')
   const email = String(formData.get('email') ?? '').trim().toLowerCase()
   const name = String(formData.get('name') ?? '').trim()
   if (!email || !name) return { error: copy.errors.teacherMissing }
+  const plan = String(formData.get('plan') ?? '')
+  if (!isPlan(plan)) return { error: copy.errors.planInvalid }
+  const supabase = await createClient()
+  const { error: planError } = await supabase.from('academies')
+    .update({ plan, plan_changed_at: new Date().toISOString(), plan_changed_by: s.userId })
+    .eq('id', academyId)
+  if (planError) return { error: planError.code === '23514' ? copy.errors.planMigration : planError.message }
   const password = generatePassword()
   const admin = createAdminClient()
   const { error } = await admin.auth.admin.createUser({
@@ -55,7 +67,9 @@ export async function createTeacherAccount(
   })
   if (error) return { error: error.message }
   revalidatePath(`/admin/academies/${academyId}`)
-  return { issued: { email, password } }
+  revalidatePath('/admin/academies')
+  revalidatePath('/programs/inquiry')
+  return { issued: { email, password, plan } }
 }
 
 /** 가맹 상품 바꾸기(PRD 2026-10-20): 본사만. 바꾸면 그 원의 원장에게 RED 자료실이 바로 열리거나 닫힌다(RLS·API 가 academies.plan 을 본다). */
