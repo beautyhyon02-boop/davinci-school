@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { TeacherAccountForm } from './TeacherAccountForm'
+import { TeacherList } from './TeacherList'
 import { PlanForm } from './PlanForm'
 import { MapInfoForm } from './MapInfoForm'
 import { isSido } from '@/lib/academies/sido'
@@ -29,9 +30,7 @@ export default async function AcademyPage({ params }: { params: Promise<{ id: st
       <h2 className="mt-8 text-lg font-bold">{copy.map.heading}</h2>
       <MapInfoForm academyId={id} sido={isSido(a.sido) ? a.sido : null} website={a.website ?? ''} showOnMap={a.show_on_map ?? true} />
       <h2 className="mt-8 text-lg font-bold">{copy.teacherAccount.heading}</h2>
-      <ul className="mt-2 space-y-1">
-        {(teachers ?? []).map(t => <li key={t.id}>{t.name} · {t.login_id}</li>)}
-      </ul>
+      <TeacherList academyId={id} teachers={teachers ?? []} />
       <TeacherAccountForm academyId={id} currentPlan={isPlan(a.plan) ? a.plan : DEFAULT_PLAN} />
     </>
   )

@@ -72,6 +72,26 @@ export async function createTeacherAccount(
   return { issued: { email, password, plan } }
 }
 
+/**
+ * 원장 비밀번호 다시 발급(대표 2026-11-11: 발급 화면에서 초기 비밀번호를 복사하지 못했을 때). 본사만.
+ * 그 학원의 원장 계정인지 먼저 확인하고(다른 학원·학생·본사 계정은 건드리지 않는다), 새 비밀번호를 정해 한 번만 돌려준다.
+ * 옛 비밀번호는 그 즉시 못 쓴다. 비밀번호는 기록·오류 문구에 남기지 않는다.
+ */
+export async function reissueTeacherPassword(
+  academyId: string,
+  profileId: string,
+): Promise<{ error?: string; issued?: { email: string; password: string } }> {
+  await assertAdmin()
+  const supabase = await createClient()
+  const { data: t } = await supabase.from('profiles').select('id, login_id')
+    .eq('id', profileId).eq('academy_id', academyId).eq('role', 'teacher').maybeSingle()
+  if (!t) return { error: copy.teacherAccount.reissue.notFound }
+  const password = generatePassword()
+  const { error } = await createAdminClient().auth.admin.updateUserById(t.id, { password })
+  if (error) return { error: copy.teacherAccount.reissue.failed }
+  return { issued: { email: t.login_id, password } }
+}
+
 /** 가맹 상품 바꾸기(PRD 2026-10-20): 본사만. 바꾸면 그 원의 원장에게 RED 자료실이 바로 열리거나 닫힌다(RLS·API 가 academies.plan 을 본다). */
 export async function setAcademyPlan(
   academyId: string,
