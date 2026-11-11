@@ -21,7 +21,9 @@ export function TeacherList({ academyId, teachers }: { academyId: string; teache
     if (!window.confirm(copy.reissue.confirm(t.name))) return
     setBusy(t.id)
     start(async () => {
-      const r = await reissueTeacherPassword(academyId, t.id)
+      // 동작이 던져도(세션 만료·네트워크) 단추가 잠긴 채 남지 않게 한다
+      let r: Result
+      try { r = await reissueTeacherPassword(academyId, t.id) } catch { r = { error: copy.reissue.failed } }
       setResults((prev) => ({ ...prev, [t.id]: r }))
       setBusy(null)
     })
