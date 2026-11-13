@@ -15,14 +15,6 @@ export default function HomePage() {
             <Button href="/programs/essay">{site.hero.ctaPrimary}</Button>
             <Button href="/franchise" variant="accent">{site.hero.ctaFranchise}</Button>
           </div>
-          <dl className="mx-auto mt-14 grid max-w-3xl grid-cols-3 gap-4">
-            {site.stats.map(s => (
-              <div key={s.label} className="rounded-2xl bg-white/70 p-4">
-                <dt className="text-sm text-ink-500">{s.label}</dt>
-                <dd className="text-2xl font-extrabold text-mint-700">{s.value}</dd>
-              </div>
-            ))}
-          </dl>
         </div>
       </section>
 

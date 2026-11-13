@@ -6,11 +6,6 @@ export const site = {
   intro:
     '다빈치스쿨은 5년간 40권의 탐구보고서 교재로 검증된 수업을 전국 가맹원에 공급하는 교육 본사입니다. 이제 서논술형 수업과 AI 피드백으로 아이의 생각을 글로 완성합니다.',
   metaDescription: '탐구보고서와 서논술형 수업, 전국 가맹원 네트워크 다빈치스쿨',
-  stats: [
-    { label: '전국 가맹원', value: '40+' },
-    { label: '탐구보고서 교재', value: '40권' },
-    { label: '누적 수업 기간', value: '5년' },
-  ],
   programs: [
     // 수업 이름은 「RED」(대표 2026-10-25) — R 독서(Reading)·E 탐구보고서(Essay)·D 토론(Debate) 자료 세 갈래
     { slug: 'inquiry', name: 'RED', short: '독서·탐구보고서·토론, 5년 검증된 탐구 수업', status: 'open', accent: 'mint' },
@@ -1801,6 +1796,8 @@ export const pages = {
   },
   // 전국 가맹원 지도(대표 2026-10-25, 설계 2026-10-25-franchise-map-design.md §4). 나가는 자료는 이름·시도·홈페이지뿐.
   franchiseMap: {
+    // 대표 2026-11-13: 아직 가맹원을 드러내지 않는다 — false 면 홈·가맹 안내에 지도·가맹원 목록·가맹원 수가 나오지 않는다(다시 보이려면 true)
+    enabled: false as boolean,
     eyebrow: 'NATIONWIDE',
     title: '전국 가맹원',
     total: (n: number) => `전국 가맹원 ${n}곳`,

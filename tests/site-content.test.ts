@@ -67,6 +67,7 @@ describe('site content', () => {
   })
   it('exposes franchise map copy', () => {
     expect(pages.franchiseMap.title).toBeTruthy()
+    expect(pages.franchiseMap.enabled).toBe(false)   // 대표 2026-11-13: 가맹원 지도·목록·수는 숨긴다(다시 켤 때 이 줄도 바꾼다)
     expect(pages.franchiseMap.total(3)).toContain('3')
     expect(pages.franchiseMap.chip('서울', 2)).toBe('서울 2')
     expect(pages.franchiseMap.none('세종')).toContain('세종')
