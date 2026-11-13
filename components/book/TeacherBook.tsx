@@ -186,6 +186,7 @@ function LessonSection({ plan, l }: { plan: BookPlan; l: BookLesson }) {
       </p>
       {l.goal && <p className="book-lesson-goal"><span className="font-semibold">{c.goal}:</span> {l.goal}</p>}
       {l.keyQuestion && <p><span className="font-semibold">{c.keyQuestion}:</span> {l.keyQuestion}</p>}
+      {tp.languageFocus.length > 0 && <p><span className="font-semibold">{c.languageFocus}:</span> {tp.languageFocus.join(', ')}</p>}
 
       <Flow l={l} />
 
@@ -213,6 +214,7 @@ function LessonSection({ plan, l }: { plan: BookPlan; l: BookLesson }) {
                 {q.explanation && <Below kind="explanation" label={c.quizExplanation}>{q.explanation}</Below>}
                 {q.criteria_ref && <p className="book-faint">{c.quizCriteriaRef}: {q.criteria_ref}</p>}
                 {q.partial_note && <p className="book-faint">{c.quizPartial}: {q.partial_note}</p>}
+                {q.language_form && <p className="book-faint">{c.quizLanguageForm}: {q.language_form}</p>}
                 {(q.competency || q.level_ref) && (
                   <p className="book-faint">
                     {q.level_ref && <span>{c.quizLevel(q.level_ref, followsQuizRoles(l.quiz))}</span>}

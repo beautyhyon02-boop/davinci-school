@@ -170,6 +170,19 @@ describe('createSupabaseRepo (v2 columns)', () => {
     })
   })
 
+  // 영어 세트의 목표 언어 형식(S-영-11, 2026-11-14): 후보와 본사가 고른 이름은 전용 열 없이 stage_status.stage2.output 에만 있다 —
+  // loadContext 가 2단계 출력에 되살려야 3·5·6단계 프롬프트와 [TS] 메모가 고른 형식을 읽는다(독립 검토 2026-11-14: 이 한 줄이 빠져도 다른 시험이 다 통과했다)
+  it('loadContext keeps language_form_candidates and the picked language_forms on the stage 2 output', async () => {
+    const tables = seed()
+    const repo = createSupabaseRepo(fakeSupabase(tables) as never)
+    const candidates = [{ name: '비교급', form: 'more + 명사 + than', example: 'More students chose tumblers.', use: '견준다' }, { name: '수동태', form: 'be + p.p.', example: 'Cups were used.', use: '쓰인 것을 주어로' }]
+    const withForms = { ...stage2, language_form_candidates: candidates, language_forms: ['수동태'] }
+    await repo.saveOutput('set1', 2, withForms); await repo.saveStatus('set1', 2, { state: 'accepted', attempt: 1, output: withForms, updated_at: '' })
+    const out = (await repo.loadContext('set1')).outputs[2] as typeof withForms
+    expect(out.language_form_candidates).toEqual(candidates)
+    expect(out.language_forms).toEqual(['수동태'])
+  })
+
   it('loadContext leaves outputs empty for stages whose columns are still null', async () => {
     const ctx = await createSupabaseRepo(fakeSupabase(seed()) as never).loadContext('set1')
     expect(Object.keys(ctx.outputs)).toEqual([])

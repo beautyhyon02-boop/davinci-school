@@ -75,7 +75,8 @@ export const Reconstruction = z.object({
   criteria_draft: z.array(z.string().min(2)).max(4).optional(),
   // 영어 세트만(S-영-11): 목표 언어 형식 후보와 본사가 고른 이름 — 선택(옛 출력·다른 과목에는 없다). 저장은 stage_status.stage2.output 에만(repo.ts).
   // 고르지 않으면 앞의 두 개를 쓴다(selectedLanguageForms) — 막지 않는다.
-  language_form_candidates: z.array(LanguageFormCandidate).min(2).max(4).optional(),
+  // 개수 하한은 두지 않는다 — 모델이 하나만 내거나 다른 과목이 빈 배열을 내도 생성이 막히지 않게(독립 검토 2026-11-14; 영어가 아닌 세트의 후보는 scrubLanguageForms 가 뺀다)
+  language_form_candidates: z.array(LanguageFormCandidate).max(4).optional(),
   language_forms: z.array(z.string().min(1)).max(3).optional(),
 }).superRefine((r, ctx) => {
   for (const axis of AXES) if (!r.learning_goals.some((g) => g.axis === axis)) issue(ctx, `학습 목표에 ${axis} 축이 없음`)

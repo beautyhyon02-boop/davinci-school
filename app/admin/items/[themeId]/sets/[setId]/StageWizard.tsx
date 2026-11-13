@@ -351,7 +351,10 @@ export function StageWizard({
         {/* 영어 세트(S-영-11): 2단계가 낸 목표 문법 후보에서 본사가 2~3개를 고른다 — 후보가 없으면(다른 과목·옛 세트) 아무것도 그리지 않는다 */}
         {active === 2 && (
           <LanguageFormPicker
-            key={stage2Forms.map((f) => f.name).join('|')}
+            // 2단계를 다시 생성하면(시도 번호가 오른다) 후보 이름이 같아도 저장된 선택이 비워지므로 체크를 새로 잡는다(독립 검토 2026-11-14)
+            key={`${effective[2]?.attempt ?? 0}|${stage2Forms.map((f) => f.name).join('|')}`}
+            // 단계가 도는 동안(생성·AI 검토)에는 잠근다 — 그 사이 저장한 선택을 끝난 단계가 옛 출력으로 덮어쓴다
+            disabled={busy}
             setId={setId}
             candidates={stage2Forms}
             selected={(effective[2]?.output as { language_forms?: string[] } | undefined)?.language_forms ?? []}

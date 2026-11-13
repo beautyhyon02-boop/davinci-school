@@ -571,6 +571,7 @@ export const app = {
           grading_guide: () => '채점 안내',
           per_lesson: (tag: string) => `${tag}차시`,
           translations: () => '영문 자료·예시답안 번역 (교사용)',
+          language_forms: () => '목표 문법 (교사용)',
         } as Record<string, (tag: string) => string>,
         labels: {
           // 2단계
@@ -1709,6 +1710,9 @@ export const app = {
       quizCondition: '조건',
       quizCriteriaRef: '이어지는 채점 요소',
       quizPartial: '부분 답',
+      // 영어 세트의 목표 문법(S-영-10·12, 2026-11-14) — 교사용 교재에만
+      quizLanguageForm: '써야 하는 문법',
+      languageFocus: '이 차시의 문법',
       answerLabel: '답',
       // 교사용
       flow: '수업 흐름',

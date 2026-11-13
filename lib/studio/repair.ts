@@ -1,4 +1,5 @@
 import type { Stage } from './schemas'
+import { repairLanguageKeys } from './language-forms'
 
 /**
  * 모델 응답의 **기계적 형식 표기**를 zod 검증 전에 손본다 — 내용은 바꾸지 않는다.
@@ -26,5 +27,6 @@ export function repairAssessment(raw: unknown): unknown {
 }
 
 export function repairOutput(stage: Stage, raw: unknown): unknown {
-  return stage === 5 ? repairAssessment(raw) : raw
+  // 2·3단계: 목표 언어 형식 칸(영어 세트, 2026-11-14)이 null 이거나 본사가 고르는 칸을 모델이 채웠으면 형식 검사 전에 걷어 낸다(language-forms.ts)
+  return stage === 5 ? repairAssessment(raw) : repairLanguageKeys(stage, raw)
 }

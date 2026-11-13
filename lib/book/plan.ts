@@ -26,7 +26,7 @@ export type BookSection = { id: string; kind: BookSectionKind; title: string; le
 
 /** 퀴즈 한 문항 — 학생용 판에는 answer·explanation·competency·level_ref 가 없다(빼고 만든다). */
 /** 퀴즈 — condition(답 조건, L-23)은 학생이 보는 것이라 두 판에 다 싣는다; 정답·해설·역량·수준은 교사용 판만. */
-export type BookQuiz = { q: string; type: string; choices: string[] | null; condition?: string; answer?: string; explanation?: string; competency?: string; level_ref?: string; criteria_ref?: string; partial_note?: string }
+export type BookQuiz = { q: string; type: string; choices: string[] | null; condition?: string; answer?: string; explanation?: string; competency?: string; level_ref?: string; criteria_ref?: string; partial_note?: string; language_form?: string }
 /** 활동지 과제 — 학생용 판에는 expected·flaw_check(결함 찾기 표시, L-19)가 없다. */
 export type BookTask = { no: number; prompt: string; tier: string; level_ref: string; answer_space: TaskT['answer_space']; expected?: string; flaw_check?: boolean }
 export type BookScriptQuestion = { prompt: string; expected_answer: string; if_stuck: string }
@@ -42,6 +42,8 @@ export type LessonTeacherPart = {
   needed: string[]
   cautions: string[]
   guideNotes: string[]
+  /** 이 차시가 가르치거나 다시 쓰는 목표 문법(영어 세트, S-영-12) — 없으면 빈 배열. */
+  languageFocus: string[]
   mergeNote: string | null
   mergeableWith: number | null
   assessment: string[]
@@ -160,7 +162,7 @@ function quizFor(l: LessonT, kind: BookKind): BookQuiz[] {
     const base: BookQuiz = { q: q.q, type: q.type, choices: Array.isArray(q.choices) ? q.choices : null, ...(q.condition ? { condition: q.condition } : {}) }
     if (kind === 'student') return base
     return { ...base, answer: q.answer, explanation: q.explanation, competency: q.competency, level_ref: q.level_ref,
-      ...(q.criteria_ref ? { criteria_ref: q.criteria_ref } : {}), ...(q.partial_note ? { partial_note: q.partial_note } : {}) }   // L-10·L-25(2026-11-13): 교사용 판에만
+      ...(q.criteria_ref ? { criteria_ref: q.criteria_ref } : {}), ...(q.partial_note ? { partial_note: q.partial_note } : {}), ...(q.language_form ? { language_form: q.language_form } : {}) }   // L-10·L-25(2026-11-13): 교사용 판에만
   })
 }
 
@@ -184,7 +186,7 @@ function lessonFor(l: LessonT, s: SnapshotV2, kind: BookKind): BookLesson {
   const teacher: LessonTeacherPart = {
     standards: arr(l.standards), time_budget: l.time_budget ?? null, flow: l.flow ?? null,
     script: arr(l.teacher_script?.questions).map((q) => ({ prompt: q.prompt, expected_answer: q.expected_answer, if_stuck: q.if_stuck })),
-    needed: arr(l.materials_needed), cautions: arr(l.caution_notes), guideNotes: arr(notes),
+    needed: arr(l.materials_needed), cautions: arr(l.caution_notes), guideNotes: arr(notes), languageFocus: arr(l.language_focus),
     mergeNote: l.merge_note ?? null, mergeableWith: l.mergeable_with ?? null, assessment: lessonAssessments(l),
     feedbackPlan: fp ? { who: fp.who, how: fp.how, sentence_frame: fp.sentence_frame ?? null } : null,
   }

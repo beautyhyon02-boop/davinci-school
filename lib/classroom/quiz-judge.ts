@@ -18,8 +18,9 @@ export const QUIZ_JUDGE_RULES = [
   '이유는 원장이 한눈에 보게 한 줄(60자 안)로, 학생 답의 어느 부분을 보고 판정했는지 적는다. 학생을 평가하는 말은 쓰지 않는다.',
   '"문항의 역할"·"이어지는 채점 요소"·"부분 답이 되는 경우"가 주어지면 함께 본다 — 역할이 요구한 수행(배운 것을 과목의 말로 해 보기, 채점 요소 한 조각)을 했고 내용이 정답과 같은 뜻이면 "맞음", 핵심 수행은 했으나 "부분 답이 되는 경우"의 모습이면 "부분". 값·결론이 정답과 다르면 그 모습이어도 "틀림".',
   // 대표 2026-11-14: 영어 2·3번은 배운 목표 언어 형식으로 학생이 스스로 고른 내용을 쓴다 — 정답 표기는 예시일 뿐이라 형식과 자료의 사실로 본다
-  '"써야 하는 언어 형식"이 주어졌는데 학생 답이 그 형식을 쓰지 않았으면 "틀림", 그 형식을 썼으나 꼴에 잘못이 있으면 "부분"(철자 하나·관사·대소문자 같은 작은 잘못은 "맞음").',
-  '"자료"가 주어지면 정답 표기는 예시다 — 학생이 자료에서 다른 항목·수치를 골라 썼어도 그 내용이 자료와 맞고 답 조건을 지켰으면 "맞음", 자료의 사실과 다르면(없는 항목, 틀린 수치, 뒤바뀐 크기) "틀림".',
+  '"써야 하는 언어 형식"이 주어졌는데 학생 답이 그 형식을 쓰지 않았으면 "틀림" — 뜻이 정답과 같아도, 답 조건에 그 형식이 적혀 있어도 "부분"이 아니라 "틀림"이다. 그 형식을 썼으나 꼴에 잘못이 있으면 "부분"(철자 하나·관사·대소문자 같은 작은 잘못은 "맞음").',
+  // 독립 검토 2026-11-14: "정답 표기는 예시"는 학생이 자료에서 스스로 고르는 문항에만 — 값·항목 하나를 묻는 닫힌 문항(사회·과학·수학의 2번 등)은 자료가 있어도 정답 표기가 기준이다
+  '"정답 표기(예시)"로 주어진 문항만 정답 표기가 예시다 — 학생이 자료에서 다른 항목·수치를 골라 썼어도 그 내용이 "자료"와 맞고 답 조건을 지켰으면 "맞음", 자료의 사실과 다르면(없는 항목, 틀린 수치, 뒤바뀐 크기) "틀림". 그 밖의 문항은 "자료"가 주어져도 정답 표기가 기준이다 — 자료는 학생 답이 정답과 같은 뜻인지 확인하는 데만 쓴다.',
 ].join('\n')
 
 /** 문항 자리의 역할(L-10, 대표 2026-11-13) — 새 규칙을 따르는 판에서만 프롬프트에 넣는다. */
@@ -55,25 +56,39 @@ export type QuizJudgeInput = {
   languageForm?: string | null
   /** 문항이 가리키는 자료의 글(quizMaterialsText) — 학생이 자료에서 골라 쓰는 문항(새 규칙의 2·3번)에서 사실 여부를 가리는 근거. */
   materials?: string | null
+  /** 학생이 자료에서 스스로 골라 쓰는 문항(isOpenChoiceQuiz) — 참이면 정답 표기를 "예시"로 보여 준다. 닫힌 문항은 정답 표기가 기준이다. */
+  openChoice?: boolean
   response: string
 }
 
-type JudgeMaterial = { id: string; title?: string | null; body?: string | null; table?: { columns: string[]; rows: (string | number)[][] } | null }
-/** AI 판정에 보내는 자료 글의 상한 — 표 25행·본문 몇 문단이면 넉넉하다(넘으면 자른다). */
+type JudgeMaterial = { id: string; title?: string | null; body?: string | null; table?: { columns?: string[]; rows?: (string | number)[][] } | null }
+/** AI 판정에 보내는 자료 글의 상한 — 표 25행·본문 몇 문단이면 넉넉하다(넘으면 자르고 잘렸다고 적는다). */
 export const JUDGE_MATERIALS_MAX = 4000
 /**
  * 문항이 쓰는 자료(차시 materials_used)를 판정용 글로: `<자료 F> 제목`, 본문, 표는 `열 | 열` 줄로. 그 차시가 쓰는 자료가 없으면 ''.
  * 학생이 자료에서 스스로 골라 쓰는 문항은 정답이 여러 가지라 자료를 봐야 사실 여부를 가릴 수 있다(대표 2026-11-14).
+ * 제출 길 위에서 불리므로 어떤 모양의 자료에도 던지지 않는다 — 옛 모양(v1)의 공동 자료·열 이름 없는 표도 있는 만큼만 글로 옮긴다.
  */
 export function quizMaterialsText(materials: JudgeMaterial[] | null | undefined, ids: string[] | null | undefined): string {
-  const used = (materials ?? []).filter((m) => (ids ?? []).includes(m.id))
-  const text = used.map((m) => [
-    `<자료 ${m.id}>${m.title ? ` ${m.title}` : ''}`,
-    m.body?.trim() ?? '',
-    m.table ? [m.table.columns.join(' | '), ...m.table.rows.map((r) => r.join(' | '))].join('\n') : '',
-  ].filter(Boolean).join('\n')).join('\n\n')
-  return text.length > JUDGE_MATERIALS_MAX ? `${text.slice(0, JUDGE_MATERIALS_MAX)}…` : text
+  try {
+    if (!Array.isArray(materials) || !Array.isArray(ids)) return ''
+    const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '')
+    const text = materials.filter((m) => !!m && ids.includes(m.id)).map((m) => {
+      const columns = Array.isArray(m.table?.columns) ? m.table.columns.join(' | ') : ''
+      const rows = Array.isArray(m.table?.rows) ? m.table.rows.filter((r) => Array.isArray(r)).map((r) => r.join(' | ')) : []
+      return [`<자료 ${m.id}>${str(m.title) ? ` ${str(m.title)}` : ''}`, str(m.body), [columns, ...rows].filter(Boolean).join('\n')].filter(Boolean).join('\n')
+    }).join('\n\n')
+    return text.length > JUDGE_MATERIALS_MAX ? `${text.slice(0, JUDGE_MATERIALS_MAX)}…(이하 잘림)` : text
+  } catch {
+    return ''
+  }
 }
+
+/**
+ * 학생이 자료에서 스스로 골라 쓰는 문항인가 — 문항 글이 "골라"·"고른"·"스스로 정해"를 말할 때만(3단계 과제가 그렇게 쓰게 한다, L-24).
+ * 이런 문항만 정답 표기를 예시로 보고 자료를 함께 보낸다. "고쳐 쓰세요"는 고르기가 아니다.
+ */
+export const isOpenChoiceQuiz = (q: string | null | undefined): boolean => /골라|고른|고르|스스로 정/.test(q ?? '')
 
 /** 프롬프트: 규칙(캐시) + 이번 문항. 정답 표기(" / ")는 줄로 나눠 보여 준다. */
 export function buildQuizJudgePrompt(i: QuizJudgeInput) {
@@ -86,7 +101,7 @@ export function buildQuizJudgePrompt(i: QuizJudgeInput) {
     i.condition?.trim() ? `답 조건: ${i.condition.trim()}` : '',
     i.languageForm?.trim() ? `써야 하는 언어 형식: ${i.languageForm.trim()}` : '',
     i.criteriaRef?.trim() ? `이어지는 채점 요소: ${i.criteriaRef.trim()}` : '',
-    `정답 표기(어느 것이든 정답):\n${keys.map((k) => `- ${k}`).join('\n')}`,
+    `${i.openChoice ? '정답 표기(예시 — 학생이 자료에서 다른 것을 골라 써도 된다)' : '정답 표기(어느 것이든 정답)'}:\n${keys.map((k) => `- ${k}`).join('\n')}`,
     `해설: ${i.explanation}`,
     kw.length ? `핵심어(뜻이 담겨야 함): ${kw.join(', ')}` : '',
     i.partialNote?.trim() ? `부분 답이 되는 경우: ${i.partialNote.trim()}` : '',

@@ -6,7 +6,7 @@ import { readFileSync, readdirSync } from 'node:fs'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod'
-import { buildPrompt, buildReviewPrompt, type Ctx } from '@/lib/studio/prompts/stages'
+import { buildPrompt, buildReviewPrompt, type Ctx, ENGLISH_NO_FORMS_TASK, ENGLISH_NO_FORMS_REVIEW } from '@/lib/studio/prompts/stages'
 import { rulesFor } from '@/lib/studio/prompts/rules/index'
 import { ENGLISH_RULES } from '@/lib/studio/prompts/rules/subjects/영어'
 import { staticIssues, KOREAN_SHARED_CITED, TRANSLATION_MISSING } from '@/lib/studio/checks'
@@ -154,9 +154,10 @@ describe('프롬프트: 다른 과목·공동 자료 없는 영어 세트는 그
     }
   })
   it('an 영어 set with no shared material ticked gets the same task text as any other subject', () => {
+    // 목표 언어 형식을 정하지 않은 영어 세트(2단계에 후보 없음)에는 3·5·6단계에 "새 칸을 두지 않는다"는 한 문장이 붙는다(2026-11-14, tests/language-forms-review.test.ts) — 그 문장만 빼면 같다
     for (const stage of [3, 4, 5] as const) {
-      expect(task(buildPrompt(stage, ctxOf('영어', {})).user)).toBe(task(buildPrompt(stage, ctxOf('수학', {})).user))
-      expect(focus(buildReviewPrompt(stage, ctxOf('영어', {}), {}).user)).toBe(focus(buildReviewPrompt(stage, ctxOf('수학', {}), {}).user))
+      expect(task(buildPrompt(stage, ctxOf('영어', {})).user).replace(ENGLISH_NO_FORMS_TASK, '')).toBe(task(buildPrompt(stage, ctxOf('수학', {})).user))
+      expect(focus(buildReviewPrompt(stage, ctxOf('영어', {}), {}).user).replace(ENGLISH_NO_FORMS_REVIEW, '')).toBe(focus(buildReviewPrompt(stage, ctxOf('수학', {}), {}).user))
     }
   })
 })

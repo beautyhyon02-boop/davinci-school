@@ -57,7 +57,7 @@ describe('규칙 문장', () => {
   it('S-영-10: 1번 형식의 꼴·표현, 2번 배운 형식으로 스스로 고른 내용, 3번 바꿔 쓰기·잇기 — 옮겨 적기와 한국어 까닭 문항은 없다', () => {
     const t = en('S-영-10').text
     for (const s of ['세 문항 모두 영어로 답한다', '문법 용어의 이름은 묻지 않는다', '배운 언어 형식을 써서 자료에서 스스로 고른 내용을 영어 한 문장으로', '같은 뜻을 다른 꼴로 바꿔 쓰거나 두 문장을 이어 쓴다',
-      'language_form', '정답이 되는 낱말은 적지 않는다', '목표 형식을 썼으나 꼴에 잘못이 있는 답은 부분, 목표 형식을 쓰지 않은 답은 틀림', '표의 한 칸을 문장으로 옮기기만 하는 문항', '한국어로 까닭을 설명하게 하는 문항은 내지 않는다']) expect(t, s).toContain(s)
+      'language_form', '정답 문장에 들어갈 내용(품목 이름·수치)은 적지 않는다', '목표 형식을 썼으나 꼴에 잘못이 있는 답은 부분, 목표 형식을 쓰지 않은 답은 틀림', '표의 한 칸을 문장으로 옮기기만 하는 문항', '한국어로 까닭을 설명하게 하는 문항은 내지 않는다']) expect(t, s).toContain(s)
     expect(t).not.toContain('자료의 수치를 영어 한 문장으로')
     expect(row('S-영-10')).toBe(`| S-영-10 | ${t} | [대표] |`)
   })
@@ -79,7 +79,7 @@ describe('규칙 문장', () => {
   })
   it('S-영-05: 세트의 목표 언어 형식은 조건에 이름으로 밝힐 수 있다', () => {
     const t = en('S-영-05').text
-    expect(t).toContain('세트의 목표 언어 형식은 조건에 이름으로 밝힐 수 있다(S-영-11)')
+    expect(t).toContain('세트의 목표 언어 형식을 이름으로 밝힐 수 있다(S-영-11)')
     expect(row('S-영-05')).toBe(`| S-영-05 | ${t} | [WP4-운2][WP4 §8][C-07] |`)
   })
 })
@@ -88,7 +88,7 @@ describe('스키마 — 모두 선택(옛 판·다른 과목에는 없다)', () 
   it('2단계: language_form_candidates(2~4)·language_forms(이름, 3개까지)', () => {
     expect(Reconstruction.safeParse(stage2Fixture).success).toBe(true)
     expect(Reconstruction.safeParse(stage2({ language_forms: ['비교급', '수동태'] })).success).toBe(true)
-    expect(Reconstruction.safeParse(stage2({ language_form_candidates: [CANDS[0]] })).success).toBe(false)
+    expect(Reconstruction.safeParse(stage2({ language_form_candidates: [...CANDS, CANDS[0]] })).success).toBe(false)   // 다섯 개는 넘친다(하한은 두지 않는다 — language-forms-review.test.ts)
     expect(Reconstruction.safeParse(stage2({ language_form_candidates: [{ ...CANDS[0], example: '' }, CANDS[1]] })).success).toBe(false)
   })
   it('퀴즈 language_form, 차시 language_focus, 지침서 language_forms', () => {
@@ -139,7 +139,7 @@ describe('프롬프트', () => {
   it('3단계 과제(모든 과목): 2번에도 criteria_ref, 옮겨 적기 금지 — 고르기·견주기·바꾸기·잇기', () => {
     const t = buildPrompt(3, pctx('수학')).user
     expect(t).toContain('2번과 3번은 그 차시 lesson_map.criteria_focus의 채점 요소 이름 하나를 criteria_ref에 글자 그대로 적는다')
-    expect(t).toContain('자료의 한 칸·한 문장을 옮기면 답이 되는 문항도 쓰지 않으며 고르기·견주기·바꾸기·잇기 가운데 하나를 넣는다')
+    expect(t).toContain('자료의 한 칸·한 문장을 옮기면 답이 되는 문항도 쓰지 않으며 고르기·견주기·바꾸기·잇기처럼')
     expect(t).not.toContain('language_focus')
     const r = buildReviewPrompt(3, pctx('수학'), {}).user
     expect(r).toContain('2·3번이 자료의 한 칸·한 문장을 옮기면 답이 되는 문항이면 quiz(L-24)')
@@ -155,7 +155,8 @@ describe('프롬프트', () => {
     for (const s of ['목표 언어 형식(본사가 고른 것, S-영-11)', 'level(S-영-12)', 'quiz(S-영-10)', '성취기준 원문 밖의 개념으로 보지 않는다']) expect(r, s).toContain(s)
   })
   it('3단계(영어, 후보가 없는 옛 세트)와 다른 과목에는 목표 언어 형식 문장이 없다', () => {
-    expect(buildPrompt(3, pctx('영어', { stage2: stage2Fixture })).user).not.toContain('language_focus')
+    expect(buildPrompt(3, pctx('영어', { stage2: stage2Fixture })).user).toContain('language_focus·language_form·language_forms를 두지 않는다')   // 옛 영어 세트에는 두지 말라고 말한다
+    expect(buildPrompt(3, pctx('영어', { stage2: stage2Fixture })).user).not.toContain('목표 언어 형식(본사가 고른 것')
     expect(buildPrompt(3, pctx('수학', { stage2: stage2() })).user).not.toContain('목표 언어 형식')
   })
   it('5단계(영어): 언어 사용 채점 요소가 목표 형식을 본다 — 조건으로 강제하지 않는다; 6단계: 지침서 language_forms', () => {
@@ -308,13 +309,13 @@ describe('AI 뜻 판정 — 문항이 쓰는 자료를 함께 보낸다', () => 
   })
   it('너무 길면 자른다', () => {
     const long = [{ id: 'E', title: 't', body: 'x'.repeat(JUDGE_MATERIALS_MAX + 500), table: null }]
-    expect(quizMaterialsText(long, ['E']).length).toBe(JUDGE_MATERIALS_MAX + 1)
+    expect(quizMaterialsText(long, ['E']).length).toBe(JUDGE_MATERIALS_MAX + '…(이하 잘림)'.length)
   })
   it('프롬프트: materials 가 있으면 "자료:" 줄, 없으면 없다 — 규칙: 자료와 맞고 조건을 지켰으면 맞음, 자료의 사실과 다르면 틀림', () => {
     const input = { subject: '영어', level: '중', grade: 1, q: '두 품목을 골라 견주세요.', answer: 'More students chose tumblers than paper cups.', explanation: '비교급을 쓴다.', response: 'Paper cups were used more than plastic cups.' }
     expect(buildQuizJudgePrompt({ ...input, materials: quizMaterialsText(mats, ['E']) }).user).toContain('자료:\n<자료 E> Festival Count')
     expect(buildQuizJudgePrompt(input).user).not.toContain('자료:')
-    expect(QUIZ_JUDGE_RULES).toContain('"자료"가 주어지면 정답 표기는 예시다')
+    expect(QUIZ_JUDGE_RULES).toContain('"정답 표기(예시)"로 주어진 문항만 정답 표기가 예시다')
     expect(QUIZ_JUDGE_RULES).toContain('자료의 사실과 다르면(없는 항목, 틀린 수치, 뒤바뀐 크기) "틀림"')
   })
 })
