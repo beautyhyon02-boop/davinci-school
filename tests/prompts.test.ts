@@ -53,27 +53,28 @@ describe('prompts v2', () => {
     expect(review).toMatch(/퀴즈가 모두 단답형\(type "short", choices null\)인지/); expect(review).toMatch(/객관식 문항이 있으면 other/)
     // 규칙 블록(시스템)의 L-09·L-10 도 단답형만을 말한다
     const rules = buildPrompt(3, ctx).system
-    expect(rules).toMatch(/L-09 .*모두 단답형 — 낱말·수치·짧은 구를 직접 쓰는 문항, 선택지 없음/); expect(rules).toMatch(/L-10 .*답은 낱말·수치·짧은 구/)
+    expect(rules).toMatch(/L-09 .*모두 단답형 — 낱말·수치·짧은 구·한 문장을 직접 쓰는 문항, 선택지 없음/); expect(rules).toMatch(/L-10 .*3문항은 모두 단답형이되 자리마다 역할이 다르고/)
     expect(rules).not.toMatch(/선택형\/단답형/)
   })
   it('stage 3 (대표 2026-09-26, L-10·L-08): 퀴즈 level_ref D~E·C·B 하나씩·베끼기 금지, 전개는 C 목표 + A~B 확장 활동 1개; 검토는 모두 회상·베끼기·확장 없음을 짚는다', () => {
     const task = buildPrompt(3, ctx).user.split('과제: ')[1]
-    expect(task).toMatch(/세 문항은 수준을 나눠 level_ref를 하나씩 붙인다 — "D~E" 회상\(용어·사실을 낱말로\), "C" 이해·적용\(도달점 수준의 적용·계산·설명 핵심어\), "B" 관계·추론/)
+    // 대표 2026-11-13: 수준은 자리의 역할(1번 핵심 지식·2번 과목답게 해 보기·3번 단원 평가 디딤돌) — 자세한 문구는 tests/quiz-roles.test.ts
+    expect(task).toMatch(/세 문항은 자리마다 역할이 다르며 level_ref를 자리 순서대로 붙인다 — 1번 "D~E" 핵심 지식/); expect(task).toMatch(/2번 "C" 과목답게 해 보기/); expect(task).toMatch(/3번 "B" 단원 평가 디딤돌/)
     expect(task).toMatch(/발문·활동지에서 이미 물은 문항을 그대로 되풀이하거나 자료·대본에 적힌 문장을 옮겨 적으면 답이 되는 문항은 쓰지 않는다/)
     expect(task).toMatch(/전개 활동은 C\(도달점\)를 목표로 하고 A~B 학생용 확장 활동 1개\(발문 또는 활동지 도전 과제\)를 포함한다/)
     const review = buildReviewPrompt(3, ctx, {}).user.split('검토 초점: ')[1]
-    expect(review).toMatch(/level_ref가 D~E\(회상\)·C\(이해·적용\)·B\(관계·추론\) 하나씩/); expect(review).toMatch(/세 문항이 모두 용어·사실 회상이거나/)
+    expect(review).toMatch(/자리 순서대로 1번 핵심 지식\(D~E\)·2번 과목답게 해 보기\(C\)·3번 단원 평가 디딤돌\(B\)/); expect(review).toMatch(/세 문항이 모두 용어·사실 확인이거나/)
     expect(review).toMatch(/옮겨 적으면 되는 문항, 발문·활동지 문항을 그대로 되풀이한 퀴즈는 quiz/)
     expect(review).toMatch(/A~B 학생용 확장 활동\(발문 또는 활동지 도전 과제\)을 1개 이상 두었는지 — 없으면 level/)
-    expect(buildPrompt(3, ctx).system).toMatch(/L-10 퀴즈 3문항은 모두 단답형이되 수준을 나눈다/)
+    expect(buildPrompt(3, ctx).system).toMatch(/^L-10 퀴즈는 그 차시 성취기준의 기능어/m)
   })
   it('stage 3 (2026-10-01 영어 세트 검토, L-13): 과제는 정답이 전개·발문(예상 답)·활동지에 그대로 없을 것과 B 퀴즈는 활동지가 묻지 않은 것을 묻는다는 한 문장; 검토는 예상 답·기대 답·해설 노출과 회상인 B를 짚는다', () => {
     const task = buildPrompt(3, ctx).user.split('과제: ')[1]
-    expect(task).toMatch(/퀴즈 정답\(낱말·구\)은 그 차시의 전개·발문\(예상 답 포함\)·활동지 문장에 그대로 적혀 있지 않아야 하고, B 수준 퀴즈는 활동지가 아직 묻지 않은 관계·추론·까닭 있는 선택을 묻는다 — 활동지와 퀴즈는 서로 다른 것을 확인한다\(L-13\)/)
+    expect(task).toMatch(/퀴즈 정답\(구·문장\)은 그 차시의 전개·발문\(예상 답 포함\)·활동지 문장에 그대로 적혀 있지 않아야 하고/); expect(task).toMatch(/같은 기능을 다른 문장·다른 수치로 해 보게 한다 — 활동지와 퀴즈는 서로 다른 것을 확인한다\(L-13\)/)
     const review = buildReviewPrompt(3, ctx, {}).user.split('검토 초점: ')[1]
     expect(review).toMatch(/발문 예상 답·활동지 기대 답·다른 퀴즈 해설에 정답 구가 그대로 있어도 같다; 어느 자리인지 detail에 적는다/)
-    expect(review).toMatch(/B라고 붙인 퀴즈가 활동지 과제와 같은 것을 묻거나 실제로는 회상이고 역량 꼬리표도 그에 맞지 않으면 level\(L-13/)
-    expect(buildPrompt(3, ctx).system).toMatch(/^L-13 퀴즈 정답\(낱말·구\)은/m)
+    expect(review).toMatch(/2·3번 퀴즈가 활동지 과제가 이미 쓰게 한 문장·풀이를 그대로 다시 물으면 level\(L-13/)
+    expect(buildPrompt(3, ctx).system).toMatch(/^L-13 퀴즈 정답\(구·문장\)은/m)
   })
   it('stage 3·5 (대표 2026-10-05, C-42): 과제는 글자 수·낱말 수로 답을 좁히는 단서를 두지 않게 하고 검토는 그것을 짚는다 — 분량 지침은 해당 없음', () => {
     const task3 = buildPrompt(3, ctx).user.split('과제: ')[1]
@@ -548,7 +549,7 @@ describe('교육청 재구성 예시 수준 (대표 2026-10-01): L-14~L-21 과�
   })
   it('stage 3 task asks for criteria_focus, 발문 사다리 + if_stuck per question, worksheet ≠ 발문 with 질문형 도움말, flaw_check only in worksheets, feedback_plan, last-lesson self_check (names only); review mirrors it', () => {
     const t = task(3)
-    for (const s of ['criteria_focus = 그 차시가 길러 주는 단원 평가 채점 요소 이름', '2단계 criteria_draft의 이름은 글자 그대로 넣고 세트 구조(서술형·논술형의 요소 수)에 필요한 이름은 더 둘 수 있다, L-17', '자료 관찰 → 추론 → 종합·판단의 사다리', '회상은 퀴즈 D~E로 보내며', 'if_stuck은 발문마다 다르게', 'L-18',
+    for (const s of ['criteria_focus = 그 차시가 길러 주는 단원 평가 채점 요소 이름', '2단계 criteria_draft의 이름은 글자 그대로 넣고 세트 구조(서술형·논술형의 요소 수)에 필요한 이름은 더 둘 수 있다, L-17', '자료 관찰 → 추론 → 종합·판단의 사다리', '확인은 퀴즈 1번(핵심 지식)으로 보내며', 'if_stuck은 발문마다 다르게', 'L-18',
       '과제는 발문 문장을 복사하지 않고', '용어 확인 → 자료에서 사실 적기 → 판단·비교 + 이유', '답·수치·결론 없는 질문형 활동 도움말', '하 지원·상 확장', 'flaw_check: true', '평가 문항·세트 자료에는 넣지 않는다, L-19',
       'feedback_plan(교수 차시마다: who 개별/모둠/전체', '다음 차시의 전제 1개', 'sentence_frame', 'L-20', '"단원 평가에서 보는 것"', '채점 요소 이름·조건의 종류·산출물의 요소와 가짓수를 보여 주고(배점·만점은 5단계가 정하므로 말하지 않는다)', 'lessons[].self_check(차시 수준 — 활동지의 worksheet.self_check와 다른 칸)에 요소마다 "나는 ~했다"', '요소 이름만으로', '척도 서술·답·결론은 보여 주지 않는다, L-21']) expect(t, s).toContain(s)
     expect(t).not.toContain('이름·만점')   // 3단계는 배점을 모른다(2026-10-02)
@@ -674,11 +675,11 @@ describe('6단계 생성 입력 크기 가드(S-영-08로 4단계 자료가 들�
 describe('stage 3 (대표 2026-10-12, L-22): 과제는 정답 표기 여러 꼴·핵심어를 요구하고 검토는 빠진 것을 짚는다', () => {
   it('task: answer 에 받아들일 표기 2~4개, keywords 에 핵심어 1~3개', () => {
     const task = buildPrompt(3, ctx).user.split('과제: ')[1]
-    expect(task).toMatch(/answer는 받아들일 표기를 " \/ "로 2~4개 적고\(영어는 관사·대소문자 말고 다른 표현·동의 구, 한국어는 어순·조사·축약이 다른 꼴\), keywords에는 정답에 꼭 들어가야 할 핵심어 1~3개를 적는다\(L-22; 정답이 숫자·범위뿐이면 keywords는 비워 둔다\)/)
+    expect(task).toMatch(/answer는 받아들일 표기를 " \/ "로 2~4개 적고\(영어는 관사·대소문자 말고 다른 표현·동의 구, 한국어는 어순·조사·축약이 다른 꼴\), keywords에는 정답에 꼭 들어가야 할 핵심어 1~3개를 적는다\(L-22; 정답이 숫자·범위뿐이면 keywords는 비워 두고, 문장으로 답하는 2·3번은 비워도 된다/)
   })
   it('review: 표기가 하나뿐이거나 keywords 가 없으면 quiz', () => {
     const review = buildReviewPrompt(3, ctx, {}).user.split('검토 초점: ')[1]
-    expect(review).toMatch(/단답형 정답 표기가 하나뿐이거나 keywords가 없으면 quiz\(L-22; 정답이 숫자·범위뿐인 문항은 keywords 없음이 정상\)\. /)
+    expect(review).toMatch(/단답형 정답 표기가 하나뿐이거나 keywords가 없으면 quiz\(L-22; 정답이 숫자·범위뿐인 문항과 문장으로 답하는 2·3번은 keywords 없음이 정상\)\. /)
   })
 })
 

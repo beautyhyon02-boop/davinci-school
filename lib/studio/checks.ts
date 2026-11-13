@@ -5,7 +5,8 @@ import { outOfGradeStandards } from './grade-units'
 import { isNumericAnswer } from '@/lib/classroom/quiz'
 import { structureIssues, kindFamily, sessionPlacementIssues, isAssessmentSession, lessonAssessments, ESSAY_MIN_MINUTES } from './assessment-structure'
 import type { Stage, ReviewKind, Reconstruction, LessonDesign, Materials, Assessment, TeacherGuide, NoticePlan } from './schemas'
-import { QUIZ_SHORT_ONLY, isShortQuiz, quizLevelSpreadOk } from './schemas'
+import { QUIZ_SHORT_ONLY, isShortQuiz, quizLevelSpreadOk, quizLevelOrderOk } from './schemas'
+export { quizLevelOrderOk }
 import { titleHasSourceMarker, usedMaterialIds, mentionedMaterialIds, MAX_SET_MATERIALS } from './materials'
 import { sortScale, zeroStep } from './scale'
 import { COMPETENCIES } from './competency'
@@ -105,6 +106,24 @@ export function quizNeedsCondition(q: { q: string; answer: string }): boolean {
   if (forms.some((f) => (/\s/.test(f) ? PREDICATE_END.test(f) : f.length >= 4 && PREDICATE_END_WORD.test(f)))) return true
   return OPEN_CUE.test(q.q)
 }
+/**
+ * 퀴즈 세 자리의 역할(L-10·L-24·L-25, 대표 2026-11-13 — 설계 2026-11-13-quiz-roles-design.md): 모두 참고 메모(kind other), 막지 않는다.
+ * 옛 판·옛 초안에는 criteria_ref·partial_note 가 없어 메모가 뜬다(3단계를 다시 생성하면 채워진다).
+ */
+export const QUIZ_ROLE_ORDER_NOTE = '퀴즈 수준이 자리 순서(1번 D~E 핵심 지식 · 2번 C 해 보기 · 3번 B 디딤돌)와 다름(L-10)'
+export const QUIZ_CRITERIA_REF_MISSING = '3번(단원 평가 디딤돌)에 이어지는 채점 요소(criteria_ref)가 없음(L-10)'
+export const quizCriteriaRefUnknown = (name: string) => `criteria_ref "${name}"이(가) 이 차시의 criteria_focus에 없음(L-10)`
+export const QUIZ_PARTIAL_NOTE_MISSING = '부분 답이 되는 경우(partial_note)가 없음 — 핵심 수행은 했으나 근거·조건 하나가 빠진 답의 모습을 한 줄로 적는다(L-25)'
+export const QUIZ_NEW_SITUATION = '해설이 수업에서 다루지 않은 새 상황을 말함 — 퀴즈는 배운 것만 묻는다(L-24)'
+export const QUIZ_ENGLISH_ANSWER = '영어 퀴즈 정답에 한글이 있음 — 세 문항 모두 영어로 답하게 한다(S-영-10)'
+export const QUIZ_MATH_NUMBER = '수학 퀴즈 2·3번 정답에 수·식이 없음 — 식이나 값을 넣어 답하게 한다(S-수-08)'
+/** 정답 표기에 한글이 있는가(영어 퀴즈는 영어로 답한다, S-영-10). */
+export const answerHasHangul = (answer: string): boolean => /[\uAC00-\uD7A3]/.test(answer)
+/** 받아들일 표기(" / ") 가운데 수·식(숫자, 등호·부등호·연산 기호, 미지수)이 없는 것이 하나라도 있는가(수학 2·3번, S-수-08). */
+export const answerLacksNumber = (answer: string): boolean => answer.split('/').map((s) => s.trim()).filter(Boolean).some((alt) => !/\d|[=<>≤≥≠+×÷−]|(?<![A-Za-z])[xyabn](?![A-Za-z])/.test(alt))
+/** 문항·해설이 "수업에서 다루지 않은·배우지 않은·새 상황에 적용"을 말하는가(L-24) — 걸린 말을 돌려준다. "안내문이 다루지 않은 정보"처럼 자료를 두고 하는 말은 아니다. */
+export const newSituationCue = (text: string): string | null => text.match(/수업에서 (다루지|배우지) 않은|배우지 않은|새(로운)? ?(상황|사례)에 (적용|대입)/)?.[0] ?? null
+
 export const QUIZ_CONDITION_MISSING = '답이 구·문장인데 답 조건(condition)이 없음 — 답의 꼴·담을 것·가짓수를 한 줄로 적는다(L-23)'
 
 function gradeUnitIssues(codes: string[], ctx: CheckCtx): Issue[] {
@@ -598,9 +617,24 @@ function lessonIssues(o: LessonDesignT, ctx: CheckCtx): Issue[] {
       // C-42(대표 2026-10-05): 글자 수·낱말 수로 답을 좁히는 단서("두 글자로 쓰시오") — 퀴즈와 활동지 과제 문장만 본다(참고 메모)
       for (const [i, q] of l.formative_check.quiz.entries()) { const cue = letterCountCue(q.q); if (cue) issues.push({ kind: 'other', detail: letterCueNote(`${l.no}차시 퀴즈 ${i + 1}`, cue) }) }
       // L-22(대표 2026-10-12): 핵심어가 없는 단답형 퀴즈는 글자 비교·AI 판정에만 기대게 된다 — 참고 메모(옛 판·옛 fixture에는 없다)
-      for (const [i, q] of l.formative_check.quiz.entries()) if (isShortQuiz(q) && quizNeedsKeywords(q.answer) && !((q as { keywords?: unknown }).keywords as unknown[] | undefined)?.length) issues.push({ kind: 'other', detail: `${l.no}차시 퀴즈 ${i + 1}: 핵심어(keywords)가 없음 — 정답 표기를 여러 꼴로 적고 핵심어 1~3개를 함께 적는다(L-22)` })
+      for (const [i, q] of l.formative_check.quiz.entries()) if (isShortQuiz(q) && quizNeedsKeywords(q.answer) && !(q as { partial_note?: string }).partial_note?.trim() && !((q as { keywords?: unknown }).keywords as unknown[] | undefined)?.length) issues.push({ kind: 'other', detail: `${l.no}차시 퀴즈 ${i + 1}: 핵심어(keywords)가 없음 — 정답 표기를 여러 꼴로 적고 핵심어 1~3개를 함께 적는다(L-22)` })
       // L-23(대표 2026-11-06): 답이 구·문장인 퀴즈에 답 조건이 없으면 학생이 무엇을 어떤 꼴로 쓸지 모른다 — 참고 메모(옛 판·옛 fixture에는 없다)
       for (const [i, q] of l.formative_check.quiz.entries()) if (isShortQuiz(q) && quizNeedsCondition(q) && !(q as { condition?: string }).condition) issues.push({ kind: 'other', detail: `${l.no}차시 퀴즈 ${i + 1}: ${QUIZ_CONDITION_MISSING}` })
+      // L-10·L-24·L-25·과목 규칙(대표 2026-11-13): 세 자리의 역할 — 참고 메모(옛 판·옛 초안은 3단계를 다시 생성하면 채워진다)
+      const quiz = l.formative_check.quiz as (typeof l.formative_check.quiz[number] & { criteria_ref?: string; partial_note?: string })[]
+      if (quiz.length === 3) {
+        if (quizLevelSpreadOk(quiz) && !quizLevelOrderOk(quiz)) issues.push({ kind: 'other', detail: `${l.no}차시 ${QUIZ_ROLE_ORDER_NOTE}` })
+        const focus = (o.unit_plan?.lesson_map ?? []).find((m) => m.lesson_no === l.no)?.criteria_focus ?? []
+        const ref = quiz[2].criteria_ref?.trim()
+        if (!ref) issues.push({ kind: 'other', detail: `${l.no}차시 퀴즈 3: ${QUIZ_CRITERIA_REF_MISSING}` })
+        else if (focus.length > 0 && !focus.includes(ref)) issues.push({ kind: 'other', detail: `${l.no}차시 퀴즈 3: ${quizCriteriaRefUnknown(ref)}` })
+        for (const i of [1, 2]) if (!quiz[i].partial_note?.trim()) issues.push({ kind: 'other', detail: `${l.no}차시 퀴즈 ${i + 1}: ${QUIZ_PARTIAL_NOTE_MISSING}` })
+        if (ctx.subject === '수학') for (const i of [1, 2]) if (answerLacksNumber(quiz[i].answer)) issues.push({ kind: 'other', detail: `${l.no}차시 퀴즈 ${i + 1}: ${QUIZ_MATH_NUMBER}` })
+      }
+      for (const [i, q] of quiz.entries()) {
+        const cue = newSituationCue(`${q.q ?? ''} ${q.explanation ?? ''}`); if (cue) issues.push({ kind: 'other', detail: `${l.no}차시 퀴즈 ${i + 1}: ${QUIZ_NEW_SITUATION} — "${cue}"` })
+        if (ctx.subject === '영어' && answerHasHangul(q.answer)) issues.push({ kind: 'other', detail: `${l.no}차시 퀴즈 ${i + 1}: ${QUIZ_ENGLISH_ANSWER}` })
+      }
       for (const [k, t] of (l.worksheet?.tasks ?? []).entries()) { const cue = letterCountCue(t.prompt); if (cue) issues.push({ kind: 'other', detail: letterCueNote(`${l.no}차시 활동지 과제 ${t.no ?? k + 1}번`, cue) }) }
     }
     for (const q of l.teacher_script.questions) if (norm(q.if_stuck) === norm(q.expected_answer)) issues.push({ kind: 'other', detail: `${l.no}차시 발문 힌트가 정답과 같음` })

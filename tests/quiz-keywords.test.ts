@@ -41,7 +41,7 @@ describe('[TS] 참고 메모 — 핵심어 없는 단답형 퀴즈(L-22, 막지 
   const ctx = { standards: [{ code: '[9수04-02]', text: 'x' }, { code: '[9수04-03]', text: 'y' }], prior: {} }
   it('핵심어가 없는 단답형 퀴즈마다 자리와 함께 적는다(kind other) — 정답이 숫자·범위뿐인 문항은 빼고', () => {
     const notes = staticIssues(3, bare, ctx).filter((i) => i.detail.includes('핵심어'))
-    const expected = bare.lessons.flatMap((l: L) => l.formative_check.quiz.map((q, i) => (quizNeedsKeywords(q.answer as string) ? `${l.no}차시 퀴즈 ${i + 1}: 핵심어(keywords)가 없음 — 정답 표기를 여러 꼴로 적고 핵심어 1~3개를 함께 적는다(L-22)` : null)).filter(Boolean))
+    const expected = bare.lessons.flatMap((l: L) => l.formative_check.quiz.map((q, i) => (quizNeedsKeywords(q.answer as string) && !(q as { partial_note?: string }).partial_note ? `${l.no}차시 퀴즈 ${i + 1}: 핵심어(keywords)가 없음 — 정답 표기를 여러 꼴로 적고 핵심어 1~3개를 함께 적는다(L-22)` : null)).filter(Boolean))
     expect(expected.length).toBeGreaterThan(0)
     expect(notes.map((n) => n.detail)).toEqual(expected)
     for (const n of notes) expect(n.kind).toBe('other')

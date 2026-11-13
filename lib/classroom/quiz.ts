@@ -4,7 +4,10 @@ export function normalizeShort(s: string): string {
 }
 
 /** keywords(L-22, 대표 2026-10-12): 정답에 꼭 들어가야 할 핵심어 1~3개 — 모두 들어 있으면 글자가 달라도 정답. 옛 판에는 없다. */
-export type QuizKey = { type: 'choice' | 'short'; answer: string; choices: string[] | null; keywords?: string[] | null }
+/** partial_note(L-25, 2026-11-13): 부분 답의 모습이 적힌 문항(새 규칙의 2·3번)은 핵심어만 들어 있다고 O 가 되지 않는다 — 조건·부분 답을 AI 뜻 판정이 본다. */
+export type QuizKey = { type: 'choice' | 'short'; answer: string; choices: string[] | null; keywords?: string[] | null; partial_note?: string | null }
+/** 이 차시 퀴즈가 새 규칙(자리별 역할, L-10)을 따르는가 — 3문항이고 3번에 이어지는 채점 요소가 적힌 판만. 옛 판은 역할 이름·역할 줄을 쓰지 않는다. */
+export const followsQuizRoles = (quiz: { criteria_ref?: string | null }[]): boolean => quiz.length === 3 && !!quiz[2].criteria_ref?.trim()
 
 /** 선택형은 표시 기호(①…) 완전 일치, 단답형은 정규화 후 일치. 정답 키가 "A / B"면 둘 중 하나. */
 /** 단답 끝에 붙는 단위·조사("6개", "6 개", "6개이다", "6개요")를 떼어 비교용 핵심만 남긴다. */
@@ -95,6 +98,8 @@ export function matchKind(item: QuizKey, response: string): 'literal' | 'keyword
   if (!r) return null
   if (item.type === 'choice') return r === item.answer.trim() ? 'literal' : null
   if (literalMatch(item, r)) return 'literal'
+  // 독립 검토 2026-11-13: "한 문장으로 쓰시오" 문항에 핵심어 낱말만 적은 답("reusable cup")이 O 가 되지 않게
+  if (item.partial_note?.trim()) return null
   return keywordMatch(item, r) ? 'keyword' : null
 }
 

@@ -86,7 +86,8 @@ describe('staticIssues', () => {
     const note = '퀴즈 수준 표시(level_ref)가 없거나 D~E/C/B가 고르지 않음 — 3단계를 다시 생성하면 채워집니다'
     expect(levelNotes(setLevels(1, ['D~E', 'D~E', 'D~E']))).toEqual([{ kind: 'other', detail: `1차시 ${note}` }])
     expect(levelNotes(setLevels(3, ['D~E', 'C', undefined]))).toEqual([{ kind: 'other', detail: `3차시 ${note}` }])
-    expect(levelNotes(setLevels(2, ['C', 'B', 'D~E']))).toEqual([])   // 순서는 따지지 않는다
+    // 대표 2026-11-13(L-10): 수준은 자리의 역할과 같다 — 하나씩 있어도 자리 순서(D~E·C·B)가 아니면 따로 메모한다
+    expect(levelNotes(setLevels(2, ['C', 'B', 'D~E']))).toEqual([{ kind: 'other', detail: '2차시 퀴즈 수준이 자리 순서(1번 D~E 핵심 지식 · 2번 C 해 보기 · 3번 B 디딤돌)와 다름(L-10)' }])
     // 옛 모양 차시(퀴즈에 level_ref 가 아예 없음): 새 세트 zod(LessonDesign)를 통과하고 — 이미지 첨부·문장 고치기가 되고 — [TS] 메모만 받는다
     const old = base.map((l) => ({ ...l, formative_check: { quiz: l.formative_check.quiz.map(({ level_ref: _x, ...q }) => { void _x; return q }) } }))
     const unit_plan = { set_title: '자료의 정리와 해석', set_key_question: '자료는 무엇을 말하는가?', lesson_map: old.map((l) => ({ lesson_no: l.no, standards: l.standards, topic: l.topic })),

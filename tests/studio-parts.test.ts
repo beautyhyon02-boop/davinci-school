@@ -168,7 +168,7 @@ describe.each(['수학', '과학'] as const)('parts (%s fixtures)', (subject) =>
         onePerLine(seg, quiz.map((q) => q.q))
         if (quiz.some((q) => q.level_ref)) {
           const levels = seg.slice(seg.indexOf('data-quiz-levels'))
-          onePerLine(levels.slice(0, levels.indexOf('</ul>') + 5), quiz.map((q, i) => c.lessons.quizLevel(i + 1, q.level_ref)))
+          onePerLine(levels.slice(0, levels.indexOf('</ul>') + 5), quiz.map((q, i) => c.lessons.quizLevel(i + 1, q.level_ref, true)))   // 시연 fixture 는 새 규칙 칸이 있어 역할 이름(대표 2026-11-13)
         }
       }
     })

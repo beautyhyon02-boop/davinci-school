@@ -10,13 +10,21 @@ import { gradeLabel } from '@/lib/studio/level-map'
 
 export const QUIZ_JUDGE_RULES = [
   '당신은 중·고등학교 수업의 마무리 퀴즈(단답형) 채점 보조자다. 학생 답이 정답과 같은 뜻인지 판정한다.',
-  '기준은 문항·답 조건·정답 표기·해설·핵심어뿐이다. 새 기준을 만들지 않는다.',
+  '기준은 문항·답 조건·정답 표기·해설·핵심어와, 주어졌다면 문항의 역할·이어지는 채점 요소·부분 답이 되는 경우뿐이다. 새 기준을 만들지 않는다.',
   '표현·어순·조사·대소문자·관사·단위 표기가 달라도 뜻이 같으면 "맞음". 핵심어가 있으면 그 뜻이 담겼는지를 본다(글자 일치가 아니라 뜻).',
   '정답의 일부만 맞거나(여러 요소 중 하나만), 뜻은 비슷하지만 문항이 묻는 핵심(이유·목적·행동)이 빠졌으면 "부분".',
   '답 조건(답의 꼴·담을 것·가짓수)이 있으면 그 조건이 요구한 내용이 담겼는지도 본다 — 꼴(문장 끝맺음·어순)만 다르고 뜻이 같으면 "맞음", 조건이 요구한 내용(비교 대상·까닭 등)이 빠졌으면 "부분".',
   '다른 뜻이거나 문항과 무관하면 "틀림". 비어 있거나 "모름" 같은 답도 "틀림".',
   '이유는 원장이 한눈에 보게 한 줄(60자 안)로, 학생 답의 어느 부분을 보고 판정했는지 적는다. 학생을 평가하는 말은 쓰지 않는다.',
+  '"문항의 역할"·"이어지는 채점 요소"·"부분 답이 되는 경우"가 주어지면 함께 본다 — 역할이 요구한 수행(배운 것을 과목의 말로 해 보기, 채점 요소 한 조각)을 했고 내용이 정답과 같은 뜻이면 "맞음", 핵심 수행은 했으나 "부분 답이 되는 경우"의 모습이면 "부분". 값·결론이 정답과 다르면 그 모습이어도 "틀림".',
 ].join('\n')
+
+/** 문항 자리의 역할(L-10, 대표 2026-11-13) — 새 규칙을 따르는 판에서만 프롬프트에 넣는다. */
+export const QUIZ_ROLE_LINE: Record<number, string> = {
+  1: '핵심 지식 — 그 차시에 배운 개념·표현·값을 아는가',
+  2: '과목답게 해 보기 — 배운 기능을 과목의 말로 직접 해 보는가',
+  3: '단원 평가 디딤돌 — 단원 평가 채점 요소 하나를 한 문장·한 구로 작게 해 보는가',
+}
 
 export const QuizVerdict = z.object({
   verdict: z.enum(['맞음', '부분', '틀림']),
@@ -34,6 +42,12 @@ export type QuizJudgeInput = {
   keywords?: string[] | null
   /** 답 조건(L-23) — 있으면 판정 기준에 넣는다. 옛 판·낱말 정답에는 없다. */
   condition?: string | null
+  /** 문항 자리(1~3) — 새 규칙(L-10, 2026-11-13)을 따르는 판에서만 넘긴다: 1 핵심 지식 · 2 과목답게 해 보기 · 3 단원 평가 디딤돌. */
+  quizNo?: number | null
+  /** 3번이 잇는 단원 평가 채점 요소 이름(L-10). */
+  criteriaRef?: string | null
+  /** 부분 답이 되는 경우(L-25) — 있으면 맞음과 부분을 가르는 기준. */
+  partialNote?: string | null
   response: string
 }
 
@@ -44,10 +58,13 @@ export function buildQuizJudgePrompt(i: QuizJudgeInput) {
   const user = [
     `과목: ${i.subject} · ${gradeLabel(i.level, i.grade ?? null)}`,
     `문항: ${i.q}`,
+    i.quizNo && QUIZ_ROLE_LINE[i.quizNo] ? `문항의 역할: ${QUIZ_ROLE_LINE[i.quizNo]}` : '',
     i.condition?.trim() ? `답 조건: ${i.condition.trim()}` : '',
+    i.criteriaRef?.trim() ? `이어지는 채점 요소: ${i.criteriaRef.trim()}` : '',
     `정답 표기(어느 것이든 정답):\n${keys.map((k) => `- ${k}`).join('\n')}`,
     `해설: ${i.explanation}`,
     kw.length ? `핵심어(뜻이 담겨야 함): ${kw.join(', ')}` : '',
+    i.partialNote?.trim() ? `부분 답이 되는 경우: ${i.partialNote.trim()}` : '',
     `학생 답: ${i.response}`,
   ].filter(Boolean).join('\n\n')
   return { system: QUIZ_JUDGE_RULES, user, fixtureKey: 'quiz-judge' }

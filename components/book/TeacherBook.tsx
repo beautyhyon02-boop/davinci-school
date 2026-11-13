@@ -3,6 +3,7 @@ import { sortScale } from '@/lib/studio/scale'
 import { TeacherGuideView } from '@/components/studio/parts/TeacherGuideView'
 import { NoticePlanView } from '@/components/studio/parts/NoticePlanView'
 import { app } from '@/content/site'
+import { followsQuizRoles } from '@/lib/classroom/quiz'
 import { Below, BookTable, Heading3, Heading4, ItemBody, KV, LabeledList, MaterialBox, Section, SectionHeading, Toc } from './parts'
 
 // 교사용 지도서(설계 §2 「교사용 지도서 (답 있음)」): 표지(교사용) → 차례 → 단원 계획(성취기준 원문·재구성, 학습목표 3차원, 핵심질문, 차시 구성표) →
@@ -210,9 +211,11 @@ function LessonSection({ plan, l }: { plan: BookPlan; l: BookLesson }) {
                 {q.choices && <ul className="book-list list-disc">{q.choices.map((ch, j) => <li key={j}>{ch}</li>)}</ul>}
                 {q.answer && <Below kind="answer" label={c.quizAnswer}>{q.answer}</Below>}
                 {q.explanation && <Below kind="explanation" label={c.quizExplanation}>{q.explanation}</Below>}
+                {q.criteria_ref && <p className="book-faint">{c.quizCriteriaRef}: {q.criteria_ref}</p>}
+                {q.partial_note && <p className="book-faint">{c.quizPartial}: {q.partial_note}</p>}
                 {(q.competency || q.level_ref) && (
                   <p className="book-faint">
-                    {q.level_ref && <span>{c.quizLevel(q.level_ref)}</span>}
+                    {q.level_ref && <span>{c.quizLevel(q.level_ref, followsQuizRoles(l.quiz))}</span>}
                     {q.competency && <span data-competency={q.competency}>{q.level_ref ? ' · ' : ''}{c.competency(q.competency)}</span>}
                   </p>
                 )}

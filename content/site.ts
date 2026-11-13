@@ -590,6 +590,8 @@ export const app = {
           'lessons[].formative_check.quiz[].explanation': (ix: number[]) => `퀴즈 ${nth(ix[1])} 해설`,
           'lessons[].formative_check.quiz[].competency': (ix: number[]) => `퀴즈 ${nth(ix[1])} 역량`,
           'lessons[].formative_check.quiz[].keywords[]': (ix: number[]) => `퀴즈 ${nth(ix[1])} 핵심어 ${nth(ix[2])}`,
+          'lessons[].formative_check.quiz[].criteria_ref': (ix: number[]) => `퀴즈 ${nth(ix[1])} 이어지는 채점 요소`,
+          'lessons[].formative_check.quiz[].partial_note': (ix: number[]) => `퀴즈 ${nth(ix[1])} 부분 답이 되는 경우`,
           // 4단계
           'materials[].title': () => '제목',
           'materials[].body': () => '본문',
@@ -826,6 +828,9 @@ export const app = {
         answersHidden: '정답·해설은 원장님 화면에서만 표시됩니다.',
         // 답 조건(L-23): 문제 아래 한 줄 — 학생이 보는 것이라 문제지 인쇄에도 남는다
         conditionLabel: '조건',
+        // 3번이 잇는 단원 평가 채점 요소(L-10)·부분 답이 되는 경우(L-25) — 정답·해설과 함께 교사용으로만
+        criteriaRefLabel: '이어지는 채점 요소',
+        partialLabel: '부분 답',
       },
       imagesAlt: (no: number, n: number) => `${no}차시 첨부 이미지 ${n}`,
       topicLabel: '주제',
@@ -841,8 +846,10 @@ export const app = {
       guideNotesHeading: '지침서 메모',
       // 교사용 지침 칸의 퀴즈 수준(L-10, 대표 2026-09-26: 성취수준 틀로 난이도를 나눈다) — 관리자·원장 화면만, 학생 화면에는 없다
       quizLevelsHeading: '퀴즈 수준',
-      quizLevel: (no: number, level: string | undefined) => {
-        const names: Record<string, string> = { 'D~E': '회상', C: '이해·적용', B: '관계·추론' }
+      // 대표 2026-11-13: 새 규칙(L-10)으로 만든 판은 수준이 자리의 역할과 같다 — 1번 핵심 지식 · 2번 과목답게 해 보기 · 3번 단원 평가 디딤돌.
+      // 옛 판(roles=false — 3번에 이어지는 채점 요소가 없는 판)은 옛 이름 그대로(회상·이해·적용·관계·추론) — 옛 문항에 새 이름을 붙이지 않는다(독립 검토 2026-11-13)
+      quizLevel: (no: number, level: string | undefined, roles = false) => {
+        const names: Record<string, string> = roles ? { 'D~E': '핵심 지식', C: '해 보기', B: '디딤돌' } : { 'D~E': '회상', C: '이해·적용', B: '관계·추론' }
         return level ? `${no}번 ${level}${names[level] ? `(${names[level]})` : ''}` : `${no}번 수준 없음`
       },
       // 역량 꼬리표(C-40, 단원 리포트 육각형 6축) — 퀴즈 문항·채점 요소 이름 옆 작은 배지. 관리자·원장 화면만, 학생 화면·문제지에는 없다
@@ -1672,6 +1679,8 @@ export const app = {
       quizNo: (no: number) => `${no}.`,
       // 답 조건(L-23): 두 판 모두 문제 아래 한 줄
       quizCondition: '조건',
+      quizCriteriaRef: '이어지는 채점 요소',
+      quizPartial: '부분 답',
       answerLabel: '답',
       // 교사용
       flow: '수업 흐름',
@@ -1690,7 +1699,7 @@ export const app = {
       quizAnswer: '정답',
       quizExplanation: '해설',
       competency: (c: string) => `역량: ${c}`,
-      quizLevel: (lv: string) => `수준 ${lv}`,
+      quizLevel: (lv: string, roles = false) => { const names: Record<string, string> = { 'D~E': '핵심 지식', C: '해 보기', B: '디딤돌' }; return roles && names[lv] ? `수준 ${lv}(${names[lv]})` : `수준 ${lv}` },
       needs: '준비물',
       cautions: '유의점',
       guideNotes: '지침서 메모',

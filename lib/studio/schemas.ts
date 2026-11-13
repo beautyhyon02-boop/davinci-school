@@ -98,11 +98,17 @@ export const QuizItem = z.object({
   // 답 조건(L-23, 대표 2026-11-06): 정답이 구·문장인 문항에 답의 꼴·담을 것·가짓수를 한 줄로 — 학생 화면·문제지·교재에 문항 아래 "조건"으로 보인다.
   // 선택(옛 판·낱말·숫자 정답에는 없다; 구 정답인데 빠지면 [TS] 참고 메모). 하한 2자 — 알맹이(꼴·담을 것·가짓수)는 [TS] 메모·AI 검토가 본다.
   condition: z.string().min(2).max(120).optional(),
+  // 3번(단원 평가 디딤돌)이 잇는 채점 요소 이름(L-10, 대표 2026-11-13) — 그 차시 lesson_map.criteria_focus 중 하나. 선택(옛 판에는 없다; 빠지면 [TS] 참고 메모).
+  criteria_ref: z.string().min(1).max(60).optional(),
+  // 부분 답이 되는 경우(L-25): 핵심 수행은 했으나 근거·조건 하나가 빠진 답의 모습 한 줄 — AI 뜻 판정·원장 확인의 기준. 교사용(학생 화면에는 없다). 선택.
+  partial_note: z.string().min(2).max(200).optional(),
 })
 /** 새 세트 퀴즈 규칙(L-09) 위반 사유 — zod(LessonDesign)와 [TS](checks.ts)가 같은 문장을 쓴다. */
 export const QUIZ_SHORT_ONLY = '퀴즈는 단답형만(선택지 금지)'
 /** 단답형(type 'short', choices null)인가. 새 세트의 퀴즈는 모두 이래야 한다. */
 export const isShortQuiz = (q: { type: string; choices: unknown }) => q.type === 'short' && q.choices === null
+/** 자리 순서대로 1번 D~E(핵심 지식)·2번 C(해 보기)·3번 B(디딤돌)인가(L-10, 대표 2026-11-13). [TS](checks.ts)가 쓴다. */
+export const quizLevelOrderOk = (quiz: { level_ref?: string }[]): boolean => quiz.length === QUIZ_LEVELS.length && QUIZ_LEVELS.every((lv, i) => quiz[i].level_ref === lv)
 /** 교수 차시 퀴즈의 level_ref 가 D~E·C·B 를 정확히 하나씩 갖는가(순서 무관, 빠진 level_ref 가 있으면 거짓). [TS](checks.ts)가 쓴다. */
 export function quizLevelSpreadOk(quiz: { level_ref?: string | null }[]): boolean {
   const levels = quiz.map((q) => q.level_ref)

@@ -10,7 +10,7 @@ describe('rules v2', () => {
     const spec = readFileSync('docs/superpowers/specs/2026-09-25-item-studio-v2-design.md', 'utf8')
     for (const id of ids) expect(spec.split(`| ${id} |`).length - 1, id).toBe(1)
     // 부록 A: 공통 38(C-31 대표 확정값, C-32 조건=지침(2026-09-26), C-33 자료 설계·유형(대표 연수 2기), C-34·C-36·C-37 경기2025, C-39 배운 것만 채점·C-40 역량 꼬리표(대표 2026-09-29) 포함) + 차시 21(L-13 정답 노출·활동지 되풀이 금지, 2026-10-01 영어 세트 검토; L-14~L-21 교육청 재구성 예시 자료집 G-1~G-8, 대표 2026-10-01) + 과목 40(국6·수7·사7·역3·과8·영9 — S-영-08 번역·S-영-09 공동 자료 영어판(대표 2026-09-29), S-사-07 사회 통합(대표 2026-09-30)) + 채점 10(G-10 경기2025) + 안내장 12 = 121
-    expect(ids.length).toBe(42 + 23 + 40 + 10 + 13)   // C-41 자료의 사실성(대표 2026-10-03), C-42 글자 수로 답을 유도하지 않는다(대표 2026-10-05), N-13 안내장 말투 통일·C-43 안쪽 칸 이름 금지(대표 2026-10-06), C-44 학년 교과서 단원·성취기준 원문 안에서(대표 2026-10-07), L-22 단답형 정답 표기 여러 꼴 + 핵심어(대표 2026-10-12), L-23 구 정답 퀴즈의 답 조건(대표 2026-11-06)
+    expect(ids.length).toBe(42 + 25 + 45 + 10 + 13)   // L-24·L-25 와 과목별 퀴즈 줄 다섯(S-국-07·S-영-10·S-수-08·S-사-08·S-과-09, 대표 2026-11-13);   // C-41 자료의 사실성(대표 2026-10-03), C-42 글자 수로 답을 유도하지 않는다(대표 2026-10-05), N-13 안내장 말투 통일·C-43 안쪽 칸 이름 금지(대표 2026-10-06), C-44 학년 교과서 단원·성취기준 원문 안에서(대표 2026-10-07), L-22 단답형 정답 표기 여러 꼴 + 핵심어(대표 2026-10-12), L-23 구 정답 퀴즈의 답 조건(대표 2026-11-06)
   })
   it('the spec appendix has no rule row that the code lacks', () => {
     const spec = readFileSync('docs/superpowers/specs/2026-09-25-item-studio-v2-design.md', 'utf8')
@@ -42,8 +42,8 @@ describe('rules v2', () => {
     expect(l09).toMatch(/마지막 교수 차시까지 모두/); expect(l09).toMatch(/단원 평가 차시/); expect(l09).toMatch(/서술형 작성 15/); expect(l09).toMatch(/논술형 작성 35/)
     expect(l09).not.toMatch(/서술형1·2|논술형을 배치한 차시는 마무리 퀴즈 0문항/)
     // 대표 2026-09-26: 서논술 과정이라 객관식은 없다 — 퀴즈는 단답형만(L-09·L-10), 어느 규칙도 선택형 퀴즈를 말하지 않는다
-    expect(l09).toMatch(/모두 단답형 — 낱말·수치·짧은 구를 직접 쓰는 문항, 선택지 없음/); expect(l09).not.toMatch(/선택형/)
-    expect(text('L-10').text).toMatch(/답은 낱말·수치·짧은 구; 정답과 한두 줄 해설/)
+    expect(l09).toMatch(/모두 단답형 — 낱말·수치·짧은 구·한 문장을 직접 쓰는 문항, 선택지 없음/); expect(l09).not.toMatch(/선택형/)
+    expect(text('L-10').text).toMatch(/3문항은 모두 단답형이되 자리마다 역할이 다르고/)
     // 필수 용어는 문두(전제문·발문)에 — 조건에 쓰지 않는다(C-32와 충돌 해소, 리드 판정 2026-09-26)
     expect(text('S-과-03').text).toMatch(/문두/); expect(text('S-과-03').text).toMatch(/조건에는 쓰지 않/)
     expect(text('S-영-05').text).toMatch(/C-32/)
@@ -64,8 +64,9 @@ describe('rules v2', () => {
     const row = (id: string) => spec.split('\n').find((line) => line.startsWith(`| ${id} |`))!
     const l10 = LESSON_RULES.find((r) => r.id === 'L-10')!
     expect(l10.nature).toBe('PS'); expect(l10.tags).toContain('대표')
-    for (const s of ['모두 단답형이되 수준을 나눈다', '회상(D~E: 용어·사실)', '이해·적용(C: 도달점 수준의 적용·계산·설명 핵심어)', '관계·추론(B: 두 개념의 관계, 이유, 새 사례 적용)',
-      'level_ref', '정답이 자료·대본에 그대로 적힌 문장을 옮겨 적는 문항은 금지', '회상 문항도 낱말을 묻되 문장 베끼기는 안 됨']) expect(l10.text, s).toContain(s)
+    // 대표 2026-11-13: 수준은 자리의 역할 — 1번 핵심 지식(D~E)·2번 과목답게 해 보기(C)·3번 단원 평가 디딤돌(B). 자세한 문구는 tests/quiz-roles.test.ts
+    for (const s of ['3문항은 모두 단답형이되 자리마다 역할이 다르고', '1번 핵심 지식(D~E)', '2번 과목답게 해 보기(C)', '3번 단원 평가 디딤돌(B)',
+      'level_ref', '정답이 자료·대본에 그대로 적힌 문장을 옮겨 적는 문항은 금지']) expect(l10.text, s).toContain(s)
     expect(l10.text).not.toMatch(/워밍업|단일 조회/)
     expect(row('L-10')).toBe(`| L-10 | ${l10.text} | P+S | [WP11-3][WP11-9][대표] |`)
     const l08 = LESSON_RULES.find((r) => r.id === 'L-08')!
@@ -73,7 +74,7 @@ describe('rules v2', () => {
     expect(l08.tags).toContain('대표')
     expect(row('L-08')).toBe(`| L-08 | ${l08.text} | P+S | [WP7 §3(e)][WP1 §5][대표] |`)
     // 생성 프롬프트 규칙 블록에 들어간다
-    expect(rulesFor('수학')).toMatch(/^L-10 퀴즈 3문항은 모두 단답형이되 수준을 나눈다/m)
+    expect(rulesFor('수학')).toMatch(/^L-10 퀴즈는 그 차시 성취기준의 기능어/m)
     expect(rulesFor('과학')).toMatch(/^L-08 .*A~B 학생용 확장 활동/m)
   })
   it('C-32 (대표 2026-09-26): 조건은 지침이지 풀이 힌트가 아니고 논술형에만 둔다; C-11은 풀이 단계 쪼개기를 뜻하지 않는다', () => {
@@ -211,11 +212,11 @@ describe('L-13 퀴즈 정답 노출·활동지 되풀이 금지 (2026-10-01 영�
   it('exists as PS/v2-1001 in the lesson rules; spec row identical; tag in the legend; reaches every subject prompt', () => {
     const l13 = LESSON_RULES.find((r) => r.id === 'L-13')!
     expect(l13.nature).toBe('PS'); expect(l13.tags).toEqual(['v2-1001'])
-    for (const s of ['전개·발문·활동지 문장에 그대로 적혀 있지 않아야', '옮겨 적으면 답이 되는 구·문장 금지', '가르친 용어의 이름을 묻는 회상 문항은 예외', 'B 수준 퀴즈는 활동지가 아직 묻지 않은 관계·추론·까닭 있는 선택', '활동지와 퀴즈는 서로 다른 것을 확인한다']) expect(l13.text, s).toContain(s)
+    for (const s of ['전개·발문·활동지 문장에 그대로 적혀 있지 않아야', '옮겨 적으면 답이 되는 구·문장 금지', '1번 핵심 지식이 가르친 낱말·표현을 묻는 것은 예외', '2·3번은 활동지가 이미 쓰게 한 문장·풀이를 그대로 다시 묻지 않는다', '활동지와 퀴즈는 서로 다른 것을 확인한다']) expect(l13.text, s).toContain(s)
     expect(row('L-13')).toBe(`| L-13 | ${l13.text} | P+S | [v2-1001] |`)
     expect(spec).toContain('`[v2-1001]` 2026-10-01 영어 세트 실제 검토')
-    for (const subject of ['수학', '과학', '영어']) expect(rulesFor(subject)).toMatch(/^L-13 퀴즈 정답\(낱말·구\)은/m)
-    expect(LESSON_RULES).toHaveLength(23)   // L-22 핵심어(대표 2026-10-12), L-23 답 조건(대표 2026-11-06)
+    for (const subject of ['수학', '과학', '영어']) expect(rulesFor(subject)).toMatch(/^L-13 퀴즈 정답\(구·문장\)은/m)
+    expect(LESSON_RULES).toHaveLength(25)   // L-24·L-25 퀴즈의 성격(대표 2026-11-13);   // L-22 핵심어(대표 2026-10-12), L-23 답 조건(대표 2026-11-06)
   })
 })
 
@@ -248,7 +249,7 @@ describe('L-14~L-21 교육청 재구성 예시 자료집 지침 (대표 2026-10-
   })
   it('G-5 발문 사다리·회상은 퀴즈로·if_stuck 다르게, G-6 활동지 ≠ 발문·인지 진행·질문형 도움말·결함 찾기는 활동지에서만, G-7 feedback_plan, G-8 self_check 이름만', () => {
     expect(text('L-18').nature).toBe('P')
-    for (const s of ['자료 관찰', '추론', '종합·판단', '퀴즈 D~E 문항으로 보낸다', 'if_stuck은 발문마다 다르게', '일반 문구 반복 금지', '꼬리 발문']) expect(text('L-18').text, s).toContain(s)
+    for (const s of ['자료 관찰', '추론', '종합·판단', '퀴즈 1번(핵심 지식)으로 보낸다', 'if_stuck은 발문마다 다르게', '일반 문구 반복 금지', '꼬리 발문']) expect(text('L-18').text, s).toContain(s)
     for (const s of ['발문 문장을 복사하지 않고', '인지 수준만 올라가게', '질문형 활동 도움말', '하 수준 지원', '상 수준 확장', '결함 찾기', '교수 차시 활동지에서만 허용', 'flaw_check: true', '평가 문항·세트 자료에는 넣지 않는다']) expect(text('L-19').text, s).toContain(s)
     for (const s of ['feedback_plan', '다음 차시의 전제', 'who: 개별/모둠/전체', 'sentence_frame', '이전 수행 대비', '성취기준 대비 뒤처짐은 말하지 않는다']) expect(text('L-20').text, s).toContain(s)
     for (const s of ['마지막 교수 차시', '채점 요소 이름', 'lessons[].self_check(활동지의 worksheet.self_check와 다른 칸)', '"나는 ~했다"', '3~5개', '요소 이름만으로', '척도 서술·예시답안·답·결론은 보여 주지 않는다', '배점·만점은 5단계가 정하므로 여기서 말하지 않는다']) expect(text('L-21').text, s).toContain(s)
@@ -339,7 +340,7 @@ describe('C-42 글자 수로 답을 유도하지 않는다 (대표 2026-10-05)',
   it('exists as PS/대표 and covers 퀴즈·활동지·서술형·논술형; 답의 꼴·분량 지침은 그대로 둔다; spec row identical; reaches every subject prompt', () => {
     const c42 = COMMON_RULES.find((r) => r.id === 'C-42')!
     expect(c42.nature).toBe('PS'); expect(c42.tags).toEqual(['대표'])
-    for (const s of ['퀴즈·활동지 과제·평가 문항(서술형·논술형의 문두와 조건)', '글자 수·낱말 수로 답을 좁히는 단서', '"두 글자로 쓰시오"', '용어를 묻는 회상 문항은 글자 수 없이 묻고',
+    for (const s of ['퀴즈·활동지 과제·평가 문항(서술형·논술형의 문두와 조건)', '글자 수·낱말 수로 답을 좁히는 단서', '"두 글자로 쓰시오"', '낱말을 묻는 문항은 글자 수 없이 묻고',
       '답의 꼴을 알리는 말("한 낱말로", "짧은 구로", "한 문장으로")', '분량 지침("350자 내외", "4~6문장", "40~60단어")은 그대로 쓴다']) expect(c42.text, s).toContain(s)
     expect(row('C-42')).toBe(`| C-42 | ${c42.text} | P+S | [대표] |`)
     for (const subject of ['국어', '수학', '과학', '영어', '사회']) expect(rulesFor(subject)).toMatch(/^C-42 퀴즈·활동지 과제·평가 문항/m)

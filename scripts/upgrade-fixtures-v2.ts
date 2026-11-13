@@ -135,6 +135,28 @@ function setQuizConditions(lessons: LessonT[], defs: Record<string, [qStart: str
   }
 }
 
+/**
+ * L-10·L-25(대표 2026-11-13): 퀴즈 세 자리의 역할 — 3번(단원 평가 디딤돌)이 잇는 채점 요소 이름(criteria_ref)과 2·3번의 부분 답이 되는 경우(partial_note).
+ * partial_note 는 "핵심 수행은 했으나 하나가 빠진 답"만 — 값·결론이 틀린 답은 부분이 아니라 틀림이다(독립 검토 2026-11-13).
+ * 시연 fixture 의 문항 글은 옛 규칙으로 만든 그대로다(문항을 새 역할에 맞게 다시 쓰는 것은 실제 생성의 일) — 여기서는 새 칸만 채워 [TS] 메모가 없게 한다.
+ * order 를 주면 그 차시 퀴즈를 그 순서(0부터)로 다시 놓는다(수준이 자리 순서 D~E·C·B 가 되게). 키는 "차시-문항"(다시 놓은 뒤의 번호).
+ */
+function setQuizRoles(lessons: LessonT[], defs: Record<string, [qStart: string, role: { criteria_ref?: string; partial_note?: string }]>, order: Record<number, number[]> = {}) {
+  for (const [no, idx] of Object.entries(order)) {
+    const l = lessons.find((x) => x.no === Number(no))
+    if (!l || idx.length !== l.formative_check.quiz.length) throw new Error(`PATCHES: setQuizRoles — ${no}차시 순서가 퀴즈 수와 다름`)
+    l.formative_check.quiz = idx.map((i) => l.formative_check.quiz[i])
+  }
+  for (const [key, [qStart, role]] of Object.entries(defs)) {
+    const [no, idx] = key.split('-').map(Number)
+    const q = lessons.find((x) => x.no === no)?.formative_check.quiz[idx - 1] as (QuizItemT & { criteria_ref?: string; partial_note?: string }) | undefined
+    if (!q || !q.q.startsWith(qStart)) throw new Error(`PATCHES: setQuizRoles — ${no}차시 퀴즈 ${idx}이 "${qStart}…"가 아님`)
+    if (role.criteria_ref) q.criteria_ref = role.criteria_ref
+    if (role.partial_note) q.partial_note = role.partial_note
+  }
+}
+type QuizItemT = LessonT['formative_check']['quiz'][number]
+
 type TaskT = LessonT['worksheet']['tasks'][number]; type QuestionT = LessonT['teacher_script']['questions'][number]
 /**
  * 퀴즈에서 만든 발문의 막힐 때 힌트(if_stuck)를 손으로 적는다(L-06: 정답을 그대로 말하지 않는다). compat 은 해설이 정답을 말하면
@@ -548,6 +570,19 @@ const SETS: SetDef[] = [
         4: [['어떤 계급의 도수가', '지식·이해'], ['어느 반 학생 25명', '과정·기능'], ['도수의 총합이 50인', '과정·기능']],
         5: [['작년 종이컵의 상대도수를', '과정·기능'], ['A 축제는 일회용품', '과정·기능'], ['근거로 쓴 수치 옆에', '글로 표현하기']],
       })
+      // L-10·L-25(대표 2026-11-13): 5차시는 자리 순서(D~E·C·B)가 되게 다시 놓고(출처 → 0.32 → 0.3), 3번마다 그 차시 criteria_focus 의 요소 이름, 2·3번마다 부분 답의 모습
+      setQuizRoles(lessons, {
+        '1-2': ['"우리 학교 1학년 학생들은', { partial_note: '학교나 학년을 빠뜨리고 "학생"이라고만 쓴 답' }],
+        '1-3': ['A반은 30명이', { criteria_ref: '상대도수로 비교하는 이유', partial_note: '한 명당 개수는 구했으나 두 반의 차를 구하지 않은 답' }],
+        '2-2': ['자료 A를 계급의 크기 10으로', { partial_note: '이 계급에 드는 값은 찾았으나 개수를 쓰지 않은 답' }],
+        '2-3': ['어느 반 10명의 턱걸이', { criteria_ref: '자료 정리의 정확성', partial_note: '계급은 맞게 찾았으나 "이상·미만" 없이 수만 쓴 답' }],
+        '3-2': ['자료 A의 히스토그램(계급의 크기 10)에서', { partial_note: '계급은 맞게 골랐으나 "이상·미만" 없이 수만 쓴 답' }],
+        '3-3': ['자료 A의 히스토그램에서 직사각형', { criteria_ref: '자료 정리의 정확성', partial_note: '두 넓이가 같다고만 쓰고 값을 쓰지 않은 답' }],
+        '4-2': ['어느 반 학생 25명', { partial_note: '식 9 ÷ 25 까지만 쓰고 값을 구하지 않은 답' }],
+        '4-3': ['도수의 총합이 50인', { criteria_ref: '상대도수 계산', partial_note: '식 0.2 × 50 까지만 쓰고 값을 구하지 않은 답' }],
+        '5-2': ['작년 종이컵의 상대도수를', { partial_note: '나눗셈 식까지만 쓰고 반올림한 값을 쓰지 않은 답' }],
+        '5-3': ['A 축제는 일회용품', { criteria_ref: '해석의 타당성', partial_note: '두 축제의 비율은 구했으나 어느 쪽이 큰지 가리지 못한 답' }],
+      }, { 5: [2, 0, 1] })
     },
     patchAssessment: (a) => {
       const [, i2, essay] = a.items
@@ -846,6 +881,19 @@ const SETS: SetDef[] = [
         3: [['컵 조각을 물에 넣는', '자료 읽기'], ['종이 상자에 비닐 테이프가', '지식·이해'], ['종이컵은 안쪽에', '과정·기능']],
         4: [['자원을 아껴 쓰고', '지식·이해'], ['마트에 갈 때', '가치·태도'], ['자료 E에서 스테인리스', '과정·기능']],
         5: [['제안서 뼈대의 "과학적 이유" 칸', '자료 읽기'], ['자료 B에서 비닐봉지는', '자료 읽기'], ['교사가 뼈대를 보여 준', '근거 들어 설명하기']],
+      })
+      // L-10·L-25(대표 2026-11-13): 3번마다 이어지는 채점 요소 이름(1차시는 criteria_focus 가 비어 있어 대조하지 않는다), 2·3번마다 부분 답의 모습
+      setQuizRoles(lessons, {
+        '1-2': ['한 모둠이 가설을', { partial_note: '단계 이름이 아니라 "개수 세기"처럼 한 일을 그대로 쓴 답' }],
+        '1-3': ['가설 "부스에 다회용컵을', { criteria_ref: '자료를 근거로 밝히기', partial_note: '무엇을 세는지는 썼으나 견줄 양(개수)을 밝히지 않은 답' }],
+        '2-2': ['쓸 때는 플라스틱의 장점', { partial_note: '성질이 아니라 "오래 남는다"처럼 결과를 쓴 답' }],
+        '2-3': ['땅에 묻힌 나무젓가락은', { criteria_ref: '과학적 근거의 정확성', partial_note: '"곰팡이"처럼 미생물의 한 종류만 쓴 답' }],
+        '3-2': ['종이 상자에 비닐 테이프가', { partial_note: '까닭의 이름이 아니라 "테이프"처럼 사례를 그대로 쓴 답' }],
+        '3-3': ['종이컵은 안쪽에', { criteria_ref: '재활용을 어렵게 하는 요인', partial_note: '재질을 나눠야 한다는 뜻은 있으나 무엇을 떼는지 밝히지 않은 답' }],
+        '4-2': ['마트에 갈 때', { partial_note: '차원의 이름이 아니라 "혼자 하는 일"처럼 풀어 쓴 답' }],
+        '4-3': ['자료 E에서 스테인리스', { criteria_ref: '문제와 해결 방안의 연결', partial_note: '나눗셈 값을 반올림하지 않고 쓴 답' }],
+        '5-2': ['자료 B에서 비닐봉지는', { partial_note: '두 수는 찾았으나 차를 구하지 않은 답' }],
+        '5-3': ['교사가 뼈대를 보여 준', { criteria_ref: '과학적 근거의 정확성', partial_note: '"석유로 만든 것"처럼 재료만 쓰고 플라스틱이라고 밝히지 않은 답' }],
       })
     },
     patchMaterials: (materials) => materials.map((m) => (m.id === 'D' ? { ...m, role: 'context' as const } : m)),

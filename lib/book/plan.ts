@@ -26,7 +26,7 @@ export type BookSection = { id: string; kind: BookSectionKind; title: string; le
 
 /** 퀴즈 한 문항 — 학생용 판에는 answer·explanation·competency·level_ref 가 없다(빼고 만든다). */
 /** 퀴즈 — condition(답 조건, L-23)은 학생이 보는 것이라 두 판에 다 싣는다; 정답·해설·역량·수준은 교사용 판만. */
-export type BookQuiz = { q: string; type: string; choices: string[] | null; condition?: string; answer?: string; explanation?: string; competency?: string; level_ref?: string }
+export type BookQuiz = { q: string; type: string; choices: string[] | null; condition?: string; answer?: string; explanation?: string; competency?: string; level_ref?: string; criteria_ref?: string; partial_note?: string }
 /** 활동지 과제 — 학생용 판에는 expected·flaw_check(결함 찾기 표시, L-19)가 없다. */
 export type BookTask = { no: number; prompt: string; tier: string; level_ref: string; answer_space: TaskT['answer_space']; expected?: string; flaw_check?: boolean }
 export type BookScriptQuestion = { prompt: string; expected_answer: string; if_stuck: string }
@@ -159,7 +159,8 @@ function quizFor(l: LessonT, kind: BookKind): BookQuiz[] {
   return arr(l.formative_check?.quiz).map((q: QuizT) => {
     const base: BookQuiz = { q: q.q, type: q.type, choices: Array.isArray(q.choices) ? q.choices : null, ...(q.condition ? { condition: q.condition } : {}) }
     if (kind === 'student') return base
-    return { ...base, answer: q.answer, explanation: q.explanation, competency: q.competency, level_ref: q.level_ref }
+    return { ...base, answer: q.answer, explanation: q.explanation, competency: q.competency, level_ref: q.level_ref,
+      ...(q.criteria_ref ? { criteria_ref: q.criteria_ref } : {}), ...(q.partial_note ? { partial_note: q.partial_note } : {}) }   // L-10·L-25(2026-11-13): 교사용 판에만
   })
 }
 

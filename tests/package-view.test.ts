@@ -85,12 +85,12 @@ describe.each(['수학', '과학'] as const)('PackageView v2 (%s mock snapshot)'
           const levels = raw.slice(raw.indexOf('data-quiz-levels'))
           const block = levels.slice(0, levels.indexOf('</ul>'))
           expect(block).toContain(c.lessons.quizLevelsHeading)
-          for (const [i, q] of quiz.entries()) expect(block).toContain(`<li>${esc(c.lessons.quizLevel(i + 1, q.level_ref))}</li>`)
-          expect(seg).not.toContain(quiz.map((q, i) => c.lessons.quizLevel(i + 1, q.level_ref)).join(' · '))
+          for (const [i, q] of quiz.entries()) expect(block).toContain(`<li>${esc(c.lessons.quizLevel(i + 1, q.level_ref, true))}</li>`)   // 시연 세트는 새 규칙 칸(criteria_ref)이 있어 역할 이름
+          expect(seg).not.toContain(quiz.map((q, i) => c.lessons.quizLevel(i + 1, q.level_ref, true)).join(' · '))
         } else expect(seg).not.toContain(c.lessons.quizLevelsHeading)
       }
     }
-    expect(c.lessons.quizLevel(3, 'B')).toBe('3번 B(관계·추론)'); expect(c.lessons.quizLevel(1, undefined)).toBe('1번 수준 없음')
+    expect(c.lessons.quizLevel(3, 'B')).toBe('3번 B(관계·추론)'); expect(c.lessons.quizLevel(3, 'B', true)).toBe('3번 B(디딤돌)'); expect(c.lessons.quizLevel(1, undefined)).toBe('1번 수준 없음')
     // 수준이 없는 옛 퀴즈(2026-09-26 이전 판)는 수준 줄을 두지 않는다
     const old = { ...snap, lessons: snap.lessons.map((l) => ({ ...l, formative_check: { quiz: l.formative_check.quiz.map(({ level_ref: _x, ...q }) => { void _x; return q }) } })) }
     expect(render(old, 'teacher')).not.toContain('data-quiz-levels')

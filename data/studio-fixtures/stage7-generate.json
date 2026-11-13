@@ -92,15 +92,15 @@
       "quiz_notes": [
         {
           "quiz_no": 1,
-          "wrong_note": "해설을 다시 읽고 근거가 되는 곳을 찾아봅시다."
+          "wrong_note": "수치를 가져온 곳이 출처이다."
         },
         {
           "quiz_no": 2,
-          "wrong_note": "A는 60 ÷ 200 = 0.3, B는 100 ÷ 400 = 0.25이다"
+          "wrong_note": "해설을 다시 읽고 근거가 되는 곳을 찾아봅시다."
         },
         {
           "quiz_no": 3,
-          "wrong_note": "수치를 가져온 곳이 출처이다."
+          "wrong_note": "A는 60 ÷ 200 = 0.3, B는 100 ÷ 400 = 0.25이다"
         }
       ],
       "criteria_phrases": null

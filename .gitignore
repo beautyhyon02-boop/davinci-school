@@ -49,3 +49,6 @@ next-env.d.ts
 __pycache__/
 *.pyc
 reference-corpus/
+
+# DB 제자리 수정 전 백업(커밋하지 않음)
+backups/

@@ -15,6 +15,7 @@ const COMPETENCY_OF: Record<string, CompetencyT> = {
   계산: '과정·기능', 해석: '자료 읽기', 이유: '근거 들어 설명하기', '자료 정리': '자료 읽기', 근거: '근거 들어 설명하기', 제안: '가치·태도', 구성: '글로 표현하기',
 }
 const quiz = (q: string) => ({ q, type: 'short' as 'short' | 'choice', choices: null as string[] | null, answer: '6', explanation: '표에서 센다.', level_ref: LEVEL_OF[q], competency: COMPETENCY_OF[q] })
+type QuizFixture = ReturnType<typeof quiz> & { criteria_ref?: string; partial_note?: string; condition?: string; keywords?: string[] }
 const choiceQuiz = (q: string) => ({ q, type: 'choice' as 'short' | 'choice', choices: ['가', '나'] as string[] | null, answer: '가', explanation: '표에서 센다.', level_ref: LEVEL_OF[q], competency: COMPETENCY_OF[q] })
 export const lessonV2 = {
   no: 1, standards: ['[9수04-02]'], topic: '도수분포표 만들기',
@@ -27,7 +28,8 @@ export const lessonV2 = {
     { no: 1, prompt: '계급 30~40의 도수는?', tier: '기본', level_ref: 'D~E', answer_space: 'short', expected: '6' },
     { no: 2, prompt: '표를 완성하시오', tier: '표준', level_ref: 'C', answer_space: 'table', expected: '6행' },
     { no: 3, prompt: '가장 많은 계급을 문장으로', tier: '도전', level_ref: 'A~B', answer_space: 'lines', expected: '30 이상 40 미만' } ], self_check: ['표를 혼자 완성했다'] },
-  formative_check: { quiz: [quiz('문항 1'), quiz('문항 2'), quiz('문항 3')] },
+  // L-10·L-25(대표 2026-11-13): 2·3번은 부분 답의 모습, 3번은 이어지는 채점 요소 — 없으면 [TS] 참고 메모가 뜬다
+  formative_check: { quiz: [quiz('문항 1'), { ...quiz('문항 2'), partial_note: '수는 셌으나 경계값을 잘못 넣은 답' }, { ...quiz('문항 3'), criteria_ref: '자료 정리', partial_note: '값은 맞지만 단위를 빠뜨린 답' }] as QuizFixture[] },
   assessment: [] as string[], mergeable_with: null, merge_note: null, images: [],
 }
 /** 단원 평가 차시(대표 2026-09-26 보완): 마지막 교수 차시 뒤, 서술형 15분 + 논술형 35분, 퀴즈·활동지·발문 없음. */
