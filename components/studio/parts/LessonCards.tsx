@@ -13,7 +13,7 @@ import { Answers, Aside, KV, LabeledLines, Lines, SectionTitle, SubLabel, arr } 
 // 퀴즈 문제 → 정답 → 해설, 활동지는 층별 목록. 틀은 parts/common.tsx(SectionTitle·SubLabel·Lines·LabeledLines·KV·Aside).
 // 저장된 출력(옛 판·손으로 고친 판)을 그대로 받으므로 모든 필드를 느슨하게 읽는다.
 
-export type QuizLike = { q: string; type?: string; choices?: string[] | null; answer?: string; explanation?: string; level_ref?: string; competency?: string }
+export type QuizLike = { q: string; condition?: string | null; type?: string; choices?: string[] | null; answer?: string; explanation?: string; level_ref?: string; competency?: string }
 export type LessonLike = {
   no: number
   kind?: string
@@ -61,6 +61,8 @@ function QuizView({ quiz, showAnswers }: { quiz: QuizLike[]; showAnswers: boolea
               {/* C-40 역량 꼬리표(단원 리포트 6축) — 교사용 표시. 꼬리표가 없는 옛 퀴즈는 배지를 두지 않는다. 문제지 인쇄에서는 빠진다 */}
               {q.competency && <> <span data-print="omit" data-competency={q.competency}><Badge tone="lavender">{c.competencyBadge(q.competency)}</Badge></span></>}
             </p>
+            {/* 답 조건(L-23, 대표 2026-11-06): 문제 아래 한 줄 — 학생이 보는 것이라 문제지 인쇄에도 남는다 */}
+            {q.condition && <p className="mt-0.5 text-sm text-ink-700">{c.quiz.conditionLabel}: {q.condition}</p>}
             {/* 보기 목록은 2026-09-26 이전에 게시된 판의 선택형 퀴즈에만 있다 — 새 세트의 퀴즈는 단답형만(choices null) */}
             {q.choices && <ul className="mt-1 list-disc pl-5">{q.choices.map((ch, j) => <li key={j}>{ch}</li>)}</ul>}
           </li>
@@ -81,6 +83,7 @@ function QuizAnswers({ quiz }: { quiz: QuizLike[] }) {
         {quiz.map((q, i) => (
           <li key={i} data-quiz-answer={i + 1}>
             <p className="font-semibold">{q.q}</p>
+            {q.condition && <p className="mt-0.5 text-sm text-ink-700">{c.quiz.conditionLabel}: {q.condition}</p>}
             {q.answer && <Aside kind="answer" label={c.quiz.answerLabel}><span className="text-mint-700">{q.answer}</span></Aside>}
             {q.explanation && <Aside kind="explanation" label={c.quiz.explanationLabel} faint>{q.explanation}</Aside>}
           </li>

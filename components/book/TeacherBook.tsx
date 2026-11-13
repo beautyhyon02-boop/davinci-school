@@ -206,6 +206,7 @@ function LessonSection({ plan, l }: { plan: BookPlan; l: BookLesson }) {
             {l.quiz.map((q, i) => (
               <li key={i} data-book-quiz={i + 1} className="book-task">
                 <p className="font-semibold">{c.quizNo(i + 1)} {q.q}</p>
+                {q.condition && <p className="book-faint">{c.quizCondition}: {q.condition}</p>}
                 {q.choices && <ul className="book-list list-disc">{q.choices.map((ch, j) => <li key={j}>{ch}</li>)}</ul>}
                 {q.answer && <Below kind="answer" label={c.quizAnswer}>{q.answer}</Below>}
                 {q.explanation && <Below kind="explanation" label={c.quizExplanation}>{q.explanation}</Below>}

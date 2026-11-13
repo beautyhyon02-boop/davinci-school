@@ -95,6 +95,9 @@ export const QuizItem = z.object({
   competency: z.enum(COMPETENCIES).optional(),
   // 핵심어(L-22, 대표 2026-10-12): 정답에 꼭 들어가야 할 낱말 1~3개 — 채점은 글자 비교 → 핵심어 포함 → AI 뜻 판정 순. 선택(옛 판에는 없다; 빠지면 [TS] 참고 메모).
   keywords: z.array(z.string().min(1)).min(1).max(3).optional(),
+  // 답 조건(L-23, 대표 2026-11-06): 정답이 구·문장인 문항에 답의 꼴·담을 것·가짓수를 한 줄로 — 학생 화면·문제지·교재에 문항 아래 "조건"으로 보인다.
+  // 선택(옛 판·낱말·숫자 정답에는 없다; 구 정답인데 빠지면 [TS] 참고 메모). 하한 2자 — 알맹이(꼴·담을 것·가짓수)는 [TS] 메모·AI 검토가 본다.
+  condition: z.string().min(2).max(120).optional(),
 })
 /** 새 세트 퀴즈 규칙(L-09) 위반 사유 — zod(LessonDesign)와 [TS](checks.ts)가 같은 문장을 쓴다. */
 export const QUIZ_SHORT_ONLY = '퀴즈는 단답형만(선택지 금지)'

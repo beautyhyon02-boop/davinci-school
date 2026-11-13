@@ -38,7 +38,8 @@ describe.each(['수학', '과학'] as const)('buildBookPlan (%s mock snapshot)',
     for (const l of student.lessons) {
       expect(l.teacher).toBeUndefined()
       expect(l.quiz.length).toBe(3)
-      for (const q of l.quiz) expect(Object.keys(q).sort()).toEqual(['choices', 'q', 'type'])
+      // condition(답 조건, L-23)은 학생이 보는 것이라 학생용 판에도 남는다 — 정답·해설·역량·수준만 없어야 한다
+      for (const q of l.quiz) expect(Object.keys(q).filter((k) => k !== 'condition').sort()).toEqual(['choices', 'q', 'type'])
       for (const w of l.tasks) expect(Object.keys(w).sort()).toEqual(['answer_space', 'level_ref', 'no', 'prompt', 'tier'])
     }
     for (const it of student.assessment!.items) {

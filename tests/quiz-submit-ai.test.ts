@@ -1,5 +1,5 @@
 // tests/quiz-submit-ai.test.ts
-// 대표 2026-10-12: 학생 퀴즈 제출 — 글자 비교로 틀린 단답형만 AI 뜻 판정(맞음 → O, 부분·틀림 → X)하고 판정·이유를 저장한다.
+// 대표 2026-10-12: 학생 퀴즈 제출 — 글자 비교로 틀린 단답형만 AI 뜻 판정하고 판정·이유를 저장한다. 대표 2026-11-05: 맞음·부분 → O, 틀림 → X(부분은 원장 화면에 확인 필요).
 // 0017(ai_verdict·ai_reason 열) 전에 배포돼도 깨지지 않는다 — 열이 없으면 판정 저장만 빼고 다시 넣는다.
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { memoryDb } from './fixtures/fake-db'
@@ -43,11 +43,12 @@ describe('submitQuiz — AI 뜻 판정', () => {
     ])
     expect(vi.mocked(claude.callStructured)).toHaveBeenCalledTimes(1)
   })
-  it('부분·틀림은 X 로 저장하되 판정을 남긴다(부분은 원장 화면에서 확인 필요로 보인다)', async () => {
+  it('부분은 O(대표 2026-11-05: 뜻이 닿은 답을 X 로 두지 않는다)로, 틀림은 X 로 저장하되 둘 다 판정을 남긴다(부분은 원장 화면에서 확인 필요로 보인다)', async () => {
     vi.mocked(claude.callStructured).mockResolvedValueOnce(verdict('부분', '근거는 맞지만 목적이 빠짐')).mockResolvedValueOnce(verdict('틀림', '다른 행동'))
-    await submitQuiz('a1', 1, ['bring a cup', '6', '숫자로 보여줌'])
+    const r = await submitQuiz('a1', 1, ['bring a cup', '6', '숫자로 보여줌'])
+    expect(r).toMatchObject({ ok: true, results: [{ correct: true }, { correct: true }, { correct: false }] })
     expect(stored()).toEqual([
-      { quiz_no: 1, correct: false, ai_verdict: '부분', ai_reason: '근거는 맞지만 목적이 빠짐', match_kind: 'ai' },
+      { quiz_no: 1, correct: true, ai_verdict: '부분', ai_reason: '근거는 맞지만 목적이 빠짐', match_kind: 'ai' },
       { quiz_no: 2, correct: true, ai_verdict: null, ai_reason: null, match_kind: 'literal' },
       { quiz_no: 3, correct: false, ai_verdict: '틀림', ai_reason: '다른 행동', match_kind: 'ai' },
     ])

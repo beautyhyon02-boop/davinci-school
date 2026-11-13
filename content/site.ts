@@ -585,6 +585,7 @@ export const app = {
           'lessons[].feedback_plan.how': () => '확인·피드백 계획',
           'lessons[].self_check[]': (ix: number[]) => `자기 점검표 ${nth(ix[1])}`,
           'lessons[].formative_check.quiz[].q': (ix: number[]) => `퀴즈 ${nth(ix[1])} 문제`,
+          'lessons[].formative_check.quiz[].condition': (ix: number[]) => `퀴즈 ${nth(ix[1])} 답 조건`,
           'lessons[].formative_check.quiz[].answer': (ix: number[]) => `퀴즈 ${nth(ix[1])} 정답`,
           'lessons[].formative_check.quiz[].explanation': (ix: number[]) => `퀴즈 ${nth(ix[1])} 해설`,
           'lessons[].formative_check.quiz[].competency': (ix: number[]) => `퀴즈 ${nth(ix[1])} 역량`,
@@ -823,6 +824,8 @@ export const app = {
         answerLabel: '정답',
         explanationLabel: '해설',
         answersHidden: '정답·해설은 원장님 화면에서만 표시됩니다.',
+        // 답 조건(L-23): 문제 아래 한 줄 — 학생이 보는 것이라 문제지 인쇄에도 남는다
+        conditionLabel: '조건',
       },
       imagesAlt: (no: number, n: number) => `${no}차시 첨부 이미지 ${n}`,
       topicLabel: '주제',
@@ -1074,6 +1077,8 @@ export const app = {
         submitted: (correct: number, total: number) => `${total}문항 중 ${correct}개 정답`,
         answerLabel: '정답', explanationLabel: '해설', yourAnswer: '내 답',
         shortPlaceholder: '답을 쓰세요',
+        // 답 조건(L-23, 대표 2026-11-06): 문항 아래 한 줄 — 답의 꼴·담을 것·가짓수
+        conditionLabel: '조건',
         // 원장이 종이 O/X 를 넣은 문항 / 아직 O/X 가 없는 문항(설계 2026-09-29 §4.1)
         paperSolved: '종이로 푼 문제예요',
         noRecord: '아직 기록이 없어요',
@@ -1665,6 +1670,8 @@ export const app = {
       selfCheckList: '단원 평가 전 자기 점검표',
       quiz: '퀴즈',
       quizNo: (no: number) => `${no}.`,
+      // 답 조건(L-23): 두 판 모두 문제 아래 한 줄
+      quizCondition: '조건',
       answerLabel: '답',
       // 교사용
       flow: '수업 흐름',

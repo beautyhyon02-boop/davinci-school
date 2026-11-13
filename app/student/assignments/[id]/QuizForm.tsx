@@ -6,7 +6,8 @@ import { app } from '@/content/site'
 
 const copy = app.classroom.student.quiz
 // answer·explanation 은 이미 제출한 차시에서만 온다(제출 전에는 서버가 빼고 보낸다). 방금 제출한 경우엔 submitQuiz 결과에서 읽는다.
-type Quiz = { q: string; type: 'choice' | 'short'; choices: string[] | null; answer?: string; explanation?: string }
+// condition = 답 조건(L-23, 대표 2026-11-06): 답의 꼴·담을 것·가짓수 — 학생이 보는 것이라 제출 전에도 온다. 옛 판·낱말 정답에는 없다.
+type Quiz = { q: string; type: 'choice' | 'short'; choices: string[] | null; condition?: string | null; answer?: string; explanation?: string }
 /** paper = 원장이 넣은 종이 O/X(학생이 화면에 쓴 답 없음). 자리가 null 이면 그 문항은 아직 기록이 없다. */
 type Done = { response: string; correct: boolean; paper?: boolean } | null
 /**
@@ -29,6 +30,8 @@ export function QuizForm({ assignmentId, lessonNo, quiz, done }: { assignmentId:
         {quiz.map((q, i) => (
           <li key={i}>
             <p className="font-semibold">{i + 1}. {q.q}</p>
+            {/* 답 조건(L-23): 문항 바로 아래 한 줄 — 제출 전·후 모두 보인다 */}
+            {q.condition && <p className="mt-1 text-sm text-ink-700">{copy.conditionLabel}: {q.condition}</p>}
             {submitted ? (
               !submitted[i] ? (
                 <div className="mt-2 rounded-xl bg-ink-100/50 p-3 text-ink-500">{copy.noRecord}</div>

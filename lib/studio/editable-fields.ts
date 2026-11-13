@@ -12,11 +12,13 @@ import { COMPETENCIES } from './competency'
 import type { WizardStage as EditableStage } from './wizard-stages'
 
 /** options 가 있으면 글 칸이 아니라 고르기 칸(select) — 값은 options 가운데 하나(빈 값 '' = 아직 없음). */
-export type FieldSpec = { pattern: string; multiline: boolean; options?: readonly string[] }
+/** optional: 키가 없는 출력에도 빈 칸을 내고, 적으면 새로 붙이고 비우면 키를 없앤다(선택 칸 — 답 조건 L-23). */
+export type FieldSpec = { pattern: string; multiline: boolean; options?: readonly string[]; optional?: boolean }
 
 const line = (pattern: string): FieldSpec => ({ pattern, multiline: false })
 const text = (pattern: string): FieldSpec => ({ pattern, multiline: true })
 const pick = (pattern: string, options: readonly string[]): FieldSpec => ({ pattern, multiline: false, options })
+const optionalLine = (pattern: string): FieldSpec => ({ pattern, multiline: false, optional: true })
 
 export const EDITABLE_FIELDS: Record<EditableStage, FieldSpec[]> = {
   2: [
@@ -49,6 +51,8 @@ export const EDITABLE_FIELDS: Record<EditableStage, FieldSpec[]> = {
     text('lessons[].feedback_plan.how'),
     text('lessons[].self_check[]'),
     text('lessons[].formative_check.quiz[].q'),
+    // 답 조건(L-23, 2026-11-06) — 학생에게 보이는 한 줄. [TS] 메모가 "적으라"고 하므로 없는 퀴즈에도 빈 칸을 낸다(독립 검토 2026-11-06)
+    optionalLine('lessons[].formative_check.quiz[].condition'),
     line('lessons[].formative_check.quiz[].answer'),
     text('lessons[].formative_check.quiz[].explanation'),
     pick('lessons[].formative_check.quiz[].competency', COMPETENCIES),
@@ -115,6 +119,8 @@ export type EditableField = {
   multiline: boolean
   /** 고르기 칸이면 고를 수 있는 값들. value 가 ''이면 아직 값이 없는 칸(옛 출력). */
   options?: readonly string[]
+  /** 선택 칸(답 조건): 키가 없어도 빈 칸으로 나오고, 비워 저장하면 키를 없앤다. */
+  optional?: boolean
   /** 경로의 배열 번호들(0부터) — 라벨 문구가 쓴다. */
   indices: number[]
   /** 끝값을 담은 객체(배열 원소 끝값이면 그 배열을 가진 객체) — 라벨 문구가 점수·등급 같은 곁값을 읽는다. */
@@ -180,6 +186,7 @@ export function expandFields(stage: EditableStage, output: unknown): EditableFie
         pattern: node.spec.pattern,
         multiline: node.spec.multiline,
         ...(node.spec.options ? { options: node.spec.options } : {}),
+        ...(node.spec.optional ? { optional: true } : {}),
         indices,
         parent,
         value,
@@ -194,8 +201,8 @@ export function expandFields(stage: EditableStage, output: unknown): EditableFie
         value.forEach((v, i) => walk(child, v, [...path, i], [...indices, i], parent))
       } else if (isObject(value) && seg in value) {
         walk(child, child.spec?.options ? value[seg] ?? '' : value[seg], [...path, seg], indices, value)
-      } else if (isObject(value) && child.spec?.options) {
-        // 고르기 칸: 키가 없는 옛 출력에도 빈 칸을 낸다(골라서 새로 붙인다)
+      } else if (isObject(value) && (child.spec?.options || child.spec?.optional)) {
+        // 고르기 칸·선택 칸: 키가 없는 출력에도 빈 칸을 낸다(골라서·적어서 새로 붙인다)
         walk(child, '', [...path, seg], indices, value)
       }
     }
@@ -229,6 +236,19 @@ export function setAtPath<T>(output: T, path: FieldPath, value: string, allowNew
   return next as T
 }
 
+/** path 의 키를 없앤 새 출력(선택 칸을 비워 저장할 때). 경로가 없으면 그대로 돌려준다. */
+export function deleteAtPath<T>(output: T, path: FieldPath): T {
+  const next = structuredClone(output) as unknown
+  let cur = next as Record<string | number, unknown>
+  for (const seg of path.slice(0, -1)) {
+    const child = cur?.[seg]
+    if (!child || typeof child !== 'object') return output
+    cur = child as Record<string | number, unknown>
+  }
+  if (cur && !Array.isArray(cur)) delete cur[path[path.length - 1]]
+  return next as T
+}
+
 /** 칸 값(id → 문장)을 출력에 한꺼번에 반영한 새 출력. 바뀐 칸만 쓴다. */
 export function applyFieldEdits<T>(output: T, fields: EditableField[], values: Record<string, string>): T {
   let next = output
@@ -236,7 +256,10 @@ export function applyFieldEdits<T>(output: T, fields: EditableField[], values: R
     const v = values[f.id]
     // 고르기 칸은 빈 값으로 되돌릴 수 없다(지우려면 JSON 편집) — 빈 값은 건너뛴다
     if (f.options && v === '') continue
-    if (v !== undefined && v !== f.value) next = setAtPath(next, f.path, v, !!f.options)
+    if (v === undefined || v === f.value) continue
+    // 선택 칸(답 조건): 비우면 키를 없앤다(빈 문자열은 형식 검사에 걸린다), 적으면 없던 키도 새로 붙인다
+    if (f.optional && v.trim() === '') { next = deleteAtPath(next, f.path); continue }
+    next = setAtPath(next, f.path, v, !!f.options || !!f.optional)
   }
   return next
 }

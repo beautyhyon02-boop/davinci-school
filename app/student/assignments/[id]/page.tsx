@@ -78,10 +78,10 @@ export default async function StudentAssignmentPage({ params }: { params: Promis
         {lesson.formative_check.quiz.length > 0 && (
           // 제출 전에는 정답·해설을 브라우저로 보내지 않는다(문제·유형·보기만). 제출한 뒤에야 결과 화면용으로 전체를 넘긴다.
           <QuizForm assignmentId={id} lessonNo={no}
-            // 퀴즈 수준·역량 꼬리표는 교사용 표시라 어느 때도 넘기지 않는다(문제·유형·보기·정답·해설만 골라 넘긴다).
+            // 퀴즈 수준·역량 꼬리표·핵심어는 교사용 표시라 어느 때도 넘기지 않는다(문제·답 조건(L-23)·유형·보기·정답·해설만 골라 넘긴다).
             quiz={done.length
-              ? lesson.formative_check.quiz.map(({ q, type, choices, answer, explanation }) => ({ q, type, choices, answer, explanation }))
-              : lesson.formative_check.quiz.map(({ q, type, choices }) => ({ q, type, choices }))}
+              ? lesson.formative_check.quiz.map(({ q, condition, type, choices, answer, explanation }) => ({ q, condition, type, choices, answer, explanation }))
+              : lesson.formative_check.quiz.map(({ q, condition, type, choices }) => ({ q, condition, type, choices }))}
             // 문항 번호 자리에 맞춘다 — 원장이 종이 O/X 를 일부 문항에만 넣었으면 나머지 자리는 null(기록 없음)
             done={done.length ? alignQuizDone(lesson.formative_check.quiz.length, done) : null} />
         )}

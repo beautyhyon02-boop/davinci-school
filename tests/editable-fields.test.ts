@@ -28,7 +28,8 @@ for (const set of SETS) describe(`editable fields on the ${set.subject} fixtures
       expect(EDITABLE_FIELDS[stage].map((s) => s.pattern).filter((p) => !patterns.has(p) && !ENGLISH_ONLY(p))).toEqual([])
       for (const f of fields) {
         const v = f.path.reduce<unknown>((o, k) => (o as Record<string | number, unknown>)[k], output)
-        expect(v, f.id).toBe(f.value)
+        // 고르기 칸·선택 칸(답 조건)은 키가 없어도 빈 칸('')으로 나온다
+        expect(f.options || f.optional ? v ?? '' : v, f.id).toBe(f.value)
         expect(f.id).toBe(f.path.join('.'))
       }
       expect(new Set(fields.map((f) => f.id)).size).toBe(fields.length)
@@ -37,7 +38,7 @@ for (const set of SETS) describe(`editable fields on the ${set.subject} fixtures
     it(`stage ${stage}: changing any one field — or all of them — still validates with STAGE_SCHEMAS[${stage}]`, () => {
       const fields = expandFields(stage, output)
       for (const f of fields) {
-        const next = setAtPath(output, f.path, tweakField(f))
+        const next = setAtPath(output, f.path, tweakField(f), !!f.options || !!f.optional)
         expect(issues(stage, next), f.id).toEqual([])
       }
       const all = applyFieldEdits(output, fields, Object.fromEntries(fields.map((f) => [f.id, tweakField(f)])))

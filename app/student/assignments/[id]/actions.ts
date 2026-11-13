@@ -36,9 +36,10 @@ export async function submitQuiz(assignmentId: string, lessonNo: number, respons
   // service role 로 넣으므로 클라이언트 값은 문자열·길이만 받아들인다
   const resp = (i: number) => (Array.isArray(responses) && typeof responses[i] === 'string' ? responses[i].slice(0, 500) : '')
   const quizzes = lesson.formative_check.quiz
-  // 채점 순서(대표 2026-10-12): 글자 비교·핵심어(judgeQuiz) → 틀린 단답형만 AI 뜻 판정(맞음이면 O, 부분·틀림이면 X). AI가 실패하면 X 그대로.
+  // 채점 순서(대표 2026-10-12): 글자 비교·핵심어(judgeQuiz) → 틀린 단답형만 AI 뜻 판정. 맞음·부분이면 O(대표 2026-11-05 — 부분은 원장 화면에
+  // "확인 필요"로 남아 뒤집을 수 있다), 틀림이면 X. 답 조건(L-23)이 있으면 함께 보낸다. AI가 실패하면 X 그대로.
   const verdicts = await Promise.all(quizzes.map((q, i) => (needsAiJudge(q, resp(i))
-    ? judgeShortWithAi({ subject: snapshot.cover.subject, level: snapshot.cover.level, grade: snapshot.cover.grade, q: q.q, answer: q.answer, explanation: q.explanation, keywords: q.keywords ?? null, response: resp(i) })
+    ? judgeShortWithAi({ subject: snapshot.cover.subject, level: snapshot.cover.level, grade: snapshot.cover.grade, q: q.q, answer: q.answer, explanation: q.explanation, keywords: q.keywords ?? null, condition: q.condition ?? null, response: resp(i) })
     : Promise.resolve(null))))
   // match_kind(0017): 무엇으로 맞았는지 — literal(글자 비교) / keyword(핵심어) / ai(AI 판정) / null(틀림, AI 없음). 원장 표가 핵심어·AI 칸을 표시한다.
   const AI_COLUMNS = ['ai_verdict', 'ai_reason', 'match_kind']
@@ -47,7 +48,7 @@ export async function submitQuiz(assignmentId: string, lessonNo: number, respons
     const kind = v ? 'ai' : matchKind(q, resp(i))
     return {
       assignment_id: assignmentId, lesson_no: lessonNo, quiz_no: i + 1,
-      response: resp(i), correct: v?.verdict === '맞음' ? true : judgeQuiz(q, resp(i)), source: 'student' as const,
+      response: resp(i), correct: v ? v.verdict !== '틀림' : judgeQuiz(q, resp(i)), source: 'student' as const,
       ...(v ? { ai_verdict: v.verdict, ai_reason: v.reason } : {}),
       ...(kind ? { match_kind: kind } : {}),
     }

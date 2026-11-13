@@ -10,7 +10,7 @@ describe('rules v2', () => {
     const spec = readFileSync('docs/superpowers/specs/2026-09-25-item-studio-v2-design.md', 'utf8')
     for (const id of ids) expect(spec.split(`| ${id} |`).length - 1, id).toBe(1)
     // 부록 A: 공통 38(C-31 대표 확정값, C-32 조건=지침(2026-09-26), C-33 자료 설계·유형(대표 연수 2기), C-34·C-36·C-37 경기2025, C-39 배운 것만 채점·C-40 역량 꼬리표(대표 2026-09-29) 포함) + 차시 21(L-13 정답 노출·활동지 되풀이 금지, 2026-10-01 영어 세트 검토; L-14~L-21 교육청 재구성 예시 자료집 G-1~G-8, 대표 2026-10-01) + 과목 40(국6·수7·사7·역3·과8·영9 — S-영-08 번역·S-영-09 공동 자료 영어판(대표 2026-09-29), S-사-07 사회 통합(대표 2026-09-30)) + 채점 10(G-10 경기2025) + 안내장 12 = 121
-    expect(ids.length).toBe(42 + 22 + 40 + 10 + 13)   // C-41 자료의 사실성(대표 2026-10-03), C-42 글자 수로 답을 유도하지 않는다(대표 2026-10-05), N-13 안내장 말투 통일·C-43 안쪽 칸 이름 금지(대표 2026-10-06), C-44 학년 교과서 단원·성취기준 원문 안에서(대표 2026-10-07), L-22 단답형 정답 표기 여러 꼴 + 핵심어(대표 2026-10-12)
+    expect(ids.length).toBe(42 + 23 + 40 + 10 + 13)   // C-41 자료의 사실성(대표 2026-10-03), C-42 글자 수로 답을 유도하지 않는다(대표 2026-10-05), N-13 안내장 말투 통일·C-43 안쪽 칸 이름 금지(대표 2026-10-06), C-44 학년 교과서 단원·성취기준 원문 안에서(대표 2026-10-07), L-22 단답형 정답 표기 여러 꼴 + 핵심어(대표 2026-10-12), L-23 구 정답 퀴즈의 답 조건(대표 2026-11-06)
   })
   it('the spec appendix has no rule row that the code lacks', () => {
     const spec = readFileSync('docs/superpowers/specs/2026-09-25-item-studio-v2-design.md', 'utf8')
@@ -215,7 +215,7 @@ describe('L-13 퀴즈 정답 노출·활동지 되풀이 금지 (2026-10-01 영�
     expect(row('L-13')).toBe(`| L-13 | ${l13.text} | P+S | [v2-1001] |`)
     expect(spec).toContain('`[v2-1001]` 2026-10-01 영어 세트 실제 검토')
     for (const subject of ['수학', '과학', '영어']) expect(rulesFor(subject)).toMatch(/^L-13 퀴즈 정답\(낱말·구\)은/m)
-    expect(LESSON_RULES).toHaveLength(22)   // L-22 핵심어(대표 2026-10-12)
+    expect(LESSON_RULES).toHaveLength(23)   // L-22 핵심어(대표 2026-10-12), L-23 답 조건(대표 2026-11-06)
   })
 })
 
@@ -395,5 +395,13 @@ describe('L-22 단답형 정답 표기 여러 꼴 + 핵심어 (대표 2026-10-12
     for (const s of ['" / "', '2~4개', 'keywords', '핵심어 1~3개', '글자 비교', 'AI']) expect(l22.text, s).toContain(s)
     expect(row('L-22')).toBe(`| L-22 | ${l22.text} | P+S | [대표] |`)
     for (const subject of ['국어', '수학', '과학', '영어', '사회']) expect(rulesFor(subject)).toMatch(/^L-22 단답형 퀴즈의 정답/m)
+  })
+  // 대표 2026-11-06: 구 정답 퀴즈의 답 조건(condition) — 꼴·담을 것·가짓수만, 답·수치·결론·글자 수 금지
+  it('L-23 exists as PS/대표: 답 조건 한 줄(꼴·담을 것·가짓수), 글자 수 단서 금지; spec row identical; reaches every subject prompt', () => {
+    const l23 = LESSON_RULES.find((r) => r.id === 'L-23')!
+    expect(l23.nature).toBe('PS'); expect(l23.tags).toEqual(['대표'])
+    for (const s of ['condition', '답의 꼴', '반드시 담을 것', '가짓수', '답 자체·수치·결론은 아님', 'C-42', '낱말·숫자뿐인 문항은 비워 둔다']) expect(l23.text, s).toContain(s)
+    expect(row('L-23')).toBe(`| L-23 | ${l23.text} | P+S | [대표] |`)
+    for (const subject of ['국어', '수학', '과학', '영어', '사회']) expect(rulesFor(subject)).toMatch(/^L-23 정답이 낱말·수치가 아니라/m)
   })
 })

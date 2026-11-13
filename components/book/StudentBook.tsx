@@ -121,6 +121,8 @@ function LessonSection({ plan, l }: { plan: BookPlan; l: BookLesson }) {
             {l.quiz.map((q, i) => (
               <li key={i} data-book-quiz={i + 1} className="book-task">
                 <p className="font-semibold">{c.quizNo(i + 1)} {q.q}</p>
+                {/* 답 조건(L-23): 문제 아래 한 줄 */}
+                {q.condition && <p className="book-faint">{c.quizCondition}: {q.condition}</p>}
                 {/* 옛 판의 선택형 퀴즈만 보기 목록이 있다 — 새 세트는 단답형뿐 */}
                 {q.choices && <ul className="book-list list-disc">{q.choices.map((ch, j) => <li key={j}>{ch}</li>)}</ul>}
                 <p className="book-faint">{c.answerLabel}</p>

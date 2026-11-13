@@ -58,7 +58,8 @@ describe('QuizMatrix', () => {
 // 대표 2026-10-12: AI 뜻 판정 — 맞음은 O 에 작은 AI 표시, 부분은 노란 칸 + "확인 필요"(이유는 칸 제목에), 차시 탭 옆에 확인 필요 개수
 describe('QuizMatrix — AI 판정 표시 (대표 2026-10-12)', () => {
   const ai = (quiz_no: number, correct: boolean, verdict: '맞음' | '부분' | '틀림', reason: string) => ({ ...row('a1', quiz_no, correct, 'student'), ai_verdict: verdict, ai_reason: reason })
-  const rows = [ai(1, true, '맞음', '같은 뜻의 다른 표현'), ai(2, false, '부분', '근거는 맞지만 목적이 빠짐'), row('a1', 3, false, 'student'), ...full.filter((r) => r.assignment_id !== 'a1')]
+  // 대표 2026-11-05: 부분은 O 로 저장된다(correct true) — 그래도 노란 칸 + "확인 필요"는 ai_verdict 로만 정하므로 그대로 보인다
+  const rows = [ai(1, true, '맞음', '같은 뜻의 다른 표현'), ai(2, true, '부분', '근거는 맞지만 목적이 빠짐'), row('a1', 3, false, 'student'), ...full.filter((r) => r.assignment_id !== 'a1')]
   it('맞음 칸에는 AI 표시, 부분 칸에는 확인 필요 표시와 노란색, 이유는 title 에', () => {
     const html = render({ responses: rows }); const t = text(html)
     expect(t).toContain(copy.quizCell.aiMark)

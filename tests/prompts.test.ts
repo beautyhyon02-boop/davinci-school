@@ -681,3 +681,14 @@ describe('stage 3 (대표 2026-10-12, L-22): 과제는 정답 표기 여러 꼴�
     expect(review).toMatch(/단답형 정답 표기가 하나뿐이거나 keywords가 없으면 quiz\(L-22; 정답이 숫자·범위뿐인 문항은 keywords 없음이 정상\)\. /)
   })
 })
+
+describe('stage 3 (대표 2026-11-06, L-23): 구 정답 퀴즈에는 답 조건(condition) — 과제가 요구하고 검토가 빠진 것·힌트가 된 것을 짚는다', () => {
+  it('task: 정답이 구·문장이면 condition 한 줄(답의 꼴·담을 것·가짓수; 답·수치·결론·글자 수 금지), 낱말·숫자 정답은 생략', () => {
+    const task = buildPrompt(3, ctx).user.split('과제: ')[1]
+    expect(task).toMatch(/정답이 구·문장인 문항에는 condition\(답 조건 한 줄: 답의 꼴·반드시 담을 것·가짓수 — 답·수치·결론·글자 수는 쓰지 않는다; 낱말·숫자 정답은 생략\)을 붙인다\(L-23\)/)
+  })
+  it('review: 구 정답 퀴즈에 condition 이 없거나 조건이 답을 담으면 quiz', () => {
+    const review = buildReviewPrompt(3, ctx, {}).user.split('검토 초점: ')[1]
+    expect(review).toMatch(/정답이 구·문장인 퀴즈에 condition\(답 조건\)이 없거나 조건이 답·수치·결론을 담으면 quiz\(L-23\)\. /)
+  })
+})

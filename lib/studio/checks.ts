@@ -85,6 +85,28 @@ export function quizNeedsKeywords(answer: string): boolean {
   return !isNumericAnswer(answer)
 }
 
+/**
+ * L-23(대표 2026-11-06): 답 조건(condition)이 필요한 퀴즈 — 정답이 낱말·숫자·식이 아니라 구·문장인 문항.
+ * 서술어로 끝나는 정답("방향이 바뀐다", "부스 수가 달라서"), 영어 넉 낱말 이상 구("bring your own cup"), 발문이 까닭·이유·"짧은 구로"를 묻는 문항.
+ * 한국어 명사구("우리 학교 1학년 학생", "고쳐쓰기")는 용어·대상을 묻는 것이라 조건 없이 둔다.
+ */
+// "요"는 명사 끝("개요"·"필요")과 겹쳐 넣지 않는다. 발문 단서는 까닭·이유를 '쓰라'는 꼴만("까닭을 나타내는 접속사"처럼 용어를 묻는 발문은 아님).
+const PREDICATE_END = /(다|니까|때문|때문에|려고|도록|라서|여서|아서|어서|는지|인지|할지)$/
+const PREDICATE_END_WORD = /(다|니까|때문|려고|도록|라서|여서|아서|어서)$/
+const OPEN_CUE = /짧은 구로|짧게 쓰|까닭(을|은|이|도)?\s*(짧|한 구|쓰|적|말|무엇)|이유(를|는|도)?\s*(짧|쓰|적|말)|왜 그런지/
+// 영어 구: 글자(영문자·구두점)로만 된 낱말 넉 개 이상 — 식("y = 2x + 1")은 아니다
+const LATIN_PHRASE = /^[A-Za-z][A-Za-z' ,.-]*$/
+export function quizNeedsCondition(q: { q: string; answer: string }): boolean {
+  if (isNumericAnswer(q.answer)) return false
+  const forms = q.answer.split('/').map((s) => s.trim().replace(/[.。!?]+$/, '')).filter(Boolean)
+  if (forms.length === 0) return false
+  if (forms.some((f) => LATIN_PHRASE.test(f) && f.split(/\s+/).length >= 4)) return true
+  // 서술어 끝: 띄어쓴 구면 그대로, 한 낱말이면 넉 자 이상에 "~인지"류를 뺀 끝만("바다"·"판다"·"메타인지" 같은 명사는 아니다)
+  if (forms.some((f) => (/\s/.test(f) ? PREDICATE_END.test(f) : f.length >= 4 && PREDICATE_END_WORD.test(f)))) return true
+  return OPEN_CUE.test(q.q)
+}
+export const QUIZ_CONDITION_MISSING = '답이 구·문장인데 답 조건(condition)이 없음 — 답의 꼴·담을 것·가짓수를 한 줄로 적는다(L-23)'
+
 function gradeUnitIssues(codes: string[], ctx: CheckCtx): Issue[] {
   const grade = ctx.theme?.grade
   const level = ctx.theme?.level
@@ -577,6 +599,8 @@ function lessonIssues(o: LessonDesignT, ctx: CheckCtx): Issue[] {
       for (const [i, q] of l.formative_check.quiz.entries()) { const cue = letterCountCue(q.q); if (cue) issues.push({ kind: 'other', detail: letterCueNote(`${l.no}차시 퀴즈 ${i + 1}`, cue) }) }
       // L-22(대표 2026-10-12): 핵심어가 없는 단답형 퀴즈는 글자 비교·AI 판정에만 기대게 된다 — 참고 메모(옛 판·옛 fixture에는 없다)
       for (const [i, q] of l.formative_check.quiz.entries()) if (isShortQuiz(q) && quizNeedsKeywords(q.answer) && !((q as { keywords?: unknown }).keywords as unknown[] | undefined)?.length) issues.push({ kind: 'other', detail: `${l.no}차시 퀴즈 ${i + 1}: 핵심어(keywords)가 없음 — 정답 표기를 여러 꼴로 적고 핵심어 1~3개를 함께 적는다(L-22)` })
+      // L-23(대표 2026-11-06): 답이 구·문장인 퀴즈에 답 조건이 없으면 학생이 무엇을 어떤 꼴로 쓸지 모른다 — 참고 메모(옛 판·옛 fixture에는 없다)
+      for (const [i, q] of l.formative_check.quiz.entries()) if (isShortQuiz(q) && quizNeedsCondition(q) && !(q as { condition?: string }).condition) issues.push({ kind: 'other', detail: `${l.no}차시 퀴즈 ${i + 1}: ${QUIZ_CONDITION_MISSING}` })
       for (const [k, t] of (l.worksheet?.tasks ?? []).entries()) { const cue = letterCountCue(t.prompt); if (cue) issues.push({ kind: 'other', detail: letterCueNote(`${l.no}차시 활동지 과제 ${t.no ?? k + 1}번`, cue) }) }
     }
     for (const q of l.teacher_script.questions) if (norm(q.if_stuck) === norm(q.expected_answer)) issues.push({ kind: 'other', detail: `${l.no}차시 발문 힌트가 정답과 같음` })
