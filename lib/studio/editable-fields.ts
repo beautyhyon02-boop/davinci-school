@@ -61,6 +61,8 @@ export const EDITABLE_FIELDS: Record<EditableStage, FieldSpec[]> = {
     // 3번이 잇는 채점 요소(L-10)·부분 답이 되는 경우(L-25, 2026-11-13) — [TS] 메모가 "적으라"고 하므로 없는 퀴즈에도 빈 칸을 낸다
     optionalLine('lessons[].formative_check.quiz[].criteria_ref'),
     optionalLine('lessons[].formative_check.quiz[].partial_note'),
+    // 써야 하는 목표 문법(영어 2·3번, S-영-10 — 2026-11-14). 있는 퀴즈에서만 칸이 된다(다른 과목·1번에 빈 칸을 내지 않는다)
+    line('lessons[].formative_check.quiz[].language_form'),
   ],
   4: [
     line('materials[].title'),
@@ -99,6 +101,10 @@ export const EDITABLE_FIELDS: Record<EditableStage, FieldSpec[]> = {
     line('translations.materials[].title_ko'),
     text('translations.materials[].body_ko'),
     text('translations.exemplar_answers[].text_ko'),
+    // 목표 문법 설명(영어 세트, S-영-13 — 2026-11-14): 이름은 2단계에서 고른 것과 같아야 하므로 칸으로 두지 않는다
+    line('language_forms[].form'),
+    text('language_forms[].meaning'),
+    line('language_forms[].common_errors[]'),
   ],
   7: [
     text('per_lesson[].topic_summary'),

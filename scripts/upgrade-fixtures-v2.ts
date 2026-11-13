@@ -154,6 +154,11 @@ function setQuizRoles(lessons: LessonT[], defs: Record<string, [qStart: string, 
     if (role.criteria_ref) q.criteria_ref = role.criteria_ref
     if (role.partial_note) q.partial_note = role.partial_note
   }
+  // 2번도 그 차시 채점 요소의 이름을 단다(L-10, 대표 2026-11-14) — 시연 fixture 는 3번과 같은 요소로 둔다(요소가 하나면 둘 다 그 요소)
+  for (const l of lessons) {
+    const quiz = l.formative_check.quiz as (QuizItemT & { criteria_ref?: string })[]
+    if (quiz.length === 3 && quiz[2].criteria_ref && !quiz[1].criteria_ref) quiz[1].criteria_ref = quiz[2].criteria_ref
+  }
 }
 type QuizItemT = LessonT['formative_check']['quiz'][number]
 

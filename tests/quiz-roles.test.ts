@@ -220,7 +220,7 @@ describe('AI 뜻 판정 — 문항의 역할과 부분 답의 모습을 함께 �
     expect(p).not.toContain('부분 답이 되는 경우'); expect(p).not.toContain('이어지는 채점 요소'); expect(p).not.toContain('문항의 역할')
   })
   it('규칙: 주어진 세 가지도 기준에 든다, 부분 답의 모습이면 "부분"이되 값·결론이 다르면 "틀림"(부분 = O 이므로 틀린 값이 O 가 되면 안 된다)', () => {
-    expect(QUIZ_JUDGE_RULES).toContain('주어졌다면 문항의 역할·이어지는 채점 요소·부분 답이 되는 경우뿐이다')
+    expect(QUIZ_JUDGE_RULES).toContain('주어졌다면 문항의 역할·이어지는 채점 요소·부분 답이 되는 경우·써야 하는 언어 형식·자료뿐이다')
     expect(QUIZ_JUDGE_RULES).toContain('내용이 정답과 같은 뜻이면 "맞음"')
     expect(QUIZ_JUDGE_RULES).toContain('값·결론이 정답과 다르면 그 모습이어도 "틀림"')
   })

@@ -11,6 +11,7 @@ import { STAGE_ERRORS, stageNotes, type StageErrorCode, type StageStatus } from 
 import { createSupabaseRepo } from '@/lib/studio/repo'
 import type { Issue } from '@/lib/studio/checks'
 import { validateSharedMaterialIds } from '@/lib/studio/shared-selection'
+import { validateLanguageFormPick, languageFormCandidates } from '@/lib/studio/language-forms'
 import { app } from '@/content/site'
 
 const errors = app.studio.wizard.errors
@@ -201,6 +202,31 @@ export async function chooseKeyQuestion(setId: string, text: string): Promise<Ac
   const { error: updateErr } = await supabase.from('item_sets').update({ key_question: normalized.value }).eq('id', setId)
   if (updateErr) return { ok: false, error: errors.saveFailed }
 
+  revalidatePath(`/admin/items/${itemSet.theme_id}/sets/${setId}`)
+  return { ok: true }
+}
+
+/**
+ * 영어 세트의 목표 문법을 정한다(S-영-11, 대표 2026-11-14 "AI가 후보 내고 본사가 고르는 방식"). 2단계 출력의 후보에 있는 이름 2~3개만 받는다.
+ * 2단계 출력(stage_status.stage2.output)의 language_forms 에만 적는다 — 확인 상태를 바꾸지 않고 뒤 단계를 초기화하지 않는다
+ * (화면이 "다시 생성해야 반영됨" 안내만 보인다). 다음 생성·검토(loadContext)부터 이 선택을 쓴다. 2단계를 다시 생성하면 선택은 비워진다.
+ */
+export async function chooseLanguageForms(setId: string, names: string[]): Promise<ActionResult> {
+  await assertAdmin()
+  const formErrors = app.studio.wizard.languageForms.errors
+  const supabase = await createClient()
+  const { data: itemSet, error: fetchErr } = await supabase.from('item_sets').select('theme_id, stage_status').eq('id', setId).single()
+  if (fetchErr || !itemSet) return { ok: false, error: formErrors.saveFailed }
+  const stage2 = ((itemSet.stage_status ?? {}) as Record<string, StageStatus>).stage2
+  const candidates = languageFormCandidates(stage2?.output)
+  const check = validateLanguageFormPick(Array.isArray(names) ? names.filter((n): n is string => typeof n === 'string') : [], candidates)
+  if (!stage2 || candidates.length === 0) return { ok: false, error: formErrors.unknown }
+  if (!check.ok) return { ok: false, error: formErrors[check.code] }
+  const { error: saveErr } = await supabase.rpc('set_stage_status', {
+    p_item_set_id: setId, p_key: 'stage2',
+    p_value: { ...stage2, output: { ...(stage2.output as Record<string, unknown>), language_forms: check.names } },
+  })
+  if (saveErr) return { ok: false, error: formErrors.saveFailed }
   revalidatePath(`/admin/items/${itemSet.theme_id}/sets/${setId}`)
   return { ok: true }
 }

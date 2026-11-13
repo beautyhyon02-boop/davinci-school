@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getSessionProfile } from '@/lib/auth/session'
 import { loadAssignmentSnapshot } from '@/lib/classroom/snapshot'
 import { judgeQuiz, needsAiJudge, matchKind, followsQuizRoles } from '@/lib/classroom/quiz'
-import { judgeShortWithAi } from '@/lib/classroom/quiz-judge'
+import { judgeShortWithAi, quizMaterialsText } from '@/lib/classroom/quiz-judge'
 import { isMissingColumn } from '@/lib/classroom/quiz-entry'
 import { isLessonOpen, isPaperItem } from '@/lib/classroom/lessons'
 import { app } from '@/content/site'
@@ -39,8 +39,10 @@ export async function submitQuiz(assignmentId: string, lessonNo: number, respons
   // 채점 순서(대표 2026-10-12): 글자 비교·핵심어(judgeQuiz) → 틀린 단답형만 AI 뜻 판정. 맞음·부분이면 O(대표 2026-11-05 — 부분은 원장 화면에
   // "확인 필요"로 남아 뒤집을 수 있다), 틀림이면 X. 답 조건(L-23)이 있으면 함께 보낸다. AI가 실패하면 X 그대로.
   const roles = followsQuizRoles(quizzes)   // 새 규칙(L-10, 2026-11-13)을 따르는 판만 자리의 역할을 AI 판정에 알린다
+  // 새 규칙의 2·3번은 학생이 자료에서 골라 쓰므로(L-24, 2026-11-14) 그 차시가 쓰는 자료를 판정에 함께 보낸다 — 정답 표기는 예시일 뿐이다
+  const judgeMaterials = roles ? quizMaterialsText(snapshot.materials, lesson.materials_used) : ''
   const verdicts = await Promise.all(quizzes.map((q, i) => (needsAiJudge(q, resp(i))
-    ? judgeShortWithAi({ subject: snapshot.cover.subject, level: snapshot.cover.level, grade: snapshot.cover.grade, q: q.q, answer: q.answer, explanation: q.explanation, keywords: q.keywords ?? null, condition: q.condition ?? null, quizNo: roles ? i + 1 : null, criteriaRef: roles ? q.criteria_ref ?? null : null, partialNote: roles ? q.partial_note ?? null : null, response: resp(i) })
+    ? judgeShortWithAi({ subject: snapshot.cover.subject, level: snapshot.cover.level, grade: snapshot.cover.grade, q: q.q, answer: q.answer, explanation: q.explanation, keywords: q.keywords ?? null, condition: q.condition ?? null, quizNo: roles ? i + 1 : null, criteriaRef: roles ? q.criteria_ref ?? null : null, partialNote: roles ? q.partial_note ?? null : null, languageForm: roles ? q.language_form ?? null : null, materials: roles && i >= 1 ? judgeMaterials : null, response: resp(i) })
     : Promise.resolve(null))))
   // match_kind(0017): 무엇으로 맞았는지 — literal(글자 비교) / keyword(핵심어) / ai(AI 판정) / null(틀림, AI 없음). 원장 표가 핵심어·AI 칸을 표시한다.
   const AI_COLUMNS = ['ai_verdict', 'ai_reason', 'match_kind']

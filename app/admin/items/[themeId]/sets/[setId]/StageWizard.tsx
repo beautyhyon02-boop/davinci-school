@@ -15,6 +15,8 @@ import { WIZARD_STAGES, useStageRunner, type WizardStage } from './useStageRunne
 import { Attachments } from './Attachments'
 import { FieldEditor } from './FieldEditor'
 import { StageOutput } from './StageOutput'
+import { LanguageFormPicker } from './LanguageFormPicker'
+import { languageFormCandidates } from '@/lib/studio/language-forms'
 
 const copy = app.studio.wizard
 
@@ -300,6 +302,7 @@ export function StageWizard({
   const stage2Accepted = effective[2]?.state === 'accepted'
   const outputs: Partial<Record<WizardStage, unknown>> = useMemo(() => stageOutputsFor(effective), [effective])
   const stage2Candidates = (effective[2]?.output as { key_question_candidates?: string[] } | undefined)?.key_question_candidates ?? candidates
+  const stage2Forms = useMemo(() => languageFormCandidates(effective[2]?.output), [effective])
 
   return (
     <div>
@@ -345,6 +348,17 @@ export function StageWizard({
           onSaved={(s, st) => { setStageStatus(s, st); void refresh() }}
         />
         {active === 4 && <Attachments setId={setId} materials={materials} lessons={lessons} />}
+        {/* 영어 세트(S-영-11): 2단계가 낸 목표 문법 후보에서 본사가 2~3개를 고른다 — 후보가 없으면(다른 과목·옛 세트) 아무것도 그리지 않는다 */}
+        {active === 2 && (
+          <LanguageFormPicker
+            key={stage2Forms.map((f) => f.name).join('|')}
+            setId={setId}
+            candidates={stage2Forms}
+            selected={(effective[2]?.output as { language_forms?: string[] } | undefined)?.language_forms ?? []}
+            hasLater={WIZARD_STAGES.some((s) => s > 2 && (effective[s]?.state ?? 'idle') !== 'idle')}
+            onSaved={() => void refresh()}
+          />
+        )}
         {active === 2 && stage2Accepted && (
           <KeyQuestionPicker setId={setId} candidates={stage2Candidates} current={keyQuestion} />
         )}

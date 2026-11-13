@@ -525,6 +525,20 @@ export const app = {
         current: (q: string) => `현재 핵심질문: ${q}`,
         saved: '핵심질문을 저장했습니다.',
       },
+      // 목표 문법 고르기(영어 세트, S-영-11 — 대표 2026-11-14 "AI가 후보 내고 본사가 고르는 방식"). 고르지 않아도 앞의 두 개로 진행된다(막지 않는다)
+      languageForms: {
+        heading: '목표 문법 고르기',
+        hint: (min: number, max: number) => `이 대주제에서 가르칠 문법을 ${min}~${max}개 고릅니다. 고르지 않으면 앞의 두 개로 진행됩니다.`,
+        formLabel: '꼴',
+        exampleLabel: '예문',
+        useLabel: '이 글에서 하는 일',
+        basisLabel: '고른 근거',
+        countHint: (min: number, max: number) => `${min}~${max}개를 골라 주세요.`,
+        laterNotice: '차시 설계부터 뒤 단계가 이미 만들어져 있습니다. 문법을 바꾸면 그 단계들을 다시 생성해야 반영됩니다.',
+        select: '이 문법으로 저장',
+        saved: '목표 문법을 저장했습니다.',
+        errors: { unknown: '후보에 없는 문법이 들어 있습니다. 화면을 새로 고친 뒤 다시 골라 주세요.', count: '문법은 2~3개를 골라 주세요.', saveFailed: '저장하지 못했습니다. 잠시 뒤 다시 시도해 주세요.' },
+      },
       // 문장 고치기(대표 2026-09-26): 단계 출력의 문장만 칸으로 고친다. labels 키 = lib/studio/editable-fields.ts 의 경로(ix = 배열 번호들, 0부터)
       fieldEditor: {
         heading: '문장 고치기',
@@ -592,6 +606,7 @@ export const app = {
           'lessons[].formative_check.quiz[].keywords[]': (ix: number[]) => `퀴즈 ${nth(ix[1])} 핵심어 ${nth(ix[2])}`,
           'lessons[].formative_check.quiz[].criteria_ref': (ix: number[]) => `퀴즈 ${nth(ix[1])} 이어지는 채점 요소`,
           'lessons[].formative_check.quiz[].partial_note': (ix: number[]) => `퀴즈 ${nth(ix[1])} 부분 답이 되는 경우`,
+          'lessons[].formative_check.quiz[].language_form': (ix: number[]) => `퀴즈 ${nth(ix[1])} 써야 하는 문법`,
           // 4단계
           'materials[].title': () => '제목',
           'materials[].body': () => '본문',
@@ -627,6 +642,9 @@ export const app = {
           'translations.materials[].title_ko': (_ix: number[], p: FieldParent) => `자료 ${String(p.material_id ?? '')} 제목 번역`,
           'translations.materials[].body_ko': (_ix: number[], p: FieldParent) => `자료 ${String(p.material_id ?? '')} 본문 번역`,
           'translations.exemplar_answers[].text_ko': (_ix: number[], p: FieldParent) => `${String(p.item_no ?? '')}번 문항 예시답안 ${String(p.label ?? '')} 번역`,
+          'language_forms[].form': (_ix: number[], p: FieldParent) => `목표 문법 ${String(p.name ?? '')} · 꼴`,
+          'language_forms[].meaning': (_ix: number[], p: FieldParent) => `목표 문법 ${String(p.name ?? '')} · 뜻`,
+          'language_forms[].common_errors[]': (ix: number[], p: FieldParent) => `목표 문법 ${String(p.name ?? '')} · 자주 틀리는 모습 ${nth(ix[1])}`,
           // 7단계
           'per_lesson[].topic_summary': () => '배운 것 (60자 이내)',
           'per_lesson[].preview': () => '다음 차시 예고 (50자 이내)',
@@ -647,6 +665,9 @@ export const app = {
         scopeNoteLabel: '세트 범위 메모',
         prerequisitesLabel: '선수 학습',
         criteriaDraftLabel: '평가 요소 초안',
+        // 영어 세트의 목표 언어 형식 후보(S-영-11, 대표 2026-11-14) — 고르기는 아래 languageForms 칸에서
+        languageFormsLabel: '목표 문법 후보',
+        languageForm: { form: '꼴', example: '예문', use: '이 글에서 하는 일', basis: '고른 근거' },
       },
       // 3·4·6·7단계 탭은 요약이 아니라 완성본 그대로(오너 규칙 2026-09-26) — 차시 카드·자료·지침서·안내장 문구는 app.packageView 를 함께 쓴다
       stage3: {
@@ -820,6 +841,8 @@ export const app = {
       noAssessment: '-',
       flow: { intro: '도입', main: '전개', wrapup: '정리' },
       materialsLabel: '사용 자료',
+      // 이 차시가 가르치거나 다시 쓰는 목표 문법(영어 세트, S-영-12) — 교사용
+      languageFocusLabel: '이 차시의 문법',
       quizHeading: '퀴즈',
       quiz: {
         typeLabel: { choice: '선택형', short: '단답형' },
@@ -831,6 +854,8 @@ export const app = {
         // 3번이 잇는 단원 평가 채점 요소(L-10)·부분 답이 되는 경우(L-25) — 정답·해설과 함께 교사용으로만
         criteriaRefLabel: '이어지는 채점 요소',
         partialLabel: '부분 답',
+        // 써야 하는 목표 문법(영어 2·3번, S-영-10) — 정답 보기(교사용)에만
+        languageFormLabel: '써야 하는 문법',
       },
       imagesAlt: (no: number, n: number) => `${no}차시 첨부 이미지 ${n}`,
       topicLabel: '주제',
@@ -878,6 +903,9 @@ export const app = {
       scheduleLabel: '차시 운영 메모',
       purposeLabel: '수업 의도',
       glossaryHeading: '용어 설명',
+      // 목표 문법 설명(영어 세트, S-영-13 — 대표 2026-11-14): 비전공 원장용. 학생 화면·문제지에는 나오지 않는다
+      languageFormsHeading: '목표 문법 (교사용)',
+      languageFormLabels: { form: '꼴', meaning: '뜻', commonErrors: '자주 틀리는 모습' },
       perLessonHeading: '차시별 유의점',
       lessonLabel: (no: number) => `${no}차시`,
       lessonWithTopic: (no: number, topic: string) => `${no}차시 · ${topic}`,

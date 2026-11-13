@@ -10,13 +10,16 @@ import { gradeLabel } from '@/lib/studio/level-map'
 
 export const QUIZ_JUDGE_RULES = [
   '당신은 중·고등학교 수업의 마무리 퀴즈(단답형) 채점 보조자다. 학생 답이 정답과 같은 뜻인지 판정한다.',
-  '기준은 문항·답 조건·정답 표기·해설·핵심어와, 주어졌다면 문항의 역할·이어지는 채점 요소·부분 답이 되는 경우뿐이다. 새 기준을 만들지 않는다.',
+  '기준은 문항·답 조건·정답 표기·해설·핵심어와, 주어졌다면 문항의 역할·이어지는 채점 요소·부분 답이 되는 경우·써야 하는 언어 형식·자료뿐이다. 새 기준을 만들지 않는다.',
   '표현·어순·조사·대소문자·관사·단위 표기가 달라도 뜻이 같으면 "맞음". 핵심어가 있으면 그 뜻이 담겼는지를 본다(글자 일치가 아니라 뜻).',
   '정답의 일부만 맞거나(여러 요소 중 하나만), 뜻은 비슷하지만 문항이 묻는 핵심(이유·목적·행동)이 빠졌으면 "부분".',
   '답 조건(답의 꼴·담을 것·가짓수)이 있으면 그 조건이 요구한 내용이 담겼는지도 본다 — 꼴(문장 끝맺음·어순)만 다르고 뜻이 같으면 "맞음", 조건이 요구한 내용(비교 대상·까닭 등)이 빠졌으면 "부분".',
   '다른 뜻이거나 문항과 무관하면 "틀림". 비어 있거나 "모름" 같은 답도 "틀림".',
   '이유는 원장이 한눈에 보게 한 줄(60자 안)로, 학생 답의 어느 부분을 보고 판정했는지 적는다. 학생을 평가하는 말은 쓰지 않는다.',
   '"문항의 역할"·"이어지는 채점 요소"·"부분 답이 되는 경우"가 주어지면 함께 본다 — 역할이 요구한 수행(배운 것을 과목의 말로 해 보기, 채점 요소 한 조각)을 했고 내용이 정답과 같은 뜻이면 "맞음", 핵심 수행은 했으나 "부분 답이 되는 경우"의 모습이면 "부분". 값·결론이 정답과 다르면 그 모습이어도 "틀림".',
+  // 대표 2026-11-14: 영어 2·3번은 배운 목표 언어 형식으로 학생이 스스로 고른 내용을 쓴다 — 정답 표기는 예시일 뿐이라 형식과 자료의 사실로 본다
+  '"써야 하는 언어 형식"이 주어졌는데 학생 답이 그 형식을 쓰지 않았으면 "틀림", 그 형식을 썼으나 꼴에 잘못이 있으면 "부분"(철자 하나·관사·대소문자 같은 작은 잘못은 "맞음").',
+  '"자료"가 주어지면 정답 표기는 예시다 — 학생이 자료에서 다른 항목·수치를 골라 썼어도 그 내용이 자료와 맞고 답 조건을 지켰으면 "맞음", 자료의 사실과 다르면(없는 항목, 틀린 수치, 뒤바뀐 크기) "틀림".',
 ].join('\n')
 
 /** 문항 자리의 역할(L-10, 대표 2026-11-13) — 새 규칙을 따르는 판에서만 프롬프트에 넣는다. */
@@ -48,7 +51,28 @@ export type QuizJudgeInput = {
   criteriaRef?: string | null
   /** 부분 답이 되는 경우(L-25) — 있으면 맞음과 부분을 가르는 기준. */
   partialNote?: string | null
+  /** 써야 하는 목표 언어 형식의 이름(영어 2·3번, S-영-10) — 있으면 그 형식을 썼는지 본다. */
+  languageForm?: string | null
+  /** 문항이 가리키는 자료의 글(quizMaterialsText) — 학생이 자료에서 골라 쓰는 문항(새 규칙의 2·3번)에서 사실 여부를 가리는 근거. */
+  materials?: string | null
   response: string
+}
+
+type JudgeMaterial = { id: string; title?: string | null; body?: string | null; table?: { columns: string[]; rows: (string | number)[][] } | null }
+/** AI 판정에 보내는 자료 글의 상한 — 표 25행·본문 몇 문단이면 넉넉하다(넘으면 자른다). */
+export const JUDGE_MATERIALS_MAX = 4000
+/**
+ * 문항이 쓰는 자료(차시 materials_used)를 판정용 글로: `<자료 F> 제목`, 본문, 표는 `열 | 열` 줄로. 그 차시가 쓰는 자료가 없으면 ''.
+ * 학생이 자료에서 스스로 골라 쓰는 문항은 정답이 여러 가지라 자료를 봐야 사실 여부를 가릴 수 있다(대표 2026-11-14).
+ */
+export function quizMaterialsText(materials: JudgeMaterial[] | null | undefined, ids: string[] | null | undefined): string {
+  const used = (materials ?? []).filter((m) => (ids ?? []).includes(m.id))
+  const text = used.map((m) => [
+    `<자료 ${m.id}>${m.title ? ` ${m.title}` : ''}`,
+    m.body?.trim() ?? '',
+    m.table ? [m.table.columns.join(' | '), ...m.table.rows.map((r) => r.join(' | '))].join('\n') : '',
+  ].filter(Boolean).join('\n')).join('\n\n')
+  return text.length > JUDGE_MATERIALS_MAX ? `${text.slice(0, JUDGE_MATERIALS_MAX)}…` : text
 }
 
 /** 프롬프트: 규칙(캐시) + 이번 문항. 정답 표기(" / ")는 줄로 나눠 보여 준다. */
@@ -60,11 +84,13 @@ export function buildQuizJudgePrompt(i: QuizJudgeInput) {
     `문항: ${i.q}`,
     i.quizNo && QUIZ_ROLE_LINE[i.quizNo] ? `문항의 역할: ${QUIZ_ROLE_LINE[i.quizNo]}` : '',
     i.condition?.trim() ? `답 조건: ${i.condition.trim()}` : '',
+    i.languageForm?.trim() ? `써야 하는 언어 형식: ${i.languageForm.trim()}` : '',
     i.criteriaRef?.trim() ? `이어지는 채점 요소: ${i.criteriaRef.trim()}` : '',
     `정답 표기(어느 것이든 정답):\n${keys.map((k) => `- ${k}`).join('\n')}`,
     `해설: ${i.explanation}`,
     kw.length ? `핵심어(뜻이 담겨야 함): ${kw.join(', ')}` : '',
     i.partialNote?.trim() ? `부분 답이 되는 경우: ${i.partialNote.trim()}` : '',
+    i.materials?.trim() ? `자료:\n${i.materials.trim()}` : '',
     `학생 답: ${i.response}`,
   ].filter(Boolean).join('\n\n')
   return { system: QUIZ_JUDGE_RULES, user, fixtureKey: 'quiz-judge' }

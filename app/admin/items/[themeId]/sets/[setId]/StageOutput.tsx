@@ -19,7 +19,7 @@ const copy = app.studio.wizard
 
 // 2단계는 v2 출력(learning_goals 객체)과 v2 이전 출력(문자열 목표)을 둘 다 받는다. 재구조화 해설·범위 메모·선수 학습·평가 요소 초안(L-14~L-17, 2026-10-01)은 있을 때만.
 type Stage2Output = {
-  reconstruction: string; learning_goals: (string | { text: string; axis: string })[]; key_question_candidates: string[]
+  reconstruction: string; learning_goals: (string | { text: string; axis: string })[]; key_question_candidates: string[]; language_form_candidates?: { name: string; form: string; example: string; use: string; basis?: string }[]
   standards?: { code: string; reason_note?: string; learning_elements?: string[] }[]
   scope_note?: string; prerequisites?: string[]; criteria_draft?: string[]
 }
@@ -94,6 +94,23 @@ export function StageOutput({ stage, outputs, sharedMaterials = [] }: {
             {o.key_question_candidates?.map((q, i) => <li key={i}>{q}</li>)}
           </ul>
         </div>
+        {/* 영어 세트의 목표 언어 형식 후보(S-영-11) — 고르기는 아래 「목표 문법 고르기」 칸에서 */}
+        {arr(o.language_form_candidates).length > 0 && (
+          <div data-language-forms>
+            <Heading>{copy.stage2.languageFormsLabel}</Heading>
+            <ul className="mt-1 space-y-2 text-sm">
+              {arr(o.language_form_candidates).map((f, i) => (
+                <li key={i}>
+                  <p className="font-semibold">{f.name}</p>
+                  <p className="mt-0.5 pl-3 text-ink-700">{copy.stage2.languageForm.form}: {f.form}</p>
+                  <p className="mt-0.5 pl-3 text-ink-700">{copy.stage2.languageForm.example}: {f.example}</p>
+                  <p className="mt-0.5 pl-3 text-ink-500">{copy.stage2.languageForm.use}: {f.use}</p>
+                  {f.basis && <p className="mt-0.5 pl-3 text-xs text-ink-500">{copy.stage2.languageForm.basis}: {f.basis}</p>}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
     )
   }

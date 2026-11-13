@@ -10,7 +10,7 @@ type Supabase = Awaited<ReturnType<typeof createClient>>
 
 // stage별 item_sets 컬럼 매핑: 0/1은 stage_status에만 저장, 2~7은 전용 컬럼을 둔다(마이그레이션 0011).
 // 2단계: reconstruction_detail(재구조화 표 = 출력 standards) + reconstruction + learning_goals 컬럼,
-//        level_anchor·key_question_candidates 는 stage_status.stage2.output 에서 읽는다.
+//        level_anchor·key_question_candidates(영어 세트는 language_form_candidates·language_forms 도) 는 stage_status.stage2.output 에서 읽는다.
 // 3단계: unit_plan + lessons. 7단계: notice_plan.
 // app/admin/items/[themeId]/sets/[setId]/actions.ts 의 stageColumns 와 같아야 한다.
 
@@ -73,7 +73,7 @@ export function createSupabaseRepo(supabase: Supabase): Repo {
       // 2·3단계는 v2 출력 전체(재구조화 표·level_anchor, unit_plan)를 되살린다 — 빠지면 다음 단계 프롬프트와 검토가
       // 그 근거를 못 보고, placementIssues(5단계 lesson_no ↔ 평가 계획)처럼 unit_plan 이 있어야 도는 [TS] 검사가 조용히 건너뛰어진다.
       if (itemSet.reconstruction != null) {
-        const st2 = stageStatus.stage2?.output as { key_question_candidates?: string[]; level_anchor?: unknown[]; scope_note?: string; prerequisites?: string[]; criteria_draft?: string[] } | undefined
+        const st2 = stageStatus.stage2?.output as { key_question_candidates?: string[]; level_anchor?: unknown[]; scope_note?: string; prerequisites?: string[]; criteria_draft?: string[]; language_form_candidates?: unknown[]; language_forms?: string[] } | undefined
         outputs[2] = {
           standards: itemSet.reconstruction_detail ?? [], reconstruction: itemSet.reconstruction, learning_goals: itemSet.learning_goals ?? [],
           level_anchor: st2?.level_anchor ?? [], key_question_candidates: st2?.key_question_candidates ?? [],
@@ -81,6 +81,9 @@ export function createSupabaseRepo(supabase: Supabase): Repo {
           ...(st2?.scope_note ? { scope_note: st2.scope_note } : {}),
           ...(st2?.prerequisites ? { prerequisites: st2.prerequisites } : {}),
           ...(st2?.criteria_draft ? { criteria_draft: st2.criteria_draft } : {}),
+          // 목표 언어 형식(영어 세트, S-영-11 — 2026-11-14): 후보와 본사가 고른 이름. 3·5·6단계 프롬프트와 [TS] 메모가 고른 것을 읽는다(language-forms.ts)
+          ...(st2?.language_form_candidates ? { language_form_candidates: st2.language_form_candidates } : {}),
+          ...(st2?.language_forms ? { language_forms: st2.language_forms } : {}),
         }
       }
       if (itemSet.lessons != null) outputs[3] = { unit_plan: itemSet.unit_plan ?? null, lessons: itemSet.lessons }

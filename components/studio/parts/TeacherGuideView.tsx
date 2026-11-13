@@ -21,6 +21,7 @@ export type TeacherGuideLike = {
     retry_guidance?: string
   } | null
   per_lesson?: { no: number; notes?: string[] }[]
+  language_forms?: { name: string; form?: string; meaning?: string; common_errors?: string[] }[] | null
   translations?: {
     materials?: { material_id: string; title_ko?: string; body_ko?: string | null; table_ko?: { columns?: string[]; rows?: (string | number)[][] } | null }[]
     exemplar_answers?: { item_no: number; label?: string; text_ko?: string }[]
@@ -97,6 +98,7 @@ const c = copy.teacherGuide
 export function TeacherGuideView({ guide, lessons = [], materials = [] }: { guide: TeacherGuideLike; lessons?: { no: number; topic?: string }[]; materials?: { id: string; title?: string }[] }) {
   const general = guide.general
   const glossary = arr(guide.glossary)
+  const languageForms = arr(guide.language_forms)
   const merge = arr(guide.merge_guide)
   const g = guide.grading_guide
   const errors = arr(g?.common_errors)
@@ -120,6 +122,27 @@ export function TeacherGuideView({ guide, lessons = [], materials = [] }: { guid
               <li key={i}>
                 <p className="font-semibold">{x.term}</p>
                 <p className="mt-0.5 pl-3 text-ink-700">{x.explanation}</p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      {/* 목표 문법 설명(영어 세트, S-영-13) — 비전공 원장용: 꼴·뜻·학생이 자주 틀리는 모습 */}
+      {languageForms.length > 0 && (
+        <section data-guide-language-forms>
+          <SectionTitle>{c.languageFormsHeading}</SectionTitle>
+          <ul className="mt-2 space-y-3">
+            {languageForms.map((f, k) => (
+              <li key={k}>
+                <p className="font-semibold">{f.name}</p>
+                {f.form && <p className="mt-0.5 pl-3 text-ink-700">{c.languageFormLabels.form}: {f.form}</p>}
+                {f.meaning && <p className="mt-0.5 pl-3 text-ink-700">{c.languageFormLabels.meaning}: {f.meaning}</p>}
+                {arr(f.common_errors).length > 0 && (
+                  <div className="mt-0.5 pl-3">
+                    <p className="text-ink-500">{c.languageFormLabels.commonErrors}</p>
+                    <ul className="list-disc pl-5 text-ink-700">{arr(f.common_errors).map((e, m) => <li key={m}>{e}</li>)}</ul>
+                  </div>
+                )}
               </li>
             ))}
           </ul>

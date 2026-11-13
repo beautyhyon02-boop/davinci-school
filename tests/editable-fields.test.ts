@@ -15,6 +15,8 @@ const issues = (stage: (typeof WIZARD_STAGES)[number], o: unknown) => STAGE_SCHE
 const tweak = (v: string) => (v.length >= 4 ? `고침${v.slice(2)}` : v === '고침' ? '수정' : '고침')
 /** 영어 세트에만 있는 칸(S-영-08 번역) — 한국어 시연 fixture 에는 없으므로 아래 영어 합성 예로 따로 시험한다. */
 const ENGLISH_ONLY = (pattern: string) => pattern.startsWith('translations.')
+/** 영어 세트의 목표 문법 칸(S-영-10·13, 2026-11-14) — 한국어 시연 fixture 에는 없다(tests/language-forms.test.ts 가 따로 본다). */
+const LANGUAGE_FORM_ONLY = (pattern: string) => pattern.startsWith('language_forms[]') || pattern.endsWith('.language_form')
 /** 고르기 칸(역량 꼬리표)은 글을 고치지 않고 다른 값을 고른다. */
 const tweakField = (f: { value: string; options?: readonly string[] }) => (f.options ? f.options.find((o) => o !== f.value)! : tweak(f.value))
 
@@ -25,7 +27,7 @@ for (const set of SETS) describe(`editable fields on the ${set.subject} fixtures
     it(`stage ${stage}: every pattern resolves to at least one field and each field reads its own value`, () => {
       const fields = expandFields(stage, output)
       const patterns = new Set(fields.map((f) => f.pattern))
-      expect(EDITABLE_FIELDS[stage].map((s) => s.pattern).filter((p) => !patterns.has(p) && !ENGLISH_ONLY(p))).toEqual([])
+      expect(EDITABLE_FIELDS[stage].map((s) => s.pattern).filter((p) => !patterns.has(p) && !ENGLISH_ONLY(p) && !LANGUAGE_FORM_ONLY(p))).toEqual([])
       for (const f of fields) {
         const v = f.path.reduce<unknown>((o, k) => (o as Record<string | number, unknown>)[k], output)
         // 고르기 칸·선택 칸(답 조건)은 키가 없어도 빈 칸('')으로 나온다

@@ -14,7 +14,7 @@ import { Answers, Aside, KV, LabeledLines, Lines, SectionTitle, SubLabel, arr } 
 // 퀴즈 문제 → 정답 → 해설, 활동지는 층별 목록. 틀은 parts/common.tsx(SectionTitle·SubLabel·Lines·LabeledLines·KV·Aside).
 // 저장된 출력(옛 판·손으로 고친 판)을 그대로 받으므로 모든 필드를 느슨하게 읽는다.
 
-export type QuizLike = { q: string; condition?: string | null; criteria_ref?: string | null; partial_note?: string | null; type?: string; choices?: string[] | null; answer?: string; explanation?: string; level_ref?: string; competency?: string }
+export type QuizLike = { q: string; condition?: string | null; criteria_ref?: string | null; partial_note?: string | null; language_form?: string | null; type?: string; choices?: string[] | null; answer?: string; explanation?: string; level_ref?: string; competency?: string }
 export type LessonLike = {
   no: number
   kind?: string
@@ -22,6 +22,7 @@ export type LessonLike = {
   topic?: string
   key_question?: string
   goal?: string
+  language_focus?: string[] | null
   time_budget?: { intro_min: number; main_min: number; wrapup_min: number } | null
   flow?: { intro?: string[]; main?: { step_label: string; minutes: number; activities?: string[] }[]; wrapup?: string[] } | null
   teacher_script?: { questions?: { prompt: string; expected_answer?: string; if_stuck?: string }[] } | null
@@ -90,6 +91,7 @@ function QuizAnswers({ quiz }: { quiz: QuizLike[] }) {
             {/* 3번이 잇는 단원 평가 채점 요소(L-10)·부분 답이 되는 경우(L-25) — 정답 보기(교사용)에만 */}
             {q.criteria_ref && <p data-quiz-criteria-ref className="mt-0.5 text-sm text-ink-500">{c.quiz.criteriaRefLabel}: {q.criteria_ref}</p>}
             {q.partial_note && <p data-quiz-partial className="mt-0.5 text-sm text-ink-500">{c.quiz.partialLabel}: {q.partial_note}</p>}
+            {q.language_form && <p data-quiz-language-form className="mt-0.5 text-sm text-ink-500">{c.quiz.languageFormLabel}: {q.language_form}</p>}
           </li>
         ))}
       </ol>
@@ -237,6 +239,8 @@ export function LessonCard({ l, showAnswers, open, guideNotes = [] }: { l: Lesso
           <KV label={c.columns.goal}>{l.goal}</KV>
         </div>
       )}
+      {/* 이 차시가 가르치거나 다시 쓰는 목표 문법(영어 세트, S-영-12) — 원장·제작소 화면(교사용) */}
+      {arr(l.language_focus).length > 0 && <p data-language-focus className="mt-2 text-ink-700">{c.languageFocusLabel}: {arr(l.language_focus).join(', ')}</p>}
 
       <div className="mt-3 grid gap-3 sm:grid-cols-3">
         <FlowBlock label={`${c.flow.intro}${minutesOf(t?.intro_min)}`}>

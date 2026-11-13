@@ -12,6 +12,7 @@ import { sortScale, zeroStep } from './scale'
 import { COMPETENCIES } from './competency'
 import { nextSetMaterialLetter } from './shared-selection'
 import { recountNotes } from './recount'
+import { selectedLanguageForms, languageFormCandidates } from './language-forms'
 
 export type Issue = { kind: ReviewKind; detail: string }
 export type CheckCtx = {
@@ -112,6 +113,17 @@ export function quizNeedsCondition(q: { q: string; answer: string }): boolean {
  */
 export const QUIZ_ROLE_ORDER_NOTE = '퀴즈 수준이 자리 순서(1번 D~E 핵심 지식 · 2번 C 해 보기 · 3번 B 디딤돌)와 다름(L-10)'
 export const QUIZ_CRITERIA_REF_MISSING = '3번(단원 평가 디딤돌)에 이어지는 채점 요소(criteria_ref)가 없음(L-10)'
+export const QUIZ2_CRITERIA_REF_MISSING = '2번(과목답게 해 보기)에 이어지는 채점 요소(criteria_ref)가 없음(L-10)'
+// 영어 세트의 목표 언어 형식(S-영-10~14, 대표 2026-11-14) — 모두 참고 메모(kind other, 막지 않는다). 후보가 없는 옛 세트·다른 과목에는 나오지 않는다.
+export const LANGUAGE_CANDIDATES_MISSING = '목표 언어 형식 후보(language_form_candidates)가 없음 — 2단계를 다시 생성하면 채워집니다(S-영-11)'
+export const languageFormNotTaught = (name: string) => `목표 언어 형식 "${name}"을(를) 가르치는 차시가 없음 — 처음 가르치는 차시의 language_focus에 적는다(S-영-12)`
+export const languageFocusUnknown = (lessonNo: number, name: string) => `${lessonNo}차시 language_focus "${name}"이(가) 고른 목표 언어 형식에 없음(S-영-11)`
+export const QUIZ_LANGUAGE_FORM_MISSING = '써야 할 언어 형식(language_form)이 없음 — 배운 목표 언어 형식의 이름을 적는다(S-영-10)'
+export const quizLanguageFormUnknown = (name: string) => `language_form "${name}"이(가) 고른 목표 언어 형식에 없음(S-영-10)`
+export const RUBRIC_LANGUAGE_FORM_MISSING = '채점 기준표가 목표 언어 형식을 말하지 않음 — 언어 사용 요소의 척도 서술에 목표 형식의 이름을 넣는다(S-영-14)'
+export const guideLanguageFormMissing = (name: string) => `목표 언어 형식 "${name}"의 설명(language_forms)이 지침서에 없음(S-영-13)`
+/** 이 세트가 쓰는 목표 언어 형식의 이름(영어 세트이고 2단계 확정본에 후보가 있을 때만 — 본사가 고른 것, 고르지 않았으면 앞의 두 개). */
+const languageFormNames = (ctx: CheckCtx): string[] => (ctx.subject === '영어' ? selectedLanguageForms(ctx.prior.stage2).map((f) => f.name) : [])
 export const quizCriteriaRefUnknown = (name: string) => `criteria_ref "${name}"이(가) 이 차시의 criteria_focus에 없음(L-10)`
 export const QUIZ_PARTIAL_NOTE_MISSING = '부분 답이 되는 경우(partial_note)가 없음 — 핵심 수행은 했으나 근거·조건 하나가 빠진 답의 모습을 한 줄로 적는다(L-25)'
 export const QUIZ_NEW_SITUATION = '해설이 수업에서 다루지 않은 새 상황을 말함 — 퀴즈는 배운 것만 묻는다(L-24)'
@@ -572,6 +584,7 @@ function knownMaterials(ctx: CheckCtx): KnownMaterial[] {
 function lessonIssues(o: LessonDesignT, ctx: CheckCtx): Issue[] {
   const issues: Issue[] = []
   const materials = knownMaterials(ctx)
+  const forms = languageFormNames(ctx)
   const covered = new Set(o.lessons.flatMap((l) => l.standards))
   for (const s of ctx.standards) if (!covered.has(s.code)) issues.push({ kind: 'coverage', detail: `${s.code}가 어느 차시에도 배정되지 않음` })
   // L-09(대표 2026-09-26 보완): 교수 차시 3~5개 + 마지막 교수 차시 뒤 단원 평가 차시 1개(서술형 → 논술형 함께). zod 도 보지만
@@ -628,6 +641,16 @@ function lessonIssues(o: LessonDesignT, ctx: CheckCtx): Issue[] {
         const ref = quiz[2].criteria_ref?.trim()
         if (!ref) issues.push({ kind: 'other', detail: `${l.no}차시 퀴즈 3: ${QUIZ_CRITERIA_REF_MISSING}` })
         else if (focus.length > 0 && !focus.includes(ref)) issues.push({ kind: 'other', detail: `${l.no}차시 퀴즈 3: ${quizCriteriaRefUnknown(ref)}` })
+        // 대표 2026-11-14 "각 수업 차시에서 길러 주는 평가 요소에 맞는 퀴즈": 2번도 그 차시 채점 요소의 이름을 단다(L-10)
+        const ref2 = quiz[1].criteria_ref?.trim()
+        if (!ref2) issues.push({ kind: 'other', detail: `${l.no}차시 퀴즈 2: ${QUIZ2_CRITERIA_REF_MISSING}` })
+        else if (focus.length > 0 && !focus.includes(ref2)) issues.push({ kind: 'other', detail: `${l.no}차시 퀴즈 2: ${quizCriteriaRefUnknown(ref2)}` })
+        // 영어 세트(S-영-10): 2·3번은 배운 목표 언어 형식을 쓰게 한다 — 그 이름이 language_form 에 있어야 AI 뜻 판정이 그 형식을 본다
+        if (forms.length > 0) for (const i of [1, 2]) {
+          const lf = (quiz[i] as { language_form?: string }).language_form?.trim()
+          if (!lf) issues.push({ kind: 'other', detail: `${l.no}차시 퀴즈 ${i + 1}: ${QUIZ_LANGUAGE_FORM_MISSING}` })
+          else if (!forms.includes(lf)) issues.push({ kind: 'other', detail: `${l.no}차시 퀴즈 ${i + 1}: ${quizLanguageFormUnknown(lf)}` })
+        }
         for (const i of [1, 2]) if (!quiz[i].partial_note?.trim()) issues.push({ kind: 'other', detail: `${l.no}차시 퀴즈 ${i + 1}: ${QUIZ_PARTIAL_NOTE_MISSING}` })
         if (ctx.subject === '수학') for (const i of [1, 2]) if (answerLacksNumber(quiz[i].answer)) issues.push({ kind: 'other', detail: `${l.no}차시 퀴즈 ${i + 1}: ${QUIZ_MATH_NUMBER}` })
       }
@@ -641,6 +664,13 @@ function lessonIssues(o: LessonDesignT, ctx: CheckCtx): Issue[] {
   }
   // 5단계가 이미 확정돼 있으면(예: 3단계를 나중에 다시 검토·편집) 그 문항들 기준으로도 무관한 공유 자료 인용을 짚는다 —
   // 보통은 3단계 시점에 5단계가 없어 건너뛴다(sharedMaterialCitationIssues 가 items 없으면 스스로 건너뛴다).
+  // 영어 세트(S-영-12): 고른 목표 언어 형식마다 가르치는 차시가 있어야 하고, 차시가 적은 형식은 고른 것이어야 한다
+  if (forms.length > 0) {
+    const teaching = o.lessons.filter((l) => !isAssessmentSession(l)) as (typeof o.lessons[number] & { language_focus?: string[] })[]
+    const taught = new Set(teaching.flatMap((l) => l.language_focus ?? []))
+    for (const name of forms) if (!taught.has(name)) issues.push({ kind: 'other', detail: languageFormNotTaught(name) })
+    for (const l of teaching) for (const name of l.language_focus ?? []) if (!forms.includes(name)) issues.push({ kind: 'other', detail: languageFocusUnknown(l.no, name) })
+  }
   const items5 = (ctx.prior.stage5 as { items?: { materials_used?: string[] | null }[] } | undefined)?.items
   issues.push(...sharedMaterialCitationIssues(o.lessons, items5, ctx.sharedMaterialIds))
   issues.push(...englishLessonCitationIssues(o.lessons, ctx))
@@ -1126,14 +1156,31 @@ function noticePlanIssues(o: NoticePlanT, english = false): Issue[] {
 }
 
 /** 검토 AI를 부르기 전에 도는 순수 검사. 빈 배열이면 통과. zod 가 이미 거른 것은 다시 검사하지 않는다. */
+/** 2단계(영어 세트, S-영-11): 목표 언어 형식 후보가 없으면 참고 메모 — 2단계를 다시 생성하면 채워진다. */
+function languageCandidateIssues(o: unknown, ctx: CheckCtx): Issue[] {
+  return ctx.subject === '영어' && languageFormCandidates(o).length === 0 ? [{ kind: 'other', detail: LANGUAGE_CANDIDATES_MISSING }] : []
+}
+/** 5단계(영어 세트, S-영-14): 두 문항의 채점 기준표 어디에도 고른 목표 언어 형식의 이름이 없으면 참고 메모. */
+function rubricLanguageFormIssues(o: AssessmentT, ctx: CheckCtx): Issue[] {
+  const forms = languageFormNames(ctx)
+  if (forms.length === 0) return []
+  const rubricText = JSON.stringify((o.items ?? []).map((it) => it.rubric))
+  return forms.some((name) => rubricText.includes(name)) ? [] : [{ kind: 'other', detail: RUBRIC_LANGUAGE_FORM_MISSING }]
+}
+/** 6단계(영어 세트, S-영-13): 고른 목표 언어 형식마다 지침서에 설명이 있어야 한다 — 없는 형식마다 참고 메모. */
+function guideLanguageFormIssues(o: GuideT, ctx: CheckCtx): Issue[] {
+  const explained = new Set(((o as { language_forms?: { name: string }[] | null }).language_forms ?? []).map((f) => f.name))
+  return languageFormNames(ctx).filter((name) => !explained.has(name)).map((name) => ({ kind: 'other' as const, detail: guideLanguageFormMissing(name) }))
+}
+
 export function staticIssues(stage: Stage, output: unknown, ctx: CheckCtx): Issue[] {
   switch (stage) {
     case 1: return gradeUnitIssues(((output as { recommended?: { code: string }[] }).recommended ?? []).map((r) => r.code), ctx)
-    case 2: return reconstructionIssues(output as ReconstructionT, ctx)
+    case 2: return [...reconstructionIssues(output as ReconstructionT, ctx), ...languageCandidateIssues(output, ctx)]
     case 3: return lessonIssues(output as LessonDesignT, ctx)
     case 4: return [...materialIssues(output as MaterialsT), ...materialUseIssues((output as MaterialsT).materials, ctx, null), ...englishVersionIssues(output as MaterialsT, ctx), ...untickedSharedMaterialIssues(output as MaterialsT, ctx)]
-    case 5: return assessmentIssues(output as AssessmentT, ctx)
-    case 6: return guideIssues(output as GuideT, ctx)
+    case 5: return [...assessmentIssues(output as AssessmentT, ctx), ...rubricLanguageFormIssues(output as AssessmentT, ctx)]
+    case 6: return [...guideIssues(output as GuideT, ctx), ...guideLanguageFormIssues(output as GuideT, ctx)]
     case 7: return noticePlanIssues(output as NoticePlanT, ctx.subject === '영어')
     default: return []
   }

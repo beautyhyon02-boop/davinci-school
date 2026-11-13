@@ -49,6 +49,17 @@ export const ReconstructedStandard = z.object({
 })
 export const LearningGoal = z.object({ text: z.string().min(5), axis: z.enum(AXES) })
 export const LevelAnchor = z.object({ code: z.string(), level: z.enum(['B', 'C']), statement: z.string() })
+/**
+ * 목표 언어 형식 후보(영어 세트, S-영-11 — 대표 2026-11-14): 이름(한국어)·꼴·대주제 맥락의 영어 예문 하나·이 대주제의 글에서 하는 일·고른 근거.
+ * 2단계가 3~4개를 권하는 순서대로 내고 본사가 2~3개를 고른다(lib/studio/language-forms.ts).
+ */
+export const LanguageFormCandidate = z.object({
+  name: z.string().min(1).max(30),
+  form: z.string().min(2).max(120),
+  example: z.string().min(3).max(200),
+  use: z.string().min(2).max(200),
+  basis: z.string().max(200).optional(),
+})
 export const Reconstruction = z.object({
   standards: z.array(ReconstructedStandard).min(2).max(6),
   reconstruction: z.string().min(10),
@@ -62,6 +73,10 @@ export const Reconstruction = z.object({
   prerequisites: z.array(z.string().min(1)).max(3).optional(),
   // L-17(G-4): 단원 평가 요소 초안 "~하기" 3~4개(과정 순) — 3단계 lesson_map.criteria_focus 와 5단계 채점 요소 이름이 이 이름을 쓴다.
   criteria_draft: z.array(z.string().min(2)).max(4).optional(),
+  // 영어 세트만(S-영-11): 목표 언어 형식 후보와 본사가 고른 이름 — 선택(옛 출력·다른 과목에는 없다). 저장은 stage_status.stage2.output 에만(repo.ts).
+  // 고르지 않으면 앞의 두 개를 쓴다(selectedLanguageForms) — 막지 않는다.
+  language_form_candidates: z.array(LanguageFormCandidate).min(2).max(4).optional(),
+  language_forms: z.array(z.string().min(1)).max(3).optional(),
 }).superRefine((r, ctx) => {
   for (const axis of AXES) if (!r.learning_goals.some((g) => g.axis === axis)) issue(ctx, `학습 목표에 ${axis} 축이 없음`)
   // 유지여도 reconstructed_text는 틀 문장(TASKS[2])이어야 하므로 원문과 같으라는 요구는 두지 않는다 —
@@ -102,6 +117,8 @@ export const QuizItem = z.object({
   criteria_ref: z.string().min(1).max(60).optional(),
   // 부분 답이 되는 경우(L-25): 핵심 수행은 했으나 근거·조건 하나가 빠진 답의 모습 한 줄 — AI 뜻 판정·원장 확인의 기준. 교사용(학생 화면에는 없다). 선택.
   partial_note: z.string().min(2).max(200).optional(),
+  // 써야 할 목표 언어 형식의 이름(영어 2·3번, S-영-10 — 대표 2026-11-14): 2단계에서 고른 형식 가운데 하나. AI 뜻 판정이 이 형식을 썼는지 본다. 교사용. 선택.
+  language_form: z.string().min(1).max(30).optional(),
 })
 /** 새 세트 퀴즈 규칙(L-09) 위반 사유 — zod(LessonDesign)와 [TS](checks.ts)가 같은 문장을 쓴다. */
 export const QUIZ_SHORT_ONLY = '퀴즈는 단답형만(선택지 금지)'
@@ -164,6 +181,8 @@ export const Lesson = z.object({
   feedback_plan: FeedbackPlan.optional(),
   // L-21(G-8) 자기 점검표(마지막 교수 차시): 단원 평가 채점 요소의 이름만 담은 "나는 ~했다" 문장 3~5개 — 학생에게 보인다(척도 서술·답은 담지 않는다).
   self_check: z.array(z.string().min(2)).max(5).optional(),
+  // 이 차시가 가르치거나 다시 쓰는 목표 언어 형식의 이름(영어 세트, S-영-12 — 대표 2026-11-14). 선택(옛 판·다른 과목에는 없다). 교사용.
+  language_focus: z.array(z.string().min(1)).max(3).optional(),
 }).superRefine((l, ctx) => {
   const q = l.formative_check.quiz.length
   const t = l.time_budget
@@ -408,6 +427,8 @@ export const TeacherGuide = z.object({
   per_lesson: z.array(z.object({ no: z.number().int(), notes: z.array(z.string()).max(3) })).min(4),
   // 선택(S-영-08): 2026-09-29 이전에 저장·게시된 지침서에는 없다 — 없어도 유효
   translations: GuideTranslations.nullable().optional(),
+  // 목표 언어 형식 설명(영어 세트, S-영-13 — 대표 2026-11-14): 꼴·뜻·학생이 자주 틀리는 모습. 비전공 원장용(학생 비공개). 선택.
+  language_forms: z.array(z.object({ name: z.string().min(1).max(30), form: z.string().min(1), meaning: z.string().min(1), common_errors: z.array(z.string().min(1)).min(1).max(3) })).nullable().optional(),
 }).superRefine((g, ctx) => {
   for (const m of g.merge_guide) { const t = m.time_budget_120; if (t.intro_min + t.main_min + t.wrapup_min !== 120) issue(ctx, '병합 차시 시간 합이 120분이 아님') }
 })
