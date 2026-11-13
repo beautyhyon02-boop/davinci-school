@@ -13,6 +13,12 @@ describe('site content', () => {
     expect(site.nav.filter(n => n.external).map(n => n.href)).toEqual(['https://www.davinci-lab.net', 'https://www.davinci-lab.co.kr'])
     expect(site.statusLabel.external).toBeTruthy()
   })
+  it('첫 화면은 가맹원 규모를 드러내지 않고 수업을 소개한다(대표 2026-11-13) — 소개문 + 수업 흐름 세 칸', () => {
+    expect(site.flow.map(f => f.title)).toEqual(['읽고 묻는다', '탐구하고 쓴다', '글로 증명한다'])
+    for (const f of site.flow) expect(f.body).toBeTruthy()
+    for (const t of [site.intro, ...site.flow.map(f => f.title + f.body)]) expect(t).not.toMatch(/가맹원|40권|40\+|5년/)
+    expect('stats' in site).toBe(false)
+  })
   it('exposes UI copy fields used by components so the homepage never hard-codes strings', () => {
     expect(site.header.login).toBeTruthy()
     expect(site.header.franchise).toBeTruthy()

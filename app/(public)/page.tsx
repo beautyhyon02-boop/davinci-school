@@ -10,11 +10,20 @@ export default function HomePage() {
       <section className="bg-gradient-to-b from-mint-50 to-white">
         <div className="mx-auto max-w-6xl px-4 py-24 text-center">
           <h1 className="text-4xl font-extrabold tracking-tight md:text-5xl">{site.tagline}</h1>
-          <p className="mx-auto mt-6 max-w-2xl text-lg text-ink-700">{site.intro}</p>
+          <p className="mx-auto mt-6 max-w-2xl break-keep text-lg text-ink-700">{site.intro}</p>
           <div className="mt-8 flex justify-center gap-3">
             <Button href="/programs/essay">{site.hero.ctaPrimary}</Button>
             <Button href="/franchise" variant="accent">{site.hero.ctaFranchise}</Button>
           </div>
+          <ol className="mx-auto mt-14 grid max-w-4xl gap-4 break-keep text-left sm:grid-cols-3">
+            {site.flow.map((f, i) => (
+              <li key={f.title} className="rounded-2xl bg-white/80 p-5">
+                <p className="text-sm font-semibold text-mint-600">{String(i + 1).padStart(2, '0')}</p>
+                <h2 className="mt-1 text-lg font-extrabold text-ink-900">{f.title}</h2>
+                <p className="mt-1 text-ink-700">{f.body}</p>
+              </li>
+            ))}
+          </ol>
         </div>
       </section>
 
