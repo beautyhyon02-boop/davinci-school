@@ -66,7 +66,7 @@ describe('규칙 문장', () => {
       'S-영-11': ['목표 언어 형식(문법)을 2~3개', 'language_form_candidates', '후보를 3~4개', '본사가 2~3개를 고른다(고르지 않으면 앞의 두 개)', '성취수준', 'C-44'],
       'S-영-12': ['language_focus', '한 차시에 새 형식은 하나', '꼴·뜻·쓰임', '활동지', '뒤 차시', '문법 용어의 이름·정의를 묻거나 외우게 하지 않는다'],
       'S-영-13': ['교사용 지침서', '꼴(form)·뜻(meaning)·학생이 자주 틀리는 모습(common_errors', 'language_forms', '비전공 원장용'],
-      'S-영-14': ['단원 평가(서술형·논술형)의 언어 사용 채점 요소', '목표 언어 형식을 바르게 썼는지', '척도 서술에 목표 형식의 이름', '조건으로 그 형식을 쓰라고 강제하지는 않는다'],
+      'S-영-14': ['단원 평가(서술형·논술형)의 언어 사용 채점 요소', '목표 언어 형식을 바르게 썼는지', '척도 서술에 목표 형식의 이름', '문두·조건에는 형식의 이름을 적지 않되'],
     }
     for (const [id, parts] of Object.entries(need)) {
       const r = en(id)
@@ -162,7 +162,7 @@ describe('프롬프트', () => {
   it('5단계(영어): 언어 사용 채점 요소가 목표 형식을 본다 — 조건으로 강제하지 않는다; 6단계: 지침서 language_forms', () => {
     const prior = { stage2: stage2() }
     const p5 = buildPrompt(5, pctx('영어', prior)).user
-    for (const s of ['목표 언어 형식(본사가 고른 것, S-영-11)', 'S-영-14', '척도 서술에 목표 형식의 이름', '조건으로 그 형식을 쓰라고 강제하지 않는다']) expect(p5, s).toContain(s)
+    for (const s of ['목표 언어 형식(본사가 고른 것, S-영-11)', 'S-영-14', '척도 서술에 목표 형식의 이름', '문두·조건에는 형식의 이름을 적지 않되']) expect(p5, s).toContain(s)
     expect(buildReviewPrompt(5, pctx('영어', prior), { items: [] }).user).toContain('rubric(S-영-14)')
     const p6 = buildPrompt(6, pctx('영어', prior)).user
     for (const s of ['language_forms', 'meaning', 'common_errors', 'S-영-13', '1. 비교급']) expect(p6, s).toContain(s)

@@ -181,3 +181,41 @@ describe('화면·교재', () => {
     expect(JSON.stringify(student)).not.toContain('비교급')
   })
 })
+
+// 2026-11-14 일회용품 영어 3단계 실제 생성: 출처 표시 문항(4차시 2번)의 language_form 에 "없음"이 적혔다 — 게시되면 판정이 "그 형식을 쓰지 않았다"로 본다
+describe('생성 직후 손질 — 고른 형식의 이름이 아닌 language_form·language_focus 는 뺀다', () => {
+  const out3 = { lessons: [{ no: 4, language_focus: ['비교급', '가정법'], formative_check: { quiz: [{ q: 'a' }, { q: 'b', language_form: '없음', criteria_ref: 'x' }, { q: 'c', language_form: '비교급' }] } }, { no: 5, language_focus: ['가정법'], formative_check: { quiz: [] } }] }
+  it('영어 세트(형식을 정함): 고른 이름만 남긴다 — "없음" 같은 값은 칸째 지우고, 남는 이름이 없는 language_focus 도 지운다', () => {
+    const s = scrubLanguageForms(3, out3, { subject: '영어', hasForms: true, names: ['비교급', '요청하는 명령문'] }) as typeof out3
+    const quiz = s.lessons[0].formative_check.quiz as Record<string, unknown>[]
+    expect('language_form' in quiz[1]).toBe(false); expect(quiz[1].criteria_ref).toBe('x')
+    expect(quiz[2].language_form).toBe('비교급')
+    expect(s.lessons[0].language_focus).toEqual(['비교급'])
+    expect('language_focus' in s.lessons[1]).toBe(false)
+  })
+  it('names 를 주지 않으면(옛 호출) 그대로 둔다', () => {
+    expect(scrubLanguageForms(3, out3, { subject: '영어', hasForms: true })).toEqual(out3)
+  })
+  it('runStage 가 고른 이름을 넘긴다', () => {
+    expect(readFileSync('lib/studio/stages.ts', 'utf8')).toMatch(/names: forms\.map\(\(f\) => f\.name\)/)
+  })
+})
+
+// 2026-11-17 일회용품 영어 5단계 실제 생성: 논술형 채점표는 비교급까지 써야 언어 형식 만점인데 조건은 "사실 한 가지"만 요구했다(문항이 묻는 것 ≠ 채점이 보는 것)
+describe('S-영-14 — 채점이 보는 형식은 과제가 요구한 내용에서 나와야 한다', () => {
+  const en = (id: string) => SUBJECT_RULES['영어'].find((r) => r.id === id)!
+  it('규칙: 형식의 이름은 문두·조건에 적지 않되, 그 형식이 필요한 내용을 과제가 요구하게 한다', () => {
+    const t = en('S-영-14').text
+    for (const s of ['문두·조건에는 형식의 이름을 적지 않되', '그 형식이 필요한 내용(견주기·까닭 밝히기·부탁하기 등)을 문두나 조건이 요구하게 한다', '과제가 요구하지 않은 형식을 쓰지 않았다고 점수를 깎지 않는다']) expect(t, s).toContain(s)
+    expect(t).not.toContain('조건으로 그 형식을 쓰라고 강제하지는 않는다')
+    expect(row('S-영-14')).toBe(`| S-영-14 | ${t} | [대표] |`)
+  })
+  it('5단계 과제·검토도 같은 말을 한다', () => {
+    const prior = { stage2: stage2() }
+    const p5 = buildPrompt(5, pctx('영어', prior)).user
+    expect(p5).toContain('문두·조건에는 형식의 이름을 적지 않되, 채점이 보는 형식마다 그 형식이 필요한 내용(견주기·까닭 밝히기·부탁하기 등)을 문두나 조건이 요구하게 한다')
+    const r5 = buildReviewPrompt(5, pctx('영어', prior), { items: [] }).user
+    expect(r5).toContain('채점이 보는 형식이 필요한 내용을 문두·조건이 요구하지 않으면 rubric(S-영-14)')
+    expect(r5).toContain('문두·조건이 형식의 이름을 적었으면 other')
+  })
+})

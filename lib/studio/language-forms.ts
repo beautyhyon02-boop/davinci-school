@@ -85,11 +85,23 @@ export function repairLanguageKeys(stage: number, raw: unknown): unknown {
  * 형식 검사 뒤 손질 — 스키마의 선택 칸은 모든 과목의 생성에 보이므로, 영어가 아닌 세트나 목표 문법을 정하지 않은 영어 세트(2단계에 후보가 없는
  * 옛 세트)가 이 칸들을 지어내면 뺀다: 그대로 두면 지어낸 language_form 이 게시돼 AI 뜻 판정이 "그 형식을 쓰지 않았으면 틀림"으로 채점한다.
  * 2단계: 영어가 아니면 후보 삭제. 3단계: language_focus·퀴즈 language_form 삭제. 6단계: language_forms 삭제. (hasForms = 고른 형식이 있다)
+ * 형식을 정한 영어 세트의 3단계는 names(고른 이름)에 없는 language_form·language_focus 값만 뺀다.
  */
-export function scrubLanguageForms(stage: number, output: unknown, ctx: { subject: string; hasForms: boolean }): unknown {
+export function scrubLanguageForms(stage: number, output: unknown, ctx: { subject: string; hasForms: boolean; names?: string[] }): unknown {
   const english = ctx.subject === '영어'
   if (stage === 2) return !english && isRec(output) ? without(output, ['language_form_candidates', 'language_forms']) : output
-  if (english && ctx.hasForms) return output
+  if (english && ctx.hasForms) {
+    // 형식을 정한 영어 세트: 고른 형식의 이름만 남긴다 — 형식이 없는 문항에 모델이 "없음"을 적거나 다른 이름을 지어내면 그 값이 채점 기준이 된다(2026-11-14 실제 생성)
+    const names = ctx.names
+    if (stage !== 3 || !names) return output
+    return mapLessonsAndQuiz(output,
+      (l) => {
+        if (!Array.isArray(l.language_focus)) return l
+        const kept = l.language_focus.filter((n) => typeof n === 'string' && names.includes(n))
+        return kept.length > 0 ? { ...l, language_focus: kept } : without(l, ['language_focus'])
+      },
+      (q) => (typeof q.language_form === 'string' && !names.includes(q.language_form) ? without(q, ['language_form']) : q))
+  }
   if (stage === 3) return mapLessonsAndQuiz(output, (l) => without(l, ['language_focus']), (q) => without(q, ['language_form']))
   if (stage === 6) return isRec(output) ? without(output, ['language_forms']) : output
   return output
