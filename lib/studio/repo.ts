@@ -5,6 +5,7 @@ import { keyQuestionAfterStage2 } from './edit-rules'
 import { withMaterialDefaults } from './draft-defaults'
 import { syncAssessmentSessionMaterials } from './assessment-structure'
 import { selectSharedMaterials } from './shared-selection'
+import { loadTaughtLanguageForms } from './taught-forms'
 
 type Supabase = Awaited<ReturnType<typeof createClient>>
 
@@ -102,6 +103,9 @@ export function createSupabaseRepo(supabase: Supabase): Repo {
       const selectedShared = selectSharedMaterials(themeMaterials, itemSet.shared_material_ids)
       if (selectedShared.length > 0) prior.shared_materials = selectedShared.map(withMaterialDefaults)
 
+      // 영어 세트(S-영-11, 2026-11-17): 같은 학교급의 다른 영어 세트에서 이미 고른 목표 언어 형식 — 2단계가 겹치지 않는 후보를 내게 한다. 다른 과목은 읽지 않는다.
+      const taught = itemSet.subject === '영어' ? await loadTaughtLanguageForms(supabase, { setId: itemSetId, level: itemSet.level as string }) : null
+
       return {
         // 세트 학년은 대주제 학년의 복사본(updateThemeGrade 가 함께 바꾼다) — null 이면 학교급 학년군 전체(대표 2026-09-26)
         theme: { title: theme.title, level: itemSet.level, grade: (itemSet.grade as number | null) ?? null, subjects },
@@ -110,6 +114,7 @@ export function createSupabaseRepo(supabase: Supabase): Repo {
         prior,
         // 4단계 자료 ID 이어 붙이기는 고른 것만이 아니라 대주제 공동 자료 전체 뒤에서 잇는다(prompts/stages.ts sharedMaterialLettering)
         themeMaterialIds: themeMaterials.map((m) => m.id).filter((id): id is string => typeof id === 'string'),
+        ...(taught ? { taughtLanguageForms: taught } : {}),
         outputs,
         statuses,
       }

@@ -16,6 +16,7 @@ import { withMaterialDefaults } from '@/lib/studio/draft-defaults'
 import { parseSharedMaterialIds, selectSharedMaterials, selectionChangeNeedsNotice } from '@/lib/studio/shared-selection'
 import { cleanMaterialTitle } from '@/lib/studio/materials'
 import { SharedMaterialsSelector } from './SharedMaterialsSelector'
+import { loadTaughtLanguageForms } from '@/lib/studio/taught-forms'
 
 const copy = app.studio.wizard
 
@@ -57,6 +58,9 @@ export default async function SetWizardPage({ params }: { params: Promise<{ them
   const selectedSharedIds = parseSharedMaterialIds(itemSet.shared_material_ids)
   const sharedOptions = themeMaterials.map((m) => ({ id: m.id, title: cleanMaterialTitle(m.title ?? ''), kind: m.kind ?? '' }))
   const candidates = (stage2?.output as { key_question_candidates?: string[] } | undefined)?.key_question_candidates ?? []
+
+  // 영어 세트(S-영-11, 2026-11-17): 같은 학교급의 다른 영어 세트에서 이미 고른 문법 — 「목표 문법 고르기」에 보여 준다(2단계 생성도 같은 목록을 본다)
+  const taughtForms = itemSet.subject === '영어' ? await loadTaughtLanguageForms(supabase, { setId, level: itemSet.level }) : []
 
   // publishItemSet과 같은 규칙: 다음 버전은 item_sets.version이 아니라 item_set_versions 최댓값+1로 미리보기에서도 미리 계산한다.
   const { data: lastVersion } = await supabase
@@ -113,6 +117,7 @@ export default async function SetWizardPage({ params }: { params: Promise<{ them
                 lessons={(itemSet.lessons ?? []) as { no: number; images?: string[] }[]}
                 // 4·5단계 탭에 이 세트가 체크하고 가리키는 공동 자료를 함께 보인다 — 공유 자료는 v1 모양일 수 있어 v2 기본값을 입혀 넘긴다
                 sharedMaterials={selectSharedMaterials(themeMaterials, selectedSharedIds).map(withMaterialDefaults)}
+                taughtForms={taughtForms}
               />
             </div>
           }

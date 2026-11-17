@@ -9,27 +9,31 @@ type Result = { data: unknown; error: { message: string } | null }
 type Builder = {
   select: (cols?: string) => Builder
   eq: (col: string, value: unknown) => Builder
+  in: (col: string, values: unknown[]) => Builder
   update: (patch: Row) => Builder
   single: () => Promise<Result>
   then: (res: (v: Result) => unknown, rej?: (e: unknown) => unknown) => Promise<unknown>
 }
 
-// 최소 가짜 Supabase: select 열 목록은 무시하고 행 전체를 돌려준다. update(...).eq(...) 는 맞는 행에 patch 를 덮어쓴다.
+// 최소 가짜 Supabase: select 열 목록은 무시하고 행 전체를 돌려준다(alias:열->키 꼴만 그 이름으로 덧붙인다). update(...).eq(...) 는 맞는 행에 patch 를 덮어쓴다.
 function fakeSupabase(tables: Record<string, Row[]>) {
   function from(table: string): Builder {
     const filters: [string, unknown][] = []
+    const within: [string, unknown[]][] = []
+    const aliases: [string, string, string][] = []
     let patch: Row | null = null
-    const matching = () => (tables[table] ?? []).filter((r) => filters.every(([c, v]) => r[c] === v))
+    const matching = () => (tables[table] ?? []).filter((r) => filters.every(([c, v]) => r[c] === v) && within.every(([c, vs]) => vs.includes(r[c])))
     const run = (): Result => {
       if (patch) {
         for (const r of matching()) Object.assign(r, structuredClone(patch))
         return { data: null, error: null }
       }
-      return { data: structuredClone(matching()), error: null }
+      return { data: structuredClone(matching()).map((r) => ({ ...r, ...Object.fromEntries(aliases.map(([as, col, key]) => [as, (r[col] as Row | null | undefined)?.[key]])) })), error: null }
     }
     const b: Builder = {
-      select: () => b,
+      select: (cols) => { for (const m of (cols ?? '').matchAll(/(\w+):(\w+)->(\w+)/g)) aliases.push([m[1], m[2], m[3]]); return b },
       eq: (c, v) => { filters.push([c, v]); return b },
+      in: (c, vs) => { within.push([c, vs]); return b },
       update: (p) => { patch = p; return b },
       single: async () => {
         const r = run()
@@ -181,6 +185,24 @@ describe('createSupabaseRepo (v2 columns)', () => {
     const out = (await repo.loadContext('set1')).outputs[2] as typeof withForms
     expect(out.language_form_candidates).toEqual(candidates)
     expect(out.language_forms).toEqual(['수동태'])
+  })
+
+  it('loadContext(영어 세트): 같은 학교급의 다른 영어 세트에서 고른 목표 언어 형식을 taughtLanguageForms 로 넘긴다 — 2단계 프롬프트가 겹치지 않게 내라고 한다', async () => {
+    const tables = seed()
+    const candidates = ['비교급', '수동태', '요청하는 명령문'].map((name) => ({ name, form: '꼴', example: 'Example.', use: '하는 일' }))
+    Object.assign(tables.item_sets[0], { subject: '영어', status: 'draft' })
+    tables.item_sets.push({ ...structuredClone(tables.item_sets[0]), id: 'set2', theme_id: 'th2', status: 'published', stage_status: { stage2: { state: 'accepted', attempt: 1, output: { language_form_candidates: candidates, language_forms: ['비교급', '수동태'] }, updated_at: '' } } })
+    tables.themes.push({ id: 'th2', title: '학교 축제, 일회용품을 줄이자', subjects: ['영어'], materials: null, intro_ideas: null })
+    const ctx = await createSupabaseRepo(fakeSupabase(tables) as never).loadContext('set1')
+    expect(ctx.taughtLanguageForms).toEqual([{ theme: '학교 축제, 일회용품을 줄이자', names: ['비교급', '수동태'] }])
+    expect(buildPrompt(2, ctx).user).toContain('이미 가르치는 형식(비교급, 수동태)은 후보로 내지 않는다')
+  })
+
+  it('loadContext(다른 과목): taughtLanguageForms 를 두지 않는다 — 다른 세트를 읽지도 않는다', async () => {
+    const tables = seed()
+    tables.item_sets.push({ ...structuredClone(tables.item_sets[0]), id: 'set2', subject: '영어' })
+    const ctx = await createSupabaseRepo(fakeSupabase(tables) as never).loadContext('set1')
+    expect('taughtLanguageForms' in ctx).toBe(false)
   })
 
   it('loadContext leaves outputs empty for stages whose columns are still null', async () => {

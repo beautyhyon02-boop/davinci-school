@@ -50,6 +50,31 @@ export function languageFormsBlock(forms: LanguageForm[]): string {
   return `목표 언어 형식(본사가 고른 것, S-영-11):\n${forms.map((f, i) => `${i + 1}. ${f.name} — 꼴: ${f.form} — 예문: ${f.example} — 하는 일: ${f.use}`).join('\n')}`
 }
 
+/** 다른 영어 세트 하나가 가르치는 목표 언어 형식(대주제 이름과 고른 형식의 이름). */
+export type TaughtForms = { theme: string; names: string[] }
+
+/**
+ * 다른 영어 세트에서 본사가 이미 정한 목표 언어 형식(S-영-11 덧붙임 — 2026-11-17): 2단계가 [확인]된 다른 세트가 실제로 쓰는 형식
+ * (고른 것, 고르지 않았으면 앞의 두 개). 자기 세트·아직 [확인]하지 않은 세트·후보가 없는 옛 세트는 세지 않는다. 대주제 이름 순(프롬프트가 결정적이도록).
+ * 2단계 생성·검토가 "이 형식과 겹치지 않는 후보"를 내게 하고, 「목표 문법 고르기」 화면이 본사에게 보여 준다.
+ */
+export function taughtLanguageForms(rows: { id: string; theme: string; stage2: unknown }[], selfId: string): TaughtForms[] {
+  const out: TaughtForms[] = []
+  for (const r of rows) {
+    if (r.id === selfId) continue
+    const st = r.stage2 as { state?: unknown; output?: unknown } | null | undefined
+    if (!st || st.state !== 'accepted') continue
+    const names = selectedLanguageForms(st.output).map((f) => f.name)
+    if (names.length > 0) out.push({ theme: r.theme, names })
+  }
+  return out.sort((a, b) => a.theme.localeCompare(b.theme, 'ko'))
+}
+
+/** 이미 가르치는 형식의 이름(겹친 이름은 하나로, 나온 순서대로). */
+export function taughtFormNames(taught: TaughtForms[] | null | undefined): string[] {
+  return [...new Set((taught ?? []).flatMap((t) => t.names))]
+}
+
 type Rec = Record<string, unknown>
 const isRec = (v: unknown): v is Rec => !!v && typeof v === 'object' && !Array.isArray(v)
 const without = (o: Rec, keys: string[]): Rec => Object.fromEntries(Object.entries(o).filter(([k]) => !keys.includes(k)))

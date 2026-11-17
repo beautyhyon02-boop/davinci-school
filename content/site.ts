@@ -533,6 +533,9 @@ export const app = {
         exampleLabel: '예문',
         useLabel: '이 글에서 하는 일',
         basisLabel: '고른 근거',
+        // 같은 학교급의 다른 영어 세트에서 이미 고른 문법(2026-11-17) — 2단계가 이와 겹치지 않는 후보를 내고, 본사가 눈으로 한 번 더 본다
+        taughtLabel: '다른 영어 세트에서 이미 가르치는 문법',
+        taughtHint: '후보는 이 문법과 겹치지 않게 냅니다. 겹친 후보가 보이면 고르지 않으면 됩니다.',
         countHint: (min: number, max: number) => `${min}~${max}개를 골라 주세요.`,
         laterNotice: '차시 설계부터 뒤 단계가 이미 만들어져 있습니다. 문법을 바꾸면 그 단계들을 다시 생성해야 반영됩니다.',
         select: '이 문법으로 저장',

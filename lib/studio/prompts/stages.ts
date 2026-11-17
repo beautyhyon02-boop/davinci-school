@@ -9,7 +9,7 @@ import { nextSetMaterialLetter } from '@/lib/studio/shared-selection'
 import { COMPETENCY_GLOSS } from '@/lib/studio/competency'
 import { referenceUnitBlock, referenceUnitShort } from './reference-units'
 import { gradeUnitBlock } from '@/lib/studio/grade-units'
-import { selectedLanguageForms, languageFormsBlock, type LanguageForm } from '@/lib/studio/language-forms'
+import { selectedLanguageForms, languageFormsBlock, taughtFormNames, type LanguageForm, type TaughtForms } from '@/lib/studio/language-forms'
 
 export type Ctx = {
   /** grade null = 학년 지정 안 함 → 학교급 학년군 전체(대표 결정 2026-09-26, lib/studio/level-map.ts gradeLabel) */
@@ -25,6 +25,11 @@ export type Ctx = {
    * 자동 검사(stages.ts staticCheck → checks.ts CheckCtx.themeMaterialIds)도 같은 값으로 체크하지 않은 공동 자료의 글자를 짚는다.
    */
   themeMaterialIds?: string[]
+  /**
+   * 같은 학교급의 다른 영어 세트에서 본사가 이미 정한 목표 언어 형식(영어 세트만, 2026-11-17 — repo.ts loadContext 가 taught-forms.ts 로 읽는다).
+   * 2단계 생성·검토에만 쓴다: 이 형식과 겹치지 않는 후보를 내게 한다(S-영-11). 없거나 비었으면 프롬프트는 글자 그대로다.
+   */
+  taughtLanguageForms?: TaughtForms[]
 }
 
 /**
@@ -130,6 +135,9 @@ function c44Task(stage: Stage, ctx: Ctx): string {
 // 다른 과목과 후보가 없는 옛 영어 세트의 프롬프트는 글자 그대로다(tests/language-forms.test.ts).
 const ENGLISH_FORMS_TASK2 = ' 영어 세트는 목표 언어 형식 후보(language_form_candidates) 3~4개도 낸다(S-영-11): 이 대주제에서 학생이 쓸 글(안내문·설명문 등)에 실제로 쓰이는 문법을 고르고, 후보마다 name(한국어 이름, 예: "비교급")·form(꼴)·example(대주제 맥락의 영어 예문 한 문장)·use(이 대주제의 글에서 하는 일)·basis(고른 근거 — 성취수준의 어느 말, 학년군 수준)를 적어 권하는 순서대로 놓는다. 이 학교급 학년군에서 배우는 형식만 낸다. language_forms(본사가 고르는 칸)는 두지 않는다.'
 const ENGLISH_FORMS_REVIEW2 = ' 영어 세트의 목표 언어 형식 후보(S-영-11): language_form_candidates가 3~4개이고 이 대주제에서 학생이 쓸 글에 실제로 쓰이는 형식인지, example이 대주제 맥락의 바른 영어 문장이고 그 형식을 쓰는지, 이 학교급 학년군 수준을 넘지 않는지 — 어긋나면 other. 후보는 성취수준의 "어휘와 언어 형식을 활용하여"가 근거이므로 성취기준 원문 밖의 개념으로 보지 않는다.'
+// 다른 영어 세트에서 이미 가르치는 형식(2026-11-17): 도서관 영어의 후보 넷 가운데 셋이 일회용품 영어에서 고른 문법이었다 — 이름을 알려 주고 겹치지 않게 내게 한다.
+const englishTaughtTask2 = (names: string[]) => ` 같은 학교급의 다른 영어 세트에서 이미 가르치는 형식(${names.join(', ')})은 후보로 내지 않는다 — 이름이 달라도 같은 문법이면 겹친 것으로 본다(S-영-11).`
+const englishTaughtReview2 = (names: string[]) => ` 후보가 같은 학교급의 다른 영어 세트에서 이미 가르치는 형식(${names.join(', ')})과 겹치면 other(S-영-11) — 이름이 달라도 같은 문법이면 겹친 것으로 본다.`
 const ENGLISH_FORMS_TASK: Partial<Record<Stage, string>> = {
   4: ' 영어 세트(S-영-12): 자료의 영어 글(안내문·설명글 등)에 위 목표 언어 형식을 쓴 문장을 형식마다 하나 이상 넣는다 — 차시가 그 문장으로 꼴·뜻·쓰임을 보여 준다(문법 설명을 자료에 적지는 않는다).',
   3: ' 영어 세트는 위 목표 언어 형식을 가르친다(S-영-12): 형식마다 처음 가르치는 교수 차시를 정해 lessons[].language_focus에 그 이름을 글자 그대로 적고(한 차시에 새 형식은 하나; 뒤 차시에서 다시 쓰는 형식도 함께 적을 수 있다), 그 차시의 전개에서 꼴·뜻·쓰임을 자료의 문장으로 보여 주며 활동지에 그 형식으로 문장을 쓰는 과제를 넣는다. 퀴즈(S-영-10): 1번은 그 차시에 배우거나 다시 쓴 형식의 꼴이나 표현을 낱말·짧은 구로(문법 용어의 이름은 묻지 않는다), 2번은 배운 형식을 써서 자료에서 스스로 고른 내용을 영어 한 문장으로, 3번은 같은 뜻을 다른 꼴로 바꿔 쓰거나 두 문장을 이어 쓰게 한다 — 2·3번은 language_form에 써야 할 형식의 이름을 글자 그대로 적고 condition에도 그 이름을 밝히되 정답 문장에 들어갈 내용(품목 이름·수치)은 적지 않으며(형식의 이름에 든 기능어는 된다), partial_note에는 형식을 썼으나 꼴에 잘못이 있는 답의 모습을 적는다(형식을 쓰지 않은 답은 틀림). 표의 한 칸을 문장으로 옮기기만 하는 문항은 쓰지 않는다. 목표 언어 형식은 성취수준의 "어휘와 언어 형식을 활용하여"가 근거이므로 C-44의 성취기준 원문 밖의 개념으로 보지 않는다.',
@@ -160,7 +168,11 @@ function englishFormsBlock(stage: Stage, ctx: Ctx): string {
 /** 영어 세트에만 붙는 목표 언어 형식 문장: 2단계는 영어면 언제나(후보를 내라), 3·5·6단계는 고른 형식이 있을 때만. */
 function englishFormsSentence(stage: Stage, ctx: Ctx, kind: 'task' | 'review'): string {
   if (ctx.subject !== '영어') return ''
-  if (stage === 2) return kind === 'task' ? ENGLISH_FORMS_TASK2 : ENGLISH_FORMS_REVIEW2
+  if (stage === 2) {
+    const taught = taughtFormNames(ctx.taughtLanguageForms)
+    const overlap = taught.length === 0 ? '' : kind === 'task' ? englishTaughtTask2(taught) : englishTaughtReview2(taught)
+    return `${kind === 'task' ? ENGLISH_FORMS_TASK2 : ENGLISH_FORMS_REVIEW2}${overlap}`
+  }
   if (englishForms(ctx).length === 0) return NO_FORMS_STAGES.has(stage) ? (kind === 'task' ? ENGLISH_NO_FORMS_TASK : ENGLISH_NO_FORMS_REVIEW) : ''
   return (kind === 'task' ? ENGLISH_FORMS_TASK[stage] : ENGLISH_FORMS_REVIEW[stage]) ?? ''
 }

@@ -16,7 +16,7 @@ import { Attachments } from './Attachments'
 import { FieldEditor } from './FieldEditor'
 import { StageOutput } from './StageOutput'
 import { LanguageFormPicker } from './LanguageFormPicker'
-import { languageFormCandidates } from '@/lib/studio/language-forms'
+import { languageFormCandidates, type TaughtForms } from '@/lib/studio/language-forms'
 
 const copy = app.studio.wizard
 
@@ -276,6 +276,7 @@ export function StageWizard({
   materials = [],
   lessons = [],
   sharedMaterials = [],
+  taughtForms = [],
 }: {
   setId: string
   initialStatuses: Partial<Record<WizardStage, StageStatus>>
@@ -285,6 +286,8 @@ export function StageWizard({
   lessons?: { no: number; images?: string[] }[]
   /** 대주제 공유 자료(v2 기본값을 입힌 평범한 데이터) — 4단계 탭에 이 세트가 가리키는 것만 '공유'로 보인다. */
   sharedMaterials?: MaterialLike[]
+  /** 영어 세트: 같은 학교급의 다른 영어 세트에서 이미 가르치는 문법 — 「목표 문법 고르기」에 보여 준다. */
+  taughtForms?: TaughtForms[]
 }) {
   // 서버가 내려준 초기 상태로 훅을 시작한다 — 클라이언트 로드 전에도 화면과 [기본값으로 진행]이 같은 상태를 본다.
   const { statuses: effective, busy, error, run, runDefaults, refresh, setStageStatus } = useStageRunner(setId, initialStatuses)
@@ -360,6 +363,7 @@ export function StageWizard({
             selected={(effective[2]?.output as { language_forms?: string[] } | undefined)?.language_forms ?? []}
             hasLater={WIZARD_STAGES.some((s) => s > 2 && (effective[s]?.state ?? 'idle') !== 'idle')}
             onSaved={() => void refresh()}
+            taught={taughtForms}
           />
         )}
         {active === 2 && stage2Accepted && (

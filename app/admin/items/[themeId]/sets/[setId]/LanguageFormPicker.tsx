@@ -3,7 +3,7 @@ import { useState, useTransition } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { app } from '@/content/site'
-import { LANGUAGE_FORM_DEFAULT, LANGUAGE_FORM_PICK, type LanguageForm } from '@/lib/studio/language-forms'
+import { LANGUAGE_FORM_DEFAULT, LANGUAGE_FORM_PICK, type LanguageForm, type TaughtForms } from '@/lib/studio/language-forms'
 import { chooseLanguageForms } from './actions'
 
 const copy = app.studio.wizard.languageForms
@@ -12,8 +12,9 @@ const copy = app.studio.wizard.languageForms
  * 목표 문법 고르기(영어 세트, S-영-11 — 대표 2026-11-14 "AI가 후보 내고 본사가 고르는 방식").
  * 2단계가 낸 후보(3~4개)를 체크해 2~3개 고른다. 고른 적이 없으면 앞의 두 개가 체크돼 있고, 저장하지 않아도 그 둘로 진행된다(막지 않는다).
  * 뒤 단계가 이미 있으면 "다시 만들어야 할 수 있음" 안내만 보인다 — 저장이 뒤 단계를 초기화하지 않는다(공동 자료 선택과 같은 규칙).
+ * 같은 학교급의 다른 영어 세트에서 이미 고른 문법(taught)이 있으면 후보 위에 보여 준다 — 2단계가 겹치지 않게 내지만 본사가 눈으로 한 번 더 본다(2026-11-17).
  */
-export function LanguageFormPicker({ setId, candidates, selected, hasLater, disabled = false, onSaved }: {
+export function LanguageFormPicker({ setId, candidates, selected, hasLater, disabled = false, onSaved, taught = [] }: {
   setId: string
   candidates: LanguageForm[]
   /** 저장된 선택(이름). 비어 있으면 앞의 두 개를 미리 체크한다. */
@@ -22,6 +23,8 @@ export function LanguageFormPicker({ setId, candidates, selected, hasLater, disa
   /** 단계가 도는 동안(생성·AI 검토) 잠근다 — 그 사이의 저장은 끝난 단계가 덮어쓴다. */
   disabled?: boolean
   onSaved?: () => void
+  /** 같은 학교급의 다른 영어 세트에서 이미 가르치는 문법(대주제마다). */
+  taught?: TaughtForms[]
 }) {
   const known = candidates.map((c) => c.name)
   const initial = selected.filter((n) => known.includes(n))
@@ -46,6 +49,21 @@ export function LanguageFormPicker({ setId, candidates, selected, hasLater, disa
     <Card className="mt-4">
       <h3 className="text-sm font-bold">{copy.heading}</h3>
       <p className="mt-1 text-sm text-ink-500">{copy.hint(LANGUAGE_FORM_PICK.min, LANGUAGE_FORM_PICK.max)}</p>
+      {taught.length > 0 && (
+        <div className="mt-3 rounded-lg bg-ink-100 p-3 text-sm">
+          <p className="font-semibold">{copy.taughtLabel}</p>
+          {taught.map((t, i) => (
+            // 대주제 이름은 겹치거나 비어 있을 수 있다(이름을 못 읽었을 때) — 키는 순서로
+            <div key={i} className="mt-2">
+              {t.theme && <p className="text-ink-500" data-taught-theme>{t.theme}</p>}
+              <ul className="mt-0.5 list-disc pl-5 text-ink-700">
+                {t.names.map((n) => <li key={n} data-taught-form>{n}</li>)}
+              </ul>
+            </div>
+          ))}
+          <p className="mt-2 text-ink-500">{copy.taughtHint}</p>
+        </div>
+      )}
       <ul className="mt-3 space-y-3">
         {candidates.map((f, i) => (
           <li key={f.name} className="flex items-start gap-2 text-sm">
